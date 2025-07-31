@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { signInWithEmail, signUpWithEmail } from "@/lib/FetchingAuth";
 
-
 interface FormData {
   name: string;
   email: string;
@@ -247,8 +246,8 @@ export default function AuthPage() {
   const passwordStrength = getPasswordStrength(formData.password);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white p-4">
-      <Card className="w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900 p-4">
+      <Card className="w-full max-w-md shadow-2xl border-0 bg-white/95 dark:bg-slate-800 dark:text-gray-100 backdrop-blur-sm">
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center items-center mb-4">
             <Image
@@ -259,10 +258,10 @@ export default function AuthPage() {
               className="rounded-full"
             />
           </div>
-          <CardTitle className="text-2xl font-bold text-gray-900">
+          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Meteo Sense
           </CardTitle>
-          <CardDescription className="text-gray-600">
+          <CardDescription className="text-gray-600 dark:text-gray-300">
             {isSignUp
               ? "Buat akun Anda untuk mulai memantau kondisi hidrometeorologi."
               : "Masuk ke akun Anda untuk mengakses dashboard."}
