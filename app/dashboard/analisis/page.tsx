@@ -200,11 +200,15 @@ export default function AnalisisPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-semibold">Analisis Data</h2>
+          <p className="text-muted-foreground">Analisis dan Prediksi Lanjutan Data</p>
+        </div>
+      </div>
       <Card className="mb-6">
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gray-50 dark:bg-gray-800 border-b">
-          <CardTitle className="text-xl">Pengaturan Analisis Data</CardTitle>
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
             <Select value={sensorId} onValueChange={setSensorId}>
               <SelectTrigger className="w-full sm:w-[180px]">

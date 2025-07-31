@@ -386,11 +386,17 @@ export default function DataPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-semibold">Eksplorasi Data</h2>
+          <p className="text-muted-foreground">Visualisasi Dasar Data</p>
+        </div>
+      </div>
+      
       {/* Global Controls Card */}
       <Card className="mb-6">
         <CardHeader className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"} border-b`}>
-          <CardTitle className="text-xl">Fetching Data</CardTitle>
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
             {/* Sensor Select */}
             <Select value={sensorId} onValueChange={setSensorId}>
