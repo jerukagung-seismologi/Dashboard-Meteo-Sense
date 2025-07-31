@@ -9,13 +9,11 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Jerukagung Seismologi",
-    default: "Jerukagung Seismologi",
+    template: "%s | Meteo Sense",
+    default: "Meteo Sense",
   },
-  description: "Penelitian dan Pengembangan Pemantauan Sains Atmosfer Jerukagung Seismologi",
+  description: "Penelitian dan Pengembangan Pemantauan Sains Atmosfer",
   keywords: [
-    "Jerukagung",
-    "Seismologi",
     "Pemantauan",
     "Sains Atmosfer",
     "Penelitian",

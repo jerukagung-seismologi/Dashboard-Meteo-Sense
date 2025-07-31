@@ -2,149 +2,114 @@ import { CloudSun, LineChart, FlaskRoundIcon as Flask, ArrowRight } from "lucide
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import Header from "@/components/header"
-import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
 
-export default function BerandaPage() {
+export default function LandingPage() {
   return (
     <>
       <Header />
-      <Navbar />
-      <div className="mainpage">
-        <div className="mainpagetext">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg">Selamat Datang di Pusat Informasi Jerukagung Seismologi</h1>
-          <p className="text-xl md:text-2xl drop-shadow-lg mb-8">
-            Penelitian dan Pengembangan Instrumen Pemantauan Sains Atmosfer
+      {/* Hero Section */}
+      <section className="relative h-[70vh] flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-100 dark:from-gray-900 dark:via-gray-800 dark:to-primary-900 overflow-hidden">
+        {/* Background Image & Overlay */}
+        <div className="absolute inset-0 bg-[url('/hero-bg.jpg')] bg-cover bg-center opacity-30 dark:opacity-20"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-primary-50/60 to-primary-100/80 dark:from-gray-900/80 dark:via-gray-800/60 dark:to-primary-900/80"></div>
+        <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center">
+          <div className="mb-6 animate-fade-in">
+            <CloudSun className="h-16 w-16 text-primary-500 drop-shadow-xl mx-auto" />
+          </div>
+          <h1 className="text-5xl md:text-6xl font-extrabold mb-6 text-primary-700 dark:text-primary-200 drop-shadow-lg animate-slide-up">
+            Meteo Sense
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-200 mb-8 max-w-2xl drop-shadow-lg animate-fade-in">
+            Platform pemantauan dan analisis cuaca serta iklim untuk wilayah Jerukagung. Mendukung penelitian, pengembangan, dan akses data atmosfer secara real-time.
           </p>
-          <div className="flex flex-wrap justify-center gap-4">
-          </div>
-        </div>
-      </div>
-
-      {/* News and Updates Section */}
-      <section className="bg-primary-50 dark:bg-gray-900 py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-medium text-primary-700 dark:text-primary-300">Publikasi</h2>
-            <Link
-              href="/publikasi"
-              className="text-primary-500 hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300 flex items-center text-sm font-medium"
-            >
-              Lihat Semua <ArrowRight className="ml-1 h-4 w-4" />
+          <Button size="lg" className="bg-primary-700 text-white hover:bg-primary-800 mb-4 animate-pop">
+            <Link href="/register" className="flex items-center gap-2">
+              Daftar Sekarang <ArrowRight className="w-5 h-5" />
             </Link>
-          </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-              date: "5 Mei 2025",
-              title: "Laporan Cuaca Bulanan: April 2025",
-              summary:
-                "Ringkasan kondisi cuaca dan iklim selama bulan April 2025 di wilayah Jerukagung dan sekitarnya.",
-              thumbnail: "/img/beritaiklim.jpg",
-              },
-              {
-              date: "7 April 2025",
-              title: "Laporan Cuaca Bulanan: Maret 2025",
-              summary:
-                "Ringkasan kondisi cuaca dan iklim selama bulan Maret 2025 di wilayah Jerukagung dan sekitarnya.",
-              thumbnail: "/img/beritaiklim.jpg",
-              },
-              {
-              date: "10 Maret 2025",
-              title: "Laporan Cuaca Bulanan: Februari 2025",
-              summary:
-                "Ringkasan kondisi cuaca dan iklim selama bulan Februari 2025 di wilayah Jerukagung dan sekitarnya.",
-              thumbnail: "/img/beritaiklim.jpg",
-              },
-            ].map((item, i) => (
-              <div key={i} className="bg-white dark:bg-gray-800 rounded-md shadow-sm overflow-hidden">
-              <div className="h-48 bg-gray-200 dark:bg-gray-700">
-                <img
-                src={item.thumbnail}
-                alt={item.title}
-                className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="p-4">
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{item.date}</p>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{item.title}</h3>
-                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">{item.summary}</p>
-                <Link
-                href="#"
-                className="text-primary-500 hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300 text-sm font-medium"
-                >
-                Baca Selengkapnya
-                </Link>
-              </div>
-              </div>
-            ))}
-            </div>
+          </Button>
+          <span className="text-gray-500 dark:text-gray-400 text-sm">Mulai akses data dan fitur Meteo Sense</span>
         </div>
       </section>
 
-      {/* Services Section */}
-      <section className="py-12 bg-white dark:bg-gray-800">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl font-medium text-primary-700 dark:text-primary-300 mb-4">Layanan Kami</h2>
-            <p className="text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Kami berfokus pada penelitian dan pengembangan dalam pemantauan cuaca dan iklim untuk memberikan informasi
-              yang akurat dan terpercaya.
+      {/* Tentang Section */}
+      <section className="py-12 bg-white dark:bg-gray-900">
+        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center gap-8">
+          <div className="flex-1 text-center md:text-left">
+            <h2 className="text-2xl font-semibold text-primary-700 dark:text-primary-300 mb-4">Tentang Meteo Sense</h2>
+            <p className="text-gray-700 dark:text-gray-300 mb-2">
+              Meteo Sense adalah platform digital untuk pemantauan, analisis, dan penelitian cuaca serta iklim di Jerukagung. Kami menyediakan data atmosfer real-time, visualisasi, dan fitur kolaborasi untuk mendukung inovasi di bidang meteorologi.
+            </p>
+            <p className="text-gray-600 dark:text-gray-400">
+              Bergabunglah bersama komunitas kami untuk akses data, pengembangan instrumen, dan metode pemantauan terbaru.
             </p>
           </div>
+          <div className="flex-1 flex justify-center">
+            <img src="/about-illustration.svg" alt="Tentang Meteo Sense" className="w-64 h-64 object-contain" />
+          </div>
+        </div>
+      </section>
 
+      {/* Features Section */}
+      <section className="py-16 bg-gradient-to-br from-primary-50 via-white to-primary-100 dark:from-gray-900 dark:via-gray-800 dark:to-primary-900">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-semibold text-primary-700 dark:text-primary-300 mb-4">Fitur Utama</h2>
+            <p className="text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+              Meteo Sense menyediakan layanan pemantauan cuaca, analisis data iklim, serta mendukung penelitian dan pengembangan sains atmosfer.
+            </p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white dark:bg-gray-900 rounded-md shadow-sm p-6 border-t-4 border-primary-500">
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-8 border-t-4 border-primary-500 hover:scale-105 transition-transform duration-200">
               <div className="flex justify-center mb-4">
-                <div className="bg-primary-50 dark:bg-primary-900/20 p-3 rounded-full">
-                  <CloudSun className="h-8 w-8 text-primary-500" />
+                <div className="bg-primary-50 dark:bg-primary-900/20 p-4 rounded-full shadow">
+                  <CloudSun className="h-10 w-10 text-primary-500" />
                 </div>
               </div>
-              <h3 className="text-xl font-medium text-center mb-3 text-gray-900 dark:text-white">Pemantauan Cuaca</h3>
+              <h3 className="text-xl font-semibold text-center mb-3 text-gray-900 dark:text-white">Pemantauan Cuaca</h3>
               <p className="text-gray-600 dark:text-gray-300 text-center">
-                Data cuaca terkini hasil dari pengamatan untuk memahami kondisi atmosfer di wilayah Jerukagung.
+                Data cuaca terkini dan historis untuk memahami kondisi atmosfer di Jerukagung.
               </p>
             </div>
-
-            <div className="bg-white dark:bg-gray-900 rounded-md shadow-sm p-6 border-t-4 border-primary-500">
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-8 border-t-4 border-primary-500 hover:scale-105 transition-transform duration-200">
               <div className="flex justify-center mb-4">
-                <div className="bg-primary-50 dark:bg-primary-900/20 p-3 rounded-full">
-                  <LineChart className="h-8 w-8 text-primary-500" />
+                <div className="bg-primary-50 dark:bg-primary-900/20 p-4 rounded-full shadow">
+                  <LineChart className="h-10 w-10 text-primary-500" />
                 </div>
               </div>
-              <h3 className="text-xl font-medium text-center mb-3 text-gray-900 dark:text-white">Analisis Data</h3>
+              <h3 className="text-xl font-semibold text-center mb-3 text-gray-900 dark:text-white">Analisis Data</h3>
               <p className="text-gray-600 dark:text-gray-300 text-center">
-                Analisis mendalam terhadap data iklim untuk memberikan wawasan yang lebih baik tentang perubahan cuaca.
+                Visualisasi dan analisis data iklim untuk mendukung pengambilan keputusan.
               </p>
             </div>
-
-            <div className="bg-white dark:bg-gray-900 rounded-md shadow-sm p-6 border-t-4 border-primary-500">
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-8 border-t-4 border-primary-500 hover:scale-105 transition-transform duration-200">
               <div className="flex justify-center mb-4">
-                <div className="bg-primary-50 dark:bg-primary-900/20 p-3 rounded-full">
-                  <Flask className="h-8 w-8 text-primary-500" />
+                <div className="bg-primary-50 dark:bg-primary-900/20 p-4 rounded-full shadow">
+                  <Flask className="h-10 w-10 text-primary-500" />
                 </div>
               </div>
-              <h3 className="text-xl font-medium text-center mb-3 text-gray-900 dark:text-white">
-                Penelitian dan Pengembangan
+              <h3 className="text-xl font-semibold text-center mb-3 text-gray-900 dark:text-white">
+                Penelitian & Pengembangan
               </h3>
               <p className="text-gray-600 dark:text-gray-300 text-center">
-                Berpartisipasi dalam penelitian dan pengembangan dengan berbagai lintas bidang ilmu pengetahuan.
+                Kolaborasi lintas bidang untuk inovasi instrumen dan metode pemantauan atmosfer.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Call to Action */}
-      <section className="bg-primary-700 text-white py-12">
+      {/* CTA Section */}
+      <section className="bg-gradient-to-r from-primary-700 via-primary-600 to-primary-500 text-white py-16">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-medium mb-4">Bergabunglah dengan Kami</h2>
+          <h2 className="text-3xl font-bold mb-4">Gabung Komunitas Meteo Sense</h2>
           <p className="max-w-2xl mx-auto mb-8">
-            Ikuti perkembangan terbaru tentang cuaca dan iklim di wilayah Jerukagung. Dapatkan akses ke data dan
-            analisis terkini.
+            Dapatkan akses ke data, analisis, dan fitur terbaru untuk mendukung penelitian dan pemantauan cuaca di Jerukagung.
           </p>
-          <Button size="lg" className="bg-white text-primary-700 hover:bg-gray-100">
-            Daftar Sekarang
+          <Button size="lg" className="bg-white text-primary-700 hover:bg-gray-100 font-semibold text-lg px-8 py-4 shadow-lg animate-pop">
+            <Link href="/register" className="flex items-center gap-2">
+              Daftar Sekarang <ArrowRight className="w-5 h-5" />
+            </Link>
           </Button>
         </div>
       </section>

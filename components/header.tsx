@@ -1,28 +1,34 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { Sun } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export default function Header() {
   return (
-    <header className="bg-emerald-700 text-white py-3">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center">
-            <div className="relative w-12 h-12 mr-3">
-              <Image src="/img/logo.png" alt="Jerukagung Meteorologi Logo" fill className="object-contain" priority />
+    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex items-center">
+            <div className="p-2 bg-orange-600 rounded-lg">
+              <Sun className="h-6 w-6 text-white" />
             </div>
-            <div>
-              <h1 className="text-lg font-medium leading-tight text-white">Jerukagung Seismologi</h1>
-              <p className="text-xs text-white">Riset dan Pengembangan Ilmu Kebumian</p>
-            </div>
-          </Link>
-          <div className="hidden md:flex items-center space-x-4">
+            <span className="ml-3 text-xl font-bold text-gray-900">Meteo Sense</span>
+          </div>
+          <div className="flex items-center space-x-4">
             <ThemeToggle />
+            <Link href="/login">
+              <Button variant="ghost" className="text-gray-600 hover:text-gray-900">
+                Masuk
+              </Button>
+            </Link>
+            <Link href="/register">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white">Mulai</Button>
+            </Link>
           </div>
         </div>
       </div>
-    </header>
+    </nav>
   )
 }
