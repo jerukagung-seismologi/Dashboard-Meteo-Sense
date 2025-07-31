@@ -102,7 +102,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-gradient-to-r from-primary-700 via-primary-600 to-primary-500 text-white py-16">
+      <section className="bg-gradient-to-r from-primary-700 via-primary-600 to-primary-500 dark:bg-gradient-to-r dark:from-blue-700 dark:via-blue-600 dark:to-primary-500 text-white py-16">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Gabung Komunitas Meteo Sense</h2>
           <p className="max-w-2xl mx-auto mb-8">
