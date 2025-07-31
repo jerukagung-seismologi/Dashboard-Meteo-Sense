@@ -32,36 +32,6 @@ body {
   background: #0077b6;
 }
 
-.mainpage {
-  margin: 0;
-  padding: 0;
-  background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url("/img/background6.jpg");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  color: #fff;
-  padding: 200px 40px;
-  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 600px;
-}
-
-.mainpagetext {
-  text-align: center;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.mainpagetext h1 {
-  color: #ffffff;
-  font-weight: 700;
-  margin-bottom: 1rem;
-}
-
 .warming-stripes {
   max-width: 100%;
   width: 100%;
