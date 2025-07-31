@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 
 export default function Header() {
   return (
-    <nav className="sticky top-0 z-50 bg-emerald-500 dark:bg-indigo-900 backdrop-blur-md border-b ">
+    <nav className="sticky top-0 z-50 bg-emerald-500 dark:bg-slate-900 backdrop-blur-md border-b ">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
