@@ -21,7 +21,7 @@ export default function LandingPage() {
             Meteo Sense
           </h1>
           <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-200 mb-8 max-w-2xl drop-shadow-lg animate-fade-in">
-            Platform pemantauan dan analisis cuaca serta iklim untuk wilayah Jerukagung. Mendukung penelitian, pengembangan, dan akses data atmosfer secara real-time.
+            Platform pemantauan dan analisis cuaca serta iklim. Mendukung penelitian, pengembangan, dan akses data atmosfer secara real-time.
           </p>
           <Button size="lg" className="bg-primary-700 text-white hover:bg-primary-800 mb-4 animate-pop">
             <Link href="/register" className="flex items-center gap-2">
@@ -45,7 +45,9 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="flex-1 flex justify-center">
-            <img src="/about-illustration.svg" alt="Tentang Meteo Sense" className="w-64 h-64 object-contain" />
+            <img src="/img/produk.jpg" 
+            alt="Tentang Meteo Sense" 
+            className="w-64 h-64 object-contain rounded-full" />
           </div>
         </div>
       </section>

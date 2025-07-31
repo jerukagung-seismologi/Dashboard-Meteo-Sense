@@ -40,36 +40,6 @@ body {
   object-position: center;
 }
 
-@media (max-width: 768px) {
-  .mainpage {
-    padding: 150px 20px;
-    min-height: 500px;
-  }
-
-  h1 {
-    font-size: 2rem;
-  }
-
-  h2 {
-    font-size: 1.75rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .mainpage {
-    padding: 100px 20px;
-    min-height: 400px;
-  }
-
-  h1 {
-    font-size: 1.75rem;
-  }
-
-  h2 {
-    font-size: 1.5rem;
-  }
-}
-
 @layer base {
   :root {
     --background: 0 0% 100%;
