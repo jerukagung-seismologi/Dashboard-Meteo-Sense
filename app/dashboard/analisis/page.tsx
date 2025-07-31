@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 // Import icons from lucide-react
-import { RefreshCw, Download, ThermometerSun, Droplets, Gauge, CloudDrizzle, BatteryCharging, ScatterChart } from "lucide-react"
+import { RefreshCw, Download, ThermometerSun, Droplets, Gauge, Sprout, BatteryCharging, ScatterChart } from "lucide-react"
 import ChartComponent from "@/components/ChartComponent"
 
 export default function AnalisisPage() {
@@ -71,6 +71,15 @@ export default function AnalisisPage() {
     return () => clearInterval(interval)
   }, [sensorId, dataPoints])
 
+  // Fungsi untuk menentukan rentang sumbu Y
+  function getYAxisDomain(data: number[]) {
+    if (!data.length) return undefined;
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    if (min === max) return [min - 1, max + 1];
+    return [min - (max - min) * 0.1, max + (max - min) * 0.1];
+  }
+
   // Common layout settings for charts
   const commonLayout = {
     autosize: true,
@@ -105,139 +114,90 @@ export default function AnalisisPage() {
     hovermode: "closest", // Peningkatan UX
   }
 
-  // Array of chart configurations
+  // Konfigurasi chart
   const chartConfigs = [
     {
-      // Add icon and color class for Temperature
-      icon: ThermometerSun,
-      colorClass: "text-red-500", // Tailwind class for red
-      data: [{
-        x: timestamps,
-        y: temperatures,
-        type: "scatter",
-        mode: "lines+markers",
-        name: "Suhu Lingkungan (°C)",
-        line: { color: "#ef4444" }, // Warna merah
-      }],
-      layout: {
-        ...commonLayout,
-        title: { text: "Suhu Lingkungan (°C)", font: { size: 16 } },
-        yaxis: { ...commonLayout.yaxis, title: { ...commonLayout.yaxis.title, text: "Suhu (°C)" } },
-      },
+      title: "Suhu Lingkungan (°C)",
+      data: temperatures,
+      color: "#ef4444",
+      Icon: ThermometerSun,
+      unit: "Suhu (°C)",
     },
     {
-      // Add icon and color class for Humidity
-      icon: Droplets,
-      colorClass: "text-blue-500", // Tailwind class for blue
-      data: [{
-        x: timestamps,
-        y: humidity,
-        type: "scatter",
-        mode: "lines+markers",
-        name: "Kelembapan Relatif (%)",
-        line: { color: "#3b82f6" }, // Warna biru
-      }],
-      layout: {
-        ...commonLayout,
-        title: { text: "Kelembapan Relatif (%)", font: { size: 16 } },
-        yaxis: { ...commonLayout.yaxis, title: { ...commonLayout.yaxis.title, text: "Kelembapan (%)" } },
-      },
+      title: "Kelembapan Relatif (%)",
+      data: humidity,
+      color: "#3b82f6",
+      Icon: Droplets,
+      unit: "Kelembapan (%)",
     },
     {
-      // Add icon and color class for Pressure
-      icon: Gauge, // Using Cloud as a representation for atmospheric pressure
-      colorClass: "text-green-500", // Tailwind class for green
-      data: [{
-        x: timestamps,
-        y: pressure,
-        type: "scatter",
-        mode: "lines+markers",
-        name: "Tekanan Udara (hPa)",
-        line: { color: "#10b981" }, // Warna hijau
-      }],
-      layout: {
-        ...commonLayout,
-        title: { text: "Tekanan Udara (hPa)", font: { size: 16 } },
-        yaxis: { ...commonLayout.yaxis, title: { ...commonLayout.yaxis.title, text: "Tekanan (hPa)" } },
-      },
+      title: "Tekanan Udara (hPa)",
+      data: pressure,
+      color: "#f59e0b",
+      Icon: Gauge,
+      unit: "Tekanan (hPa)",
     },
     {
-      // Add icon and color class for Dew Point
-      icon: CloudDrizzle, // Icon for Dew Point
-      colorClass: "text-orange-500", // Tailwind class for orange
-      data: [{
-        x: timestamps,
-        y: dew,
-        type: "scatter",
-        mode: "lines+markers",
-        name: "Titik Embun (°C)",
-        line: { color: "#f59e0b" }
-      }],
-      layout: {
-        ...commonLayout,
-        title: { text: "Titik Embun (°C)", font: { size: 16 } },
-        yaxis: { ...commonLayout.yaxis, title: { ...commonLayout.yaxis.title, text: "Titik Embun (°C)" } }
-      },
+      title: "Titik Embun (°C)",
+      data: dew,
+      color: "#10b981",
+      Icon: Sprout,
+      unit: "Titik Embun (°C)",
     },
     {
-      // Add icon and color class for Battery Voltage
-      icon: BatteryCharging, // Icon for Battery Voltage
-      colorClass: "text-indigo-500", // Tailwind class for indigo
-      data: [{
-        x: timestamps,
-        y: volt,
-        type: "bar", // Changed to bar chart
-        name: "Tegangan Baterai (V)",
-        marker: { color: "#6366f1" } // Warna indigo for bars
-      }],
-      layout: {
-        ...commonLayout,
-        title: { text: "Tegangan Baterai (V)", font: { size: 16 } },
-        yaxis: { ...commonLayout.yaxis, title: { ...commonLayout.yaxis.title, text: "Tegangan (V)" } }
-      },
-    },
-    {
-      // Add configuration for Temperature vs Humidity Scatter Plot
-      icon: ScatterChart, // Icon for Scatter Plot
-      colorClass: "text-purple-500", // Tailwind class for purple
-      data: [{
-        x: temperatures,
-        y: humidity,
-        mode: "markers",
-        type: "scatter",
-        name: "Suhu vs Kelembapan",
-        marker: { color: "#a855f7" } // Warna ungu
-      }],
-      layout: {
-        ...commonLayout,
-        title: { text: "Korelasi Suhu dan Kelembapan", font: { size: 16 } },
-        xaxis: { ...commonLayout.xaxis, title: { ...commonLayout.xaxis.title, text: "Suhu (°C)" } },
-        yaxis: { ...commonLayout.yaxis, title: { ...commonLayout.yaxis.title, text: "Kelembapan (%)" } },
-      },
-    },
-    {
-      // Add configuration for Temperature vs Humidity vs Pressure 3D Scatter Plot
-      data: [{
-        x: temperatures,
-        y: humidity,
-        z: pressure,
-        mode: "markers",
-        type: "scatter3d",
-        name: "Suhu, Kelembapan & Tekanan",
-        marker: { size: 5, color: pressure, colorscale: 'Viridis', opacity: 0.8 }
-      }],
-      layout: {
-        ...commonLayout,
-        title: { text: "Korelasi Suhu, Kelembapan, dan Tekanan", font: { size: 16 } },
-        scene: {
-          xaxis: { title: "Suhu (°C)" },
-          yaxis: { title: "Kelembapan (%)" },
-          zaxis: { title: "Tekanan (hPa)" },
-        },
-        margin: { l: 0, r: 0, b: 0, t: 40 }
-      },
+      title: "Tegangan Baterai (V)",
+      data: volt,
+      color: "#6366f1",
+      Icon: BatteryCharging,
+      unit: "Tegangan (V)",
     },
   ];
+
+  // Komponen Card untuk setiap grafik
+  const ChartCard = ({
+    title,
+    data,
+    color,
+    Icon,
+    unit,
+    timestamps,
+    commonLayout
+  }: {
+    title: string;
+    data: number[];
+    color: string;
+    Icon: React.FC<any>;
+    unit: string;
+    timestamps: string[];
+    commonLayout: any;
+  }) => {
+    const yDomain = getYAxisDomain(data);
+    const chartData = [{
+      x: timestamps,
+      y: data,
+      type: "scatter",
+      mode: "lines+markers",
+      marker: { color },
+      name: title,
+      line: { color, width: 3 },
+    }];
+    const layout = {
+      ...commonLayout,
+      title: { text: title, font: { size: 16 } },
+      yaxis: { ...commonLayout.yaxis, title: { ...commonLayout.yaxis.title, text: unit }, range: yDomain },
+    };
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center gap-3 bg-gray-50 dark:bg-gray-800 border-b py-3 px-6">
+          <Icon className={`h-5 w-5`} style={{ color }} />
+          <CardTitle className="text-lg">{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <ChartComponent data={chartData} layout={layout} />
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -298,23 +258,70 @@ export default function AnalisisPage() {
       ) : (
         // Layout bertumpuk untuk semua grafik
         <div className="space-y-6">
-          {chartConfigs.map((config, index) => {
-            const IconComponent = config.icon; // Get the icon component
-            return (
-              <Card key={index}>
-                {/* Add CardHeader for each chart */}
-                <CardHeader className="flex flex-row items-center gap-3 bg-gray-50 dark:bg-gray-800 border-b py-3 px-6">
-                  {/* Add the icon with dynamic color class */}
-                  {IconComponent && <IconComponent className={`h-5 w-5 ${config.colorClass}`} />}
-                  {/* Use the title from the layout */}
-                  <CardTitle className="text-lg">{config.layout.title.text}</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <ChartComponent data={config.data} layout={config.layout} />
-                </CardContent>
-              </Card>
-            );
-          })}
+          {/* Render ChartCard untuk setiap chart */}
+          {chartConfigs.map((config, idx) => (
+            <ChartCard
+              key={idx}
+              {...config}
+              timestamps={timestamps}
+              commonLayout={commonLayout}
+            />
+          ))}
+          {/* Scatter plot suhu vs kelembapan */}
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-3 bg-gray-50 dark:bg-gray-800 border-b py-3 px-6">
+              <ScatterChart className="h-5 w-5 text-purple-500" />
+              <CardTitle className="text-lg">Korelasi Suhu dan Kelembapan</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <ChartComponent
+                data={[{
+                  x: temperatures,
+                  y: humidity,
+                  mode: "markers",
+                  type: "scatter",
+                  name: "Suhu vs Kelembapan",
+                  marker: { color: "#a855f7" }
+                }]}
+                layout={{
+                  ...commonLayout,
+                  title: { text: "Korelasi Suhu dan Kelembapan", font: { size: 16 } },
+                  xaxis: { ...commonLayout.xaxis, title: { ...commonLayout.xaxis.title, text: "Suhu (°C)" } },
+                  yaxis: { ...commonLayout.yaxis, title: { ...commonLayout.yaxis.title, text: "Kelembapan (%)" } },
+                }}
+              />
+            </CardContent>
+          </Card>
+          {/* 3D scatter plot suhu vs kelembapan vs tekanan */}
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-3 bg-gray-50 dark:bg-gray-800 border-b py-3 px-6">
+              <ScatterChart className="h-5 w-5 text-pink-500" />
+              <CardTitle className="text-lg">Korelasi Suhu, Kelembapan, dan Tekanan</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <ChartComponent
+                data={[{
+                  x: temperatures,
+                  y: humidity,
+                  z: pressure,
+                  mode: "markers",
+                  type: "scatter3d",
+                  name: "Suhu, Kelembapan & Tekanan",
+                  marker: { size: 5, color: pressure, colorscale: 'Viridis', opacity: 0.8 }
+                }]}
+                layout={{
+                  ...commonLayout,
+                  title: { text: "Korelasi Suhu, Kelembapan, dan Tekanan", font: { size: 16 } },
+                  scene: {
+                    xaxis: { title: "Suhu (°C)" },
+                    yaxis: { title: "Kelembapan (%)" },
+                    zaxis: { title: "Tekanan (hPa)" },
+                  },
+                  margin: { l: 0, r: 0, b: 0, t: 40 }
+                }}
+              />
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

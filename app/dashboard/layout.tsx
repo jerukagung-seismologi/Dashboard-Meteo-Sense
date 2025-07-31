@@ -3,7 +3,7 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { LayoutDashboard, Settings, FileText, BarChart3, ChartNoAxesCombined, User } from "lucide-react"
+import { LayoutDashboard, Network, FileText, BarChart3, ChartNoAxesCombined, User } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { signOutUser } from "@/lib/FetchingAuth"
 import LoadingSpinner from "@/components/LoadingSpinner"
@@ -46,10 +46,10 @@ export default function DashboardLayout({
 
   const navigation: NavigationItem[] = [
     { name: "Beranda", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Perangkat", href: "/dashboard/perangkat", icon: Settings },
+    { name: "Perangkat", href: "/dashboard/perangkat", icon: Network },
     { name: "Grafik", href: "/dashboard/data", icon: BarChart3 },
     { name: "Analisis", href: "/dashboard/analisis", icon: ChartNoAxesCombined },
-    { name: "Log", href: "/dashboard/logs", icon: FileText },
+    { name: "Laporan", href: "/dashboard/laporan", icon: FileText },
     { name: "Profil", href: "/dashboard/profil", icon: User },
   ]
 

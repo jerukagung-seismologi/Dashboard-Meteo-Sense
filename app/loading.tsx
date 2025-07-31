@@ -1,9 +1,4 @@
-const LoadingSpinner = () => (
-  <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-    <div className="w-16 h-16 border-8 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
-    <p className="ml-4 text-gray-700 text-2xl">Memuat Halaman...</p>
-  </div>
-);
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function Loading() {
   // Tampilkan spinner Anda sebagai fallback saat halaman memuat.

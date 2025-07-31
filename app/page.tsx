@@ -11,7 +11,6 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="relative h-[70vh] flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-100 dark:from-gray-900 dark:via-gray-800 dark:to-primary-900 overflow-hidden">
         {/* Background Image & Overlay */}
-        <div className="absolute inset-0 bg-[url('/hero-bg.jpg')] bg-cover bg-center opacity-30 dark:opacity-20"></div>
         <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-primary-50/60 to-primary-100/80 dark:from-gray-900/80 dark:via-gray-800/60 dark:to-primary-900/80"></div>
         <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center">
           <div className="mb-6 animate-fade-in">

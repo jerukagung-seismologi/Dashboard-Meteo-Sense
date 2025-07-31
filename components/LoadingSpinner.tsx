@@ -1,5 +1,3 @@
-import React from 'react';
-
 const LoadingSpinner = () => (
   <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
     <div className="w-12 h-12 border-8 border-teal-500 border-t-transparent rounded-full animate-spin"></div>

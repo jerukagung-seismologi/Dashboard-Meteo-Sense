@@ -21,7 +21,7 @@ interface TopbarProps {
 
 export function Topbar({ user, profile, setSidebarOpen, handleLogout }: TopbarProps) {
   return (
-    <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-2 border-emerald-600 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+    <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
       <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
         <Menu className="h-5 w-5" />
       </Button>
