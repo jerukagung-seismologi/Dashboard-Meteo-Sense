@@ -6,8 +6,9 @@ import {
   orderByKey,
   limitToLast,
   get,
-  remove
-} from "firebase/database"; // Ini adalah fungsi-fungsi dari Firebase Realtime Database SDK
+  remove,
+  update
+} from "firebase/database"; // Tambahkan 'update' // Ini adalah fungsi-fungsi dari Firebase Realtime Database SDK
 
 export interface SensorValue {
   temperature: number;
@@ -126,6 +127,50 @@ export async function deleteSensorData(sensorId: string): Promise<void> {
     console.log(`Successfully deleted data for sensor ${sensorId}`);
   } catch (error) {
     console.error(`Gagal menghapus data untuk sensor ${sensorId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Mengedit data sensor berdasarkan timestamp.
+ * @param sensorId - ID sensor.
+ * @param timestamp - Timestamp (milidetik) data yang akan diedit.
+ * @param newData - Data baru yang akan diupdate (partial).
+ */
+export async function editSensorDataByTimestamp(
+  sensorId: string,
+  timestamp: number,
+  newData: Partial<SensorValue>
+): Promise<void> {
+  // Konversi timestamp ke detik (key di database)
+  const timestampInSeconds = Math.floor(timestamp / 1000);
+  const dataRef = ref(rtdb, `auto_weather_stat/${sensorId}/data/${timestampInSeconds}`);
+  try {
+    await update(dataRef, newData);
+    console.log(`Data sensor pada timestamp ${timestampInSeconds} berhasil diupdate.`);
+  } catch (error) {
+    console.error(`Gagal mengedit data sensor pada timestamp ${timestampInSeconds}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Menghapus data sensor berdasarkan timestamp.
+ * @param sensorId - ID sensor.
+ * @param timestamp - Timestamp (milidetik) data yang akan dihapus.
+ */
+export async function deleteSensorDataByTimestamp(
+  sensorId: string,
+  timestamp: number
+): Promise<void> {
+  // Konversi timestamp ke detik (key di database)
+  const timestampInSeconds = Math.floor(timestamp / 1000);
+  const dataRef = ref(rtdb, `auto_weather_stat/${sensorId}/data/${timestampInSeconds}`);
+  try {
+    await remove(dataRef);
+    console.log(`Data sensor pada timestamp ${timestampInSeconds} berhasil dihapus.`);
+  } catch (error) {
+    console.error(`Gagal menghapus data sensor pada timestamp ${timestampInSeconds}:`, error);
     throw error;
   }
 }

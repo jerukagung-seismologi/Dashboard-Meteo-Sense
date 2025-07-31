@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react";
 // Import fetchSensorData dari library
-import { fetchSensorData, deleteSensorData, SensorDate } from "@/lib/FetchingSensorData";
+import { fetchSensorData, deleteSensorData, SensorDate, editSensorDataByTimestamp, deleteSensorDataByTimestamp } from "@/lib/FetchingSensorData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // Import icons dari lucide-react
-import { RefreshCw, Download, ThermometerSun, Droplets, Gauge, Sprout, Trash2 } from "lucide-react";
+import { RefreshCw, Download, ThermometerSun, Droplets, Gauge, Sprout, Trash2, Pencil } from "lucide-react";
 // Import ChartComponent
 import ChartComponent from "@/components/ChartComponent";
+
 
 interface Period {
   label: string;
@@ -60,6 +61,14 @@ export default function DataPage() {
   // State untuk sensor dan jumlah data
   const [sensorId, setSensorId] = useState("id-03");
   const [selectedPeriod, setSelectedPeriod] = useState<Period>(periods[1]); // Default 1 Jam
+
+  // State untuk mode dark
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState<WeatherEntry | null>(null);
+  const [deleteRowIndex, setDeleteRowIndex] = useState<number | null>(null);
 
   // Fungsi untuk memproses dan mengatur state data
   const processAndSetData = (data: SensorDate[]) => {
@@ -143,6 +152,30 @@ export default function DataPage() {
     }
   }, [fetchData, updateData, selectedPeriod.valueInMinutes]);
 
+  // Deteksi mode dark dari Tailwind (class 'dark' pada html)
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+    checkDarkMode();
+    window.addEventListener('resize', checkDarkMode);
+    // Juga listen ke perubahan class 'dark'
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => {
+      window.removeEventListener('resize', checkDarkMode);
+      observer.disconnect();
+    };
+  }, []);
+
+  // Warna dinamis untuk dark/light mode
+  const chartColors = {
+    temperature: isDarkMode ? "#f87171" : "#ef4444",
+    humidity: isDarkMode ? "#60a5fa" : "#3b82f6",
+    pressure: isDarkMode ? "#fbbf24" : "#f59e0b",
+    dew: isDarkMode ? "#34d399" : "#10b981",
+  };
+
   // Fungsi untuk menghapus data sensor
   const handleDeleteSensorData = async () => {
     if (window.confirm("Apakah Anda yakin ingin menghapus semua riwayat data untuk sensor ini? Tindakan ini tidak dapat diurungkan.")) {
@@ -164,6 +197,56 @@ export default function DataPage() {
       } finally {
         setIsDeleting(false);
       }
+    }
+  };
+
+  // Fungsi untuk membuka modal edit
+  const openEditModal = (row: WeatherEntry, index: number) => {
+    setEditingIndex(index);
+    setEditForm({ ...row });
+    setEditModalOpen(true);
+  };
+
+  // Fungsi untuk menyimpan perubahan edit
+  const handleEditSave = async () => {
+    if (!editForm || editingIndex === null) return;
+    try {
+      await editSensorDataByTimestamp(sensorId, editForm.timestamp, {
+        temperature: editForm.temperature,
+        humidity: editForm.humidity,
+        pressure: editForm.pressure,
+        dew: editForm.dew,
+      });
+      const updatedData = [...weatherData];
+      updatedData[editingIndex] = { ...editForm };
+      setWeatherData(updatedData);
+      setEditModalOpen(false);
+      setEditingIndex(null);
+      setEditForm(null);
+    } catch (err: any) {
+      alert("Gagal mengedit data: " + (err.message || "Terjadi kesalahan."));
+    }
+  };
+
+  // Fungsi untuk membuka modal konfirmasi hapus
+  const openDeleteModal = (index: number) => {
+    setDeleteRowIndex(index);
+    setDeleteModalOpen(true);
+  };
+
+  // Fungsi untuk menghapus data sensor pada baris tertentu
+  const handleDeleteRowConfirmed = async () => {
+    if (deleteRowIndex === null) return;
+    const row = weatherData[deleteRowIndex];
+    try {
+      await deleteSensorDataByTimestamp(sensorId, row.timestamp);
+      const updatedData = [...weatherData];
+      updatedData.splice(deleteRowIndex, 1);
+      setWeatherData(updatedData);
+      setDeleteModalOpen(false);
+      setDeleteRowIndex(null);
+    } catch (err: any) {
+      alert("Gagal menghapus data: " + (err.message || "Terjadi kesalahan."));
     }
   };
 
@@ -253,7 +336,8 @@ export default function DataPage() {
   };
 
   // Komponen Card untuk setiap grafik
-  const ChartCard = ({ title, data, color, Icon, unit }: { title: string; data: number[]; color: string; Icon: React.FC<any>; unit: string; }) => {
+  const ChartCard = ({ title, data, color, Icon}: 
+    { title: string; data: number[]; color: string; Icon: React.FC<any>; }) => {
     const yDomain = getYAxisDomain(data);
     const chartData = [{
       x: timestamps,
@@ -267,12 +351,30 @@ export default function DataPage() {
     const layout = {
       ...commonLayout,
       //title: { text: title, font: { size: 14 } },
-      yaxis: { ...commonLayout.yaxis, title: { ...commonLayout.yaxis.title, text: unit }, range: yDomain },
+      paper_bgcolor: isDarkMode ? "#1e293b" : "transparent",
+      plot_bgcolor: isDarkMode ? "#1e293b" : "transparent",
+      font: {
+        family: "Roboto, sans-serif",
+        color: isDarkMode ? "#cbd5e1" : "#64748b",
+      },
+      xaxis: {
+        ...commonLayout.xaxis,
+        gridcolor: isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)",
+        title: {
+          font: { size: 14, color: isDarkMode ? "#cbd5e1" : "#475569" },
+        },
+      },
+      yaxis: {
+        ...commonLayout.yaxis,
+        title: { ...commonLayout.yaxis.title, font: { size: 14, color: isDarkMode ? "#cbd5e1" : "#475569" } },
+        gridcolor: isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)",
+        range: yDomain,
+      },
     };
 
     return (
       <Card>
-        <CardHeader className="flex flex-row items-center gap-3 bg-gray-50 dark:bg-gray-800 border-b py-3 px-6">
+        <CardHeader className={`flex flex-row items-center gap-3 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"} border-b py-3 px-6`}>
           <Icon className={`h-5 w-5`} style={{ color }} />
           <CardTitle className="text-lg">{title}</CardTitle>
         </CardHeader>
@@ -284,19 +386,10 @@ export default function DataPage() {
   };
 
   return (
-    <div
-      className="container mx-auto px-4 py-8"
-      style={{
-        backgroundImage: 'url(/background6.jpg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
-        minHeight: '100vh',
-      }}
-    >
+    <div className="container mx-auto px-4 py-8">
       {/* Global Controls Card */}
       <Card className="mb-6">
-        <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gray-50 dark:bg-gray-800 border-b">
+        <CardHeader className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"} border-b`}>
           <CardTitle className="text-xl">Fetching Data</CardTitle>
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
             {/* Sensor Select */}
@@ -315,18 +408,18 @@ export default function DataPage() {
 
             {/* Refresh Button */}
             <Button variant="outline" size="icon" onClick={fetchData} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""} ${isDarkMode ? "text-gray-200" : ""}`} />
               <span className="sr-only">Refresh data</span>
             </Button>
 
             {/* Download Button */}
-            <Button variant="outline" size="sm" className="text-gray-600 dark:text-gray-300" onClick={handleDownloadData}>
+            <Button variant="outline" size="sm" className={`${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"}`} onClick={handleDownloadData}>
               <Download className="h-4 w-4 mr-1" /> Unduh Data
             </Button>
 
             {/* Delete Button */}
             <Button variant="destructive" size="sm" onClick={handleDeleteSensorData} disabled={isDeleting || loading}>
-              <Trash2 className="h-4 w-4 mr-1" /> {isDeleting ? "Menghapus..." : "Hapus Data"}
+              <Trash2 className={`h-4 w-4 mr-1 ${isDarkMode ? "text-gray-200" : ""}`} /> {isDeleting ? "Menghapus..." : "Hapus Data"}
             </Button>
           </div>
         </CardHeader>
@@ -338,8 +431,12 @@ export default function DataPage() {
                 onClick={() => setSelectedPeriod(period)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   selectedPeriod?.label === period.label
-                    ? "bg-primary-600 text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                    ? isDarkMode
+                      ? "bg-primary-700 text-white"
+                      : "bg-primary-600 text-white"
+                    : isDarkMode
+                      ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                 }`}
               >
                 {period.label}
@@ -376,11 +473,11 @@ export default function DataPage() {
       {/* Tab Content */}
       {loading ? (
         <div className="flex justify-center items-center h-[400px]">
-          <RefreshCw className="h-8 w-8 animate-spin text-primary-500" />
-          <p className="ml-4 text-gray-500">Memuat data...</p>
+          <RefreshCw className={`h-8 w-8 animate-spin ${isDarkMode ? "text-primary-400" : "text-primary-500"}`} />
+          <p className={`ml-4 ${isDarkMode ? "text-gray-200" : "text-gray-500"}`}>Memuat data...</p>
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-6">{error}</div>
+        <div className={`border p-4 rounded-md mb-6 ${isDarkMode ? "bg-red-950 border-red-900 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>{error}</div>
       ) : (
         <>
           {/* Data Table Content */}
@@ -390,18 +487,19 @@ export default function DataPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="bg-gray-50 dark:bg-gray-800 text-left">
-                        <th className="p-4 font-medium text-gray-600 dark:text-gray-300 border-b">Waktu</th>
-                        <th className="p-4 font-medium text-gray-600 dark:text-gray-300 border-b">Suhu (°C)</th>
-                        <th className="p-4 font-medium text-gray-600 dark:text-gray-300 border-b">Kelembapan (%)</th>
-                        <th className="p-4 font-medium text-gray-600 dark:text-gray-300 border-b">Tekanan (hPa)</th>
-                        <th className="p-4 font-medium text-gray-600 dark:text-gray-300 border-b">Titik Embun (°C)</th>
+                      <tr className={isDarkMode ? "bg-gray-800 text-left" : "bg-gray-50 dark:bg-gray-800 text-left"}>
+                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Waktu</th>
+                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Suhu (°C)</th>
+                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Kelembapan (%)</th>
+                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Tekanan (hPa)</th>
+                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Titik Embun (°C)</th>
+                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Aksi</th>
                       </tr>
                     </thead>
                     <tbody id="datalogger">
                       {currentTableData.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="p-8 text-center text-gray-600 dark:text-gray-300">
+                          <td colSpan={6} className={`p-8 text-center ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"}`}>
                             Tidak ada data yang tersedia.
                           </td>
                         </tr>
@@ -409,13 +507,31 @@ export default function DataPage() {
                         currentTableData.map((entry, index) => (
                           <tr
                             key={index}
-                            className={index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800"}
+                            className={isDarkMode
+                              ? (index % 2 === 0 ? "bg-gray-900" : "bg-gray-800")
+                              : (index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800")}
                           >
-                            <td className="p-4 border-t">{entry.date}</td>
-                            <td className="p-4 border-t">{entry.temperature}</td>
-                            <td className="p-4 border-t">{entry.humidity}</td>
-                            <td className="p-4 border-t">{entry.pressure}</td>
-                            <td className="p-4 border-t">{entry.dew}</td>
+                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{entry.date}</td>
+                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{entry.temperature}</td>
+                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{entry.humidity}</td>
+                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{entry.pressure}</td>
+                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{entry.dew}</td>
+                            <td className={`p-4 border-t flex gap-2`}>
+                              <button
+                                className={`p-2 rounded hover:bg-primary-100 dark:hover:bg-primary-900`}
+                                title="Edit"
+                                onClick={() => openEditModal(entry, indexOfFirstItem + index)}
+                              >
+                                <Pencil className={`h-4 w-4 ${isDarkMode ? "text-primary-300" : "text-primary-600"}`} />
+                              </button>
+                              <button
+                                className={`p-2 rounded hover:bg-red-100 dark:hover:bg-red-900`}
+                                title="Hapus"
+                                onClick={() => openDeleteModal(indexOfFirstItem + index)}
+                              >
+                                <Trash2 className={`h-4 w-4 ${isDarkMode ? "text-red-300" : "text-red-600"}`} />
+                              </button>
+                            </td>
                           </tr>
                         ))
                       )}
@@ -423,11 +539,11 @@ export default function DataPage() {
                   </table>
                 </div>
                 {weatherData.length > itemsPerPage && (
-                  <div className="flex items-center justify-between p-4 border-t">
+                  <div className={`flex items-center justify-between p-4 border-t ${isDarkMode ? "border-gray-700" : ""}`}>
                     <Button onClick={handlePreviousPage} disabled={currentPage === 1} variant="outline">
                       Sebelumnya
                     </Button>
-                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                    <span className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"}`}>
                       Halaman {currentPage} dari {totalPages}
                     </span>
                     <Button onClick={handleNextPage} disabled={currentPage === totalPages} variant="outline">
@@ -442,13 +558,108 @@ export default function DataPage() {
           {/* Grafik Content */}
           {activeTab === 'grafik' && (
             <div className="space-y-6">
-              <ChartCard title="Suhu Lingkungan (°C)" data={temperatures} color="#ef4444" Icon={ThermometerSun} unit="Suhu (°C)" />
-              <ChartCard title="Kelembapan Relatif (%)" data={humidity} color="#3b82f6" Icon={Droplets} unit="Kelembapan (%)" />
-              <ChartCard title="Tekanan Udara (hPa)" data={pressure} color="#f59e0b" Icon={Gauge} unit="Tekanan (hPa)" />
-              <ChartCard title="Titik Embun (°C)" data={dew} color="#10b981" Icon={Sprout} unit="Titik Embun (°C)" />
+              <ChartCard title="Suhu Lingkungan (°C)" data={temperatures} color={chartColors.temperature} Icon={ThermometerSun}  />
+              <ChartCard title="Kelembapan Relatif (%)" data={humidity} color={chartColors.humidity} Icon={Droplets} />
+              <ChartCard title="Tekanan Udara (hPa)" data={pressure} color={chartColors.pressure} Icon={Gauge} />
+              <ChartCard title="Titik Embun (°C)" data={dew} color={chartColors.dew} Icon={Sprout}/>
             </div>
           )}
         </>
+      )}
+
+      {/* Modal Edit Data */}
+      {editModalOpen && editForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <Card className={`w-full max-w-md mx-auto ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
+            <CardHeader>
+              <CardTitle>Edit Data Sensor</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  handleEditSave();
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm mb-1">Suhu (°C)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.temperature}
+                    onChange={e => setEditForm({ ...editForm, temperature: parseFloat(e.target.value) })}
+                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Kelembapan (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.humidity}
+                    onChange={e => setEditForm({ ...editForm, humidity: parseFloat(e.target.value) })}
+                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Tekanan (hPa)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.pressure}
+                    onChange={e => setEditForm({ ...editForm, pressure: parseFloat(e.target.value) })}
+                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Titik Embun (°C)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.dew}
+                    onChange={e => setEditForm({ ...editForm, dew: parseFloat(e.target.value) })}
+                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    required
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => { setEditModalOpen(false); setEditingIndex(null); setEditForm(null); }}>
+                    Batal
+                  </Button>
+                  <Button type="submit" variant="default">
+                    Simpan
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Hapus */}
+      {deleteModalOpen && deleteRowIndex !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <Card className={`w-full max-w-sm mx-auto ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
+            <CardHeader>
+              <CardTitle>Konfirmasi Hapus Data</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat diurungkan.</p>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => { setDeleteModalOpen(false); setDeleteRowIndex(null); }}>
+                  Tidak
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteRowConfirmed}>
+                  Ya, Hapus
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

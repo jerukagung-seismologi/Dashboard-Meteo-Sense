@@ -1,6 +1,6 @@
 import Link from "next/link"
 import type { NavigationItem } from "./types"
-import Image from "next/image";
+import { Sun } from "lucide-react"
 
 interface DesktopSidebarProps {
   navigation: NavigationItem[]
@@ -11,14 +11,10 @@ export function DesktopSidebar({ navigation }: DesktopSidebarProps) {
     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
       <div className="flex flex-col flex-grow bg-gradient-to-b from-white to-blue-50 border-r border-gray-200">
         <div className="flex items-center h-16 px-4 bg-emerald-700">
-            <Image
-              src="/img/logo.png"
-              alt="logo"
-              width={40}
-              height={40}
-              className="rounded-full"
-            />
-          <span className="ml-2 text-lg font-bold text-white">Tenki Sensei</span>
+            <div className="p-2 bg-orange-600 rounded-lg">
+              <Sun className="h-6 w-6 text-white" />
+            </div>
+          <span className="ml-2 text-lg font-bold text-white">Meteo Sense</span>
         </div>
         <nav className="flex-1 space-y-1 px-2 py-4">
           {navigation.map((item) => (

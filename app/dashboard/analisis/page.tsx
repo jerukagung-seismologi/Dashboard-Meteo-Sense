@@ -183,7 +183,7 @@ export default function AnalisisPage() {
     }];
     const layout = {
       ...commonLayout,
-      title: { text: title, font: { size: 16 } },
+      // Hapus title dari layout agar hanya muncul di Card
       yaxis: { ...commonLayout.yaxis, title: { ...commonLayout.yaxis.title, text: unit }, range: yDomain },
     };
     return (
