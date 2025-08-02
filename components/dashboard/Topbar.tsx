@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { ThemeSwitch } from "@/components/theme-switch"
 import { Settings, LogOut, Menu, User } from "lucide-react"
 import type { User as FirebaseUser } from "firebase/auth"
 import type { UserProfile } from "@/hooks/useAuth"
@@ -64,7 +64,7 @@ export function Topbar({ user, profile, setSidebarOpen, handleLogout }: TopbarPr
             </DropdownMenuContent>
           </DropdownMenu>
           <div className="flex items-center justify-center h-full">
-            <ThemeToggle />
+            <ThemeSwitch />
           </div>
         </div>
       </div>
