@@ -22,8 +22,8 @@ export default function LandingPage() {
           <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-200 mb-8 max-w-2xl drop-shadow-lg animate-fade-in">
             Platform pemantauan dan analisis cuaca serta iklim. Mendukung penelitian, pengembangan, dan akses data atmosfer secara real-time.
           </p>
-          <Button size="lg" className="bg-primary-700 text-white hover:bg-primary-800 mb-4 animate-pop">
-            <Link href="/register" className="flex items-center gap-2">
+          <Button size="lg" asChild className="bg-primary-700 text-white hover:bg-primary-800 mb-4 animate-pop">
+            <Link href="/login" className="flex items-center gap-2">
               Daftar Sekarang <ArrowRight className="w-5 h-5" />
             </Link>
           </Button>
@@ -107,8 +107,8 @@ export default function LandingPage() {
           <p className="max-w-2xl mx-auto mb-8">
             Dapatkan akses ke data, analisis, dan fitur terbaru untuk mendukung penelitian dan pemantauan cuaca di Jerukagung.
           </p>
-          <Button size="lg" className="bg-white text-primary-700 hover:bg-gray-100 font-semibold text-lg px-8 py-4 shadow-lg animate-pop">
-            <Link href="/register" className="flex items-center gap-2">
+          <Button size="lg" asChild className="bg-white text-primary-700 hover:bg-gray-100 font-semibold text-lg px-8 py-4 shadow-lg animate-pop">
+            <Link href="/login" className="flex items-center gap-2">
               Daftar Sekarang <ArrowRight className="w-5 h-5" />
             </Link>
           </Button>

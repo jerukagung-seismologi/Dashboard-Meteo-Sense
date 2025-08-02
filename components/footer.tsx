@@ -10,6 +10,11 @@ function NavigationLinks() {
           Beranda
         </Link>
       </li>
+      <li>
+        <Link href="/dokumentasi" className="text-primary-100 hover:text-white text-sm">
+          Dokumentasi
+        </Link>
+      </li>
     </ul>
   )
 }
@@ -68,7 +73,7 @@ export default function Footer() {
                 </li>
                 <li className="flex items-start gap-3">
                   <Mail className="h-5 w-5 text-primary-300" />
-                  <a href="mailto:jerisresearch@gmail.com" className="text-sm text-primary-100 hover:text-white">
+                  <a href="mailto:jerisresearch@gmail.com" className="text-sm">
                     jerisresearch@gmail.com
                   </a>
                 </li>

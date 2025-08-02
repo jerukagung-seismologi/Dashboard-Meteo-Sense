@@ -1,11 +1,9 @@
-import Link from "next/link"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { ThemeSwitch } from "@/components/theme-switch"
 import { Sun } from "lucide-react"
-import { Button } from "@/components/ui/button"
 
 export default function Header() {
   return (
-    <nav className="sticky top-0 z-50 bg-emerald-600 dark:bg-slate-900 backdrop-blur-md border-b ">
+    <nav className="sticky top-0 z-50 bg-slate-50 dark:bg-slate-900 backdrop-blur-md border-b shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
@@ -15,10 +13,7 @@ export default function Header() {
             <span className="ml-3 text-xl font-bold text-gray-900 dark:text-gray-300">Meteo Sense</span>
           </div>
           <div className="flex items-center space-x-4">
-            <Link href="/login">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">Mulai</Button>
-            </Link>
-            <ThemeToggle />
+            <ThemeSwitch/>
           </div>
         </div>
       </div>
