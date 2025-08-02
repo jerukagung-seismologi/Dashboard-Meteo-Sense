@@ -10,26 +10,6 @@ function NavigationLinks() {
           Beranda
         </Link>
       </li>
-      <li>
-        <Link href="/riset" className="text-primary-100 hover:text-white text-sm">
-          Riset
-        </Link>
-      </li>
-      <li>
-        <Link href="/timkami" className="text-primary-100 hover:text-white text-sm">
-          Tim Kami
-        </Link>
-      </li>
-      <li>
-        <Link href="/data" className="text-primary-100 hover:text-white text-sm">
-          Data
-        </Link>
-      </li>
-      <li>
-        <Link href="/grafik" className="text-primary-100 hover:text-white text-sm">
-          Grafik
-        </Link>
-      </li>
     </ul>
   )
 }
