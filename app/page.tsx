@@ -9,14 +9,14 @@ export default function LandingPage() {
     <>
       <Header />
       {/* Hero Section */}
-      <section className="relative h-[70vh] flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-100 dark:from-gray-900 dark:via-gray-800 dark:to-primary-900 overflow-hidden">
+      <section className="relative h-[70vh] flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-amber-100 dark:from-gray-900 dark:via-gray-800 dark:to-primary-900 overflow-hidden">
         {/* Background Image & Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-primary-50/60 to-primary-100/80 dark:from-gray-900/80 dark:via-gray-800/60 dark:to-primary-900/80"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-primary-50/60 to-orange-100/80 dark:from-gray-900/80 dark:via-gray-800/60 dark:to-primary-900/80"></div>
         <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center">
           <div className="mb-6 animate-fade-in">
             <CloudSun className="h-16 w-16 text-primary-500 drop-shadow-xl mx-auto" />
           </div>
-          <h1 className="text-5xl md:text-6xl font-extrabold mb-6 text-primary-700 dark:text-primary-200 drop-shadow-lg animate-slide-up">
+          <h1 className="text-5xl md:text-6xl font-extrabold mb-6 text-primary-700 dark:text-primary-50 drop-shadow-lg animate-slide-up">
             Meteo Sense
           </h1>
           <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-200 mb-8 max-w-2xl drop-shadow-lg animate-fade-in">
@@ -35,12 +35,12 @@ export default function LandingPage() {
       <section className="py-12 bg-white dark:bg-gray-800">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center gap-8">
           <div className="flex-1 text-center md:text-left">
-            <h2 className="text-2xl font-semibold text-primary-700 dark:text-primary-300 mb-4">Tentang Meteo Sense</h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-2">
-              Meteo Sense adalah platform digital untuk pemantauan, analisis, dan penelitian cuaca serta iklim di Jerukagung. Kami menyediakan data atmosfer real-time, visualisasi, dan fitur kolaborasi untuk mendukung inovasi di bidang meteorologi.
+            <h2 className="text-2xl font-semibold text-primary-700 dark:text-primary-50 mb-4">Tentang Meteo Sense</h2>
+            <p className="text-gray-700 dark:text-gray-50 mb-2">
+              Meteo Sense adalah platform digital untuk pemantauan, analisis, dan penelitian cuaca menggunakan jaringan sensor IoT. Menyediakan data atmosfer real-time dari sensor, visualisasi, dan fitur kolaborasi untuk mendukung inovasi di bidang meteorologi.
             </p>
-            <p className="text-gray-600 dark:text-gray-400">
-              Bergabunglah bersama komunitas kami untuk akses data, pengembangan instrumen, dan metode pemantauan terbaru.
+            <p className="text-gray-600 dark:text-gray-50">
+              Bergabunglah bersama komunitas kami untuk mengakses data, pengembangan instrumen, dan metode pemantauan terbaru.
             </p>
           </div>
           <div className="flex-1 flex justify-center">
@@ -55,7 +55,7 @@ export default function LandingPage() {
       <section className="py-16 bg-gradient-to-br from-primary-50 via-white to-primary-100 dark:from-gray-900 dark:via-gray-800 dark:to-primary-900">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-semibold text-primary-700 dark:text-primary-300 mb-4">Fitur Utama</h2>
+            <h2 className="text-3xl font-semibold text-primary-700 dark:text-primary-50 mb-4">Fitur Utama</h2>
             <p className="text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
               Meteo Sense menyediakan layanan pemantauan cuaca, analisis data iklim, serta mendukung penelitian dan pengembangan sains atmosfer.
             </p>
@@ -69,7 +69,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-semibold text-center mb-3 text-gray-900 dark:text-white">Pemantauan Cuaca</h3>
               <p className="text-gray-600 dark:text-gray-300 text-center">
-                Data cuaca terkini dan historis untuk memahami kondisi atmosfer di Jerukagung.
+                Data cuaca terkini dan historis untuk memahami kondisi Atmosfer
               </p>
             </div>
             <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-8 border-t-4 border-primary-500 hover:scale-105 transition-transform duration-200">

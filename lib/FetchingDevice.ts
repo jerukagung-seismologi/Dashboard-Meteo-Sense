@@ -1,0 +1,220 @@
+import {
+  collection,
+  doc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  serverTimestamp,
+  getDoc,
+  setDoc,
+  Timestamp, 
+} from "firebase/firestore"
+import { db } from "@/lib/ConfigFirebase"
+import { addLogEvent, LogEvent } from "@/lib/FetchingLogs"
+
+export interface Device {
+  id: string
+  name: string
+  location: string
+  registrationDate: string
+  coordinates: {
+    lat: number
+    lng: number
+  }
+  userId: string
+  authToken?: string
+  threshold: number
+}
+
+export interface DeviceToken {
+  token: string
+  deviceId: string
+}
+
+// Generate a unique 10-character ID
+const generateUniqueId = () => {
+  return Math.random().toString(36).substring(2, 12)
+}
+
+export async function fetchDevices(userId: string): Promise<Device[]> {
+  try {
+    const devicesRef = collection(db, "devices")
+    const q = query(devicesRef, where("userId", "==", userId))
+    const querySnapshot = await getDocs(q)
+
+    const devices: Device[] = []
+    querySnapshot.forEach((doc) => {
+      const data = doc.data()
+
+      const registrationDateTimestamp = data.registrationDate || data.createdAt
+      const registrationDate =
+        registrationDateTimestamp instanceof Timestamp
+          ? registrationDateTimestamp.toDate().toISOString().split("T")[0]
+          : new Date().toISOString().split("T")[0]
+
+      devices.push({
+        id: doc.id,
+        name: data.name,
+        location: data.location,
+        registrationDate: registrationDate,
+        coordinates: data.coordinates || { lat: -6.2088, lng: 106.8456 },
+        userId: data.userId,
+        authToken: data.authToken,
+        threshold: data.threshold || 2.0,
+      })
+    })
+
+    return devices
+  } catch (error) {
+    console.error("Error fetching devices:", error)
+    return []
+  }
+}
+
+export async function fetchDevice(deviceId: string): Promise<Device | null> {
+  try {
+    const deviceRef = doc(db, "devices", deviceId)
+    const docSnap = await getDoc(deviceRef)
+
+    if (!docSnap.exists()) {
+      console.warn(`Device ${deviceId} not found.`)
+      return null
+    }
+
+    const data = docSnap.data()
+
+    const registrationDateTimestamp = data.registrationDate || data.createdAt
+    const registrationDate =
+      registrationDateTimestamp instanceof Timestamp
+        ? registrationDateTimestamp.toDate().toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0]
+
+    return {
+      id: docSnap.id,
+      name: data.name,
+      location: data.location,
+      registrationDate: registrationDate,
+      coordinates: data.coordinates || { lat: -6.2088, lng: 106.8456 },
+      userId: data.userId,
+      authToken: data.authToken,
+      threshold: data.threshold || 2.0,
+    }
+  } catch (error) {
+    console.error(`Error fetching device ${deviceId}:`, error)
+    return null
+  }
+}
+
+export async function addDevice(
+  deviceData: Omit<Device, "id" | "authToken" | "registrationDate">,
+): Promise<Device> {
+  try {
+    const timestamp = serverTimestamp()
+    const newId = generateUniqueId()
+
+    const deviceRef = doc(db, "devices", newId)
+
+    const newDeviceData = {
+      ...deviceData,
+      id: newId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      registrationDate: new Date().toISOString().split("T")[0],
+      authToken: newId, // The ID is the token
+      threshold: deviceData.threshold || 2.0,
+    }
+
+    // Use setDoc with the custom ID
+    await setDoc(deviceRef, newDeviceData)
+
+    const newDevice: Device = {
+      id: newId,
+      ...deviceData,
+      registrationDate: newDeviceData.registrationDate,
+      authToken: newId,
+    }
+
+    // Log device creation
+    await addLogEvent(deviceData.userId, newId, "configuration", "Device created", "low", newDevice.name)
+
+    return newDevice
+  } catch (error) {
+    console.error("Error adding device:", error)
+    throw error
+  }
+}
+
+export async function updateDevice(
+  deviceId: string,
+  deviceData: Partial<Omit<Device, "id">>,
+): Promise<Device | null> {
+  try {
+    const deviceRef = doc(db, "devices", deviceId)
+    await updateDoc(deviceRef, {
+      ...deviceData,
+      updatedAt: serverTimestamp(),
+    })
+
+    const docSnap = await getDoc(deviceRef)
+    if (!docSnap.exists()) {
+      return null
+    }
+    const updatedData = docSnap.data() as Device
+
+    // Log device update
+    await addLogEvent(updatedData.userId, deviceId, "configuration", "Device updated", "low", updatedData.name)
+
+    return { ...updatedData, id: deviceId }
+  } catch (error) {
+    console.error("Error updating device:", error)
+    return null
+  }
+}
+
+export async function deleteDevice(deviceId: string): Promise<boolean> {
+  try {
+    const deviceRef = doc(db, "devices", deviceId)
+    const deviceSnap = await getDoc(deviceRef)
+    if (!deviceSnap.exists()) {
+      return false
+    }
+    const device = deviceSnap.data() as Device
+
+    await deleteDoc(deviceRef)
+
+    // Log device deletion
+    await addLogEvent(device.userId, deviceId, "configuration", "Device deleted", "medium", device.name)
+
+    return true
+  } catch (error) {
+    console.error("Error deleting device:", error)
+    return false
+  }
+}
+
+export async function generateDeviceToken(deviceId: string): Promise<DeviceToken | null> {
+  try {
+    const deviceRef = doc(db, "devices", deviceId)
+    const deviceSnap = await getDoc(deviceRef)
+    if (!deviceSnap.exists()) {
+      return null
+    }
+    const device = deviceSnap.data() as Device
+
+    // For simplicity, we'll just return the existing token (which is the device ID).
+    // If a new token is needed, generate it and update the document.
+    const token = device.authToken || device.id
+
+    // Log token generation
+    await addLogEvent(device.userId, deviceId, "configuration", "Authentication token retrieved", "low", device.name)
+
+    return { token, deviceId }
+  } catch (error) {
+    console.error("Error generating device token:", error)
+    throw error
+  }
+}

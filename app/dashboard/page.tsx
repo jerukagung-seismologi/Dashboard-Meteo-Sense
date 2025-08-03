@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -28,41 +29,50 @@ const dummyDevices = [
   {
     id: "1",
     name: "Stasiun A",
-    location: "Jerukagung Barat",
+    location: "Jerukagung",
     status: "online",
-    waterLevel: { value: 2.3, trend: "up", change: 0.2 },
+    temperature: 29.5,
     batteryLevel: 85,
     lastUpdate: new Date().toISOString(),
   },
   {
     id: "2",
     name: "Stasiun B",
-    location: "Jerukagung Timur",
+    location: "Jerukagung",
     status: "offline",
-    waterLevel: { value: 1.7, trend: "down", change: -0.1 },
+    temperature: 28.1,
     batteryLevel: 25,
     lastUpdate: new Date(Date.now() - 3600 * 1000).toISOString(),
   },
   {
     id: "3",
     name: "Stasiun C",
-    location: "Jerukagung Selatan",
+    location: "Jerukagung",
     status: "online",
-    waterLevel: { value: 2.9, trend: "up", change: 0.3 },
+    temperature: 30.2,
+    batteryLevel: 60,
+    lastUpdate: new Date(Date.now() - 1800 * 1000).toISOString(),
+  },
+  {
+    id: "4",
+    name: "Stasiun D",
+    location: "Jerukagung",
+    status: "online",
+    temperature: 29.8,
     batteryLevel: 60,
     lastUpdate: new Date(Date.now() - 1800 * 1000).toISOString(),
   },
 ]
 const dummyDeviceStats = {
-  totalDevices: 3,
-  onlineDevices: 2,
-  alertDevices: 1,
-  avgBatteryLevel: 56,
+  totalDevices: 5,
+  onlineDevices: 3,
+  alertDevices: 0,
+  avgBatteryLevel: 69,
 }
 const dummyRecentAlerts = [
   {
     id: "a1",
-    message: "Tinggi air melebihi ambang batas!",
+    message: "Suhu Ekstrem, lebih dari 32!",
     timestamp: new Date().toISOString(),
     device: "Stasiun A",
     severity: "tinggi",
@@ -76,18 +86,57 @@ const dummyWeatherStats = {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
   // Dummy state
-  const [devices] = useState(dummyDevices)
-  const [deviceStats] = useState(dummyDeviceStats)
-  const [recentAlerts] = useState(dummyRecentAlerts)
-  const [weatherStats] = useState(dummyWeatherStats)
-  const [loading] = useState(false)
+  const [devices, setDevices] = useState(dummyDevices)
+  const [deviceStats, setDeviceStats] = useState(dummyDeviceStats)
+  const [recentAlerts, setRecentAlerts] = useState(dummyRecentAlerts)
+  const [weatherStats, setWeatherStats] = useState(dummyWeatherStats)
   const [refreshing, setRefreshing] = useState(false)
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login")
+    }
+  }, [user, authLoading, router])
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    setTimeout(() => setRefreshing(false), 1000)
+    // Simulate fetching new data
+    setTimeout(() => {
+      // Create new dummy data to simulate an update
+      const newDummyDevices = devices.map((device) => ({
+        ...device,
+        temperature: device.temperature + (Math.random() - 0.5) * 1,
+        batteryLevel: Math.max(0, Math.min(100, device.batteryLevel - Math.floor(Math.random() * 5))),
+        lastUpdate: new Date().toISOString(),
+      }))
+
+      const onlineCount = newDummyDevices.filter((d) => d.status === "online").length
+      const newDeviceStats = {
+        totalDevices: newDummyDevices.length,
+        onlineDevices: onlineCount,
+        alertDevices: Math.floor(Math.random() * 3),
+        avgBatteryLevel: Math.round(
+          newDummyDevices.reduce((acc, d) => acc + d.batteryLevel, 0) / newDummyDevices.length
+        ),
+      }
+
+      const newWeatherStats = {
+        averageTemperature: 28.5 + (Math.random() - 0.5) * 2,
+        totalRainfall: 12 + Math.random() * 5,
+        activeAlerts: 1 + Math.floor(Math.random() * 2),
+        extremeEvents: Math.floor(Math.random() * 2),
+      }
+
+      // Update state with new data
+      setDevices(newDummyDevices)
+      setDeviceStats(newDeviceStats)
+      setWeatherStats(newWeatherStats)
+
+      setRefreshing(false)
+    }, 1000)
   }
 
   const getTrendIcon = (trend: string, size = "h-4 w-4") => {
@@ -105,11 +154,11 @@ export default function DashboardPage() {
     return status === "online" ? "text-green-600" : "text-red-600"
   }
 
-  if (loading) {
+  if (authLoading || !user) {
     return <LoadingSpinner />
   }
 
-  if (!loading && (!devices || devices.length === 0)) {
+  if (!authLoading && user && (!devices || devices.length === 0)) {
     return <EmptyState type="dashboard" />
   }
 
@@ -211,13 +260,10 @@ export default function DashboardPage() {
                         Online
                       </Badge>
                       <div className="text-right">
-                        <div className="text-sm font-medium">{device.waterLevel?.value.toFixed(1)}m</div>
+                        <div className="text-sm font-medium">{device.temperature.toFixed(1)}°C</div>
                         <div className="flex items-center">
-                          {getTrendIcon(device.waterLevel?.trend, "h-3 w-3")}
-                          <span className="text-xs ml-1">
-                            {device.waterLevel?.change > 0 ? "+" : ""}
-                            {device.waterLevel?.change.toFixed(1)}
-                          </span>
+                          <ThermometerIcon className="h-3 w-3 text-gray-600" />
+                          <span className="text-xs ml-1">Suhu</span>
                         </div>
                       </div>
                     </div>
@@ -327,10 +373,9 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Tinggi Air:</span>
+                    <span className="text-gray-600">Suhu Udara:</span>
                     <div className="flex items-center">
-                      <span className="font-medium">{device.waterLevel?.value.toFixed(1)}m</span>
-                      {getTrendIcon(device.waterLevel?.trend, "h-3 w-3 ml-1")}
+                      <span className="font-medium">{device.temperature.toFixed(1)}°C</span>
                     </div>
                   </div>
                   <div className="flex justify-between text-sm">
