@@ -61,6 +61,10 @@ export const signInWithEmail = async (
     const userCredential = await signInWithEmailAndPassword(auth, email, password)
     const user = userCredential.user
 
+    const idToken = await userCredential.user.getIdToken();
+
+    document.cookie = `firebaseIdToken=${idToken}; path=/; max-age=3600`;
+
     // Update last login time
     const userDocRef = doc(db, "users", user.uid)
     const userDoc = await getDoc(userDocRef)

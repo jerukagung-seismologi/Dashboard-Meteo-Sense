@@ -213,7 +213,7 @@ export default function AuthPage() {
         await signUpWithEmail(
           formData.email,
           formData.password,
-          formData.name
+          formData.name,
         );
       } else {
         // Sign in with Firebase
