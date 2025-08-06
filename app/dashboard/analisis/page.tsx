@@ -53,10 +53,10 @@ export default function AnalisisPage() {
         setPressure([])
         setDew([])
         setVolt([])
-        setError("Tidak ada data yang tersedia untuk periode ini.")
+        setError("Tidak ada data yang tersedia untuk saat ini.")
       }
     } catch (err) {
-      console.error("Error fetching data: ", err)
+      console.error("Error mengambil data: ", err)
       setError("Gagal mengambil data.")
     } finally {
       setLoading(false)
@@ -65,7 +65,6 @@ export default function AnalisisPage() {
 
   // Initialize component
   useEffect(() => {
-    fetchData()
     // Refresh data every 30 seconds
     const interval = setInterval(fetchData, 60000)
     return () => clearInterval(interval)

@@ -14,8 +14,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus } from "lucide-react"
-import { Device } from "@/lib/data/FetchingDevices"
-import { fetchDeviceLocation } from "@/lib/data/FetchingLocation"
+import { Device } from "@/lib/FetchingDevice"
+import { fetchDeviceLocation } from "@/lib/FetchingLocation"
 
 type NewDeviceData = Omit<Device, "id" | "authToken" | "registrationDate" | "userId">
 
