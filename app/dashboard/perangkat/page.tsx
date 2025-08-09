@@ -96,7 +96,6 @@ function AddDeviceDialog({ open, onOpenChange, onAddDevice, onTokenGenerated, tr
     location: "",
     latitude: "",
     longitude: "",
-    threshold: "2.0",
     tokenMode: "auto", // "auto" | "manual"
     manualToken: "",
     idMode: "auto", // "auto" | "manual"
@@ -110,7 +109,6 @@ function AddDeviceDialog({ open, onOpenChange, onAddDevice, onTokenGenerated, tr
         lat: parseFloat(newDevice.latitude) || 0,
         lng: parseFloat(newDevice.longitude) || 0,
       },
-      threshold: parseFloat(newDevice.threshold) || 2.0,
     }
     if (newDevice.tokenMode === "manual" && newDevice.manualToken) {
       deviceToAdd.authToken = newDevice.manualToken
@@ -155,11 +153,11 @@ function AddDeviceDialog({ open, onOpenChange, onAddDevice, onTokenGenerated, tr
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="latitude" className="text-gray-800">Latitude</Label>
-              <Input id="latitude" placeholder="-6.2088" type="number" className="placeholder:text-gray-400" value={newDevice.latitude} onChange={(e) => setNewDevice({ ...newDevice, latitude: e.target.value })} />
+              <Input id="latitude" placeholder="Garis Lintang" type="number" className="placeholder:text-gray-400" value={newDevice.latitude} onChange={(e) => setNewDevice({ ...newDevice, latitude: e.target.value })} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="longitude" className="text-gray-800">Longitude</Label>
-              <Input id="longitude" placeholder="106.8456" type="number" className="placeholder:text-gray-400" value={newDevice.longitude} onChange={(e) => setNewDevice({ ...newDevice, longitude: e.target.value })} />
+              <Input id="longitude" placeholder="Garis Bujur" type="number" className="placeholder:text-gray-400" value={newDevice.longitude} onChange={(e) => setNewDevice({ ...newDevice, longitude: e.target.value })} />
             </div>
           </div>
           <Button type="button" variant="secondary" className="w-full mb-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-200" onClick={handleDetectLocation}>

@@ -2,12 +2,10 @@ import {
   collection,
   doc,
   getDocs,
-  addDoc,
   updateDoc,
   deleteDoc,
   query,
   where,
-  orderBy,
   serverTimestamp,
   getDoc,
   setDoc,
@@ -96,7 +94,7 @@ export async function fetchDevice(deviceId: string): Promise<Device | null> {
       name: data.name,
       location: data.location,
       registrationDate: registrationDate,
-      coordinates: data.coordinates || { lat: -6.2088, lng: 106.8456 },
+      coordinates: data.coordinates || { lat: 0.00, lng: 0.00 },
       userId: data.userId,
       authToken: data.authToken
     }
