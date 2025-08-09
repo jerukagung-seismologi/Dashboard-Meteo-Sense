@@ -27,7 +27,6 @@ export interface Device {
   }
   userId: string
   authToken?: string
-  threshold: number
 }
 
 export interface DeviceToken {
@@ -63,8 +62,7 @@ export async function fetchDevices(userId: string): Promise<Device[]> {
         registrationDate: registrationDate,
         coordinates: data.coordinates || { lat: -6.2088, lng: 106.8456 },
         userId: data.userId,
-        authToken: data.authToken,
-        threshold: data.threshold || 2.0,
+        authToken: data.authToken
       })
     })
 
@@ -100,8 +98,7 @@ export async function fetchDevice(deviceId: string): Promise<Device | null> {
       registrationDate: registrationDate,
       coordinates: data.coordinates || { lat: -6.2088, lng: 106.8456 },
       userId: data.userId,
-      authToken: data.authToken,
-      threshold: data.threshold || 2.0,
+      authToken: data.authToken
     }
   } catch (error) {
     console.error(`Error fetching device ${deviceId}:`, error)
@@ -110,11 +107,13 @@ export async function fetchDevice(deviceId: string): Promise<Device | null> {
 }
 
 export async function addDevice(
-  deviceData: Omit<Device, "id" | "authToken" | "registrationDate">,
+  deviceData: Omit<Device, "id" | "authToken" | "registrationDate"> & { authToken?: string, customId?: string },
 ): Promise<Device> {
   try {
     const timestamp = serverTimestamp()
-    const newId = generateUniqueId()
+    const newId = deviceData.customId ? deviceData.customId : generateUniqueId()
+
+    const token = deviceData.authToken ? deviceData.authToken : newId
 
     const deviceRef = doc(db, "devices", newId)
 
@@ -124,18 +123,17 @@ export async function addDevice(
       createdAt: timestamp,
       updatedAt: timestamp,
       registrationDate: new Date().toISOString().split("T")[0],
-      authToken: newId, // The ID is the token
-      threshold: deviceData.threshold || 2.0,
+      authToken: token,
     }
 
-    // Use setDoc with the custom ID
+    // Use setDoc with the custom or auto ID
     await setDoc(deviceRef, newDeviceData)
 
     const newDevice: Device = {
       id: newId,
       ...deviceData,
       registrationDate: newDeviceData.registrationDate,
-      authToken: newId,
+      authToken: token,
     }
 
     // Log device creation
