@@ -14,6 +14,7 @@ import {
 import { auth } from "@/lib/ConfigFirebase"
 import { Timestamp } from "firebase/firestore"
 import LoadingSpinner from "@/components/LoadingSpinner"
+import { LogOut } from "lucide-react"
 
 const ProfilePage = () => {
   const [user, setUser] = useState<User | null>(null)
@@ -24,6 +25,7 @@ const ProfilePage = () => {
 
   // Form states
   const [displayName, setDisplayName] = useState("")
+  const [oldPassword, setOldPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
 
@@ -31,6 +33,8 @@ const ProfilePage = () => {
   const [editStatus, setEditStatus] = useState<{ message: string; type: "success" | "error" } | null>(null)
   const [passwordStatus, setPasswordStatus] = useState<{ message: string; type: "success" | "error" } | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false)
+  const [deletePassword, setDeletePassword] = useState("")
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -75,6 +79,10 @@ const ProfilePage = () => {
   const handlePasswordUpdate = async (e: FormEvent) => {
     e.preventDefault()
     setPasswordStatus(null)
+    if (!oldPassword) {
+      setPasswordStatus({ message: "Current password is required.", type: "error" })
+      return
+    }
     if (newPassword !== confirmPassword) {
       setPasswordStatus({ message: "Passwords do not match.", type: "error" })
       return
@@ -84,8 +92,9 @@ const ProfilePage = () => {
       return
     }
     try {
-      await updateUserPassword(newPassword)
+      await updateUserPassword(oldPassword, newPassword)
       setPasswordStatus({ message: "Password updated successfully!", type: "success" })
+      setOldPassword("")
       setNewPassword("")
       setConfirmPassword("")
     } catch (err: any) {
@@ -95,13 +104,16 @@ const ProfilePage = () => {
 
   const handleDeleteAccount = async () => {
     setDeleteError(null)
-    if (window.confirm("Are you sure you want to delete your account? This action is irreversible.")) {
-      try {
-        await deleteUserAccount()
-        router.push("/login?message=Account deleted successfully.")
-      } catch (err: any) {
-        setDeleteError(err.message)
-      }
+    if (!deletePassword) {
+      setDeleteError("Password is required to delete your account.")
+      return
+    }
+    try {
+      await deleteUserAccount(deletePassword)
+      // No need to push, onAuthStateChanged will trigger a redirect
+      // router.push("/login?message=Akun berhasil dihapus.")
+    } catch (err: any) {
+      setDeleteError(err.message)
     }
   }
 
@@ -110,18 +122,18 @@ const ProfilePage = () => {
     router.push("/login")
   }
 
-  const formatDate = (date: Date | Timestamp) => {
-    if (date instanceof Timestamp) {
-      return date.toDate().toLocaleDateString()
-    }
-    return new Date(date).toLocaleDateString()
-  }
-
+  // Helper function to format date
   const formatDateTime = (date: Date | Timestamp) => {
-    if (date instanceof Timestamp) {
-      return date.toDate().toLocaleString()
-    }
-    return new Date(date).toLocaleString()
+    const dateObj = date instanceof Timestamp ? date.toDate() : new Date(date)
+    return dateObj.toLocaleDateString("id-ID", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
   }
 
   if (loading) {
@@ -143,7 +155,7 @@ const ProfilePage = () => {
           <p><strong>Nama</strong> {userProfile.displayName}</p>
           <p><strong>Email:</strong> {userProfile.email}</p>
           <p><strong>Role:</strong> <span className="rounded-full bg-blue-100 px-2 py-1 text-sm text-blue-800">{userProfile.role}</span></p>
-          <p><strong>Member since:</strong> {formatDate(userProfile.createdAt)}</p>
+          <p><strong>Member since:</strong> {formatDateTime(userProfile.createdAt)}</p>
           <p><strong>Last login:</strong> {formatDateTime(userProfile.lastLoginAt)}</p>
         </div>
       </div>
@@ -163,14 +175,18 @@ const ProfilePage = () => {
 
       {/* Change Password */}
       <div className="rounded-lg bg-white p-6 shadow-md">
-        <h2 className="mb-4 text-xl font-bold">Change Password</h2>
+        <h2 className="mb-4 text-xl font-bold">Ubah Kata Sandi</h2>
         <form onSubmit={handlePasswordUpdate} className="space-y-4">
           <div>
-            <label htmlFor="newPassword">New Password</label>
+            <label htmlFor="oldPassword">Password lama</label>
+            <input type="password" id="oldPassword" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+          </div>
+          <div>
+            <label htmlFor="newPassword">Password baru</label>
             <input type="password" id="newPassword" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
           </div>
           <div>
-            <label htmlFor="confirmPassword">Confirm New Password</label>
+            <label htmlFor="confirmPassword">Konfirmasi Password baru</label>
             <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
           </div>
           {passwordStatus && <p className={`text-sm ${passwordStatus.type === "success" ? "text-green-600" : "text-red-600"}`}>{passwordStatus.message}</p>}
@@ -186,12 +202,38 @@ const ProfilePage = () => {
             <p className="font-semibold">Delete this account</p>
             <p className="text-sm text-gray-600">Once you delete your account, there is no going back. Please be certain.</p>
           </div>
-          <button onClick={handleDeleteAccount} className="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700">Delete Account</button>
+          <button onClick={() => setIsDeleteConfirmVisible(true)} className="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700">
+            Delete Account
+          </button>
         </div>
-        {deleteError && <p className="mt-2 text-sm text-red-600">{deleteError}</p>}
+        {isDeleteConfirmVisible && (
+          <div className="mt-4 rounded-md border border-red-300 bg-red-50 p-4">
+            <h3 className="font-bold text-red-800">Confirm Account Deletion</h3>
+            <p className="text-sm text-red-700">To confirm, please enter your password.</p>
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              className="mt-2 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
+              placeholder="Enter your password"
+            />
+            {deleteError && <p className="mt-2 text-sm text-red-600">{deleteError}</p>}
+            <div className="mt-4 flex justify-end space-x-2">
+              <button onClick={() => setIsDeleteConfirmVisible(false)} className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300">
+                Cancel
+              </button>
+              <button onClick={handleDeleteAccount} className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">
+                Confirm & Delete
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      <button onClick={handleSignOut} className="w-full rounded-md bg-gray-500 px-4 py-2 text-white hover:bg-gray-600">Sign Out</button>
+      <button onClick={handleSignOut} className="flex w-full items-center justify-center rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700">
+        <LogOut className="mr-2 h-5 w-5" />
+        Sign Out
+      </button>
     </div>
   )
 }

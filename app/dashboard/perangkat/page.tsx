@@ -1,6 +1,6 @@
 "use client"
 import React, { useEffect, useState } from "react"
-import { fetchDevices, addDevice, updateDevice, deleteDevice, generateDeviceToken, Device } from "@/lib/FetchingDevice"
+import { fetchAllDevices, addDevice, updateDevice, deleteDevice, generateDeviceToken, Device } from "@/lib/FetchingDevice"
 import { fetchDeviceLocation } from "@/lib/FetchingLocation"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog"
 
 import {
-  MapPin, Wifi, WifiOff, Calendar, TrendingUp, TrendingDown, Minus, Key, Edit, Trash2, AlertTriangle, Copy, Plus
+  MapPin, Wifi, WifiOff, Calendar, TrendingUp, TrendingDown, Minus, Key, Edit, Trash2, AlertTriangle, Copy, Plus, HardDrive
 } from "lucide-react"
 import { auth } from "@/lib/ConfigFirebase"
 
@@ -53,7 +53,7 @@ function DeviceCard({ device, onEdit, onDelete, onGenerateToken }: {
           <div className="flex items-center text-sm">
             <Calendar className="h-4 w-4 mr-2 text-purple-600" />
             <div>
-              <div className="font-medium text-gray-800">Tanggal Registrasi</div>
+                <div className="font-medium text-gray-800 whitespace-nowrap">Tanggal Registrasi</div>
               <div className="text-xs text-gray-600">{device.registrationDate}</div>
             </div>
           </div>
@@ -404,15 +404,17 @@ export default function PerangkatPage() {
     const loadDevices = async () => {
       if (!uid) return
       setLoading(true)
-      const fetched = await fetchDevices(uid)
+      const fetched = await fetchAllDevices(uid)
       setDevices(fetched as Device[])
       setLoading(false)
     }
     loadDevices()
   }, [uid])
 
-  const handleAddDevice = async (newDevice: Omit<Device, "id" | "authToken" | "registrationDate" | "userId">) => {
-    if (!uid) return
+  const handleAddDevice = async (newDevice: Omit<Device, "id" | "authToken" | "registrationDate" | "userId"> & { authToken?: string, customId?: string }) => {
+    if (!uid) {
+      throw new Error("User not authenticated");
+    }
     const added = await addDevice({ ...newDevice, userId: uid })
     setDevices((prev) => [...prev, added as Device])
     setShowAddDialog(false)
@@ -460,17 +462,18 @@ export default function PerangkatPage() {
           onTokenGenerated={(token) => { setToken(token); setShowTokenDialog(true) }}
           trigger={
             <Button
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
               onClick={() => setShowAddDialog(true)}
             >
-              Tambah Perangkat
+              <Plus className="h-4 w-4 mr-2" />
+              <span>Tambah Perangkat</span>
             </Button>
           }
         />
       </div>
       {loading ? (
-        <div>Memuat perangkat...</div>
-      ) : (
+        <div className="text-center p-10">Memuat perangkat...</div>
+      ) : devices.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {devices.map((device) => (
             <DeviceCard
@@ -481,6 +484,19 @@ export default function PerangkatPage() {
               onGenerateToken={handleGenerateToken}
             />
           ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center text-center p-16 mt-10 border-2 border-dashed rounded-lg bg-gray-50 max-w-2xl mx-auto">
+          <HardDrive className="h-16 w-16 text-gray-400 mb-6" />
+          <h2 className="text-2xl font-semibold text-gray-700">Belum Ada Perangkat</h2>
+          <p className="text-gray-500 mt-2 mb-6 max-w-md">Mulai dengan menambahkan perangkat monitoring pertama Anda untuk melihat data cuaca secara real-time.</p>
+          <Button
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center text-base"
+            onClick={() => setShowAddDialog(true)}
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Tambah Perangkat
+          </Button>
         </div>
       )}
 

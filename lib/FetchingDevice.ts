@@ -25,6 +25,7 @@ export interface Device {
   }
   userId: string
   authToken?: string
+  status?: "online" | "offline"
 }
 
 export interface DeviceToken {
@@ -37,7 +38,20 @@ const generateUniqueId = () => {
   return Math.random().toString(36).substring(2, 12)
 }
 
-export async function fetchDevices(userId: string): Promise<Device[]> {
+// Helper function to format date
+const formatDate = (date: Date) => {
+  return date.toLocaleString("id-ID", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  })
+}
+
+export async function fetchAllDevices(userId: string): Promise<Device[]> {
   try {
     const devicesRef = collection(db, "devices")
     const q = query(devicesRef, where("userId", "==", userId))
@@ -50,15 +64,15 @@ export async function fetchDevices(userId: string): Promise<Device[]> {
       const registrationDateTimestamp = data.registrationDate || data.createdAt
       const registrationDate =
         registrationDateTimestamp instanceof Timestamp
-          ? registrationDateTimestamp.toDate().toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0]
+          ? formatDate(registrationDateTimestamp.toDate())
+          : formatDate(new Date())
 
       devices.push({
         id: doc.id,
         name: data.name,
         location: data.location,
         registrationDate: registrationDate,
-        coordinates: data.coordinates || { lat: -6.2088, lng: 106.8456 },
+        coordinates: data.coordinates || { lat: 0.0, lng: 0.0 },
         userId: data.userId,
         authToken: data.authToken
       })
@@ -86,17 +100,17 @@ export async function fetchDevice(deviceId: string): Promise<Device | null> {
     const registrationDateTimestamp = data.registrationDate || data.createdAt
     const registrationDate =
       registrationDateTimestamp instanceof Timestamp
-        ? registrationDateTimestamp.toDate().toISOString().split("T")[0]
-        : new Date().toISOString().split("T")[0]
+        ? formatDate(registrationDateTimestamp.toDate())
+        : formatDate(new Date())
 
     return {
       id: docSnap.id,
       name: data.name,
       location: data.location,
       registrationDate: registrationDate,
-      coordinates: data.coordinates || { lat: 0.00, lng: 0.00 },
+      coordinates: data.coordinates || { lat: 0.0, lng: 0.0 },
       userId: data.userId,
-      authToken: data.authToken
+      authToken: data.authToken,
     }
   } catch (error) {
     console.error(`Error fetching device ${deviceId}:`, error)
@@ -120,7 +134,7 @@ export async function addDevice(
       id: newId,
       createdAt: timestamp,
       updatedAt: timestamp,
-      registrationDate: new Date().toISOString().split("T")[0],
+      registrationDate: new Date(),
       authToken: token,
     }
 
@@ -130,7 +144,7 @@ export async function addDevice(
     const newDevice: Device = {
       id: newId,
       ...deviceData,
-      registrationDate: newDeviceData.registrationDate,
+      registrationDate: formatDate(new Date()),
       authToken: token,
     }
 

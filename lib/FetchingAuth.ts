@@ -7,6 +7,8 @@ import {
   deleteUser,
   type User,
   type AuthError,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
 } from "firebase/auth";
 import { doc, setDoc, getDoc, Timestamp, updateDoc, deleteDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/ConfigFirebase"; // Mengimpor instance 'auth' dan 'db' yang sudah diinisialisasi
@@ -141,15 +143,24 @@ export const updateUserProfileData = async (uid: string, displayName: string): P
 }
 
 // Update user password
-export const updateUserPassword = async (newPassword: string): Promise<void> => {
+export const updateUserPassword = async (oldPassword: string, newPassword: string): Promise<void> => {
   try {
     const user = auth.currentUser
-    if (!user) {
-      throw new Error("User not authenticated.")
+    if (!user || !user.email) {
+      throw new Error("User not authenticated or email not available.")
     }
+
+    // Re-authenticate user with their old password
+    const credential = EmailAuthProvider.credential(user.email, oldPassword)
+    await reauthenticateWithCredential(user, credential)
+
+    // If re-authentication is successful, update the password
     await updatePassword(user, newPassword)
   } catch (error) {
     const authError = error as AuthError
+    if (authError.code === "auth/wrong-password") {
+      throw new Error("Incorrect current password.")
+    }
     // This error often means the user needs to re-authenticate
     if (authError.code === "auth/requires-recent-login") {
       throw new Error("This operation is sensitive and requires recent authentication. Please sign out and sign in again before retrying.")
@@ -159,12 +170,18 @@ export const updateUserPassword = async (newPassword: string): Promise<void> => 
 }
 
 // Delete user account
-export const deleteUserAccount = async (): Promise<void> => {
+export const deleteUserAccount = async (password: string): Promise<void> => {
   try {
     const user = auth.currentUser
-    if (!user) {
-      throw new Error("User not authenticated.")
+    if (!user || !user.email) {
+      throw new Error("User not authenticated or email not available.")
     }
+
+    // Re-authenticate user
+    const credential = EmailAuthProvider.credential(user.email, password)
+    await reauthenticateWithCredential(user, credential)
+
+    // If re-authentication is successful, proceed with deletion
     const uid = user.uid
 
     // Delete Firestore document first
@@ -175,6 +192,9 @@ export const deleteUserAccount = async (): Promise<void> => {
     await deleteUser(user)
   } catch (error) {
     const authError = error as AuthError
+    if (authError.code === "auth/wrong-password") {
+      throw new Error("Incorrect password. Deletion failed.")
+    }
     if (authError.code === "auth/requires-recent-login") {
       throw new Error("This operation is sensitive and requires recent authentication. Please sign out and sign in again before retrying.")
     }

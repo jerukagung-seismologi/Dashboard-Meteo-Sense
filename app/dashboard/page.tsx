@@ -167,7 +167,7 @@ export default function DashboardPage() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-semibold">Beranda</h2>
-          <p className="text-muted-foreground">Ringkasan sistem monitoring cuaca dan hidrologi</p>
+          <p className="text-muted-foreground">Ringkasan sistem monitoring cuaca</p>
         </div>
         <Button
           onClick={handleRefresh}
