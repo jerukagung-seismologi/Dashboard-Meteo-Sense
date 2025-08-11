@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import Image from "next/image";
 import type { NavigationItem } from "./types"
-import { X } from "lucide-react"
+import { X, Sun } from "lucide-react"
 
 interface MobileSidebarProps {
   sidebarOpen: boolean
@@ -15,16 +15,12 @@ export function MobileSidebar({ sidebarOpen, setSidebarOpen, navigation }: Mobil
     <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? "block" : "hidden"}`}>
       <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
       <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
-        <div className="flex h-16 items-center justify-between px-4  bg-emerald-700">
+        <div className="flex h-16 items-center justify-between px-4  bg-green-700">
           <div className="flex items-center">
-            <Image
-              src="/img/logo.png"
-              alt="logo"
-              width={40}
-              height={40}
-              className="rounded-full"
-            />
-            <span className="ml-2 text-lg font-bold text-white">Tenki Sensei</span>
+            <div className="p-2 bg-orange-600 rounded-lg">
+              <Sun className="h-6 w-6 text-white" />
+            </div>
+            <span className="ml-2 text-lg font-bold text-white">Meteo Sense</span>
           </div>
           <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
             <X className="h-5 w-5" />

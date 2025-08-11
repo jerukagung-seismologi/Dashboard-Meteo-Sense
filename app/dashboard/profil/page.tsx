@@ -155,8 +155,8 @@ const ProfilePage = () => {
           <p><strong>Nama</strong> {userProfile.displayName}</p>
           <p><strong>Email:</strong> {userProfile.email}</p>
           <p><strong>Role:</strong> <span className="rounded-full bg-blue-100 px-2 py-1 text-sm text-blue-800">{userProfile.role}</span></p>
-          <p><strong>Member since:</strong> {formatDateTime(userProfile.createdAt)}</p>
-          <p><strong>Last login:</strong> {formatDateTime(userProfile.lastLoginAt)}</p>
+          <p><strong>Terdaftar sejak:</strong> {formatDateTime(userProfile.createdAt)}</p>
+          <p><strong>Masuk terakhir:</strong> {formatDateTime(userProfile.lastLoginAt)}</p>
         </div>
       </div>
 
@@ -165,11 +165,11 @@ const ProfilePage = () => {
         <h2 className="mb-4 text-xl font-bold">Edit Profil</h2>
         <form onSubmit={handleProfileUpdate} className="space-y-4">
           <div>
-            <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">Display Name</label>
+            <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">Nama Profil</label>
             <input type="text" id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
           </div>
           {editStatus && <p className={`text-sm ${editStatus.type === "success" ? "text-green-600" : "text-red-600"}`}>{editStatus.message}</p>}
-          <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Save Changes</button>
+          <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Simpan Perubahan</button>
         </form>
       </div>
 
@@ -190,26 +190,26 @@ const ProfilePage = () => {
             <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
           </div>
           {passwordStatus && <p className={`text-sm ${passwordStatus.type === "success" ? "text-green-600" : "text-red-600"}`}>{passwordStatus.message}</p>}
-          <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Update Password</button>
+          <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Perbarui Kata Sandi</button>
         </form>
       </div>
 
-      {/* Danger Zone */}
+      {/* Zona Bahaya */}
       <div className="rounded-lg border-2 border-dashed border-red-500 bg-white p-6 shadow-md">
-        <h2 className="mb-4 text-xl font-bold text-red-600">Danger Zone</h2>
+        <h2 className="mb-4 text-xl font-bold text-red-600">Zona Bahaya</h2>
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-semibold">Delete this account</p>
-            <p className="text-sm text-gray-600">Once you delete your account, there is no going back. Please be certain.</p>
+            <p className="font-semibold">Hapus akun ini</p>
+            <p className="text-sm text-gray-600">Setelah Anda menghapus akun Anda, tidak ada jalan kembali. Harap pastikan.</p>
           </div>
           <button onClick={() => setIsDeleteConfirmVisible(true)} className="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700">
-            Delete Account
+            Hapus Akun
           </button>
         </div>
         {isDeleteConfirmVisible && (
           <div className="mt-4 rounded-md border border-red-300 bg-red-50 p-4">
-            <h3 className="font-bold text-red-800">Confirm Account Deletion</h3>
-            <p className="text-sm text-red-700">To confirm, please enter your password.</p>
+            <h3 className="font-bold text-red-800">Konfirmasi Penghapusan Akun</h3>
+            <p className="text-sm text-red-700">Untuk mengonfirmasi, silakan masukkan kata sandi Anda.</p>
             <input
               type="password"
               value={deletePassword}
@@ -220,10 +220,10 @@ const ProfilePage = () => {
             {deleteError && <p className="mt-2 text-sm text-red-600">{deleteError}</p>}
             <div className="mt-4 flex justify-end space-x-2">
               <button onClick={() => setIsDeleteConfirmVisible(false)} className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300">
-                Cancel
+                Batal
               </button>
               <button onClick={handleDeleteAccount} className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">
-                Confirm & Delete
+                Konfirmasi & Hapus
               </button>
             </div>
           </div>
@@ -232,7 +232,7 @@ const ProfilePage = () => {
 
       <button onClick={handleSignOut} className="flex w-full items-center justify-center rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700">
         <LogOut className="mr-2 h-5 w-5" />
-        Sign Out
+        Keluar
       </button>
     </div>
   )

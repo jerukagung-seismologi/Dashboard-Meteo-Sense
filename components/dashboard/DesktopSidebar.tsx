@@ -10,7 +10,7 @@ export function DesktopSidebar({ navigation }: DesktopSidebarProps) {
   return (
     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
       <div className="flex flex-col flex-grow bg-gradient-to-b from-white to-blue-50 border-r border-gray-200">
-        <div className="flex items-center h-16 px-4 bg-emerald-700">
+        <div className="flex items-center h-16 px-4 bg-green-700">
             <div className="p-2 bg-orange-600 rounded-lg">
               <Sun className="h-6 w-6 text-white" />
             </div>
