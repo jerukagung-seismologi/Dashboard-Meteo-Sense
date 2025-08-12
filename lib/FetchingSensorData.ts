@@ -15,6 +15,8 @@ export interface SensorValue {
   humidity: number;
   pressure: number;
   dew: number;
+  rainfall: number;
+  rainrate: number
   volt: number;
 }
 
@@ -155,6 +157,8 @@ export async function fetchSensorData(
         pressure: data.pressure,
         dew: data.dew,
         volt: data.volt,
+        rainfall: data.rainfall,
+        rainrate: data.rainrate,
         dateFormatted: dateFormatted,
         timeFormatted: formattedTime,
       };

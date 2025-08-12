@@ -1,16 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-// Import fetchSensorData dari library
 import { fetchSensorData, deleteSensorData, SensorDate, editSensorDataByTimestamp, deleteSensorDataByTimestamp } from "@/lib/FetchingSensorData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// Import icons dari lucide-react
-import { RefreshCw, Download, ThermometerSun, Droplets, Gauge, Sprout, Trash2, Pencil } from "lucide-react";
-// Import ChartComponent
+import { RefreshCw, Download, ThermometerSun, Droplets, Gauge, Sprout, Trash2, Pencil, CloudRain, CloudRainWind } from "lucide-react";
 import ChartComponent from "@/components/ChartComponent";
-
 
 interface Period {
   label: string;
@@ -24,6 +20,8 @@ interface WeatherEntry {
   humidity: number;
   pressure: number;
   dew: number;
+  rainfall: number;
+  rainrate: number;
 }
 
 // Daftar periode yang bisa dipilih
@@ -43,6 +41,8 @@ export default function DataPage() {
   const [humidity, setHumidity] = useState<number[]>([]);
   const [pressure, setPressure] = useState<number[]>([]);
   const [dew, setDew] = useState<number[]>([]);
+  const [rainfall, setRainfall] = useState<number[]>([]);
+  const [rainrate, setRainrate] = useState<number[]>([]);
 
   // State untuk data tabel
   const [weatherData, setWeatherData] = useState<WeatherEntry[]>([]);
@@ -78,12 +78,16 @@ export default function DataPage() {
       const fetchedHumidity: number[] = data.map(d => d.humidity);
       const fetchedPressure: number[] = data.map(d => d.pressure);
       const fetchedDew: number[] = data.map(d => d.dew);
+      const fetchedRainfall: number[] = data.map(d => d.rainfall);
+      const fetchedRainrate: number[] = data.map(d => d.rainrate);
 
       setTimestamps(fetchedTimestamps);
       setTemperatures(fetchedTemperatures);
       setHumidity(fetchedHumidity);
       setPressure(fetchedPressure);
       setDew(fetchedDew);
+      setRainfall(fetchedRainfall);
+      setRainrate(fetchedRainrate);
 
       const dataArray: WeatherEntry[] = data.map((entry) => ({
         timestamp: entry.timestamp,
@@ -92,6 +96,8 @@ export default function DataPage() {
         humidity: entry.humidity,
         pressure: entry.pressure,
         dew: entry.dew,
+        rainfall: entry.rainfall,
+        rainrate: entry.rainrate,
       }));
       setWeatherData(dataArray.reverse());
       setError(null);
@@ -136,6 +142,8 @@ export default function DataPage() {
       setHumidity([]);
       setPressure([]);
       setDew([]);
+      setRainfall([]);
+      setRainrate([]);
     } finally {
       setLoading(false);
     }
@@ -174,6 +182,8 @@ export default function DataPage() {
     humidity: isDarkMode ? "#60a5fa" : "#3b82f6",
     pressure: isDarkMode ? "#fbbf24" : "#f59e0b",
     dew: isDarkMode ? "#34d399" : "#10b981",
+    rainfall: isDarkMode ? "#22d3ee" : "#06b6d4",
+    rainrate: isDarkMode ? "#c4b5fd" : "#a78bfa",
   };
 
   // Fungsi untuk menghapus data sensor
@@ -190,6 +200,8 @@ export default function DataPage() {
         setHumidity([]);
         setPressure([]);
         setDew([]);
+        setRainfall([]);
+        setRainrate([]);
         setCurrentPage(1); // Reset halaman setelah data dihapus
       } catch (err: any) {
         console.error(err);
@@ -216,6 +228,8 @@ export default function DataPage() {
         humidity: editForm.humidity,
         pressure: editForm.pressure,
         dew: editForm.dew,
+        rainfall: editForm.rainfall,
+        rainrate: editForm.rainrate,
       });
       const updatedData = [...weatherData];
       updatedData[editingIndex] = { ...editForm };
@@ -274,16 +288,16 @@ export default function DataPage() {
       alert("Tidak ada data untuk diunduh.");
       return;
     }
-    const headers = ["Waktu", "Suhu (°C)", "Kelembapan (%)", "Tekanan (hPa)", "Titik Embun (°C)"];
+    const headers = ["Waktu", "Suhu (°C)", "Kelembapan (%)", "Tekanan (hPa)", "Titik Embun (°C)", "Curah Hujan (mm)", "Laju Hujan (mm/jam)"];
     const rows = weatherData.map(entry =>
-      `${entry.date},${entry.temperature},${entry.humidity},${entry.pressure},${entry.dew}`
+      `${entry.date},${fmt2(entry.temperature)},${fmt2(entry.humidity)},${fmt2(entry.pressure)},${fmt2(entry.dew)},${fmt2(entry.rainfall)},${fmt2(entry.rainrate)}`
     );
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `data_cuaca_${sensorId}_${new Date().toISOString()}.csv`);
+    link.setAttribute("download", `data_sensor_${sensorId}_${new Date().toISOString()}.csv`);
     link.click();
     URL.revokeObjectURL(url); // Membersihkan URL objek setelah diunduh
   };
@@ -384,6 +398,9 @@ export default function DataPage() {
       </Card>
     );
   };
+
+  // helper format 2 desimal
+  const fmt2 = (n: number) => Number.isFinite(n) ? n.toFixed(2) : "0.00";
 
   return (
     <div className="space-y-6">
@@ -499,6 +516,8 @@ export default function DataPage() {
                         <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Kelembapan (%)</th>
                         <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Tekanan (hPa)</th>
                         <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Titik Embun (°C)</th>
+                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Curah Hujan (mm)</th>
+                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Laju Hujan (mm/jam)</th>
                         <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Aksi</th>
                       </tr>
                     </thead>
@@ -518,10 +537,12 @@ export default function DataPage() {
                               : (index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800")}
                           >
                             <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{entry.date}</td>
-                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{entry.temperature}</td>
-                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{entry.humidity}</td>
-                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{entry.pressure}</td>
-                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{entry.dew}</td>
+                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.temperature)}</td>
+                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.humidity)}</td>
+                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.pressure)}</td>
+                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.dew)}</td>
+                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.rainfall)}</td>
+                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.rainrate)}</td>
                             <td className={`p-4 border-t flex gap-2`}>
                               <button
                                 className={`p-2 rounded hover:bg-primary-100 dark:hover:bg-primary-900`}
@@ -568,6 +589,9 @@ export default function DataPage() {
               <ChartCard title="Kelembapan Relatif (%)" data={humidity} color={chartColors.humidity} Icon={Droplets} />
               <ChartCard title="Tekanan Udara (hPa)" data={pressure} color={chartColors.pressure} Icon={Gauge} />
               <ChartCard title="Titik Embun (°C)" data={dew} color={chartColors.dew} Icon={Sprout}/>
+              {/* charts baru */}
+              <ChartCard title="Curah Hujan (mm)" data={rainfall} color={chartColors.rainfall} Icon={CloudRain} />
+              <ChartCard title="Laju Hujan (mm/jam)" data={rainrate} color={chartColors.rainrate} Icon={CloudRainWind} />
             </div>
           )}
         </>
