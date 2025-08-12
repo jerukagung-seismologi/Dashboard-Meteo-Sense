@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react"
 import { fetchAllDevices, addDevice, updateDevice, deleteDevice, generateDeviceToken, Device } from "@/lib/FetchingDevice"
 import { fetchDeviceLocation } from "@/lib/FetchingLocation"
+import { SensorMetaData, fetchSensorMetadata } from "@/lib/FetchingSensorData"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -25,7 +26,7 @@ import { auth } from "@/lib/ConfigFirebase"
 
 // DeviceCard Component
 function DeviceCard({ device, onEdit, onDelete, onGenerateToken }: {
-  device: Device,
+  device: Device & { TelemetryStatus?: "online" | "offline" },
   onEdit: (device: Device) => void,
   onDelete: (device: { id: string; name: string }) => void,
   onGenerateToken: (id: string) => void
@@ -36,11 +37,13 @@ function DeviceCard({ device, onEdit, onDelete, onGenerateToken }: {
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg text-gray-800">{device.name}</CardTitle>
           <Badge
-            variant={device.status === "online" ? "default" : "destructive"}
-            className={device.status === "online" ? "bg-green-500" : "bg-red-500"}
+            variant={device.TelemetryStatus === "online" ? "default" : "destructive"}
+            className={device.TelemetryStatus === "online" ? "bg-green-500" : "bg-red-500"}
           >
-            {device.status === "online" ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
-            {device.status === "online" ? "Online" : "Offline"}
+            {device.TelemetryStatus === "online" ? 
+              <Wifi className="h-3 w-3 mr-1" /> : 
+              <WifiOff className="h-3 w-3 mr-1" />}
+            {device.TelemetryStatus === "online" ? "Online" : "Offline"}
           </Badge>
         </div>
         <CardDescription className="flex items-center text-gray-600">
@@ -62,20 +65,21 @@ function DeviceCard({ device, onEdit, onDelete, onGenerateToken }: {
             <div>
               <div className="font-medium text-gray-800">Koordinat</div>
               <div className="text-xs text-gray-600">
-                {device.coordinates.lat.toFixed(4)}, {device.coordinates.lng.toFixed(4)}
+                {device.coordinates.lat.toFixed(4)}, 
+                {device.coordinates.lng.toFixed(4)}
               </div>
             </div>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1 bg-blue-50 hover:bg-blue-100 border-blue-200" onClick={() => onEdit(device)}>
-            <Edit className="h-3 w-3 mr-1 text-blue-600" /> Edit
+          <Button variant="outline" size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 border-blue-200 text-white hover:text-white" onClick={() => onEdit(device)}>
+            <Edit className="h-3 w-3 mr-1" /> Edit
           </Button>
-          <Button variant="outline" size="sm" className="flex-1 bg-green-50 hover:bg-green-100 border-green-200" onClick={() => onGenerateToken(device.id)}>
-            <Key className="h-3 w-3 mr-1 text-green-600" /> Token
+          <Button variant="outline" size="sm" className="flex-1 bg-green-500 hover:bg-green-600 border-emerald-200 text-white hover:text-white" onClick={() => onGenerateToken(device.authToken ? device.id : "")}>
+            <Key className="h-3 w-3 mr-1" /> Token
           </Button>
-          <Button variant="outline" size="sm" className="bg-red-50 hover:bg-red-100 border-red-200" onClick={() => onDelete({ id: device.id, name: device.name })}>
-            <Trash2 className="h-3 w-3 mr-1 text-red-600" />
+          <Button variant="outline" size="sm" className="flex-1 bg-red-500 hover:bg-red-600 border-red-200 text-white hover:text-white" onClick={() => onDelete({ id: device.id, name: device.name })}>
+            <Trash2 className="h-3 w-3 mr-1" /> Hapus
           </Button>
         </div>
       </CardContent>
@@ -378,7 +382,7 @@ function DeviceTokenDialog({ open, onOpenChange, token }: {
 
 // Main Page Component
 export default function PerangkatPage() {
-  const [devices, setDevices] = useState<Device[]>([])
+  const [devices, setDevices] = useState<(Device & { TelemetryStatus?: "online" | "offline" })[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -405,7 +409,20 @@ export default function PerangkatPage() {
       if (!uid) return
       setLoading(true)
       const fetched = await fetchAllDevices(uid)
-      setDevices(fetched as Device[])
+      // Ambil status Telemetry untuk setiap device
+      const devicesWithStatus = await Promise.all(
+        (fetched as Device[]).map(async (device) => {
+          let TelemetryStatus: "online" | "offline" = "offline"
+          try {
+            const meta = await fetchSensorMetadata(device.id)
+            TelemetryStatus = meta.TelemetryStatus
+          } catch {
+            TelemetryStatus = "offline"
+          }
+          return { ...device, TelemetryStatus }
+        })
+      )
+      setDevices(devicesWithStatus)
       setLoading(false)
     }
     loadDevices()

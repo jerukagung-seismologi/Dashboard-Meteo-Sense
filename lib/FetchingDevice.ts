@@ -25,7 +25,6 @@ export interface Device {
   }
   userId: string
   authToken?: string
-  status?: "online" | "offline"
 }
 
 export interface DeviceToken {

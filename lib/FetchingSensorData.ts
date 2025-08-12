@@ -24,6 +24,66 @@ export interface SensorDate extends SensorValue {
   timeFormatted: string;
 }
 
+export interface SensorMetaData {
+  sensorId: string;
+  TelemetryStatus: "online" | "offline";
+}
+
+/**
+ * Mengambil metadata dan status sensor terakhir.
+ * Status "online" jika data terakhir kurang dari 3 menit, jika tidak "offline".
+ * @param sensorId - ID sensor yang akan diperiksa.
+ * @returns Sebuah promise yang resolve dengan metadata sensor.
+ */
+export async function fetchSensorMetadata(
+  sensorId: string
+): Promise<SensorMetaData> {
+  try {
+    const dataRef = query(
+      ref(rtdb, `auto_weather_stat/${sensorId}/data`),
+      orderByKey(),
+      limitToLast(1)
+    );
+
+    const snapshot = await get(dataRef);
+
+    if (!snapshot.exists()) {
+      // Jika tidak ada data, anggap offline dan kembalikan nilai default
+      return {
+        sensorId: sensorId,
+        TelemetryStatus: "offline",
+      };
+    }
+
+    let latestData: SensorValue | null = null;
+    let latestTimestamp: number | null = null;
+
+    snapshot.forEach((child) => {
+      latestTimestamp = Number(child.key) * 1000; // konversi ke milidetik
+      latestData = child.val();
+    });
+
+    if (!latestData || !latestTimestamp) {
+      throw new Error("Gagal memproses data snapshot.");
+    }
+
+    const currentTime = Date.now();
+    const timeDifference = currentTime - latestTimestamp;
+    const threeMinutesInMillis = 3 * 60 * 1000;
+
+    const status: "online" | "offline" =
+      timeDifference < threeMinutesInMillis ? "online" : "offline";
+
+    return {
+      sensorId: sensorId,
+      TelemetryStatus: status,
+    };
+  } catch (error) {
+    console.error(`Gagal mengambil metadata untuk sensor ${sensorId}:`, error);
+    throw error;
+  }
+}
+
 /**
  * Memperbarui status dari satu aktuator spesifik.
  * @param sensorId - ID sensor yang datanya akan diupdate.
