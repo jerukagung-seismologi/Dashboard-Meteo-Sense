@@ -127,7 +127,7 @@ export const updateUserProfileData = async (uid: string, displayName: string): P
   try {
     const user = auth.currentUser
     if (!user || user.uid !== uid) {
-      throw new Error("User not authenticated or permission denied.")
+      throw new Error("Pengguna tidak terautentikasi atau izin ditolak.")
     }
 
     // Update Firebase Auth profile
@@ -147,7 +147,7 @@ export const updateUserPassword = async (oldPassword: string, newPassword: strin
   try {
     const user = auth.currentUser
     if (!user || !user.email) {
-      throw new Error("User not authenticated or email not available.")
+      throw new Error("Pengguna tidak terautentikasi atau email tidak tersedia.")
     }
 
     // Re-authenticate user with their old password
@@ -159,11 +159,11 @@ export const updateUserPassword = async (oldPassword: string, newPassword: strin
   } catch (error) {
     const authError = error as AuthError
     if (authError.code === "auth/wrong-password") {
-      throw new Error("Incorrect current password.")
+      throw new Error("Password salah.")
     }
     // This error often means the user needs to re-authenticate
     if (authError.code === "auth/requires-recent-login") {
-      throw new Error("This operation is sensitive and requires recent authentication. Please sign out and sign in again before retrying.")
+      throw new Error("Operasi ini sensitif dan memerlukan otentikasi terbaru. Silakan keluar dan masuk kembali sebelum mencoba lagi.")
     }
     throw new Error(getAuthErrorMessage(authError.code))
   }
@@ -174,7 +174,7 @@ export const deleteUserAccount = async (password: string): Promise<void> => {
   try {
     const user = auth.currentUser
     if (!user || !user.email) {
-      throw new Error("User not authenticated or email not available.")
+      throw new Error("Pengguna tidak terautentikasi atau email tidak tersedia.")
     }
 
     // Re-authenticate user
@@ -193,10 +193,10 @@ export const deleteUserAccount = async (password: string): Promise<void> => {
   } catch (error) {
     const authError = error as AuthError
     if (authError.code === "auth/wrong-password") {
-      throw new Error("Incorrect password. Deletion failed.")
+      throw new Error("Password salah. Penghapusan gagal.")
     }
     if (authError.code === "auth/requires-recent-login") {
-      throw new Error("This operation is sensitive and requires recent authentication. Please sign out and sign in again before retrying.")
+      throw new Error("Operasi ini sensitif dan memerlukan otentikasi terbaru. Silakan keluar dan masuk kembali sebelum mencoba lagi.")
     }
     throw new Error(getAuthErrorMessage(authError.code))
   }
@@ -206,20 +206,20 @@ export const deleteUserAccount = async (password: string): Promise<void> => {
 const getAuthErrorMessage = (errorCode: string): string => {
   switch (errorCode) {
     case "auth/user-not-found":
-      return "No account found with this email address."
+      return "Tidak ditemukan akun dengan email tersebut."
     case "auth/wrong-password":
-      return "Incorrect password. Please try again."
+      return "Password salah. Silakan coba lagi."
     case "auth/email-already-in-use":
-      return "An account with this email already exists."
+      return "Akun dengan email ini sudah ada."
     case "auth/weak-password":
-      return "Password should be at least 6 characters long."
+      return "Password harus terdiri dari minimal 6 karakter."
     case "auth/invalid-email":
-      return "Please enter a valid email address."
+      return "Silakan masukkan alamat email yang valid."
     case "auth/too-many-requests":
-      return "Too many failed attempts. Please try again later."
+      return "Terlalu banyak percobaan yang gagal. Silakan coba lagi nanti."
     case "auth/network-request-failed":
-      return "Network error. Please check your connection."
+      return "Kesalahan jaringan. Silakan periksa koneksi Anda."
     default:
-      return "An error occurred during authentication. Please try again."
+      return "Terjadi kesalahan saat melakukan otentikasi. Silakan coba lagi."
   }
 }
