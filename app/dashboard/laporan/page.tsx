@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRef, useEffect, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import { fetchSensorData, SensorDate } from "@/lib/FetchingSensorData";
+import Image from "next/image";
 
 type WeatherRecord = {
   date: string;
@@ -33,7 +34,7 @@ const styles = {
     minHeight: "calc(297mm - 24mm)",
     margin: "0 auto 24px",
     boxShadow: "0 2px 16px rgba(0,0,0,0.08)",
-    padding: "8mm 10mm",
+    padding: "3mm 5mm 8mm", // Reduced top padding from 8mm to 3mm
     color: "#111",
     fontFamily:
       'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"',
@@ -41,8 +42,25 @@ const styles = {
   actions: { display: "flex", justifyContent: "flex-end", maxWidth: "210mm", margin: "16px auto" } as React.CSSProperties,
   button: { background: "#0b5fff", color: "#fff", border: "none", borderRadius: 6, padding: "8px 14px", cursor: "pointer" } as React.CSSProperties,
   header: {
-    display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
-    borderBottom: "1px solid #ccc", paddingBottom: 8, marginBottom: 10,
+    display: "flex", 
+    justifyContent: "space-between", 
+    alignItems: "flex-start", 
+    gap: 12,
+    borderBottom: "1px solid #ccc", 
+    paddingBottom: 8, 
+    marginBottom: 10,
+  } as React.CSSProperties,
+  logoContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 6,
+    marginTop: 0, // Ensure no top margin
+  } as React.CSSProperties,
+  logoImage: {
+    width: 64,
+    height: 64,
+    objectFit: "contain",
   } as React.CSSProperties,
   title: { fontSize: 18, margin: "0 0 4px 0" } as React.CSSProperties,
   h2: { fontSize: 14, margin: "16px 0 8px 0" } as React.CSSProperties,
@@ -457,9 +475,20 @@ export default function LaporanPage() {
     contentRef: componentRef,
     documentTitle: "Laporan Data Cuaca",
     pageStyle: `
-      @page { size: A4 portrait; margin: 12mm; }
+      @page { 
+        size: A4 portrait; 
+        margin: 5mm 8mm 12mm; /* Reduced top margin from 12mm to 5mm */
+      }
       @media print {
-        html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        html, body { 
+          -webkit-print-color-adjust: exact; 
+          print-color-adjust: exact;
+          margin: 0;
+          padding: 0;
+        }
+        @page :first {
+          margin-top: 0;
+        }
       }
     `,
   });
@@ -524,17 +553,31 @@ export default function LaporanPage() {
 
       {/* Pasang ref pada area yang ingin dicetak */}
       <main ref={componentRef} style={styles.sheet}>
-        <header style={styles.header}>
-          <div>
-            <h1 style={styles.title}>Laporan Data Cuaca</h1>
-            <p style={styles.subtitle}>
-              Sensor: {sensorId} • Interval: {selectedPeriod.label}
-              {weatherData.length > 0 ? <> • Periode: {fmtDate(startDate)} — {fmtDate(endDate)}</> : null}
-            </p>
+        <header>
+          <div style={styles.logoContainer}>
+            <img 
+              src="/img/logo.png" 
+              alt="Logo Meteorologi Jerukagung" 
+              style={styles.logoImage} 
+            />
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 500, color: "#555" }}>Departemen Penelitian Sains Atmosfer</div>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 2 }}>JERUKAGUNG METEOROLOGI</div>
+            </div>
           </div>
-          <div style={styles.meta}>
-            <div><strong>Tanggal Cetak:</strong> {fmtDate(printedAt)}</div>
-            <div><Badge>Halaman: 1</Badge></div>
+          
+          <div style={styles.header}>
+            <div>
+              <h1 style={styles.title}>Laporan Data Cuaca</h1>
+              <p style={styles.subtitle}>
+                Sensor: {sensorId} • Interval: {selectedPeriod.label}
+                {weatherData.length > 0 ? <> • Periode: {fmtDate(startDate)} — {fmtDate(endDate)}</> : null}
+              </p>
+            </div>
+            <div style={styles.meta}>
+              <div><strong>Tanggal Cetak:</strong> {fmtDate(printedAt)}</div>
+              <div><Badge>Halaman: 1</Badge></div>
+            </div>
           </div>
         </header>
 
