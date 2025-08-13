@@ -656,6 +656,28 @@ export default function DataPage() {
                     required
                   />
                 </div>
+                <div>
+                  <label className="block text-sm mb-1">Curah Hujan (mm)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.rainfall}
+                    onChange={e => setEditForm({ ...editForm, rainfall: parseFloat(e.target.value) })}
+                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Laju Hujan (mm/jam)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.rainrate}
+                    onChange={e => setEditForm({ ...editForm, rainrate: parseFloat(e.target.value) })}
+                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    required
+                  />
+                </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <Button type="button" variant="outline" onClick={() => { setEditModalOpen(false); setEditingIndex(null); setEditForm(null); }}>
                     Batal
