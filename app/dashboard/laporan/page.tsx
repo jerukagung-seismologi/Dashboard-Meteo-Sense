@@ -9,8 +9,14 @@ type WeatherRecord = {
   date: string;
   sampleCount: number; // jumlah sampel per hari
   temperatureAvg: number;
+  temperatureMin: number;
+  temperatureMax: number;
   humidityAvg: number;
+  humidityMin: number;
+  humidityMax: number;
   pressureAvg: number;
+  pressureMin: number;
+  pressureMax: number;
   dewPointAvg: number;
   windSpeedAvg: number;
   rainfallTot: number;
@@ -97,6 +103,48 @@ const Card = ({ label, value, hint }: { label: string; value: React.ReactNode; h
     {hint ? <div style={styles.hint}>{hint}</div> : null}
   </div>
 );
+
+// New component for metrics with tabular display of avg/max/min values
+const MetricCardWithTime = ({ 
+  label, 
+  unit, 
+  avg, 
+  max, 
+  min
+}: { 
+  label: string; 
+  unit: string;
+  avg: number; 
+  max: number;
+  min: number;
+}) => {
+  const fmt2 = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "0.0");
+  
+  return (
+    <div style={styles.card}>
+      <div style={{ borderBottom: "1px solid #eee", paddingBottom: 4, marginBottom: 8 }}>
+        <div style={styles.label}>{label}</div>
+      </div>
+      
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <tbody>
+          <tr>
+            <td style={{ fontWeight: 600, width: "25%" }}>Avg</td>
+            <td>{fmt2(avg)} {unit}</td>
+          </tr>
+          <tr>
+            <td style={{ fontWeight: 600, paddingTop: 6 }}>Max</td>
+            <td style={{ paddingTop: 6 }}>{fmt2(max)} {unit}</td>
+          </tr>
+          <tr>
+            <td style={{ fontWeight: 600, paddingTop: 6 }}>Min</td>
+            <td style={{ paddingTop: 6 }}>{fmt2(min)} {unit}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 // Tambahan: UI components untuk kontrol pemilihan
 const UIButton = ({
@@ -240,6 +288,13 @@ const ID_DATE_FMT = new Intl.DateTimeFormat("id-ID", {
   year: "numeric",
 });
 
+// Format "dd MMMM" tanpa tahun (id-ID, Asia/Jakarta)
+const ID_DATE_SHORT_FMT = new Intl.DateTimeFormat("id-ID", {
+  timeZone: "Asia/Jakarta",
+  day: "2-digit",
+  month: "long",
+});
+
 function formatIdDateDash(input: string | Date): string {
   const d =
     typeof input === "string"
@@ -252,29 +307,80 @@ function formatIdDateDash(input: string | Date): string {
   return d && !isNaN(d.getTime()) ? ID_DATE_FMT.format(d) : typeof input === "string" ? input : "";
 }
 
+function formatIdDateShort(input: string | Date): string {
+  const d =
+    typeof input === "string"
+      ? (() => {
+          const m = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+          return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
+        })()
+      : new Date(input);
+
+  return d && !isNaN(d.getTime()) ? ID_DATE_SHORT_FMT.format(d) : typeof input === "string" ? input : "";
+}
+
 function DataTable({ rows }: { rows: WeatherRecord[] }) {
   const fmt2 = (n: number) => (Number.isFinite(n) ? n.toFixed(2) : "0.00");
+  const cellStyle = {
+    ...styles.cell,
+    textAlign: "center" as const,
+    padding: "4px 6px",
+  };
+  const headerGroup = {
+    ...styles.theadCell,
+    borderBottom: "none",
+    padding: "6px 2px 2px 2px",
+  };
+  const subHeader = {
+    ...styles.theadCell,
+    fontSize: 10,
+    padding: "2px 4px 4px 4px",
+    fontWeight: "normal" as const,
+  };
+  
   return (
     <table style={styles.table}>
       <thead>
         <tr>
-          <th style={styles.theadCell}>Tanggal</th>
-          <th style={styles.theadCell}>Suhu (°C)</th>
-          <th style={styles.theadCell}>Kelembapan (%)</th>
-          <th style={styles.theadCell}>Tekanan (hPa)</th>
-          <th style={styles.theadCell}>Titik Embun (°C)</th>
-          <th style={styles.theadCell}>Curah Hujan (mm)</th>
+          <th style={styles.theadCell} rowSpan={2}>Tanggal</th>
+          <th style={headerGroup} colSpan={3}>Suhu (°C)</th>
+          <th style={headerGroup} colSpan={3}>Kelembapan (%)</th>
+          <th style={headerGroup} colSpan={3}>Tekanan (hPa)</th>
+          <th style={styles.theadCell} rowSpan={2}>Titik Embun (°C)</th>
+          <th style={styles.theadCell} rowSpan={2}>Curah Hujan (mm)</th>
+        </tr>
+        <tr>
+          <th style={subHeader}>Min</th>
+          <th style={subHeader}>Avg</th>
+          <th style={subHeader}>Max</th>
+          <th style={subHeader}>Min</th>
+          <th style={subHeader}>Avg</th>
+          <th style={subHeader}>Max</th>
+          <th style={subHeader}>Min</th>
+          <th style={subHeader}>Avg</th>
+          <th style={subHeader}>Max</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((r, idx) => (
           <tr key={r.date} style={idx % 2 ? styles.zebra : undefined}>
-            <td style={styles.cell}>{formatIdDateDash(r.date)}</td>
-            <td style={styles.cell}>{fmt2(r.temperatureAvg)}</td>
-            <td style={styles.cell}>{fmt2(r.humidityAvg)}</td>
-            <td style={styles.cell}>{fmt2(r.pressureAvg)}</td>
-            <td style={styles.cell}>{fmt2(r.dewPointAvg)}</td>
-            <td style={styles.cell}>{fmt2(r.rainfallTot)}</td>
+            <td style={styles.cell}>{formatIdDateShort(r.date)}</td>
+            {/* Temperature */}
+            <td style={cellStyle}>{fmt2(r.temperatureMin)}</td>
+            <td style={cellStyle}>{fmt2(r.temperatureAvg)}</td>
+            <td style={cellStyle}>{fmt2(r.temperatureMax)}</td>
+            {/* Humidity */}
+            <td style={cellStyle}>{fmt2(r.humidityMin)}</td>
+            <td style={cellStyle}>{fmt2(r.humidityAvg)}</td>
+            <td style={cellStyle}>{fmt2(r.humidityMax)}</td>
+            {/* Pressure */}
+            <td style={cellStyle}>{fmt2(r.pressureMin)}</td>
+            <td style={cellStyle}>{fmt2(r.pressureAvg)}</td>
+            <td style={cellStyle}>{fmt2(r.pressureMax)}</td>
+            {/* Dew Point */}
+            <td style={cellStyle}>{fmt2(r.dewPointAvg)}</td>
+            {/* Rainfall */}
+            <td style={cellStyle}>{fmt2(r.rainfallTot)}</td>
           </tr>
         ))}
       </tbody>
@@ -302,6 +408,7 @@ export default function LaporanPage() {
     month: "2-digit",
     day: "2-digit",
   });
+
   // Tambahan: formatter jam "HH" pada zona waktu Asia/Jakarta
   const fmtHour = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jakarta",
@@ -343,8 +450,8 @@ export default function LaporanPage() {
       const pAvg = sum(items.map(i => i.pressure)) / n;
       const dAvg = sum(items.map(i => i.dew)) / n;
 
-      // rainrate (mm/h) -> estimasi curah hujan per jam (mm) ≈ rata-rata rainrate dalam jam tsb
-      const rainrateAvg = sum(items.map(i => i.rainrate)) / n;
+      // rainrate (mm/h) -> curah hujan per jam (mm) = nilai rainrate terbesar dalam jam tersebut
+      const maxRainrate = Math.max(...items.map(i => i.rainrate).filter(Number.isFinite), 0);
 
       hours.push({
         hourKey,
@@ -354,7 +461,7 @@ export default function LaporanPage() {
         humidityAvg: hAvg,
         pressureAvg: pAvg,
         dewPointAvg: dAvg,
-        rainfallTot: rainrateAvg,
+        rainfallTot: maxRainrate, // Menggunakan nilai maksimum, bukan rata-rata
       });
     }
     hours.sort((a, b) => a.hourKey.localeCompare(b.hourKey));
@@ -372,18 +479,48 @@ export default function LaporanPage() {
       byDay.get(h.dateKey)!.push(h);
     }
 
+    // Untuk min/max, kita perlu original data juga
+    const byDayRaw = new Map<string, SensorDate[]>();
+    for (const r of rows) {
+      const d = new Date(r.timestamp);
+      const dayKey = fmtYMD.format(d);
+      if (!byDayRaw.has(dayKey)) byDayRaw.set(dayKey, []);
+      byDayRaw.get(dayKey)!.push(r);
+    }
+
     const result: WeatherRecord[] = [];
     for (const [date, items] of byDay) {
       const totalSamples = items.reduce((acc, it) => acc + it.sampleCount, 0) || 1;
       const wsum = (pick: (h: HourlyRecord) => number) =>
         items.reduce((acc, it) => acc + pick(it) * it.sampleCount, 0);
 
+      // Get raw data for this day to calculate min/max
+      const rawData = byDayRaw.get(date) || [];
+      
+      // Calculate min/max from raw data
+      const temps = rawData.map(r => r.temperature).filter(Number.isFinite);
+      const humis = rawData.map(r => r.humidity).filter(Number.isFinite);
+      const press = rawData.map(r => r.pressure).filter(Number.isFinite);
+      
+      const tempMin = temps.length ? Math.min(...temps) : 0;
+      const tempMax = temps.length ? Math.max(...temps) : 0;
+      const humiMin = humis.length ? Math.min(...humis) : 0;
+      const humiMax = humis.length ? Math.max(...humis) : 0;
+      const pressMin = press.length ? Math.min(...press) : 0;
+      const pressMax = press.length ? Math.max(...press) : 0;
+
       result.push({
         date,
         sampleCount: totalSamples,
         temperatureAvg: wsum(i => i.temperatureAvg) / totalSamples,
+        temperatureMin: tempMin,
+        temperatureMax: tempMax,
         humidityAvg: wsum(i => i.humidityAvg) / totalSamples,
+        humidityMin: humiMin,
+        humidityMax: humiMax,
         pressureAvg: wsum(i => i.pressureAvg) / totalSamples,
+        pressureMin: pressMin,
+        pressureMax: pressMax,
         dewPointAvg: wsum(i => i.dewPointAvg) / totalSamples,
         windSpeedAvg: 0, // tidak tersedia di sumber data
         rainfallTot: items.reduce((acc, it) => acc + it.rainfallTot, 0), // Σ curah hujan per jam
@@ -436,6 +573,7 @@ export default function LaporanPage() {
   function fmtDate(d: Date | string) {
     return formatIdDateDash(d);
   }
+  
   function median(ns: number[]) {
     if (ns.length === 0) return 0;
     const a = [...ns].sort((x, y) => x - y);
@@ -593,10 +731,31 @@ export default function LaporanPage() {
           <>
             <section>
               <div style={styles.grid}>
-                <Card label="Suhu Rata-rata" value={`${fmt2(avgTemp)} °C`} hint={`Min ${fmt2(minTemp)} °C • Maks ${fmt2(maxTemp)} °C`} />
-                <Card label="Kelembapan Rata-rata" value={`${fmt2(avgHum)} %`} hint={`Min ${fmt2(minHum)} % • Maks ${fmt2(maxHum)} %`} />
-                <Card label="Tekanan Udara Rata-rata" value={`${fmt2(avgPressure)} hPa`} hint={`Min ${fmt2(minPressure)} hPa • Maks ${fmt2(maxPressure)} hPa`} />
+                <MetricCardWithTime 
+                  label="Suhu" 
+                  unit="°C" 
+                  avg={avgTemp} 
+                  max={maxTemp} 
+                  min={minTemp} 
+                />
+                <MetricCardWithTime 
+                  label="Kelembapan" 
+                  unit="%" 
+                  avg={avgHum} 
+                  max={maxHum} 
+                  min={minHum} 
+                />
+                <MetricCardWithTime 
+                  label="Tekanan Udara" 
+                  unit="hPa" 
+                  avg={avgPressure} 
+                  max={maxPressure} 
+                  min={minPressure} 
+                />
                 <Card label="Total Curah Hujan" value={`${fmt2(totalRain)} mm`} />
+              </div>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, margin: "8px 0 4px" }}>
                 <Card label="Hari Hujan" value={`${rainyDays} hari`} hint={`Rata-rata ${fmt2(avgRain)} mm/hari`} />
                 <Card label="Hari Tanpa Hujan" value={`${dryDays} hari`} />
               </div>
