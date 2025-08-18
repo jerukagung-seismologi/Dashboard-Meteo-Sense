@@ -53,6 +53,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
+      <head>
+        <meta name="google-site-verification" content="PTT76LRNKpjQVzyfPF2O4oibCpjk_6RQGPDNmfs5b_o" />
+      </head>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           {children}
