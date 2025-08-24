@@ -11,7 +11,7 @@ function NavigationLinks() {
         </Link>
       </li>
       <li>
-        <Link href="/dokumentasi" className="text-primary-100 hover:text-white text-sm">
+        <Link href="/doc" className="text-primary-100 hover:text-white text-sm">
           Dokumentasi
         </Link>
       </li>
