@@ -39,6 +39,7 @@
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
     "@tsparticles/react": "^2.10.1",
+    "@tsparticles/slim": "^3.9.1",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -56,6 +57,7 @@
     "react-plotly.js": "latest",
     "react-resizable-panels": "^2.1.7",
     "react-to-print": "^3.1.1",
+    "react-tsparticles": "^2.12.2",
     "server-only": "^0.0.1",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7"
