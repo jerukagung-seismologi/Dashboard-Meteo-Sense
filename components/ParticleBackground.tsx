@@ -9,6 +9,11 @@ import { useTheme } from "next-themes"
 const ParticleBackground = () => {
   const [init, setInit] = useState(false)
   const { resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false) // wait for theme to mount
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     initParticlesEngine(async (engine) => {
@@ -18,88 +23,69 @@ const ParticleBackground = () => {
     })
   }, [])
 
-  const particlesLoaded = async (container?: Container): Promise<void> => {
-    console.log(container)
+  const particlesLoaded = async (_container?: Container): Promise<void> => {
+    // Particles loaded
   }
+
+  const isDark = resolvedTheme === "dark"
 
   const options: ISourceOptions = useMemo(
     () => ({
-      background: {
-        color: {
-          value: "transparent",
-        },
-      },
+      background: { color: { value: "transparent" } },
       fpsLimit: 60,
       interactivity: {
         events: {
-          onHover: {
-            enable: true,
-            mode: "grab",
-          },
+          onHover: { enable: true, mode: "grab" },
         },
         modes: {
           grab: {
             distance: 140,
-            links: {
-              opacity: resolvedTheme === "dark" ? 0.5 : 1,
-            },
+            links: { opacity: 0.6 },
           },
         },
       },
       particles: {
-        color: {
-          value: resolvedTheme === "dark" ? "#94a3b8" : "#475569", // slate-400 for dark, slate-600 for light
-        },
+        color: { value: isDark ? "#ffffff" : "#000000" }, // strict white/black
         links: {
-          color: resolvedTheme === "dark" ? "#e2e8f0" : "#64748b", // slate-200 for dark, slate-500 for light
+          color: isDark ? "#ffffff" : "#000000",          // strict white/black
           distance: 150,
           enable: true,
-          opacity: 0.5,
+          opacity: 0.35,
           width: 1,
         },
         move: {
           direction: "none",
           enable: true,
-          outModes: {
-            default: "out",
-          },
+          outModes: { default: "out" },
           random: false,
-          speed: 1,
+          speed: 0.8,
           straight: false,
         },
         number: {
-          density: {
-            enable: true,
-          },
+          density: { enable: true },
           value: 80,
         },
-        opacity: {
-          value: 0.6,
-        },
-        shape: {
-          type: "circle",
-        },
-        size: {
-          value: { min: 1, max: 2 },
-        },
+        opacity: { value: 0.6 },
+        shape: { type: "circle" },
+        size: { value: { min: 1, max: 2 } },
       },
       detectRetina: true,
     }),
-    [resolvedTheme],
+    [isDark],
   )
 
-  if (init) {
-    return (
-        <Particles
-            id="tsparticles"
-            particlesLoaded={particlesLoaded}
-            options={options}
-            className="absolute inset-0 -z-20"
-        />
-    )
-  }
+  // Avoid SSR hydration mismatch and render only after init + mounted
+  if (!init || !mounted) return null
 
-  return <></>
+  return (
+    <Particles
+      key={isDark ? "dark" : "light"} // force re-init on theme change
+      id="tsparticles"
+      particlesLoaded={particlesLoaded}
+      options={options}
+      className="absolute inset-0 z-10"
+    />
+  )
 }
 
 export default ParticleBackground

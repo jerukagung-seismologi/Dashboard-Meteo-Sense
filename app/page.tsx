@@ -9,12 +9,12 @@ export default function LandingPage() {
   return (
     <>
       <Header />
-      {/* Hero Section */}
-      <ParticleBackground />
+      {/* Hero Section (particles only here) */}
       <section className="relative h-[100vh] flex items-center justify-center overflow-hidden">
-        {/* Background Image & Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white-50/60 to-white-100/80 dark:from-gray-900/80 dark:via-gray-800/60 dark:to-gray-900/80"></div>
-        <div className="relative container mx-auto px-4 flex flex-col items-center text-center">
+        <ParticleBackground />
+        {/* Overlay made more transparent to let particles show through */}
+        <div className="absolute inset-0 pointer-events-none bg-white dark:bg-gray-900" />
+        <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center">
           <div className="mb-6 animate-fade-in">
             <CloudSun className="h-16 w-16 text-primary-500 drop-shadow-xl mx-auto" />
           </div>
@@ -32,8 +32,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Tentang Section */}
-      <section className="py-12 bg-gradient-to-b from-white/80 via-white-50/60 to-white-100/80 dark:from-gray-900/80 dark:via-gray-800/60 dark:to-gray-900/80">
+      {/* Tentang Section (no particles here) */}
+      <section className="py-12 bg-white dark:bg-gray-900">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center gap-8">
           <div className="flex-1 text-center md:text-left">
             <h2 className="text-2xl font-semibold text-primary-700 dark:text-primary-50 mb-4">Tentang Meteo Sense</h2>
