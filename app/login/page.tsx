@@ -213,7 +213,7 @@ export default function AuthPage() {
         await signUpWithEmail(
           formData.email,
           formData.password,
-          formData.name,
+          formData.name
         );
       } else {
         // Sign in with Firebase
@@ -247,8 +247,8 @@ export default function AuthPage() {
   const passwordStrength = getPasswordStrength(formData.password);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900 p-4">
-      <Card className="w-full max-w-md shadow-2xl border-0 bg-white/95 dark:bg-slate-800 dark:text-gray-100 backdrop-blur-sm">
+    <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden  bg-white dark:bg-slate-900">
+      <Card className="relative z-10 w-full max-w-md shadow-2xl border-0 bg-white/95 dark:bg-slate-800/95 dark:text-gray-100 backdrop-blur-sm">
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center items-center mb-4">
             <Image
