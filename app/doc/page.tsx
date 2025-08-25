@@ -1,3 +1,5 @@
+"use server"
+
 import React from 'react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
@@ -9,7 +11,7 @@ const CodeLabel = ({ children }: { children: React.ReactNode }) => (
   </code>
 );
 
-const DokumentasiPage = () => {
+export default async function DokumentasiPage() {
   return (
     <>
       <Header />
@@ -49,27 +51,10 @@ const DokumentasiPage = () => {
                 <li><CodeLabel>Ekspor Data:</CodeLabel> Fitur untuk mengunduh data grafik dalam format CSV atau gambar.</li>
               </ul>
             </section>
-
-            <section id="kontrol-perangkat" className="mb-12">
-              <h2 className="text-3xl font-semibold mb-4 text-gray-800 dark:text-gray-200 border-b pb-2">Kontrol Perangkat</h2>
-              <p className="mb-4 text-gray-700 dark:text-gray-300" >
-                Jika sistem Anda mendukung aktuator atau perangkat yang dapat dikontrol, halaman ini memungkinkan Anda untuk mengelolanya dari jarak jauh.
-              </p>
-              <ul className="text-gray-700 dark:text-gray-300">
-                <li><CodeLabel>Tombol Kontrol:</CodeLabel> Menyalakan atau mematikan perangkat seperti kipas, pemanas, atau penyiram tanaman.</li>
-                <li><CodeLabel>Mode Otomatis:</CodeLabel> Mengatur aturan agar perangkat dapat beroperasi secara otomatis berdasarkan data sensor (misalnya, nyalakan kipas jika suhu melebihi 30°C).</li>
-              </ul>
-            </section>
           </article>
-
-          <footer className="mt-16 pt-8 border-t border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400">
-            <p>&copy; {new Date().getFullYear()} Meteo Sense. All Rights Reserved.</p>
-          </footer>
         </div>
       </div>
       <Footer />
     </>
   );
 };
-
-export default DokumentasiPage;

@@ -1,3 +1,5 @@
+"use server"
+
 import Link from "next/link"
 import Image from "next/image"
 import { MapPin, Phone, Mail, Instagram, Facebook, Twitter, Youtube } from "lucide-react"
@@ -15,11 +17,16 @@ function NavigationLinks() {
           Dokumentasi
         </Link>
       </li>
+            <li>
+        <Link href="/api" className="text-primary-100 hover:text-white text-sm">
+          Layanan API
+        </Link>
+      </li>
     </ul>
   )
 }
 
-export default function Footer() {
+export default async function Footer() {
   return (
     <footer>
       <div className="bg-emerald-700 dark:bg-slate-900 text-white py-12">
@@ -33,7 +40,7 @@ export default function Footer() {
                 <span className="text-lg font-medium">Jerukagung Seismologi</span>
               </div>
               <p className="text-sm text-primary-100 mb-4">
-                Pusat Riset dan Pengembangan Ilmu Kebumian.
+                Departemen Penelitian Sains Atmosfer
               </p>
               <div className="flex space-x-3">
                 <a href="#" className="bg-white/10 hover:bg-white/20 p-2 rounded-full">
@@ -82,7 +89,7 @@ export default function Footer() {
           </div>
 
           <div className="border-t border-white mt-8 pt-8 text-center">
-            <p className="text-sm text-primary-100">&copy; 2025 Jerukagung Meteorologi. All Rights Reserved.</p>
+            <p className="text-sm text-primary-100">&copy; 2025 Jerukagung Seismologi. All Rights Reserved.</p>
           </div>
         </div>
       </div>
