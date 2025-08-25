@@ -44,14 +44,16 @@ export default function LandingPage() {
               Bergabunglah bersama komunitas kami untuk mengakses data, pengembangan instrumen, dan metode pemantauan terbaru.
             </p>
           </div>
-          <div className="flex-1 flex justify-center">
+          <div className="relative z-20 flex-1 flex justify-center">
             <img src="/img/produk.jpg" 
             alt="Tentang Meteo Sense" 
             className="w-64 h-64 object-contain rounded-full" />
           </div>
         </div>
       </section>
-      <Footer />
+      <div className="relative z-20">
+        <Footer />
+      </div>
     </>
   )
 }
