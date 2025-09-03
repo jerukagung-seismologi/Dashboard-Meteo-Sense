@@ -27,7 +27,7 @@ export default async function LandingPage() {
             className="object-contain" 
             />
           </div>
-          <h1 className="text-5xl md:text-5xl font-extrabold mb-6 text-primary-700 dark:text-primary-50 drop-shadow-lg animate-slide-up">
+          <h1 className="text-5xl md:text-5xl font-extrabold mb-6 text-[#0B3954] dark:text-primary-50 drop-shadow-lg animate-slide-up">
             Meteo Sense
           </h1>
           <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-200 mb-8 max-w-2xl drop-shadow-lg animate-fade-in">
