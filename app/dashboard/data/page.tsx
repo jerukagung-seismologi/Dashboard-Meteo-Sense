@@ -5,7 +5,7 @@ import { fetchSensorData, deleteSensorData, SensorDate, editSensorDataByTimestam
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RefreshCw, Download, ThermometerSun, Droplets, Gauge, Sprout, Trash2, Pencil, CloudRain, CloudRainWind } from "lucide-react";
+import { RefreshCw, Download, ThermometerSun, Droplets, Gauge, Sprout, Trash2, Pencil, CloudRain, CloudRainWind, Plus} from "lucide-react";
 import ChartComponent from "@/components/ChartComponent";
 
 interface Period {
@@ -52,14 +52,14 @@ export default function DataPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // State untuk tab
-  const [activeTab, setActiveTab] = useState<'table' | 'grafik'>('table');
+  const [activeTab, setActiveTab] = useState<'table' | 'grafik'> ('table');
 
   // State untuk pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15; // Jumlah item per halaman
 
   // State untuk sensor dan jumlah data
-  const [sensorId, setSensorId] = useState("id-03");
+  const [sensorId, setSensorId] = useState("id-01");
   const [selectedPeriod, setSelectedPeriod] = useState<Period>(periods[1]); // Default 1 Jam
 
   // State untuk mode dark
@@ -69,6 +69,16 @@ export default function DataPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editForm, setEditForm] = useState<WeatherEntry | null>(null);
   const [deleteRowIndex, setDeleteRowIndex] = useState<number | null>(null);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addForm, setAddForm] = useState<{
+    datetime: string;
+    temperature: number;
+    humidity: number;
+    pressure: number;
+    dew: number;
+    rainfall: number;
+    rainrate: number;
+  } | null>(null);
 
   // Fungsi untuk memproses dan mengatur state data
   const processAndSetData = (data: SensorDate[]) => {
@@ -219,6 +229,22 @@ export default function DataPage() {
     setEditModalOpen(true);
   };
 
+// add: fungsi untuk membuka modal tambah data
+  const openAddModal = () => {
+    const now = new Date();
+    const localISO = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setAddForm({
+      datetime: localISO,
+      temperature: 0,
+      humidity: 0,
+      pressure: 0,
+      dew: 0,
+      rainfall: 0,
+      rainrate: 0,
+    });
+    setAddModalOpen(true);
+  };
+
   // Fungsi untuk menyimpan perubahan edit
   const handleEditSave = async () => {
     if (!editForm || editingIndex === null) return;
@@ -239,6 +265,31 @@ export default function DataPage() {
       setEditForm(null);
     } catch (err: any) {
       alert("Gagal mengedit data: " + (err.message || "Terjadi kesalahan."));
+    }
+  };
+
+// add: simpan data baru
+  const handleAddSave = async () => {
+    if (!addForm) return;
+    const ts = new Date(addForm.datetime).getTime();
+    if (Number.isNaN(ts)) {
+      alert("Tanggal/Waktu tidak valid.");
+      return;
+    }
+    try {
+      await editSensorDataByTimestamp(sensorId, ts, {
+        temperature: Number(addForm.temperature),
+        humidity: Number(addForm.humidity),
+        pressure: Number(addForm.pressure),
+        dew: Number(addForm.dew),
+        rainfall: Number(addForm.rainfall),
+        rainrate: Number(addForm.rainrate),
+      });
+      setAddModalOpen(false);
+      setAddForm(null);
+      await fetchData();
+    } catch (err: any) {
+      alert("Gagal menambahkan data: " + (err.message || "Terjadi kesalahan."));
     }
   };
 
@@ -438,6 +489,11 @@ export default function DataPage() {
             {/* Download Button */}
             <Button variant="outline" size="sm" className={`${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"}`} onClick={handleDownloadData}>
               <Download className="h-4 w-4 mr-1" /> Unduh Data
+            </Button>
+
+            {/* Tambah Data Button */}
+            <Button variant="outline" size="sm" className={`${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"}`} onClick={openAddModal}>
+              <Plus className="h-4 w-4 mr-1" /> Tambah Data
             </Button>
 
             {/* Delete Button */}
@@ -680,6 +736,111 @@ export default function DataPage() {
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <Button type="button" variant="outline" onClick={() => { setEditModalOpen(false); setEditingIndex(null); setEditForm(null); }}>
+                    Batal
+                  </Button>
+                  <Button type="submit" variant="default">
+                    Simpan
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal Tambah Data */}
+      {addModalOpen && addForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <Card className={`w-full max-w-md mx-auto ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
+            <CardHeader>
+              <CardTitle>Tambah Data Sensor</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  handleAddSave();
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm mb-1">Tanggal & Waktu</label>
+                  <input
+                    type="datetime-local"
+                    value={addForm.datetime}
+                    onChange={e => setAddForm({ ...(addForm as any), datetime: e.target.value })}
+                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Suhu (°C)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={addForm.temperature}
+                    onChange={e => setAddForm({ ...(addForm as any), temperature: parseFloat(e.target.value) })}
+                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Kelembapan (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={addForm.humidity}
+                    onChange={e => setAddForm({ ...(addForm as any), humidity: parseFloat(e.target.value) })}
+                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Tekanan (hPa)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={addForm.pressure}
+                    onChange={e => setAddForm({ ...(addForm as any), pressure: parseFloat(e.target.value) })}
+                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Titik Embun (°C)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={addForm.dew}
+                    onChange={e => setAddForm({ ...(addForm as any), dew: parseFloat(e.target.value) })}
+                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Curah Hujan (mm)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={addForm.rainfall}
+                    onChange={e => setAddForm({ ...(addForm as any), rainfall: parseFloat(e.target.value) })}
+                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Laju Hujan (mm/jam)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={addForm.rainrate}
+                    onChange={e => setAddForm({ ...(addForm as any), rainrate: parseFloat(e.target.value) })}
+                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    required
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => { setAddModalOpen(false); setAddForm(null); }}>
                     Batal
                   </Button>
                   <Button type="submit" variant="default">

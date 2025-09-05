@@ -21,8 +21,8 @@ import {
   RefreshCwIcon,
 } from "lucide-react"
 import { EmptyState } from "@/components/empty-state"
-import LoadingSpinner from "@/components/LoadingSpinner"
 import { useAuth } from "@/hooks/useAuth"
+import Loading from "../loading"
 
 // Dummy data
 const dummyDevices = [
@@ -155,7 +155,7 @@ export default function DashboardPage() {
   }
 
   if (authLoading || !user) {
-    return <LoadingSpinner />
+    return <Loading/>
   }
 
   if (!authLoading && user && (!devices || devices.length === 0)) {
@@ -321,7 +321,7 @@ export default function DashboardPage() {
             </CardTitle>
             <CardDescription className="text-green-600">Kondisi saat ini</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-3 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-lg">
                 <ThermometerIcon className="h-6 w-6 mx-auto mb-2 text-blue-600" />

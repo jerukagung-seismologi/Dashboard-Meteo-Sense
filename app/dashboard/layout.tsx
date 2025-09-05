@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation"
 import { LayoutDashboard, Network, FileText, Database, ChartNoAxesCombined, User } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { signOutUser } from "@/lib/FetchingAuth"
-import LoadingSpinner from "@/components/LoadingSpinner"
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar"
 import { DesktopSidebar } from "@/components/dashboard/DesktopSidebar"
 import { Topbar } from "@/components/dashboard/Topbar"
 import type { NavigationItem } from "@/components/dashboard/types"
+import Loading from "../loading"
 
 export default function DashboardLayout({
   children,
@@ -37,7 +37,7 @@ export default function DashboardLayout({
   }
 
   if (loading) {
-    return <LoadingSpinner />
+    return <Loading/>
   }
 
   if (!user) {

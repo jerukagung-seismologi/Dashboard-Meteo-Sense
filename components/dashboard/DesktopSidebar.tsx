@@ -8,22 +8,22 @@ interface DesktopSidebarProps {
 
 export function DesktopSidebar({ navigation }: DesktopSidebarProps) {
   return (
-    <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-      <div className="flex flex-col flex-grow bg-gradient-to-b from-white to-blue-50 border-r border-gray-200">
-        <div className="flex items-center h-16 px-4 bg-green-700">
-            <div className="p-2 bg-orange-600 rounded-lg">
-              <Sun className="h-6 w-6 text-white" />
-            </div>
+    <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col lg:p-4">
+      <div className="flex flex-col flex-grow bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden shadow-md">
+        <div className="flex items-center h-16 px-4 bg-gradient-to-r from-green-600 to-green-700 rounded-md">
+          <div className="p-2 bg-orange-600 rounded-md shadow-md">
+            <Sun className="h-6 w-6 text-white" />
+          </div>
           <span className="ml-2 text-lg font-bold text-white">Meteo Sense</span>
         </div>
-        <nav className="flex-1 space-y-1 px-2 py-4">
+        <nav className="flex-1 space-y-1 px-3 py-5 bg-gradient-to-b from-white to-blue-50 dark:from-gray-900 dark:to-gray-800">
           {navigation.map((item) => (
             <Link
               key={item.name}
               href={item.href}
-              className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-blue-200 hover:text-blue-800 transition-all duration-200"
+              className="group flex items-center px-3 py-2.5 text-sm font-medium rounded-sm text-gray-700 dark:text-gray-200 hover:bg-blue-100 dark:hover:bg-gray-700 hover:text-blue-800 dark:hover:text-blue-300 transition-all duration-200"
             >
-              <item.icon className="mr-3 h-5 w-5 group-hover:text-blue-700" />
+              <item.icon className="mr-3 h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-blue-700 dark:group-hover:text-blue-300" />
               {item.name}
             </Link>
           ))}

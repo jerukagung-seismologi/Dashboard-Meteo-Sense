@@ -13,8 +13,8 @@ import {
 } from "@/lib/FetchingAuth"
 import { auth } from "@/lib/ConfigFirebase"
 import { Timestamp } from "firebase/firestore"
-import LoadingSpinner from "@/components/LoadingSpinner"
 import { LogOut } from "lucide-react"
+import Loading from "@/app/loading"
 
 const ProfilePage = () => {
   const [user, setUser] = useState<User | null>(null)
@@ -137,11 +137,13 @@ const ProfilePage = () => {
   }
 
   if (loading) {
-    return <LoadingSpinner />
+    return <Loading/>
   }
+
   if (error) {
     return <div className="flex h-screen items-center justify-center text-red-500">Error: {error}</div>
   }
+  
   if (!user || !userProfile) {
     return null
   }
