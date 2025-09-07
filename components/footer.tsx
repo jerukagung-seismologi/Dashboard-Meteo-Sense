@@ -80,8 +80,8 @@ export default async function Footer() {
                 </li>
                 <li className="flex items-start gap-3">
                   <Mail className="h-5 w-5 text-primary-300" />
-                  <a href="mailto:jerisresearch@gmail.com" className="text-sm">
-                    jerisresearch@gmail.com
+                  <a href="mailto:jerukagunglabs@gmail.com" className="text-sm">
+                    jerukagunglabs@gmail.com
                   </a>
                 </li>
               </ul>
