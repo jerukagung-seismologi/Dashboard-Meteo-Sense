@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import type { NavigationItem } from "./types"
+import type { NavigationItem } from "./navigation"
 import { X, Sun } from "lucide-react"
 
 interface MobileSidebarProps {

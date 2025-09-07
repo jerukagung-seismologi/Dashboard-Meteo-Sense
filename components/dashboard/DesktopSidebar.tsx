@@ -1,5 +1,5 @@
 import Link from "next/link"
-import type { NavigationItem } from "./types"
+import type { NavigationItem } from "./navigation"
 import { Sun } from "lucide-react"
 
 interface DesktopSidebarProps {
@@ -10,7 +10,7 @@ export function DesktopSidebar({ navigation }: DesktopSidebarProps) {
   return (
     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col lg:p-4">
       <div className="flex flex-col flex-grow bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden shadow-md">
-        <div className="flex items-center h-16 px-4 bg-gradient-to-r from-green-600 to-green-700 rounded-md">
+        <div className="flex items-center h-16 px-4 bg-gradient-to-r from-green-600 to-green-700 rounded-t-md">
           <div className="p-2 bg-orange-600 rounded-md shadow-md">
             <Sun className="h-6 w-6 text-white" />
           </div>

@@ -9,7 +9,7 @@ import { signOutUser } from "@/lib/FetchingAuth"
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar"
 import { DesktopSidebar } from "@/components/dashboard/DesktopSidebar"
 import { Topbar } from "@/components/dashboard/Topbar"
-import type { NavigationItem } from "@/components/dashboard/types"
+import type { NavigationItem } from "@/components/dashboard/navigation"
 import Loading from "../loading"
 
 export default function DashboardLayout({
@@ -54,7 +54,7 @@ export default function DashboardLayout({
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen bg-gray-200 dark:bg-slate-900">
       <MobileSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} navigation={navigation} />
       <DesktopSidebar navigation={navigation} />
 

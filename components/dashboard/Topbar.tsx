@@ -22,7 +22,7 @@ interface TopbarProps {
 
 export function Topbar({ user, profile, setSidebarOpen, handleLogout }: TopbarProps) {
   return (
-    <div className="sticky top-0 z-40 w-full bg-white/80 dark:bg-gray-900/90 backdrop-blur-sm">
+    <div className="sticky top-0 z-40 w-full bg-gray-200 dark:bg-slate-900 backdrop-blur-sm">
       <div className="mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex h-16 items-center gap-x-4 rounded-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-md px-4 sm:gap-x-6 sm:px-6">
           <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(true)}>

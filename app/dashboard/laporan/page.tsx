@@ -3,7 +3,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRef, useEffect, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import { fetchSensorData, SensorDate } from "@/lib/FetchingSensorData";
-import Image from "next/image";
 
 type WeatherRecord = {
   date: string;

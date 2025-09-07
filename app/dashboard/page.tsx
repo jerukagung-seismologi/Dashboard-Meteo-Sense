@@ -166,14 +166,14 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-semibold">Beranda</h2>
-          <p className="text-muted-foreground">Ringkasan sistem monitoring cuaca</p>
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Beranda</h2>
+          <p className="text-muted-foreground text-gray-900 dark:text-gray-50">Ringkasan sistem monitoring cuaca</p>
         </div>
         <Button
           onClick={handleRefresh}
           disabled={refreshing}
           variant="outline"
-          className="bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100"
+          className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <RefreshCwIcon className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
           Refresh
