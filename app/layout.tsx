@@ -21,6 +21,13 @@ export const metadata: Metadata = {
     "Teknologi",
     "Sensor",
     "Aktuator",
+    "Meteorologi",
+    "Atmosfer",
+    "Data",
+    "IoT",
+    "Cuaca",
+    "Kualitas Udara",
+    "Lingkungan",
   ],
   robots: {
     index: true,
