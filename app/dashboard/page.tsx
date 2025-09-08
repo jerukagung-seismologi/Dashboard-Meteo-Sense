@@ -15,6 +15,7 @@ import {
   MinusIcon,
   AlertTriangleIcon,
   CheckCircleIcon,
+  RadioIcon,
   WifiIcon,
   WifiOffIcon,
   BatteryIcon,
@@ -28,7 +29,7 @@ import Loading from "../loading"
 const dummyDevices = [
   {
     id: "1",
-    name: "Stasiun A",
+    name: "Stasiun Klimatologi",
     location: "Jerukagung",
     status: "online",
     temperature: 29.5,
@@ -37,7 +38,7 @@ const dummyDevices = [
   },
   {
     id: "2",
-    name: "Stasiun B",
+    name: "Stasiun Riset Agrometeorologi",
     location: "Jerukagung",
     status: "offline",
     temperature: 28.1,
@@ -46,7 +47,7 @@ const dummyDevices = [
   },
   {
     id: "3",
-    name: "Stasiun C",
+    name: "Stasiun Uji Coba",
     location: "Jerukagung",
     status: "online",
     temperature: 30.2,
@@ -55,7 +56,7 @@ const dummyDevices = [
   },
   {
     id: "4",
-    name: "Stasiun D",
+    name: "Stasiun Penelitian Perangkat Keras",
     location: "Jerukagung",
     status: "online",
     temperature: 29.8,
@@ -74,7 +75,7 @@ const dummyRecentAlerts = [
     id: "a1",
     message: "Suhu Ekstrem, lebih dari 32!",
     timestamp: new Date().toISOString(),
-    device: "Stasiun A",
+    device: "Stasiun Klimatologi",
     severity: "tinggi",
   },
 ]
@@ -88,6 +89,7 @@ const dummyWeatherStats = {
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
+
   // Dummy state
   const [devices, setDevices] = useState(dummyDevices)
   const [deviceStats, setDeviceStats] = useState(dummyDeviceStats)
@@ -167,7 +169,7 @@ export default function DashboardPage() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Beranda</h2>
-          <p className="text-muted-foreground text-gray-900 dark:text-gray-50">Ringkasan sistem monitoring cuaca</p>
+          <p className="text-muted-foreground dark:text-gray-50">Ringkasan sistem monitoring cuaca</p>
         </div>
         <Button
           onClick={handleRefresh}
@@ -185,7 +187,7 @@ export default function DashboardPage() {
         <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-l-4 border-l-blue-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-blue-800">Total Perangkat</CardTitle>
-            <GaugeIcon className="h-4 w-4 text-blue-600" />
+            <RadioIcon className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-900">{deviceStats?.totalDevices || 0}</div>

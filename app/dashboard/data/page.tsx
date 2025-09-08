@@ -457,8 +457,8 @@ export default function DataPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-semibold">Eksplorasi Data</h2>
-          <p className="text-muted-foreground">Visualisasi Dasar Data</p>
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Data Editor</h2>
+          <p className="text-muted-foreground dark:text-gray-50">Pengelolaan data sensor</p>
         </div>
       </div>
       

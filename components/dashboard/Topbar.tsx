@@ -47,7 +47,7 @@ export function Topbar({ user, profile, setSidebarOpen, handleLogout }: TopbarPr
                   <DropdownMenuLabel className="dark:text-gray-100">Akun Saya</DropdownMenuLabel>
                   <DropdownMenuSeparator className="dark:bg-gray-700" />
                   <DropdownMenuItem asChild className="dark:hover:bg-gray-800 rounded-lg my-0.5">
-                    <Link href="/dashboard/profile">
+                    <Link href="/dashboard/profil">
                       <User className="mr-2 h-4 w-4 dark:text-gray-200" />
                       <span className="dark:text-gray-100">Profil</span>
                     </Link>

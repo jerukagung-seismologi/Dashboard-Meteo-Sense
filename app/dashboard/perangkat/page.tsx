@@ -470,9 +470,12 @@ export default function PerangkatPage() {
   }
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold">Daftar Perangkat</h1>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Perangkat</h2>
+          <p className="text-muted-foreground dark:text-gray-50">Daftar perangkat yang terhubung dengan sistem</p>
+        </div>
         <AddDeviceDialog
           open={showAddDialog}
           onOpenChange={setShowAddDialog}
