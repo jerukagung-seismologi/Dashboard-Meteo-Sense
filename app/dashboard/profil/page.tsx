@@ -69,7 +69,7 @@ const ProfilePage = () => {
     }
     try {
       await updateUserProfileData(user.uid, displayName)
-      setEditStatus({ message: "Profile updated successfully!", type: "success" })
+      setEditStatus({ message: "Profil berhasil diperbarui", type: "success" })
       setUserProfile((prev) => (prev ? { ...prev, displayName } : null))
     } catch (err: any) {
       setEditStatus({ message: err.message, type: "error" })

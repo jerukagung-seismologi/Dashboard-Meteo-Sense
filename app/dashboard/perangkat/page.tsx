@@ -33,13 +33,13 @@ function DeviceCard({ device, onEdit, onDelete, onGenerateToken }: {
   onGenerateToken: (id: string) => void
 }) {
   return (
-    <Card key={device.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500 bg-white">
+    <Card key={device.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500 dark:border-l-blue-400 bg-white dark:bg-gray-800/50">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg text-gray-800">{device.name}</CardTitle>
+          <CardTitle className="text-lg text-gray-800 dark:text-gray-100">{device.name}</CardTitle>
           <Badge
             variant={device.TelemetryStatus === "online" ? "default" : "destructive"}
-            className={device.TelemetryStatus === "online" ? "bg-green-500" : "bg-red-500"}
+            className={device.TelemetryStatus === "online" ? "bg-green-500 dark:bg-green-600" : "bg-red-500 dark:bg-red-600"}
           >
             {device.TelemetryStatus === "online" ? 
               <Wifi className="h-3 w-3 mr-1" /> : 
@@ -47,25 +47,25 @@ function DeviceCard({ device, onEdit, onDelete, onGenerateToken }: {
             {device.TelemetryStatus === "online" ? "Online" : "Offline"}
           </Badge>
         </div>
-        <CardDescription className="flex items-center text-gray-600">
-          <MapPin className="h-4 w-4 mr-1 text-blue-500" />
+        <CardDescription className="flex items-center text-gray-600 dark:text-gray-400">
+          <MapPin className="h-4 w-4 mr-1 text-blue-500 dark:text-blue-400" />
           {device.location}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-lg">
+        <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
           <div className="flex items-center text-sm">
-            <Calendar className="h-4 w-4 mr-2 text-purple-600" />
+            <Calendar className="h-4 w-4 mr-2 text-purple-600 dark:text-purple-400" />
             <div>
-                <div className="font-medium text-gray-800 whitespace-nowrap">Tanggal Registrasi</div>
-              <div className="text-xs text-gray-600">{device.registrationDate}</div>
+                <div className="font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">Tanggal Registrasi</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">{device.registrationDate}</div>
             </div>
           </div>
           <div className="col-span-2 flex items-center text-sm">
-            <MapPin className="h-4 w-4 mr-2 text-blue-600" />
+            <MapPin className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
             <div>
-              <div className="font-medium text-gray-800">Koordinat</div>
-              <div className="text-xs text-gray-600">
+              <div className="font-medium text-gray-800 dark:text-gray-200">Koordinat</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">
                 {device.coordinates.lat.toFixed(4)}, 
                 {device.coordinates.lng.toFixed(4)}
               </div>
@@ -73,13 +73,13 @@ function DeviceCard({ device, onEdit, onDelete, onGenerateToken }: {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 border-blue-200 text-white hover:text-white" onClick={() => onEdit(device)}>
+          <Button variant="default" size="sm" className="flex-1 bg-blue-600 hover:bg-blue-600/50 text-white" onClick={() => onEdit(device)}>
             <Edit className="h-3 w-3 mr-1" /> Edit
           </Button>
-          <Button variant="outline" size="sm" className="flex-1 bg-green-500 hover:bg-green-600 border-emerald-200 text-white hover:text-white" onClick={() => onGenerateToken(device.authToken ? device.id : "")}>
+          <Button variant="default" size="sm" className="flex-1 bg-green-600 hover:bg-green-600/50 text-white" onClick={() => onGenerateToken(device.authToken ? device.id : "")}>
             <Key className="h-3 w-3 mr-1" /> Token
           </Button>
-          <Button variant="outline" size="sm" className="flex-1 bg-red-500 hover:bg-red-600 border-red-200 text-white hover:text-white" onClick={() => onDelete({ id: device.id, name: device.name })}>
+          <Button variant="default" size="sm" className="flex-1 bg-red-600 hover:bg-red-600/50 text-white" onClick={() => onDelete({ id: device.id, name: device.name })}>
             <Trash2 className="h-3 w-3 mr-1" /> Hapus
           </Button>
         </div>
@@ -141,36 +141,36 @@ function AddDeviceDialog({ open, onOpenChange, onAddDevice, onTokenGenerated, tr
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent>
+      <DialogContent className="dark:bg-gray-900">
         <DialogHeader>
-          <DialogTitle>Tambah Stasiun Cuaca Baru</DialogTitle>
-          <DialogDescription>Tambahkan stasiun monitoring baru ke jaringan Anda</DialogDescription>
+          <DialogTitle className="dark:text-gray-100">Tambah Stasiun Cuaca Baru</DialogTitle>
+          <DialogDescription className="dark:text-gray-400">Tambahkan stasiun monitoring baru ke jaringan Anda</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-4 text-gray-800 dark:text-gray-300">
           <div className="grid gap-2">
-            <Label htmlFor="name" className="text-gray-800">Nama Stasiun</Label>
-            <Input id="name" placeholder="Nama Stasiun" className="placeholder:text-gray-400" value={newDevice.name} onChange={(e) => setNewDevice({ ...newDevice, name: e.target.value })} />
+            <Label htmlFor="name">Nama Stasiun</Label>
+            <Input id="name" placeholder="Nama Stasiun" value={newDevice.name} onChange={(e) => setNewDevice({ ...newDevice, name: e.target.value })} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="location" className="text-gray-800">Lokasi</Label>
-            <Input id="location" placeholder="Lokasi Stasiun" className="placeholder:text-gray-400" value={newDevice.location} onChange={(e) => setNewDevice({ ...newDevice, location: e.target.value })} />
+            <Label htmlFor="location">Lokasi</Label>
+            <Input id="location" placeholder="Lokasi Stasiun" value={newDevice.location} onChange={(e) => setNewDevice({ ...newDevice, location: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="latitude" className="text-gray-800">Latitude</Label>
-              <Input id="latitude" placeholder="Garis Lintang" type="number" className="placeholder:text-gray-400" value={newDevice.latitude} onChange={(e) => setNewDevice({ ...newDevice, latitude: e.target.value })} />
+              <Label htmlFor="latitude">Latitude</Label>
+              <Input id="latitude" placeholder="Garis Lintang" type="number" value={newDevice.latitude} onChange={(e) => setNewDevice({ ...newDevice, latitude: e.target.value })} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="longitude" className="text-gray-800">Longitude</Label>
-              <Input id="longitude" placeholder="Garis Bujur" type="number" className="placeholder:text-gray-400" value={newDevice.longitude} onChange={(e) => setNewDevice({ ...newDevice, longitude: e.target.value })} />
+              <Label htmlFor="longitude">Longitude</Label>
+              <Input id="longitude" placeholder="Garis Bujur" type="number" value={newDevice.longitude} onChange={(e) => setNewDevice({ ...newDevice, longitude: e.target.value })} />
             </div>
           </div>
-          <Button type="button" variant="secondary" className="w-full mb-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-200" onClick={handleDetectLocation}>
+          <Button type="button" variant="secondary" className="w-full mb-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:hover:bg-yellow-900" onClick={handleDetectLocation}>
             Deteksi Lokasi Otomatis
           </Button>
           {/* DeviceRef mode selection */}
           <div className="grid gap-2">
-            <Label className="text-gray-800">ID Perangkat (deviceRef)</Label>
+            <Label>ID Perangkat (deviceRef)</Label>
             <div className="flex gap-4">
               <label className="flex items-center gap-2">
                 <input
@@ -197,7 +197,7 @@ function AddDeviceDialog({ open, onOpenChange, onAddDevice, onTokenGenerated, tr
               <Input
                 id="manualId"
                 placeholder="Masukkan ID perangkat"
-                className="placeholder:text-gray-400 mt-2"
+                className="mt-2"
                 value={newDevice.manualId}
                 onChange={(e) => setNewDevice({ ...newDevice, manualId: e.target.value })}
               />
@@ -205,7 +205,7 @@ function AddDeviceDialog({ open, onOpenChange, onAddDevice, onTokenGenerated, tr
           </div>
           {/* Token mode selection */}
           <div className="grid gap-2">
-            <Label className="text-gray-800">Token Perangkat</Label>
+            <Label>Token Perangkat</Label>
             <div className="flex gap-4">
               <label className="flex items-center gap-2">
                 <input
@@ -232,7 +232,7 @@ function AddDeviceDialog({ open, onOpenChange, onAddDevice, onTokenGenerated, tr
               <Input
                 id="manualToken"
                 placeholder="Masukkan token perangkat"
-                className="placeholder:text-gray-400 mt-2"
+                className="mt-2"
                 value={newDevice.manualToken}
                 onChange={(e) => setNewDevice({ ...newDevice, manualToken: e.target.value })}
               />
@@ -240,8 +240,8 @@ function AddDeviceDialog({ open, onOpenChange, onAddDevice, onTokenGenerated, tr
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" className="text-gray-600 border-gray-400" onClick={() => onOpenChange(false)}>Batal</Button>
-          <Button className="bg-blue-600 text-white hover:bg-blue-700" onClick={handleAdd}>Tambah Perangkat</Button>
+          <Button variant="outline" className="text-gray-800 dark:text-gray-400" onClick={() => onOpenChange(false)}>Batal</Button>
+          <Button variant="default" className="bg-blue-600 hover:bg-blue-600/50 text-white" onClick={handleAdd}>Tambah Perangkat</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -274,37 +274,37 @@ function EditDeviceDialog({ open, onOpenChange, device, onEditDevice, setEditing
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="dark:bg-gray-900">
         <DialogHeader>
-          <DialogTitle>Edit Perangkat</DialogTitle>
-          <DialogDescription>Perbarui informasi perangkat, pengaturan, dan metadata</DialogDescription>
+          <DialogTitle className="dark:text-gray-100">Edit Perangkat</DialogTitle>
+          <DialogDescription className="dark:text-gray-400">Perbarui informasi perangkat, pengaturan, dan metadata</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-4 text-gray-800 dark:text-gray-300">
           <div className="grid gap-2">
-            <Label htmlFor="edit-name" className="text-gray-800">Nama Stasiun</Label>
-            <Input id="edit-name" className="placeholder:text-gray-400" value={device.name} onChange={(e) => setEditingDevice({ ...device, name: e.target.value })} />
+            <Label htmlFor="edit-name">Nama Stasiun</Label>
+            <Input id="edit-name" value={device.name} onChange={(e) => setEditingDevice({ ...device, name: e.target.value })} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="edit-location" className="text-gray-800">Lokasi</Label>
-            <Input id="edit-location" className="placeholder:text-gray-400" value={device.location} onChange={(e) => setEditingDevice({ ...device, location: e.target.value })} />
+            <Label htmlFor="edit-location">Lokasi</Label>
+            <Input id="edit-location" value={device.location} onChange={(e) => setEditingDevice({ ...device, location: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="edit-lat" className="text-gray-800">Latitude</Label>
-              <Input id="edit-lat" type="number" step="0.0001" className="placeholder:text-gray-400" value={device.coordinates.lat} onChange={(e) => setEditingDevice({ ...device, coordinates: { ...device.coordinates, lat: Number.parseFloat(e.target.value) } })} />
+              <Label htmlFor="edit-lat">Latitude</Label>
+              <Input id="edit-lat" type="number" step="0.0001" value={device.coordinates.lat} onChange={(e) => setEditingDevice({ ...device, coordinates: { ...device.coordinates, lat: Number.parseFloat(e.target.value) } })} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-lng" className="text-gray-800">Longitude</Label>
-              <Input id="edit-lng" type="number" step="0.0001" className="placeholder:text-gray-400" value={device.coordinates.lng} onChange={(e) => setEditingDevice({ ...device, coordinates: { ...device.coordinates, lng: Number.parseFloat(e.target.value) } })} />
+              <Label htmlFor="edit-lng">Longitude</Label>
+              <Input id="edit-lng" type="number" step="0.0001" value={device.coordinates.lng} onChange={(e) => setEditingDevice({ ...device, coordinates: { ...device.coordinates, lng: Number.parseFloat(e.target.value) } })} />
             </div>
           </div>
-          <Button type="button" variant="secondary" className="w-full mb-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-200" onClick={handleDetectLocation}>
+          <Button type="button" variant="secondary" className="w-full mb-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:hover:bg-yellow-900" onClick={handleDetectLocation}>
             Deteksi Lokasi Otomatis
           </Button>
         </div>
         <DialogFooter>
-          <Button variant="outline" className="text-gray-600 border-gray-400" onClick={() => onOpenChange(false)}>Batal</Button>
-          <Button className="bg-blue-600 text-white hover:bg-blue-700" onClick={onEditDevice}>Simpan</Button>
+          <Button variant="outline" className="text-gray-800 dark:text-gray-400" onClick={() => onOpenChange(false)}>Batal</Button>
+          <Button variant="default" className="bg-blue-600 hover:bg-blue-600/50 text-white" onClick={onEditDevice}>Simpan</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -320,13 +320,13 @@ function DeleteConfirmationDialog({ open, onOpenChange, onConfirm, deviceName }:
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="dark:bg-gray-900">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-6 w-6 text-red-500" />
-            <DialogTitle>Konfirmasi Penghapusan</DialogTitle>
+            <DialogTitle className="dark:text-gray-100">Konfirmasi Penghapusan</DialogTitle>
           </div>
-          <DialogDescription>
+          <DialogDescription className="dark:text-gray-400">
             Apakah Anda yakin ingin menghapus perangkat <strong>{deviceName || "ini"}</strong>? Tindakan ini tidak dapat dibatalkan.
           </DialogDescription>
         </DialogHeader>
@@ -355,26 +355,26 @@ function DeviceTokenDialog({ open, onOpenChange, token }: {
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="dark:bg-gray-900">
         <DialogHeader>
-          <DialogTitle>Token Perangkat</DialogTitle>
-          <DialogDescription>Gunakan token ini untuk mengautentikasi perangkat IoT Anda</DialogDescription>
+          <DialogTitle className="dark:text-gray-100">Token Perangkat</DialogTitle>
+          <DialogDescription className="dark:text-gray-400">Gunakan token ini untuk mengautentikasi perangkat IoT Anda</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="p-4 bg-blue-50 rounded-lg">
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/50 rounded-lg">
             <div className="flex items-center justify-between">
-              <code className="text-sm font-mono break-all text-blue-700">{token}</code>
-              <Button variant="outline" size="sm" onClick={copyTokenToClipboard} className="ml-2 bg-blue-100 text-blue-700 hover:bg-blue-200">
+              <code className="text-sm font-mono break-all text-blue-700 dark:text-blue-300">{token}</code>
+              <Button variant="outline" size="sm" onClick={copyTokenToClipboard} className="ml-2 bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-800 dark:text-blue-200 dark:hover:bg-blue-700">
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
           </div>
-          <div className="text-sm text-blue-500">
+          <div className="text-sm text-blue-500 dark:text-blue-400">
             <p>Simpan token ini dengan aman. Token ini tidak akan kedaluwarsa.</p>
           </div>
         </div>
         <DialogFooter>
-          <Button className="bg-blue-600 text-white hover:bg-blue-700" onClick={() => onOpenChange(false)}>Tutup</Button>
+          <Button onClick={() => onOpenChange(false)}>Tutup</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -474,7 +474,7 @@ export default function PerangkatPage() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Perangkat</h2>
-          <p className="text-muted-foreground dark:text-gray-50">Daftar perangkat yang terhubung dengan sistem</p>
+          <p className="text-muted-foreground dark:text-gray-400">Daftar perangkat yang terhubung dengan sistem</p>
         </div>
         <AddDeviceDialog
           open={showAddDialog}
@@ -483,7 +483,7 @@ export default function PerangkatPage() {
           onTokenGenerated={(token) => { setToken(token); setShowTokenDialog(true) }}
           trigger={
             <Button
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
+              className="px-4 py-2 rounded flex items-center bg-blue-600 hover:bg-blue-600/50 text-white"
               onClick={() => setShowAddDialog(true)}
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -493,7 +493,7 @@ export default function PerangkatPage() {
         />
       </div>
       {loading ? (
-        <div className="text-center p-10">Memuat perangkat...</div>
+        <div className="text-center text-gray-500 dark:text-gray-300">Memuat perangkat...</div>
       ) : devices.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {devices.map((device) => (
@@ -507,12 +507,12 @@ export default function PerangkatPage() {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center text-center p-16 mt-10 border-2 border-dashed rounded-lg bg-gray-50 max-w-2xl mx-auto">
-          <HardDrive className="h-16 w-16 text-gray-400 mb-6" />
-          <h2 className="text-2xl font-semibold text-gray-700">Belum Ada Perangkat</h2>
-          <p className="text-gray-500 mt-2 mb-6 max-w-md">Mulai dengan menambahkan perangkat monitoring pertama Anda untuk melihat data cuaca secara real-time.</p>
+        <div className="flex flex-col items-center justify-center text-center p-16 mt-10 border-2 border-dashed rounded-lg bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700 max-w-2xl mx-auto">
+          <HardDrive className="h-16 w-16 text-gray-400 dark:text-gray-500 mb-6" />
+          <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-200">Belum Ada Perangkat</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-2 mb-6 max-w-md">Mulai dengan menambahkan perangkat monitoring pertama Anda untuk melihat data cuaca secara real-time.</p>
           <Button
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center text-base"
+            className="px-6 py-3 rounded-lg flex items-center text-base"
             onClick={() => setShowAddDialog(true)}
           >
             <Plus className="h-5 w-5 mr-2" />
