@@ -202,8 +202,8 @@ export default function AnalisisPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-semibold">Analisis Data</h2>
-          <p className="text-muted-foreground">Analisis dan Prediksi Lanjutan Data</p>
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Analisis Data</h2>
+          <p className="text-muted-foreground dark:text-gray-50">Analisis dan Prediksi Lanjutan Data</p>
         </div>
       </div>
       <Card className="mb-6">
