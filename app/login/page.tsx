@@ -264,8 +264,8 @@ export default function AuthPage() {
           </CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-300">
             {isSignUp
-              ? "Buat akun Anda untuk menggunakan layanan ini"
-              : "Masuk ke akun Anda untuk mengakses dashboard"}
+              ? "Buat akun Anda untuk menggunakan dashboard"
+              : "Masuk dengan akun Anda untuk mengakses dashboard"}
           </CardDescription>
         </CardHeader>
 
@@ -478,7 +478,7 @@ export default function AuthPage() {
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Konfirmasi kata sandi Anda"
+                    placeholder="Konfirmasi kata sandi yang telah Anda buat"
                     value={formData.confirmPassword}
                     onChange={(e) =>
                       handleInputChange("confirmPassword", e.target.value)
