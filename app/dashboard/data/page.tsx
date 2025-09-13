@@ -13,7 +13,7 @@ interface Period {
   valueInMinutes: number;
 }
 // Define the structure for table data
-interface WeatherEntry {
+interface WeatherData {
   timestamp: number;
   date: string; // Akan menggunakan dateFormatted dari SensorDate
   temperature: number;
@@ -34,6 +34,15 @@ const periods: Period[] = [
   { label: "24 Jam", valueInMinutes: 24 * 60 },
 ];
 
+// Daftar Sensor
+const sensorOptions = [
+  { label: "Sensor 1", value: "id-01" },
+  { label: "Sensor 2", value: "id-02" },
+  { label: "Sensor 3", value: "id-03" },
+  { label: "Sensor 4", value: "id-04" },
+  { label: "Sensor 5", value: "id-05" },
+];
+
 export default function DataPage() {
   // State untuk data grafik (array terpisah)
   const [timestamps, setTimestamps] = useState<string[]>([]); // Akan menggunakan timeFormatted
@@ -45,7 +54,7 @@ export default function DataPage() {
   const [rainrate, setRainrate] = useState<number[]>([]);
 
   // State untuk data tabel
-  const [weatherData, setWeatherData] = useState<WeatherEntry[]>([]);
+  const [weatherData, setWeatherData] = useState<WeatherData[]>([]);
 
   // UI state
   const [loading, setLoading] = useState(true);
@@ -59,7 +68,7 @@ export default function DataPage() {
   const itemsPerPage = 15; // Jumlah item per halaman
 
   // State untuk sensor dan jumlah data
-  const [sensorId, setSensorId] = useState("id-01");
+  const [sensorId, setSensorId] = useState("id-03");
   const [selectedPeriod, setSelectedPeriod] = useState<Period>(periods[1]); // Default 1 Jam
 
   // State untuk mode dark
@@ -67,7 +76,7 @@ export default function DataPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState<WeatherEntry | null>(null);
+  const [editForm, setEditForm] = useState<WeatherData | null>(null);
   const [deleteRowIndex, setDeleteRowIndex] = useState<number | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addForm, setAddForm] = useState<{
@@ -99,7 +108,7 @@ export default function DataPage() {
       setRainfall(fetchedRainfall);
       setRainrate(fetchedRainrate);
 
-      const dataArray: WeatherEntry[] = data.map((entry) => ({
+      const dataArray: WeatherData[] = data.map((entry) => ({
         timestamp: entry.timestamp,
         date: entry.dateFormatted || new Date(entry.timestamp).toLocaleString('id-ID', { timeZone: "Asia/Jakarta" }),
         temperature: entry.temperature,
@@ -223,7 +232,7 @@ export default function DataPage() {
   };
 
   // Fungsi untuk membuka modal edit
-  const openEditModal = (row: WeatherEntry, index: number) => {
+  const openEditModal = (row: WeatherData, index: number) => {
     setEditingIndex(index);
     setEditForm({ ...row });
     setEditModalOpen(true);
@@ -464,7 +473,7 @@ export default function DataPage() {
       
       {/* Global Controls Card */}
       <Card className="mb-6">
-        <CardHeader className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"} border-b`}>
+        <CardHeader className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${isDarkMode ? "bg-slate-800" : "bg-slate-100"} border-b`}>
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
             {/* Sensor Select */}
             <Select value={sensorId} onValueChange={setSensorId}>
@@ -472,11 +481,11 @@ export default function DataPage() {
                 <SelectValue placeholder="Pilih Sensor" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="id-01">Sensor 1</SelectItem>
-                <SelectItem value="id-02">Sensor 2</SelectItem>
-                <SelectItem value="id-03">Sensor 3</SelectItem>
-                <SelectItem value="id-04">Sensor 4</SelectItem>
-                <SelectItem value="id-05">Sensor 5</SelectItem>
+                {sensorOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -502,7 +511,7 @@ export default function DataPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 bg-slate-100 dark:bg-slate-800">
           <div className="flex flex-wrap gap-2">
             {periods.map((period) => (
               <button
@@ -622,11 +631,11 @@ export default function DataPage() {
                   </table>
                 </div>
                 {weatherData.length > itemsPerPage && (
-                  <div className={`flex items-center justify-between p-4 border-t ${isDarkMode ? "border-gray-700" : ""}`}>
+                  <div className="flex items-center justify-between p-4 border-t bg-slate-200 dark:bg-slate-700">
                     <Button onClick={handlePreviousPage} disabled={currentPage === 1} variant="outline">
                       Sebelumnya
                     </Button>
-                    <span className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"}`}>
+                    <span className="text-sm text-gray-800 dark:text-gray-200">
                       Halaman {currentPage} dari {totalPages}
                     </span>
                     <Button onClick={handleNextPage} disabled={currentPage === totalPages} variant="outline">
@@ -645,7 +654,6 @@ export default function DataPage() {
               <ChartCard title="Kelembapan Relatif (%)" data={humidity} color={chartColors.humidity} Icon={Droplets} />
               <ChartCard title="Tekanan Udara (hPa)" data={pressure} color={chartColors.pressure} Icon={Gauge} />
               <ChartCard title="Titik Embun (°C)" data={dew} color={chartColors.dew} Icon={Sprout}/>
-              {/* charts baru */}
               <ChartCard title="Curah Hujan (mm)" data={rainfall} color={chartColors.rainfall} Icon={CloudRain} />
               <ChartCard title="Laju Hujan (mm/jam)" data={rainrate} color={chartColors.rainrate} Icon={CloudRainWind} />
             </div>
@@ -655,8 +663,8 @@ export default function DataPage() {
 
       {/* Modal Edit Data */}
       {editModalOpen && editForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <Card className={`w-full max-w-md mx-auto ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-40">
+          <Card className="w-full max-w-md mx-auto  bg-white dark:bg-gray-700">
             <CardHeader>
               <CardTitle>Edit Data Sensor</CardTitle>
             </CardHeader>
