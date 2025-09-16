@@ -110,8 +110,7 @@ const ProfilePage = () => {
     }
     try {
       await deleteUserAccount(deletePassword)
-      // No need to push, onAuthStateChanged will trigger a redirect
-      // router.push("/login?message=Akun berhasil dihapus.")
+      // onAuthStateChanged will redirect
     } catch (err: any) {
       setDeleteError(err.message)
     }
@@ -149,79 +148,135 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl space-y-8 p-4">
+    <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-6 lg:px-8">
       {/* Profile Info */}
-      <div className="rounded-lg bg-white p-6 shadow-md">
-        <h1 className="mb-4 text-2xl font-bold">Profil Pengguna</h1>
+      <div className="rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-6 shadow-md">
+        <h1 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">Profil Pengguna</h1>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <p><strong>Nama</strong> {userProfile.displayName}</p>
-          <p><strong>Email:</strong> {userProfile.email}</p>
-          <p><strong>Role:</strong> <span className="rounded-full bg-blue-100 px-2 py-1 text-sm text-blue-800">{userProfile.role}</span></p>
-          <p><strong>Terdaftar sejak:</strong> {formatDateTime(userProfile.createdAt)}</p>
-          <p><strong>Masuk terakhir:</strong> {formatDateTime(userProfile.lastLoginAt)}</p>
+          <p className="text-gray-700 dark:text-gray-200">
+            <strong className="font-semibold text-gray-900 dark:text-gray-100 mr-1">Nama:</strong>
+            {userProfile.displayName}
+          </p>
+          <p className="text-gray-700 dark:text-gray-200">
+            <strong className="font-semibold text-gray-900 dark:text-gray-100 mr-1">Email:</strong>
+            {userProfile.email}
+          </p>
+          <p className="text-gray-700 dark:text-gray-200">
+            <strong className="font-semibold text-gray-900 dark:text-gray-100 mr-2">Role:</strong>
+            <span className="rounded-full border border-blue-200 dark:border-blue-700 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 text-sm text-blue-800 dark:text-blue-300">
+              {userProfile.role}
+            </span>
+          </p>
+          <p className="text-gray-700 dark:text-gray-200">
+            <strong className="font-semibold text-gray-900 dark:text-gray-100 mr-1">Terdaftar sejak:</strong>
+            {formatDateTime(userProfile.createdAt)}
+          </p>
+          <p className="text-gray-700 dark:text-gray-200">
+            <strong className="font-semibold text-gray-900 dark:text-gray-100 mr-1">Masuk terakhir:</strong>
+            {formatDateTime(userProfile.lastLoginAt)}
+          </p>
         </div>
       </div>
 
       {/* Edit Profile */}
-      <div className="rounded-lg bg-white p-6 shadow-md">
-        <h2 className="mb-4 text-xl font-bold">Edit Profil</h2>
+      <div className="rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-6 shadow-md">
+        <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">Edit Profil</h2>
         <form onSubmit={handleProfileUpdate} className="space-y-4">
           <div>
-            <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">Nama Profil</label>
-            <input type="text" id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+            <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Profil</label>
+            <input
+              type="text"
+              id="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200"
+            />
           </div>
-          {editStatus && <p className={`text-sm ${editStatus.type === "success" ? "text-green-600" : "text-red-600"}`}>{editStatus.message}</p>}
-          <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Simpan Perubahan</button>
+          {editStatus && (
+            <p className={`text-sm ${editStatus.type === "success" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+              {editStatus.message}
+            </p>
+          )}
+          <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+            Simpan Perubahan
+          </button>
         </form>
       </div>
 
       {/* Change Password */}
-      <div className="rounded-lg bg-white p-6 shadow-md">
-        <h2 className="mb-4 text-xl font-bold">Ubah Kata Sandi</h2>
+      <div className="rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-6 shadow-md">
+        <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">Ubah Kata Sandi</h2>
         <form onSubmit={handlePasswordUpdate} className="space-y-4">
           <div>
-            <label htmlFor="oldPassword">Password lama</label>
-            <input type="password" id="oldPassword" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+            <label htmlFor="oldPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password lama</label>
+            <input
+              type="password"
+              id="oldPassword"
+              value={oldPassword}
+              onChange={(e) => setOldPassword(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm sm:text-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200"
+            />
           </div>
           <div>
-            <label htmlFor="newPassword">Password baru</label>
-            <input type="password" id="newPassword" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+            <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password baru</label>
+            <input
+              type="password"
+              id="newPassword"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm sm:text-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200"
+            />
           </div>
           <div>
-            <label htmlFor="confirmPassword">Konfirmasi Password baru</label>
-            <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Konfirmasi Password baru</label>
+            <input
+              type="password"
+              id="confirmPassword"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm sm:text-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200"
+            />
           </div>
-          {passwordStatus && <p className={`text-sm ${passwordStatus.type === "success" ? "text-green-600" : "text-red-600"}`}>{passwordStatus.message}</p>}
-          <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Perbarui Kata Sandi</button>
+          {passwordStatus && (
+            <p className={`text-sm ${passwordStatus.type === "success" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+              {passwordStatus.message}
+            </p>
+          )}
+          <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+            Perbarui Kata Sandi
+          </button>
         </form>
       </div>
 
       {/* Zona Bahaya */}
-      <div className="rounded-lg border-2 border-dashed border-red-500 bg-white p-6 shadow-md">
-        <h2 className="mb-4 text-xl font-bold text-red-600">Zona Bahaya</h2>
+      <div className="rounded-lg border-2 border-dashed border-red-500 bg-white dark:bg-slate-900 p-6 shadow-md">
+        <h2 className="mb-4 text-xl font-bold text-red-600 dark:text-red-400">Zona Bahaya</h2>
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-semibold">Hapus akun ini</p>
-            <p className="text-sm text-gray-600">Setelah Anda menghapus akun Anda, tidak ada jalan kembali. Harap pastikan.</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">Hapus akun ini</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Setelah Anda menghapus akun Anda, tidak ada jalan kembali. Harap pastikan.</p>
           </div>
           <button onClick={() => setIsDeleteConfirmVisible(true)} className="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700">
             Hapus Akun
           </button>
         </div>
         {isDeleteConfirmVisible && (
-          <div className="mt-4 rounded-md border border-red-300 bg-red-50 p-4">
-            <h3 className="font-bold text-red-800">Konfirmasi Penghapusan Akun</h3>
-            <p className="text-sm text-red-700">Untuk mengonfirmasi, silakan masukkan kata sandi Anda.</p>
+          <div className="mt-4 rounded-md border border-red-300 dark:border-red-900 bg-red-50 dark:bg-red-950 p-4">
+            <h3 className="font-bold text-red-800 dark:text-red-300">Konfirmasi Penghapusan Akun</h3>
+            <p className="text-sm text-red-700 dark:text-red-400">Untuk mengonfirmasi, silakan masukkan kata sandi Anda.</p>
             <input
               type="password"
               value={deletePassword}
               onChange={(e) => setDeletePassword(e.target.value)}
-              className="mt-2 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
+              className="mt-2 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm sm:text-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200"
               placeholder="Enter your password"
             />
-            {deleteError && <p className="mt-2 text-sm text-red-600">{deleteError}</p>}
+            {deleteError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{deleteError}</p>}
             <div className="mt-4 flex justify-end space-x-2">
-              <button onClick={() => setIsDeleteConfirmVisible(false)} className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300">
+              <button
+                onClick={() => setIsDeleteConfirmVisible(false)}
+                className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300 dark:bg-slate-700 dark:text-gray-100 dark:hover:bg-slate-600"
+              >
                 Batal
               </button>
               <button onClick={handleDeleteAccount} className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">
@@ -232,7 +287,10 @@ const ProfilePage = () => {
         )}
       </div>
 
-      <button onClick={handleSignOut} className="flex w-full items-center justify-center rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700">
+      <button
+        onClick={handleSignOut}
+        className="flex w-full items-center justify-center rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+      >
         <LogOut className="mr-2 h-5 w-5" />
         Keluar
       </button>

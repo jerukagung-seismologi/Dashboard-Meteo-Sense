@@ -1,8 +1,16 @@
 "use client";
-import { useAuth } from "@/hooks/useAuth";
-import { useRef, useEffect, useState } from "react";
+
+import { useEffect, useRef, useState } from "react"
+import { Calendar as CalendarIcon } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import type { DateRange } from "react-day-picker"
+import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { fetchSensorData, SensorDate } from "@/lib/FetchingSensorData"
+import { useAuth } from "@/hooks/useAuth"
+import { Printer } from "lucide-react"
 import { useReactToPrint } from "react-to-print";
-import { fetchSensorData, SensorDate } from "@/lib/FetchingSensorData";
 
 type WeatherRecord = {
   date: string;
@@ -21,15 +29,6 @@ type WeatherRecord = {
   rainfallTot: number;
 };
 
-// Tambahkan pilihan interval analisis (menit)
-interface Period { label: string; valueInMinutes: number; }
-const periods: Period[] = [
-    { label: "1 Hari", valueInMinutes: 24 * 60 },
-    { label: "3 Hari", valueInMinutes: 3 * 24 * 60 },
-    { label: "7 Hari", valueInMinutes: 7 * 24 * 60 },
-    { label: "14 Hari", valueInMinutes: 14 * 24 * 60 },
-    { label: "30 Hari", valueInMinutes: 30 * 24 * 60 },
-];
 
 /* Inline styles */
 const styles = {
@@ -387,17 +386,22 @@ function DataTable({ rows }: { rows: WeatherRecord[] }) {
   );
 }
  
-export default function LaporanPage() {
+export default function PelaporanPage() {
   const { user, profile } = useAuth();
   const displayName = profile?.displayName || user?.displayName || "Petugas Meteorologi";
 
-  // State: sensor, periode, data, loading, error
+  // State: sensor, date range, data, loading, error
   const [sensorId, setSensorId] = useState("id-05");
-  const [selectedPeriod, setSelectedPeriod] = useState<Period>(periods[1]); // default 1 Jam
+
+  // NEW: date range (YYYY-MM-DD)
+  const [startDate, setStartDate] = useState<string>("")
+  const [endDate, setEndDate] = useState<string>("")
+  // NEW: UI date range (Calendar)
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
+
   const [weatherData, setWeatherData] = useState<WeatherRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Tambahan: simpan data mentah untuk min/max berbasis data asli
   const [rawData, setRawData] = useState<SensorDate[]>([]);
 
   // Helper format "YYYY-MM-DD" pada zona waktu Asia/Jakarta
@@ -409,11 +413,19 @@ export default function LaporanPage() {
   });
 
   // Tambahan: formatter jam "HH" pada zona waktu Asia/Jakarta
-  const fmtHour = new Intl.DateTimeFormat("en-CA", {
+  const fmtHour = new Intl.DateTimeFormat("id-ID", {
     timeZone: "Asia/Jakarta",
     hour: "2-digit",
     hour12: false,
   });
+
+  // Helper display format DD-MM-YYYY
+  const toDDMMYYYY = (d: Date) => {
+    const dd = String(d.getDate()).padStart(2, "0")
+    const mm = String(d.getMonth() + 1).padStart(2, "0")
+    const yyyy = d.getFullYear()
+    return `${dd}-${mm}-${yyyy}`
+  }
 
   // Agregasi harian dari data mentah
   // 1) Agregasi per jam terlebih dahulu (khususnya untuk hujan)
@@ -529,13 +541,42 @@ export default function LaporanPage() {
     return result;
   }
 
+  // INIT: default to last 3 days (do not auto-fetch)
+  useEffect(() => {
+    if (!dateRange) {
+      const now = new Date()
+      const start = new Date(now)
+      start.setDate(now.getDate() - 2) // 3 hari terakhir: D-2..D
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(now)
+      end.setHours(23, 59, 59, 999)
+      setDateRange({ from: start, to: end })
+      setStartDate(fmtYMD.format(start))
+      setEndDate(fmtYMD.format(end))
+    }
+  }, [dateRange])
+
+  // Sync internal YYYY-MM-DD when user picks range
+  useEffect(() => {
+    if (dateRange?.from) setStartDate(fmtYMD.format(dateRange.from))
+    if (dateRange?.to) setEndDate(fmtYMD.format(dateRange.to))
+  }, [dateRange])
+
   async function loadData() {
+    // Guard if date not ready yet
+    if (!startDate || !endDate) return
+
     setLoading(true);
     setError(null);
     try {
-      const raw = await fetchSensorData(sensorId, selectedPeriod.valueInMinutes);
+      // Build Asia/Jakarta range (inclusive day end)
+      const start = new Date(`${startDate}T00:00:00+07:00`);
+      const end = new Date(`${endDate}T23:59:59+07:00`);
+      const minutes = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 60000));
+
+      const raw = await fetchSensorData(sensorId, minutes);
       setRawData(raw);
-      const daily = aggregateDaily(raw); // kini via agregasi jam -> harian
+      const daily = aggregateDaily(raw);
       setWeatherData(daily);
     } catch (e: any) {
       setError(e?.message || "Gagal memuat data.");
@@ -546,13 +587,14 @@ export default function LaporanPage() {
     }
   }
 
-  useEffect(() => {
-    loadData();
-  }, [sensorId, selectedPeriod]);
+  // NOTE: disable auto-loading on date/sensor change
+  // useEffect(() => {
+  //   loadData();
+  // }, [sensorId, startDate, endDate]);
 
   const dates = weatherData.map(w => new Date(w.date));
-  const startDate = dates.length ? new Date(Math.min(...dates.map(d => d.getTime()))) : new Date();
-  const endDate = dates.length ? new Date(Math.max(...dates.map(d => d.getTime()))) : new Date();
+  const startDateCalc = dates.length ? new Date(Math.min(...dates.map(d => d.getTime()))) : new Date();
+  const endDateCalc = dates.length ? new Date(Math.max(...dates.map(d => d.getTime()))) : new Date();
 
   // Averages tetap dari agregasi harian
   const temps = weatherData.map(w => w.temperatureAvg);
@@ -614,7 +656,7 @@ export default function LaporanPage() {
     pageStyle: `
       @page { 
         size: A4 portrait; 
-        margin: 5mm 8mm 12mm; /* Reduced top margin from 12mm to 5mm */
+        margin: 5mm 8mm 12mm;
       }
       @media print {
         html, body { 
@@ -623,16 +665,32 @@ export default function LaporanPage() {
           margin: 0;
           padding: 0;
         }
-        @page :first {
-          margin-top: 0;
+        .no-print { display: none !important; }
+
+        /* Hindari pecah di dalam komponen besar */
+        header, section, footer { 
+          break-inside: avoid-page; 
+          page-break-inside: avoid; 
         }
+
+        /* Tabel dapat terpecah antar baris tapi tidak di dalam baris */
+        table { 
+          break-inside: auto; 
+          page-break-inside: auto; 
+        }
+        tr, img { 
+          break-inside: avoid; 
+          page-break-inside: avoid; 
+        }
+
+        @page :first { margin-top: 0; }
       }
     `,
   });
 
   return (
     <>
-      {/* Kontrol pemilihan sensor dan interval (tidak ikut tercetak) */}
+      {/* Kontrol pemilihan (tidak ikut tercetak) */}
       <div
         className="no-print"
         style={{
@@ -644,39 +702,78 @@ export default function LaporanPage() {
           padding: 12,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <Field label="Sensor">
-            <SelectBox value={sensorId} onChange={(v) => setSensorId(v)}>
-              <option value="id-01">id-01</option>
-              <option value="id-02">id-02</option>
-              <option value="id-03">id-03</option>
-              <option value="id-04">id-04</option>
-              <option value="id-05">id-05</option>
-            </SelectBox>
-          </Field>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          {/* Sensor Select (shadcn) */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm text-gray-700">Pilih Sensor</span>
+            <Select value={sensorId} onValueChange={setSensorId}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Pilih Sensor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="id-01">Sensor 1</SelectItem>
+                <SelectItem value="id-02">Sensor 2</SelectItem>
+                <SelectItem value="id-03">Sensor 3</SelectItem>
+                <SelectItem value="id-04">Sensor 4</SelectItem>
+                <SelectItem value="id-05">Sensor 5</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Field label="Interval">
-            <SegmentedControl
-              options={periods.map((p) => ({ label: p.label, value: p.valueInMinutes }))}
-              value={selectedPeriod.valueInMinutes}
-              onChange={(v) => {
-                const p = periods.find((pp) => pp.valueInMinutes === v) || periods[1];
-                setSelectedPeriod(p);
+          {/* Date Range selector with Calendar */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[12px] text-gray-700">Rentang Tanggal (DD-MM-YYYY)</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="justify-between w-[280px]">
+                  <span className="truncate">
+                    {dateRange?.from
+                      ? dateRange?.to
+                        ? `${toDDMMYYYY(dateRange.from)} s/d ${toDDMMYYYY(dateRange.to)}`
+                        : `${toDDMMYYYY(dateRange.from)}`
+                      : "Pilih rentang tanggal"}
+                  </span>
+                  <CalendarIcon className="h-4 w-4 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="p-2 w-auto" sideOffset={6}>
+                <Calendar
+                  mode="range"
+                  numberOfMonths={2}
+                  showOutsideDays
+                  captionLayout="dropdown"
+                  selected={dateRange}
+                  onSelect={(range) => setDateRange(range)}
+                  className="rounded-lg border shadow-sm"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button className="bg-blue-500 text-white" onClick={loadData}>Muat Data</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const now = new Date()
+                const start = new Date(now)
+                start.setDate(now.getDate() - 2)
+                start.setHours(0, 0, 0, 0)
+                const end = new Date(now)
+                end.setHours(23, 59, 59, 999)
+                setDateRange({ from: start, to: end })
+                setStartDate(fmtYMD.format(start))
+                setEndDate(fmtYMD.format(end))
               }}
-            />
-          </Field>
-
-          <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-            <UIButton onClick={loadData} disabled={loading}>
-              {loading ? "Memuat..." : "Muat Data"}
-            </UIButton>
-            <UIButton
-              variant="ghost"
-              onClick={handlePrint}
-              disabled={loading || !!error || weatherData.length === 0}
             >
-              Cetak / Simpan PDF
-            </UIButton>
+              3 Hari Terakhir
+            </Button>
+            {/* NEW: Print A4 */}
+            <Button variant="default" className="flex items-center bg-green-700" onClick={handlePrint}>
+              <Printer className="h-4 w-4 mr-2" />
+              Cetak
+            </Button>
           </div>
         </div>
       </div>
@@ -688,7 +785,7 @@ export default function LaporanPage() {
         </div>
       ) : null}
 
-      {/* Pasang ref pada area yang ingin dicetak */}
+      {/* Area cetak */}
       <main ref={componentRef} style={styles.sheet}>
         <header>
           <div style={styles.logoContainer}>
@@ -707,8 +804,8 @@ export default function LaporanPage() {
             <div>
               <h1 style={styles.title}>Laporan Data Cuaca</h1>
               <p style={styles.subtitle}>
-                Sensor: {sensorId} • Interval: {selectedPeriod.label}
-                {weatherData.length > 0 ? <> • Periode: {fmtDate(startDate)} — {fmtDate(endDate)}</> : null}
+                Sensor: {sensorId}
+                {weatherData.length > 0 ? <> • Periode: {fmtDate(startDateCalc)} — {fmtDate(endDateCalc)}</> : null}
               </p>
             </div>
             <div style={styles.meta}>
@@ -720,11 +817,11 @@ export default function LaporanPage() {
 
         {loading ? (
           <section>
-            <div style={{ color: "#555" }}>Memuat data...</div>
+            <div className="text-gray-600">Memuat data...</div>
           </section>
         ) : weatherData.length === 0 ? (
           <section>
-            <div style={{ color: "#555" }}>Tidak ada data untuk ditampilkan.</div>
+            <div className="text-gray-600">Tidak ada data untuk ditampilkan.</div>
           </section>
         ) : (
           <>
@@ -754,6 +851,7 @@ export default function LaporanPage() {
                 <Card label="Total Curah Hujan" value={`${fmt2(totalRain)} mm`} />
               </div>
               
+
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, margin: "8px 0 4px" }}>
                 <Card label="Hari Hujan" value={`${rainyDays} hari`} hint={`Rata-rata ${fmt2(avgRain)} mm/hari`} />
                 <Card label="Hari Tanpa Hujan" value={`${dryDays} hari`} />
