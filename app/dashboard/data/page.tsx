@@ -883,5 +883,5 @@ export default function DataPage() {
         </div>
       )}
     </div>
-  );
+  )
 }

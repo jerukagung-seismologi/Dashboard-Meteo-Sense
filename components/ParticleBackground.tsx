@@ -31,11 +31,18 @@ const ParticleBackground = () => {
 
   const options: ISourceOptions = useMemo(
     () => ({
-      background: { color: { value: "transparent" } },
+      background: { 
+        color: { 
+          value: "transparent" 
+        } 
+      },
       fpsLimit: 60,
       interactivity: {
         events: {
-          onHover: { enable: true, mode: "grab" },
+          onHover: { 
+            enable: true, 
+            mode: "grab" 
+          },
         },
         modes: {
           grab: {
@@ -45,7 +52,9 @@ const ParticleBackground = () => {
         },
       },
       particles: {
-        color: { value: isDark ? "#ffffff" : "#000000" }, // strict white/black
+        color: { 
+          value: isDark ? "#ffffff" : "#000000" 
+        }, // strict white/black
         links: {
           color: isDark ? "#ffffff" : "#000000",          // strict white/black
           distance: 150,
@@ -62,12 +71,23 @@ const ParticleBackground = () => {
           straight: false,
         },
         number: {
-          density: { enable: true },
+          density: { 
+            enable: true 
+          },
           value: 80,
         },
-        opacity: { value: 0.6 },
-        shape: { type: "circle" },
-        size: { value: { min: 1, max: 2 } },
+        opacity: { 
+          value: 0.6 
+        },
+        shape: { 
+          type: "circle" 
+        },
+        size: { 
+          value: { 
+            min: 1, 
+            max: 2 
+          } 
+        },
       },
       detectRetina: true,
     }),

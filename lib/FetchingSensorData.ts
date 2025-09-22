@@ -1,4 +1,4 @@
-// lib/fetchSensorData.ts
+// lib/FetchingSensorData.ts
 import { rtdb } from "@/lib/ConfigFirebase"; // Mengimpor instance Realtime Database yang sudah diinisialisasi
 import {
   ref,
