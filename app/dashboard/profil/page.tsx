@@ -178,74 +178,77 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      {/* Edit Profile */}
-      <div className="rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-6 shadow-md">
-        <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">Edit Profil</h2>
-        <form onSubmit={handleProfileUpdate} className="space-y-4">
-          <div>
-            <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Profil</label>
-            <input
-              type="text"
-              id="displayName"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200"
-            />
-          </div>
-          {editStatus && (
-            <p className={`text-sm ${editStatus.type === "success" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-              {editStatus.message}
-            </p>
-          )}
-          <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
-            Simpan Perubahan
-          </button>
-        </form>
-      </div>
+      {/* Edit Profile & Change Password - Side by Side */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Edit Profile */}
+        <div className="rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-6 shadow-md">
+          <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">Edit Profil</h2>
+          <form onSubmit={handleProfileUpdate} className="space-y-4">
+            <div>
+              <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Profil</label>
+              <input
+                type="text"
+                id="displayName"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="mt-2 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200"
+              />
+            </div>
+            {editStatus && (
+              <p className={`text-sm ${editStatus.type === "success" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                {editStatus.message}
+              </p>
+            )}
+            <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+              Simpan Perubahan
+            </button>
+          </form>
+        </div>
 
-      {/* Change Password */}
-      <div className="rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-6 shadow-md">
-        <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">Ubah Kata Sandi</h2>
-        <form onSubmit={handlePasswordUpdate} className="space-y-4">
-          <div>
-            <label htmlFor="oldPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password lama</label>
-            <input
-              type="password"
-              id="oldPassword"
-              value={oldPassword}
-              onChange={(e) => setOldPassword(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm sm:text-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200"
-            />
-          </div>
-          <div>
-            <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password baru</label>
-            <input
-              type="password"
-              id="newPassword"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm sm:text-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200"
-            />
-          </div>
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Konfirmasi Password baru</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm sm:text-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200"
-            />
-          </div>
-          {passwordStatus && (
-            <p className={`text-sm ${passwordStatus.type === "success" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-              {passwordStatus.message}
-            </p>
-          )}
-          <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
-            Perbarui Kata Sandi
-          </button>
-        </form>
+        {/* Change Password */}
+        <div className="rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-6 shadow-md">
+          <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">Ubah Kata Sandi</h2>
+          <form onSubmit={handlePasswordUpdate} className="space-y-4">
+            <div>
+              <label htmlFor="oldPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password lama</label>
+              <input
+                type="password"
+                id="oldPassword"
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm sm:text-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200"
+              />
+            </div>
+            <div>
+              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password baru</label>
+              <input
+                type="password"
+                id="newPassword"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm sm:text-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200"
+              />
+            </div>
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Konfirmasi Password baru</label>
+              <input
+                type="password"
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm sm:text-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200"
+              />
+            </div>
+            {passwordStatus && (
+              <p className={`text-sm ${passwordStatus.type === "success" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                {passwordStatus.message}
+              </p>
+            )}
+            <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+              Perbarui Kata Sandi
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Zona Bahaya */}

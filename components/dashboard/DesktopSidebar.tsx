@@ -9,12 +9,12 @@ interface DesktopSidebarProps {
 export function DesktopSidebar({ navigation }: DesktopSidebarProps) {
   return (
     <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col lg:p-4">
-      <div className="flex flex-col flex-grow bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden shadow-md">
-        <div className="flex items-center h-16 px-4 bg-gradient-to-r from-green-700 to-green-800 rounded-t-md">
+      <div className="flex flex-col flex-grow bg-gray-200 dark:bg-slate-900 border border-gray-300 dark:border-gray-700 rounded-md overflow-hidden shadow-md">
+        <div className="flex items-center h-16 px-4 bg-gray-200 dark:bg-slate-900">
           <div className="p-2 bg-orange-600 rounded-md shadow-md">
             <Sun className="h-6 w-6 text-white" />
           </div>
-          <span className="ml-2 text-lg font-bold text-white">Meteo Sense</span>
+          <span className="ml-2 text-lg font-bold text-gray-900 dark:text-white">Meteo Sense</span>
         </div>
         <nav className="flex-1 space-y-1 px-3 py-5 bg-gradient-to-b from-white to-blue-50 dark:from-gray-900 dark:to-gray-800">
           {navigation.map((item) => (
