@@ -6,8 +6,7 @@ import { useRouter } from "next/navigation"
 import { LayoutDashboard, Network, FileText, Database, ChartNoAxesCombined, User } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { signOutUser } from "@/lib/FetchingAuth"
-import { MobileSidebar } from "@/components/dashboard/MobileSidebar"
-import { DesktopSidebar } from "@/components/dashboard/DesktopSidebar"
+import { Sidebar } from "@/components/dashboard/Sidebar"
 import { Topbar } from "@/components/dashboard/Topbar"
 import type { NavigationItem } from "@/components/dashboard/navigation"
 import Loading from "../loading"
@@ -54,22 +53,35 @@ export default function DashboardLayout({
   ]
 
   return (
-    <div className="min-h-screen bg-gray-200 dark:bg-slate-900">
-      <MobileSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} navigation={navigation} />
-      <DesktopSidebar navigation={navigation} />
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-950">
+      {/* Topbar now spans full width */}
+      <Topbar 
+        user={user} 
+        profile={profile} 
+        setSidebarOpen={setSidebarOpen} 
+        handleLogout={handleLogout}
+        navigation={navigation} // Pass navigation to Topbar
+      />
 
-      {/* Main content */}
-      <div className="lg:pl-64">
-          <Topbar 
-            user={user} 
-            profile={profile} 
-            setSidebarOpen={setSidebarOpen} 
-            handleLogout={handleLogout} 
-          />
-        {/* Page content */}
-        <main className="py-6">
-          <div className="px-4 sm:px-6 lg:px-8">{children}</div>
-        </main>
+      {/* Content area with sidebar and main content */}
+      <div className="flex h-[calc(100vh-4rem)]">
+        {/* Sidebar - fixed position on desktop */}
+        <div className={`lg:block ${sidebarOpen ? "block" : "hidden"} lg:w-64 flex-shrink-0`}>
+          <div className="lg:h-[calc(100vh-4rem)] overflow-hidden">
+            <Sidebar 
+              navigation={navigation}
+              sidebarOpen={sidebarOpen}
+              setSidebarOpen={setSidebarOpen}
+            />
+          </div>
+        </div>
+
+        {/* Main content - scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          <main className="py-6">
+            <div className="px-4 sm:px-6 lg:px-8">{children}</div>
+          </main>
+        </div>
       </div>
     </div>
   )
