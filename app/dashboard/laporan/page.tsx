@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react"
 import { Calendar as CalendarIcon, Printer } from "lucide-react"
 import { useReactToPrint } from "react-to-print"
 import { type DateRange } from "react-day-picker"
-
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
@@ -13,16 +12,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils"
 import { fetchSensorData, SensorDate } from "@/lib/FetchingSensorData"
 import { useAuth } from "@/hooks/useAuth"
+import ChartComponent from "@/components/ChartComponent"
+import { 
+  ToastProvider, ToastViewport, Toast, 
+  ToastTitle, ToastDescription, ToastClose 
+} from "@/components/ui/toast"
+import { useToast } from "@/hooks/use-toast"
 
 type WeatherRecord = {
   date: string;
   sampleCount: number;
+  //temperature
   temperatureAvg: number;
   temperatureMin: number;
   temperatureMax: number;
+  //humidity
   humidityAvg: number;
   humidityMin: number;
   humidityMax: number;
+  //pressure
   pressureAvg: number;
   pressureMin: number;
   pressureMax: number;
@@ -184,7 +192,7 @@ function DataTable({ rows }: { rows: WeatherRecord[] }) {
  
 export default function PelaporanPage() {
   const { user, profile } = useAuth();
-  const displayName = profile?.displayName || user?.displayName || "Petugas Meteorologi";
+  const displayName = profile?.displayName || user?.displayName || "Pejabat Meteorologi";
 
   // State: sensor, date range, data, loading, error
   const [sensorId, setSensorId] = useState("id-05");
@@ -199,6 +207,8 @@ export default function PelaporanPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rawData, setRawData] = useState<SensorDate[]>([]);
+
+  const { toast } = useToast()
 
   // Helper format "YYYY-MM-DD" pada zona waktu Asia/Jakarta
   const fmtYMD = new Intl.DateTimeFormat("en-CA", {
@@ -350,24 +360,97 @@ export default function PelaporanPage() {
     if (dateRange?.to) setEndDate(fmtYMD.format(dateRange.to))
   }, [dateRange])
 
+  // Helper untuk menampilkan tanggal+jam dengan format yang lebih jelas
+  function formatDateTimeForDisplay(date: Date): string {
+    return new Intl.DateTimeFormat("id-ID", {
+      timeZone: "Asia/Jakarta",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(date);
+  }
+
+  // Improved helper untuk mendapatkan tanggal pada jam 7 pagi
+  function getDayAtSeven(dateStr: string): Date {
+    try {
+      // Pastikan format tanggal YYYY-MM-DD
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        throw new Error(`Format tanggal tidak valid: ${dateStr}`);
+      }
+      
+      // Set ke jam 7 pagi WIB
+      return new Date(`${dateStr}T07:00:00+07:00`);
+    } catch (e) {
+      console.error(`Error parsing date: ${dateStr}`, e);
+      // Fallback ke tanggal sekarang jam 7 pagi
+      const today = new Date();
+      today.setHours(7, 0, 0, 0);
+      return today;
+    }
+  }
+
+  // QUICK RANGE HELPER with toast notification
+  function selectQuickRange(n: number, label: string) {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - (n - 1));
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(0, 0, 0, 0);
+    setDateRange({ from: start, to: end });
+    
+    toast({
+      title: "Rentang Tanggal",
+      description: `${label} diterapkan (data akan diambil pada pukul 07:00)`
+    });
+  }
+
   async function loadData() {
-    if (!startDate || !endDate) return
+    if (!startDate || !endDate) return;
 
     setLoading(true);
     setError(null);
     try {
-      const start = new Date(`${startDate}T00:00:00+07:00`);
-      const end = new Date(`${endDate}T23:59:59+07:00`);
-      const minutes = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 60000));
+      // Ambil data dari startDate 07:00 WIB sampai endDate 07:00 WIB
+      const start = getDayAtSeven(startDate);
+      let end = getDayAtSeven(endDate);
 
+      // Debug time range
+      toast({
+        title: "Memuat Data",
+        description: `${formatDateTimeForDisplay(start)} — ${formatDateTimeForDisplay(end)}`
+      });
+
+      // Jika end <= start ( misal user pilih tanggal sama ) → asumsi ingin 1 hari penuh
+      if (end.getTime() <= start.getTime()) {
+        end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+        toast({
+          description: `Tanggal mulai dan akhir sama, memperluas rentang +24 jam`
+        });
+      }
+
+      const minutes = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 60000));
       const raw = await fetchSensorData(sensorId, minutes);
       setRawData(raw);
       const daily = aggregateDaily(raw);
       setWeatherData(daily);
+      
+      toast({
+        title: "Data Berhasil Dimuat",
+        description: `${daily.length} hari data (${raw.length} sampel)`
+      });
     } catch (e: any) {
-      setError(e?.message || "Gagal memuat data.");
+      const msg = e?.message || "Gagal memuat data.";
+      setError(msg);
       setRawData([]);
       setWeatherData([]);
+      toast({
+        variant: "destructive",
+        title: "Gagal Memuat Data",
+        description: msg
+      });
     } finally {
       setLoading(false);
     }
@@ -432,6 +515,18 @@ export default function PelaporanPage() {
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
     documentTitle: "Laporan Data Cuaca",
+    onBeforePrint: () => {
+      toast({
+        title: "Cetak",
+        description: "Menyiapkan dokumen untuk dicetak..."
+      });
+    },
+    onAfterPrint: () => {
+      toast({
+        title: "Cetak Selesai",
+        description: "Proses pencetakan telah selesai."
+      });
+    },
     pageStyle: `
       @page { 
         size: A4 portrait; 
@@ -466,192 +561,285 @@ export default function PelaporanPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Pelaporan</h2>
-          <p className="text-muted-foreground dark:text-gray-50">Pelaporan data sensor</p>
+    <ToastProvider>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Pelaporan</h2>
+            <p className="text-muted-foreground dark:text-gray-50">Pelaporan data sensor</p>
+          </div>
         </div>
-      </div>
 
-      <Card className=" no-print mb-6">
-        <CardHeader className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 dark:bg-slate-800 bg-slate-100 border-b`}>
-          {/* Kolom Kiri: Sensor dan Rentang Tanggal */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
-            {/* Pilih Sensor */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Pilih Sensor</label>
-              <Select value={sensorId} onValueChange={setSensorId}>
-                <SelectTrigger className="w-full sm:w-[200px]">
-                  <SelectValue placeholder="Pilih Sensor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="id-01">Sensor 1</SelectItem>
-                  <SelectItem value="id-02">Sensor 2</SelectItem>
-                  <SelectItem value="id-03">Sensor 3</SelectItem>
-                  <SelectItem value="id-04">Sensor 4</SelectItem>
-                  <SelectItem value="id-05">Sensor 5</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <Card className=" no-print mb-6">
+          <CardHeader className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 dark:bg-slate-800 bg-slate-100 border-b`}>
+            {/* Kolom Kiri: Sensor dan Rentang Tanggal */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
+              {/* Pilih Sensor */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Pilih Sensor</label>
+                <Select value={sensorId} onValueChange={setSensorId}>
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Pilih Sensor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="id-01">Sensor 1</SelectItem>
+                    <SelectItem value="id-02">Sensor 2</SelectItem>
+                    <SelectItem value="id-03">Sensor 3</SelectItem>
+                    <SelectItem value="id-04">Sensor 4</SelectItem>
+                    <SelectItem value="id-05">Sensor 5</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Pilih Rentang Tanggal */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Rentang Tanggal</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-[280px] justify-start text-left font-normal">
-                    <CalendarIcon className="mr-2 h-4 w-4 opacity-60" />
-                    <span className="truncate">
-                      {dateRange?.from
-                        ? dateRange?.to
-                          ? `${toDDMMYYYY(dateRange.from)} s/d ${toDDMMYYYY(dateRange.to)}`
-                          : `${toDDMMYYYY(dateRange.from)}`
-                        : "Pilih rentang tanggal"}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-2" sideOffset={6}>
-                  <Calendar
-                    mode="range"
-                    numberOfMonths={2}
-                    showOutsideDays
-                    captionLayout="dropdown"
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    className="rounded-lg border shadow-sm"
-                  />
-                </PopoverContent>
-              </Popover>
+              {/* Pilih Rentang Tanggal */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Rentang Tanggal <span className="text-xs text-amber-600">(data diambil pada 07:00 WIB)</span>
+                </label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="date"
+                      variant="outline"
+                      className="w-full sm:w-auto justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          <>
+                            {toDDMMYYYY(dateRange.from)} - {toDDMMYYYY(dateRange.to)}
+                          </>
+                        ) : (
+                          toDDMMYYYY(dateRange.from)
+                        )
+                      ) : (
+                        <span>Pilih tanggal</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-auto p-2" sideOffset={6}>
+                    <Calendar
+                      mode="range"
+                      numberOfMonths={2}
+                      showOutsideDays
+                      captionLayout="dropdown"
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      className="rounded-lg border shadow-sm"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
-          </div>
-          
-          {/* Kolom Kanan: Actions */}
-          <div className="flex w-full flex-col justify-end gap-2 sm:w-auto sm:flex-row sm:items-end">
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={() => {
-                const now = new Date();
-                const start = new Date(now);
-                start.setDate(now.getDate() - 2);
-                start.setHours(0, 0, 0, 0);
-                const end = new Date(now);
-                end.setHours(23, 59, 59, 999);
-                setDateRange({ from: start, to: end });
-              }}
-            >
-              3 Hari Terakhir
-            </Button>
-            <Button className="w-full bg-blue-500 text-white hover:bg-blue-600 sm:w-auto" onClick={loadData}>Muat Data</Button>
-            <Button className="flex w-full items-center bg-green-700 text-white hover:bg-green-800 sm:w-auto" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              Cetak
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
-      {/* Info error sederhana */}
-      {error ? (
-        <div className="no-print mx-auto mb-3 max-w-[210mm] text-red-700">
+            
+            {/* Kolom Kanan: Actions */}
+            <div className="flex w-full flex-col justify-end gap-2 sm:w-auto sm:flex-row sm:items-end">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => selectQuickRange(3, "3 Hari Terakhir")}
+                >
+                  3 Hari
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => selectQuickRange(7, "7 Hari Terakhir")}
+                >
+                  7 Hari
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => selectQuickRange(14, "14 Hari Terakhir")}
+                >
+                  14 Hari
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => selectQuickRange(30, "30 Hari Terakhir")}
+                >
+                  30 Hari
+                </Button>
+              </div>
+              <Button
+                className="w-full bg-blue-500 text-white hover:bg-blue-600 sm:w-auto"
+                onClick={loadData}
+              >
+                Muat Data
+              </Button>
+              <Button
+                className="flex w-full items-center bg-green-700 text-white hover:bg-green-800 sm:w-auto"
+                onClick={handlePrint}
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                Cetak
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+        {/* Info error sederhana */}
+        {error ? (
+          <div className="no-print mx-auto mb-3 max-w-[210mm] text-red-700">
           {error}
         </div>
-      ) : null}
+        ) : null}
 
-      {/* Area cetak */}
-      <main ref={componentRef} className="mx-auto my-0 mb-6 min-h-[calc(297mm-24mm)] max-w-[210mm] bg-white text-gray-900 shadow-md print:shadow-none">
-        {/* Header */}
-        <header className="mb-2 border-b border-gray-300 px-5 py-4 print:pb-2">
-          <div className="flex items-center gap-3">
-            <img 
-              src="/img/logo.png" 
-              alt="Logo Meteorologi Jerukagung" 
-              className="h-16 w-16 object-contain" 
-            />
-            <div>
-              <div className="text-sm font-medium text-gray-500">Departemen Penelitian Sains Atmosfer</div>
-              <div className="text-xl font-bold">JERUKAGUNG METEOROLOGI</div>
+        {/* Area cetak */}
+        <main ref={componentRef} className="mx-auto my-0 mb-6 min-h-[calc(297mm-24mm)] max-w-[210mm] bg-white text-gray-900 shadow-md print:shadow-none">
+          {/* Header */}
+          <header className="mb-2 border-b border-gray-300 px-5 py-4 print:pb-2">
+            <div className="flex items-center gap-3">
+              <img 
+                src="/img/logo.png" 
+                alt="Logo Meteorologi Jerukagung" 
+                className="h-16 w-16 object-contain" 
+              />
+              <div>
+                <div className="text-sm font-medium text-gray-500">Departemen Penelitian Sains Atmosfer</div>
+                <div className="text-xl font-bold">JERUKAGUNG METEOROLOGI</div>
+              </div>
             </div>
+            
+            <div className="mt-4 flex items-start justify-between">
+              <div>
+                <h1 className="text-lg font-bold">Laporan Data Cuaca</h1>
+                <p className="text-sm text-gray-500">
+                  Sensor: {sensorId}
+                  {weatherData.length > 0 ? (
+                    <>
+                      {" "}• Periode: {fmtDate(startDateCalc)} 07:00 — {fmtDate(endDateCalc)} 07:00
+                    </>
+                  ) : null}
+                </p>
+              </div>
+              <div className="text-right text-xs text-gray-500">
+                <div><strong>Tanggal Cetak:</strong> {fmtDate(printedAt)}</div>
+                <div><Badge>Halaman: 1</Badge></div>
+              </div>
+            </div>
+          </header>
+
+          {/* Konten */}
+          <div className="p-5 print:p-2">
+            {loading ? (
+              <section className="text-gray-600">Memuat data...</section>
+            ) : weatherData.length === 0 ? (
+              <section className="text-gray-600">Tidak ada data untuk ditampilkan.</section>
+            ) : (
+              <>
+                {/* Ringkasan Statistik */}
+                <section className="mb-4">
+                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-4 md:grid-cols-4">
+                    <MetricCardWithTime 
+                      label="Suhu" 
+                      unit="°C" 
+                      avg={avgTemp} 
+                      max={maxTemp} 
+                      min={minTemp} 
+                    />
+                    <MetricCardWithTime 
+                      label="Kelembapan" 
+                      unit="%" 
+                      avg={avgHum} 
+                      max={maxHum} 
+                      min={minHum} 
+                    />
+                    <MetricCardWithTime 
+                      label="Tekanan Udara" 
+                      unit="hPa" 
+                      avg={avgPressure} 
+                      max={maxPressure} 
+                      min={minPressure} 
+                    />
+                    <CardLabel label="Total Curah Hujan" value={`${fmt2(totalRain)} mm`} />
+                  </div>
+                  
+                  <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-2 md:grid-cols-2">
+                    <CardLabel label="Hari Hujan" value={`${rainyDays} hari`} hint={`Rata-rata ${fmt2(avgRain)} mm/hari`} />
+                    <CardLabel label="Hari Tanpa Hujan" value={`${dryDays} hari`} />
+                  </div>
+                </section>
+
+                {/* NEW: Grafik Suhu & Titik Embun */}
+                <section className="mb-6">
+                  <h2 className="mb-2 text-sm font-semibold">Grafik Suhu & Titik Embun</h2>
+                  <div className="rounded-md border border-gray-300 p-2">
+                    <ChartComponent
+                      data={[
+                        {
+                          x: weatherData.map(w => formatIdDateShort(w.date)),
+                          y: weatherData.map(w => Number.isFinite(w.temperatureAvg) ? +w.temperatureAvg.toFixed(2) : 0),
+                          type: "scatter",
+                          mode: "lines+markers",
+                          name: "Suhu Rata-rata (°C)",
+                          line: { color: "#ef4444", width: 2 },
+                          marker: { color: "#ef4444", size: 5 }
+                        },
+                        {
+                          x: weatherData.map(w => formatIdDateShort(w.date)),
+                          y: weatherData.map(w => Number.isFinite(w.dewPointAvg) ? +w.dewPointAvg.toFixed(2) : 0),
+                          type: "scatter",
+                          mode: "lines+markers",
+                          name: "Titik Embun (°C)",
+                          line: { color: "#0ea5e9", width: 2 },
+                          marker: { color: "#0ea5e9", size: 5 }
+                        }
+                      ]}
+                      layout={{
+                        autosize: true,
+                        height: 340,
+                        margin: { l: 50, r: 20, t: 30, b: 50 },
+                        paper_bgcolor: "white",
+                        plot_bgcolor: "white",
+                        font: { family: "Roboto, sans-serif", color: "#374151", size: 11 },
+                        legend: { orientation: "h", y: -0.25, font: { size: 11 } },
+                        xaxis: {
+                          title: "Tanggal",
+                          tickangle: -30,
+                          showgrid: true,
+                          gridcolor: "rgba(0,0,0,0.06)"
+                        },
+                        yaxis: {
+                          title: "Suhu / Titik Embun (°C)",
+                          showgrid: true,
+                          gridcolor: "rgba(0,0,0,0.06)"
+                        }
+                      }}
+                      config={{
+                        displayModeBar: false,
+                        responsive: true
+                      }}
+                    />
+                  </div>
+                </section>
+
+                {/* Rincian Harian */}
+                <section className="mb-4">
+                  <h2 className="mb-2 text-sm font-semibold">Rincian Harian</h2>
+                  <DataTable rows={weatherData} />
+                </section>
+
+                {/* Footer */}
+                <footer className="mt-8 flex items-end justify-between gap-3">
+                  <div className="text-sm">
+                    <div className="text-xs text-gray-500">Disusun oleh,</div>
+                    <div className="h-10" />
+                    <div className="text-base font-semibold">________________________</div>
+                    <div className="mt-1 text-sm text-gray-500">{displayName}</div>
+                  </div>
+                  <div className="flex-1 text-right text-[10px] text-gray-500">
+                    Catatan: Data di atas merupakan ringkasan periode yang dipilih.
+                  </div>
+                </footer>
+              </>
+            )}
           </div>
-          
-          <div className="mt-4 flex items-start justify-between">
-            <div>
-              <h1 className="text-lg font-bold">Laporan Data Cuaca</h1>
-              <p className="text-sm text-gray-500">
-                Sensor: {sensorId}
-                {weatherData.length > 0 ? <> • Periode: {fmtDate(startDateCalc)} — {fmtDate(endDateCalc)}</> : null}
-              </p>
-            </div>
-            <div className="text-right text-xs text-gray-500">
-              <div><strong>Tanggal Cetak:</strong> {fmtDate(printedAt)}</div>
-              <div><Badge>Halaman: 1</Badge></div>
-            </div>
-          </div>
-        </header>
-
-        {/* Konten */}
-        <div className="p-5 print:p-2">
-          {loading ? (
-            <section className="text-gray-600">Memuat data...</section>
-          ) : weatherData.length === 0 ? (
-            <section className="text-gray-600">Tidak ada data untuk ditampilkan.</section>
-          ) : (
-            <>
-              {/* Ringkasan Statistik */}
-              <section className="mb-4">
-                <div className="grid grid-cols-4 gap-2 sm:grid-cols-4 md:grid-cols-4">
-                  <MetricCardWithTime 
-                    label="Suhu" 
-                    unit="°C" 
-                    avg={avgTemp} 
-                    max={maxTemp} 
-                    min={minTemp} 
-                  />
-                  <MetricCardWithTime 
-                    label="Kelembapan" 
-                    unit="%" 
-                    avg={avgHum} 
-                    max={maxHum} 
-                    min={minHum} 
-                  />
-                  <MetricCardWithTime 
-                    label="Tekanan Udara" 
-                    unit="hPa" 
-                    avg={avgPressure} 
-                    max={maxPressure} 
-                    min={minPressure} 
-                  />
-                  <CardLabel label="Total Curah Hujan" value={`${fmt2(totalRain)} mm`} />
-                </div>
-                
-                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-2 md:grid-cols-2">
-                  <CardLabel label="Hari Hujan" value={`${rainyDays} hari`} hint={`Rata-rata ${fmt2(avgRain)} mm/hari`} />
-                  <CardLabel label="Hari Tanpa Hujan" value={`${dryDays} hari`} />
-                </div>
-              </section>
-
-              {/* Rincian Harian */}
-              <section className="mb-4">
-                <h2 className="mb-2 text-sm font-semibold">Rincian Harian</h2>
-                <DataTable rows={weatherData} />
-              </section>
-
-              {/* Footer */}
-              <footer className="mt-8 flex items-end justify-between gap-3">
-                <div className="text-sm">
-                  <div className="text-xs text-gray-500">Disusun oleh,</div>
-                  <div className="h-10" />
-                  <div className="text-base font-semibold">________________________</div>
-                  <div className="mt-1 text-sm text-gray-500">{displayName}</div>
-                </div>
-                <div className="flex-1 text-right text-[10px] text-gray-500">
-                  Catatan: Data di atas merupakan ringkasan periode yang dipilih.
-                </div>
-              </footer>
-            </>
-          )}
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+      <ToastViewport />
+    </ToastProvider>
   )
 }
