@@ -515,7 +515,7 @@ export default function PelaporanPage() {
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
     documentTitle: "Laporan Data Cuaca",
-    onBeforePrint: () => {
+    onBeforePrint: async () => {
       toast({
         title: "Cetak",
         description: "Menyiapkan dokumen untuk dicetak..."
