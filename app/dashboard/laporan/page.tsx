@@ -192,7 +192,7 @@ function DataTable({ rows }: { rows: WeatherRecord[] }) {
  
 export default function PelaporanPage() {
   const { user, profile } = useAuth();
-  const displayName = profile?.displayName || user?.displayName || "Pejabat Meteorologi";
+  const displayName = profile?.displayName || user?.displayName || "Pengamat Cuaca";
 
   // State: sensor, date range, data, loading, error
   const [sensorId, setSensorId] = useState("id-05");
@@ -241,11 +241,11 @@ export default function PelaporanPage() {
     humidityAvg: number;
     pressureAvg: number;
     dewPointAvg: number;
-    rainfallTot: number; // mm pada jam tsb (≈ rata-rata rainrate mm/h × 1 jam)
+    rainfallTot: number; 
   };
 
 
-  // Agregasi harian dari data mentah
+  // Agregasi Interval Jam
   function aggregateHourly(rows: SensorDate[]): HourlyRecord[] {
     const byHour = new Map<string, SensorDate[]>();
     for (const r of rows) {
@@ -284,6 +284,8 @@ export default function PelaporanPage() {
     return hours;
   }
 
+
+  //Agregasi Data Harian
   function aggregateDaily(rows: SensorDate[]): WeatherRecord[] {
     const hourly = aggregateHourly(rows);
 
@@ -380,7 +382,7 @@ export default function PelaporanPage() {
         throw new Error(`Format tanggal tidak valid: ${dateStr}`);
       }
       
-      // Set ke jam 7 pagi WIB
+      // Set ke jam 7 pagi WIB (UTC+7)
       return new Date(`${dateStr}T07:00:00+07:00`);
     } catch (e) {
       console.error(`Error parsing date: ${dateStr}`, e);
@@ -807,10 +809,6 @@ export default function PelaporanPage() {
                           showgrid: true,
                           gridcolor: "rgba(0,0,0,0.06)"
                         }
-                      }}
-                      config={{
-                        displayModeBar: false,
-                        responsive: true
                       }}
                     />
                   </div>
