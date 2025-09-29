@@ -252,7 +252,7 @@ export default function AuthPage() {
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center items-center mb-4">
             <Image
-              src="/img/logo.png"
+              src="/img/logo.webp"
               alt="logo"
               width={80}
               height={80}

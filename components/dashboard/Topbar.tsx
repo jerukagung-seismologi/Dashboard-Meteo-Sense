@@ -50,7 +50,7 @@ export function Topbar({ user, profile, setSidebarOpen, handleLogout, navigation
           <div className="flex items-center gap-3">
             <div className="relative h-8 w-8">
               <Image
-                src="/img/logo.png" // Using the logo from public/img/logo.png
+                src="/img/logo.webp" // Using the logo from public/img/logo.png
                 alt="Meteo Sense Logo"
                 fill
                 className="object-contain"

@@ -20,7 +20,7 @@ export default async function LandingPage() {
         <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center">
           <div className="mb-6 animate-fade-in">
             <Image 
-            src="/img/logo.png" 
+            src="/img/logo.webp" 
             alt="Logo Jerukagung Seismologi" 
             width={150} 
             height={150} 
@@ -51,7 +51,7 @@ export default async function LandingPage() {
             </p>
           </div>
           <div className="relative z-20 flex-1 flex justify-center">
-            <img src="/img/produk.jpg" 
+            <img src="/img/produk.webp" 
             alt="Tentang Meteo Sense" 
             className="w-64 h-64 object-contain rounded-full" />
           </div>

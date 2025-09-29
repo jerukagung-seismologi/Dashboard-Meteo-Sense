@@ -695,7 +695,7 @@ export default function PelaporanPage() {
           <header className="mb-2 border-b border-gray-300 px-5 py-4 print:pb-2">
             <div className="flex items-center gap-3">
               <img 
-                src="/img/logo.png" 
+                src="/img/logo.webp" 
                 alt="Logo Meteorologi Jerukagung" 
                 className="h-16 w-16 object-contain" 
               />
