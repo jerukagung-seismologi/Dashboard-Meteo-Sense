@@ -1,14 +1,12 @@
 import { MetadataRoute } from "next"
 
-export default function sitemap(): MetadataRoute.Robots {
-  const baseUrl = "https://meteo.jerukagunglabs.web.id"
-
+export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
-      userAgent: "*",
+      userAgent: '*',
       allow: '/',
     },
-    sitemap: `${baseUrl}/sitemap.xml`,
-    host: baseUrl,
+    sitemap: `https://meteo.jerukagunglabs.web.id/sitemap.xml`,
+    host: `https://meteo.jerukagunglabs.web.id`,
   }
 }
