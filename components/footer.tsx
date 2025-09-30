@@ -8,17 +8,17 @@ function NavigationLinks() {
   return (
     <ul className="space-y-2">
       <li>
-        <Link href="/" className="text-primary-100 hover:text-white text-sm">
+        <Link href="/" className="text-sm">
           Beranda
         </Link>
       </li>
       <li>
-        <Link href="/doc" className="text-primary-100 hover:text-white text-sm">
+        <Link href="/doc" className="text-sm">
           Dokumentasi
         </Link>
       </li>
             <li>
-        <Link href="/api" className="text-primary-100 hover:text-white text-sm">
+        <Link href="/api" className="text-sm">
           Layanan API
         </Link>
       </li>
@@ -29,17 +29,17 @@ function NavigationLinks() {
 export default async function Footer() {
   return (
     <footer>
-      <div className="bg-emerald-700 dark:bg-slate-900 text-white py-12">
+      <div className="bg-gray-200 dark:bg-slate-900 text-black dark:text-white py-12">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <div className="flex items-center mb-4">
                 <div className="relative w-10 h-10 mr-2">
-                  <Image src="/img/logo.png" alt="Jerukagung Meteorologi Logo" fill className="object-contain" />
+                  <Image src="/img/logo.webp" alt="Jerukagung Meteorologi Logo" fill className="object-contain" />
                 </div>
                 <span className="text-lg font-medium">Jerukagung Seismologi</span>
               </div>
-              <p className="text-sm text-primary-100 mb-4">
+              <p className="text-sm mb-4">
                 Departemen Penelitian Sains Atmosfer
               </p>
               <div className="flex space-x-3">
@@ -71,15 +71,15 @@ export default async function Footer() {
               <h3 className="text-lg font-medium mb-4">Kontak</h3>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-primary-300" />
+                  <MapPin className="h-5 w-5" />
                   <span className="text-sm">Jerukagung, Klirong, Kebumen, Indonesia</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <Phone className="h-5 w-5 text-primary-300" />
+                  <Phone className="h-5 w-5" />
                   <span className="text-sm">+62 882 2541 8750</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <Mail className="h-5 w-5 text-primary-300" />
+                  <Mail className="h-5 w-5" />
                   <a href="mailto:jerukagunglabs@gmail.com" className="text-sm">
                     jerukagunglabs@gmail.com
                   </a>
@@ -89,7 +89,7 @@ export default async function Footer() {
           </div>
 
           <div className="border-t border-white mt-8 pt-8 text-center">
-            <p className="text-sm text-primary-100">&copy; 2025 Jerukagung Seismologi. All Rights Reserved.</p>
+            <p className="text-sm">&copy; 2025 Jerukagung Seismologi. All Rights Reserved.</p>
           </div>
         </div>
       </div>
