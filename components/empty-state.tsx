@@ -36,15 +36,13 @@ export function EmptyState({ type, title, description, actionLabel, onAction }: 
       case "dashboard":
         return {
           title: "Belum Ada Perangkat Terdaftar",
-          description:
-            "Anda belum menambahkan perangkat monitoring. Mulai dengan menambahkan perangkat pertama Anda untuk memantau kondisi cuaca dan hidrologi.",
+          description: "Anda belum menambahkan perangkat monitoring. Mulai dengan menambahkan perangkat pertama Anda untuk memantau kondisi cuaca dan hidrologi.",
           actionLabel: "Tambah Perangkat Pertama",
         }
       case "devices":
         return {
           title: "Belum Ada Perangkat",
-          description:
-            "Anda belum menambahkan perangkat monitoring. Klik tombol di bawah untuk menambahkan perangkat pertama Anda.",
+          description: "Anda belum menambahkan perangkat monitoring. Klik tombol di bawah untuk menambahkan perangkat pertama Anda.",
           actionLabel: "Tambah Perangkat Pertama",
         }
       case "charts":
@@ -56,8 +54,7 @@ export function EmptyState({ type, title, description, actionLabel, onAction }: 
       case "logs":
         return {
           title: "Belum Ada Log",
-          description:
-            "Belum ada aktivitas sistem yang tercatat. Log akan muncul setelah Anda menambahkan dan menggunakan perangkat.",
+          description: "Belum ada aktivitas sistem yang tercatat. Log akan muncul setelah Anda menambahkan dan menggunakan perangkat.",
           actionLabel: "Tambah Perangkat untuk Log",
         }
       default:
