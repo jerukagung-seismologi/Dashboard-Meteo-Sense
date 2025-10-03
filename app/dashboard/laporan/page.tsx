@@ -10,12 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { fetchSensorData, SensorDate } from "@/lib/FetchingSensorData"
+import { fetchSensorDataByTimestampRange, SensorDate } from "@/lib/FetchingSensorData"
 import { useAuth } from "@/hooks/useAuth"
 import ChartComponent from "@/components/ChartComponent"
 import { 
-  ToastProvider, ToastViewport, Toast, 
-  ToastTitle, ToastDescription, ToastClose 
+  ToastProvider, ToastViewport, Toast
 } from "@/components/ui/toast"
 import { useToast } from "@/hooks/use-toast"
 
@@ -39,15 +38,6 @@ type WeatherRecord = {
   rainfallTot: number;
 };
 
-/* Small UI components */
-const Badge = ({ children, className }: { children: React.ReactNode, className?: string }) => (
-  <span className={cn(
-    "inline-block rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs text-blue-600",
-    className
-  )}>
-    {children}
-  </span>
-);
 
 const CardLabel = ({ label, value, hint, className }: { label: string; value: React.ReactNode; hint?: React.ReactNode; className?: string }) => (
   <div className={cn("rounded-md border border-gray-300 p-2", className)}>
@@ -433,8 +423,7 @@ export default function PelaporanPage() {
         });
       }
 
-      const minutes = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 60000));
-      const raw = await fetchSensorData(sensorId, minutes);
+      const raw = await fetchSensorDataByTimestampRange(sensorId, start.getTime(), end.getTime());
       setRawData(raw);
       const daily = aggregateDaily(raw);
       setWeatherData(daily);
@@ -719,7 +708,6 @@ export default function PelaporanPage() {
               </div>
               <div className="text-right text-xs text-gray-500">
                 <div><strong>Tanggal Cetak:</strong> {fmtDate(printedAt)}</div>
-                <div><Badge>Halaman: 1</Badge></div>
               </div>
             </div>
           </header>
