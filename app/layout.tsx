@@ -34,18 +34,18 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/img/logo.png",
-        href: "/img/logo.png",
+        url: "/img/logo.webp",
+        href: "/img/logo.webp",
         sizes: "any",
-        type: "image/png",
+        type: "image/webp",
       },
     ],
     apple: [
       {
-        url: "/img/logo.png",
-        href: "/img/logo.png",
+        url: "/img/logo.webp",
+        href: "/img/logo.webp",
         sizes: "180x180",
-        type: "image/png",
+        type: "image/webp",
       },
     ],
   },
