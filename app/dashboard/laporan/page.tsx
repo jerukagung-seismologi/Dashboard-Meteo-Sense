@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { fetchSensorDataByTimestampRange, SensorDate } from "@/lib/FetchingSensorData"
+import { fetchSensorDataByDateRange, SensorDate } from "@/lib/FetchingSensorData"
 import { useAuth } from "@/hooks/useAuth"
 import ChartComponent from "@/components/ChartComponent"
 import { 
@@ -186,13 +186,9 @@ export default function PelaporanPage() {
 
   // State: sensor, date range, data, loading, error
   const [sensorId, setSensorId] = useState("id-05");
-
-  // NEW: date range (YYYY-MM-DD)
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
-  // NEW: UI date range (Calendar)
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
-
   const [weatherData, setWeatherData] = useState<WeatherRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -423,7 +419,7 @@ export default function PelaporanPage() {
         });
       }
 
-      const raw = await fetchSensorDataByTimestampRange(sensorId, start.getTime(), end.getTime());
+      const raw = await fetchSensorDataByDateRange(sensorId, start.getTime(), end.getTime());
       setRawData(raw);
       const daily = aggregateDaily(raw);
       setWeatherData(daily);

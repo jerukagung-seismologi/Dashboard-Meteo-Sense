@@ -40,7 +40,7 @@ export interface SensorMetaData {
  * @param endTimestamp - Timestamp akhir dalam milidetik.
  * @returns Sebuah promise yang resolve dengan array data sensor dalam rentang waktu tersebut.
  */
-export async function fetchSensorDataByTimestampRange(
+export async function fetchSensorDataByDateRange(
   sensorId: string,
   startTimestamp: number,
   endTimestamp: number
