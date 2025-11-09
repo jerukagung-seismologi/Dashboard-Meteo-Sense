@@ -1,12 +1,53 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { fetchSensorData, deleteSensorData, SensorDate, editSensorDataByTimestamp, deleteSensorDataByTimestamp } from "@/lib/FetchingSensorData";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RefreshCw, Download, ThermometerSun, Droplets, Gauge, Sprout, Trash2, Pencil, CloudRain, CloudRainWind, Plus} from "lucide-react";
+import {
+  RefreshCw,
+  Trash2,
+  Download,
+  Plus,
+  ThermometerSun,
+  Droplets,
+  Gauge,
+  Pencil,
+  Sprout,
+  CloudRain,
+  CloudRainWind,
+  Calendar as CalendarIcon,
+} from "lucide-react";
+import { format, addDays } from "date-fns";
+import { DateRange } from "react-day-picker";
+
+import {
+  fetchSensorData,
+  deleteSensorData,
+  editSensorDataByTimestamp,
+  deleteSensorDataByTimestamp,
+  fetchSensorDataByDateRange,
+} from "@/lib/FetchingSensorData";
+import type { SensorDate } from "@/lib/FetchingSensorData";
 import ChartComponent from "@/components/ChartComponent";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 interface Period {
   label: string;
@@ -70,6 +111,7 @@ export default function DataPage() {
   // State untuk sensor dan jumlah data
   const [sensorId, setSensorId] = useState("id-03");
   const [selectedPeriod, setSelectedPeriod] = useState<Period>(periods[1]); // Default 1 Jam
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   // State untuk mode dark
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -149,12 +191,28 @@ export default function DataPage() {
     setLoading(true);
     setError(null);
     try {
-      const dataPoints = selectedPeriod.valueInMinutes;
-      const data = await fetchSensorData(sensorId, dataPoints);
+      let data: SensorDate[];
+      if (dateRange?.from && dateRange?.to) {
+        // Fetch by date range if selected
+        const startTimestamp = dateRange.from.getTime();
+        const endTimestamp = dateRange.to.getTime();
+        data = await fetchSensorDataByDateRange(
+          sensorId,
+          startTimestamp,
+          endTimestamp
+        );
+      } else {
+        // Fallback to fetch by period
+        const dataPoints = selectedPeriod.valueInMinutes;
+        data = await fetchSensorData(sensorId, dataPoints);
+      }
       processAndSetData(data);
     } catch (err: any) {
       console.error("Error fetching data: ", err);
-      setError("Gagal mengambil data: " + (err.message || "Terjadi kesalahan tidak diketahui."));
+      setError(
+        "Gagal mengambil data: " +
+          (err.message || "Terjadi kesalahan tidak diketahui.")
+      );
       setWeatherData([]);
       setTimestamps([]);
       setTemperatures([]);
@@ -166,18 +224,19 @@ export default function DataPage() {
     } finally {
       setLoading(false);
     }
-  }, [sensorId, selectedPeriod]);
+  }, [sensorId, selectedPeriod, dateRange]);
 
   // Inisialisasi komponen dan refresh data
   useEffect(() => {
     fetchData(); // Panggil untuk pemuatan awal
 
     // Atur interval untuk polling, hanya jika periode tertentu dipilih
-    if (selectedPeriod.valueInMinutes <= 60) { // Contoh: polling untuk periode 1 jam atau kurang
+    if (selectedPeriod.valueInMinutes <= 60 && !dateRange) {
+      // Contoh: polling untuk periode 1 jam atau kurang, dan tidak ada date range aktif
       const interval = setInterval(updateData, 60000); // Panggil updateData untuk polling
       return () => clearInterval(interval);
     }
-  }, [fetchData, updateData, selectedPeriod.valueInMinutes]);
+  }, [fetchData, updateData, selectedPeriod.valueInMinutes, dateRange]);
 
   // Deteksi mode dark dari Tailwind (class 'dark' pada html)
   useEffect(() => {
@@ -489,8 +548,50 @@ export default function DataPage() {
               </SelectContent>
             </Select>
 
+            {/* Date Range Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  id="date"
+                  variant={"outline"}
+                  className={cn(
+                    "w-[260px] justify-start text-left font-normal",
+                    !dateRange && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "LLL dd, y")} -{" "}
+                        {format(dateRange.to, "LLL dd, y")}
+                      </>
+                    ) : (
+                      format(dateRange.from, "LLL dd, y")
+                    )
+                  ) : (
+                    <span>Pilih rentang tanggal</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={dateRange?.from}
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+
             {/* Refresh Button */}
-            <Button variant="outline" size="icon" onClick={fetchData} disabled={loading}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={fetchData} disabled={loading}
+            >
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""} ${isDarkMode ? "text-gray-200" : ""}`} />
               <span className="sr-only">Refresh data</span>
             </Button>
