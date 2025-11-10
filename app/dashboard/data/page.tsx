@@ -49,6 +49,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
+// Define the structure for selectable periods
 interface Period {
   label: string;
   valueInMinutes: number;
@@ -82,17 +83,19 @@ const sensorOptions = [
   { label: "Sensor 3", value: "id-03" },
   { label: "Sensor 4", value: "id-04" },
   { label: "Sensor 5", value: "id-05" },
+  { label: "Sensor 6", value: "id-06" },
+  { label: "Sensor 7", value: "id-07" }
 ];
 
 export default function DataPage() {
   // State untuk data grafik (array terpisah)
   const [timestamps, setTimestamps] = useState<string[]>([]); // Akan menggunakan timeFormatted
-  const [temperatures, setTemperatures] = useState<number[]>([]);
-  const [humidity, setHumidity] = useState<number[]>([]);
-  const [pressure, setPressure] = useState<number[]>([]);
-  const [dew, setDew] = useState<number[]>([]);
-  const [rainfall, setRainfall] = useState<number[]>([]);
-  const [rainrate, setRainrate] = useState<number[]>([]);
+  const [temperatures, setTemperatures] = useState<number[]>([]); //Float64
+  const [humidity, setHumidity] = useState<number[]>([]); //Float64
+  const [pressure, setPressure] = useState<number[]>([]); //Float64
+  const [dew, setDew] = useState<number[]>([]); //Float64
+  const [rainfall, setRainfall] = useState<number[]>([]); //Float64
+  const [rainrate, setRainrate] = useState<number[]>([]); //Float64
 
   // State untuk data tabel
   const [weatherData, setWeatherData] = useState<WeatherData[]>([]);
@@ -972,7 +975,7 @@ export default function DataPage() {
             <CardContent>
               <p className="mb-4">Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat diurungkan.</p>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => { setDeleteModalOpen(false); setDeleteRowIndex(null); }}>
+                <Button variant="outline" onClick={() => {setDeleteModalOpen(false); setDeleteRowIndex(null); }}>
                   Tidak
                 </Button>
                 <Button variant="destructive" onClick={handleDeleteRowConfirmed}>
