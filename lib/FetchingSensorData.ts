@@ -31,6 +31,7 @@ export interface SensorDate extends SensorValue {
 export interface SensorMetaData {
   sensorId: string;
   TelemetryStatus: "online" | "offline";
+  lastUpdate?: number | null;
 }
 
 /**
@@ -154,6 +155,7 @@ export async function fetchSensorMetadata(
       return {
         sensorId: sensorId,
         TelemetryStatus: "offline",
+        lastUpdate: null,
       };
     }
 
@@ -166,7 +168,11 @@ export async function fetchSensorMetadata(
     });
 
     if (!latestData || !latestTimestamp) {
-      throw new Error("Gagal memproses data snapshot.");
+      return {
+        sensorId: sensorId,
+        TelemetryStatus: "offline",
+        lastUpdate: null,
+      };
     }
 
     const currentTime = Date.now();
@@ -179,10 +185,16 @@ export async function fetchSensorMetadata(
     return {
       sensorId: sensorId,
       TelemetryStatus: status,
+      lastUpdate: latestTimestamp,
     };
   } catch (error) {
     console.error(`Gagal mengambil metadata untuk sensor ${sensorId}:`, error);
-    throw error;
+    // In case of error, return offline status
+    return {
+      sensorId: sensorId,
+      TelemetryStatus: "offline",
+      lastUpdate: null,
+    };
   }
 }
 
