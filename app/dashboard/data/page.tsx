@@ -9,15 +9,17 @@ import {
   ThermometerSun,
   Droplets,
   Gauge,
-  Pencil,
   Sprout,
   CloudRain,
   CloudRainWind,
   Calendar as CalendarIcon,
+  Edit,
 } from "lucide-react";
-import { format, addDays } from "date-fns";
+import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 
+import { useAuth } from "@/hooks/useAuth";
+import { fetchAllDevices } from "@/lib/FetchingDevice";
 import {
   fetchSensorData,
   deleteSensorData,
@@ -76,18 +78,14 @@ const periods: Period[] = [
   { label: "24 Jam", valueInMinutes: 24 * 60 },
 ];
 
-// Daftar Sensor
-const sensorOptions = [
-  { label: "Sensor 1", value: "id-01" },
-  { label: "Sensor 2", value: "id-02" },
-  { label: "Sensor 3", value: "id-03" },
-  { label: "Sensor 4", value: "id-04" },
-  { label: "Sensor 5", value: "id-05" },
-  { label: "Sensor 6", value: "id-06" },
-  { label: "Sensor 7", value: "id-07" }
-];
+interface SensorOption {
+  label: string;
+  value: string;
+}
 
 export default function DataPage() {
+  const { user } = useAuth();
+
   // State untuk data grafik (array terpisah)
   const [timestamps, setTimestamps] = useState<string[]>([]); // Akan menggunakan timeFormatted
   const [temperatures, setTemperatures] = useState<number[]>([]); //Float64
@@ -105,14 +103,15 @@ export default function DataPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // State untuk tab
-  const [activeTab, setActiveTab] = useState<'table' | 'grafik'> ('table');
+  const [activeTab, setActiveTab] = useState<"table" | "grafik">("table");
 
   // State untuk pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15; // Jumlah item per halaman
 
   // State untuk sensor dan jumlah data
-  const [sensorId, setSensorId] = useState("id-03");
+  const [sensorOptions, setSensorOptions] = useState<SensorOption[]>([]);
+  const [sensorId, setSensorId] = useState<string>("");
   const [selectedPeriod, setSelectedPeriod] = useState<Period>(periods[1]); // Default 1 Jam
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
@@ -133,6 +132,42 @@ export default function DataPage() {
     rainfall: number;
     rainrate: number;
   } | null>(null);
+
+  // Fetch user's devices from Firestore
+  useEffect(() => {
+    if (user?.uid) {
+      const loadUserDevices = async () => {
+        try {
+          const devices = await fetchAllDevices(user.uid);
+          if (devices.length > 0) {
+            const options = devices
+              .filter((device) => device.authToken) // Only include devices with an authToken
+              .map((device) => ({
+                label: device.name,
+                value: device.authToken!,
+              }));
+
+            if (options.length > 0) {
+              setSensorOptions(options);
+              setSensorId(options[0].value); // Set the first sensor as default
+            } else {
+              setError("Tidak ada sensor yang dapat ditampilkan. Pastikan perangkat Anda memiliki authToken.");
+              setSensorOptions([]);
+              setSensorId("");
+            }
+          } else {
+            setError("Tidak ada perangkat yang terhubung dengan akun Anda.");
+            setSensorOptions([]);
+            setSensorId("");
+          }
+        } catch (err) {
+          setError("Gagal memuat daftar perangkat.");
+          console.error(err);
+        }
+      };
+      loadUserDevices();
+    }
+  }, [user]);
 
   // Fungsi untuk memproses dan mengatur state data
   const processAndSetData = (data: SensorDate[]) => {
@@ -179,6 +214,7 @@ export default function DataPage() {
 
   // Fetch data untuk pembaruan di background (polling)
   const updateData = useCallback(async () => {
+    if (!sensorId) return;
     try {
       const dataPoints = selectedPeriod.valueInMinutes;
       const data = await fetchSensorData(sensorId, dataPoints);
@@ -191,6 +227,10 @@ export default function DataPage() {
 
   // Fetch data untuk pemuatan awal atau refresh manual
   const fetchData = useCallback(async () => {
+    if (!sensorId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -231,15 +271,17 @@ export default function DataPage() {
 
   // Inisialisasi komponen dan refresh data
   useEffect(() => {
-    fetchData(); // Panggil untuk pemuatan awal
+    if (sensorId) {
+      fetchData(); // Panggil untuk pemuatan awal
+    }
 
     // Atur interval untuk polling, hanya jika periode tertentu dipilih
-    if (selectedPeriod.valueInMinutes <= 60 && !dateRange) {
+    if (sensorId && selectedPeriod.valueInMinutes <= 60 && !dateRange) {
       // Contoh: polling untuk periode 1 jam atau kurang, dan tidak ada date range aktif
       const interval = setInterval(updateData, 60000); // Panggil updateData untuk polling
       return () => clearInterval(interval);
     }
-  }, [fetchData, updateData, selectedPeriod.valueInMinutes, dateRange]);
+  }, [fetchData, updateData, selectedPeriod.valueInMinutes, dateRange, sensorId]);
 
   // Deteksi mode dark dari Tailwind (class 'dark' pada html)
   useEffect(() => {
@@ -538,7 +580,11 @@ export default function DataPage() {
         <CardHeader className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${isDarkMode ? "bg-slate-800" : "bg-slate-100"} border-b`}>
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
             {/* Sensor Select */}
-            <Select value={sensorId} onValueChange={setSensorId}>
+            <Select
+              value={sensorId}
+              onValueChange={setSensorId}
+              disabled={!sensorId}
+            >
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Pilih Sensor" />
               </SelectTrigger>
@@ -718,7 +764,7 @@ export default function DataPage() {
                                 title="Edit"
                                 onClick={() => openEditModal(entry, indexOfFirstItem + index)}
                               >
-                                <Pencil className={`h-4 w-4 ${isDarkMode ? "text-primary-300" : "text-primary-600"}`} />
+                                <Edit className={`h-4 w-4 ${isDarkMode ? "text-primary-300" : "text-primary-600"}`} />
                               </button>
                               <button
                                 className={`p-2 rounded hover:bg-red-100 dark:hover:bg-red-900`}
