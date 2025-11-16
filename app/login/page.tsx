@@ -302,7 +302,7 @@ export default function AuthPage() {
             {/* General Error */}
             {errors.general && (
               <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
+                <XCircle className="h-5 w-5" />
                 <AlertDescription>{errors.general}</AlertDescription>
               </Alert>
             )}
@@ -317,7 +317,7 @@ export default function AuthPage() {
                   Nama Lengkap
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                   <Input
                     id="name"
                     type="text"
@@ -351,7 +351,7 @@ export default function AuthPage() {
                 Email
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <Input
                   id="email"
                   type="email"
@@ -387,7 +387,7 @@ export default function AuthPage() {
                 Kata Sandi
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -409,9 +409,9 @@ export default function AuthPage() {
                   className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
+                    <EyeOff className="h-5 w-5" />
                   ) : (
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-5 w-5" />
                   )}
                 </button>
               </div>
@@ -475,7 +475,7 @@ export default function AuthPage() {
                   Konfirmasi Kata Sandi
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
@@ -498,14 +498,14 @@ export default function AuthPage() {
                     className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                   >
                     {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                      <EyeOff className="h-5 w-5" />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <Eye className="h-5 w-5" />
                     )}
                   </button>
                   {formData.confirmPassword &&
                     formData.password === formData.confirmPassword && (
-                      <CheckCircle className="absolute right-10 top-3 h-4 w-4 text-green-500" />
+                      <CheckCircle className="absolute right-10 top-3 h-5 w-5 text-green-500" />
                     )}
                 </div>
                 {errors.confirmPassword && (
