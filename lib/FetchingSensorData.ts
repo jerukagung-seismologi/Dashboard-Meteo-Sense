@@ -46,6 +46,7 @@ export async function fetchSensorDataByDateRange(
   startTimestamp: number,
   endTimestamp: number
 ): Promise<SensorDate[]> {
+  // Log parameter yang diterima
   console.log("fetchSensorDataByTimestampRange called with:", {
     sensorId,
     startTimestamp,
@@ -75,11 +76,11 @@ export async function fetchSensorDataByDateRange(
     const results: SensorDate[] = [];
 
     // Proses snapshot, sama seperti di fungsi fetchSensorData
-    snapshot.forEach((child) => {
-      const timestampInSeconds = Number(child.key);
+    snapshot.forEach((childSnapshot) => {
+      const timestampInSeconds = Number(childSnapshot.key);
       const timestampInMillis = timestampInSeconds * 1000;
-      console.log("Processing timestamp (ms):", timestampInMillis);
-      const data: SensorValue = child.val();
+      console.log("Processing timestamp:", timestampInSeconds);
+      const data: SensorValue = childSnapshot.val();
       console.log("Sensor value from child:", data);
 
       const formattedTime = new Date(timestampInMillis)
