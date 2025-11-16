@@ -446,6 +446,12 @@ export default function DataPage() {
     }
   };
 
+  // Fungsi untuk menangani perubahan periode
+  const handlePeriodChange = (period: Period) => {
+    setSelectedPeriod(period);
+    setDateRange(undefined); // Reset rentang tanggal saat periode baru dipilih
+  };
+
   // Fungsi untuk mengunduh data (contoh sederhana)
   const handleDownloadData = () => {
     if (weatherData.length === 0) {
@@ -666,9 +672,9 @@ export default function DataPage() {
             {periods.map((period) => (
               <button
                 key={period.label}
-                onClick={() => setSelectedPeriod(period)}
+                onClick={() => handlePeriodChange(period)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  selectedPeriod?.label === period.label
+                  selectedPeriod?.label === period.label && !dateRange // Highlight only if dateRange is not active
                     ? isDarkMode
                       ? "bg-primary-700 text-white"
                       : "bg-primary-600 text-white"
