@@ -9,8 +9,10 @@ import {
   remove,
   update,
   startAt,
-  endAt
-} from "firebase/database"; // Tambahkan 'update' // Ini adalah fungsi-fungsi dari Firebase Realtime Database SDK
+  endAt,
+  orderByChild,
+  equalTo,
+} from "firebase/database"; // Tambahkan 'orderByChild' dan 'equalTo'
 
 export interface SensorValue {
   temperature: number;
@@ -33,6 +35,74 @@ export interface SensorMetaData {
   TelemetryStatus: "online" | "offline";
   lastUpdate?: number | null;
 }
+
+/**
+ * Mengambil data sensor berdasarkan nilai field tertentu.
+ * @param sensorId - ID sensor.
+ * @param field - Nama field yang akan dicari (misal: "temperature").
+ * @param value - Nilai yang akan dicocokkan.
+ * @returns Sebuah promise yang resolve dengan array data sensor yang cocok.
+ */
+export async function fetchSensorDataByValue(
+  sensorId: string,
+  field: string,
+  value: number
+): Promise<SensorDate[]> {
+  console.log("fetchSensorDataByValue called with:", { sensorId, field, value });
+  try {
+    const dataRef = query(
+      ref(rtdb, `auto_weather_stat/${sensorId}/data`),
+      orderByChild(field),
+      equalTo(value)
+    );
+
+    const snapshot = await get(dataRef);
+
+    if (!snapshot.exists()) {
+      console.log(`No sensor data found for field '${field}' with value '${value}'.`);
+      return [];
+    }
+
+    const results: SensorDate[] = [];
+    snapshot.forEach((childSnapshot) => {
+      const timestampInSeconds = Number(childSnapshot.key);
+      const timestampInMillis = timestampInSeconds * 1000;
+      const data: SensorValue = childSnapshot.val();
+
+      const dateFormatted = new Date(timestampInMillis).toLocaleString("id-ID", {
+        timeZone: "Asia/Jakarta",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }).replace(/\./g, ":");
+
+      const timeFormatted = new Date(timestampInMillis).toLocaleString("id-ID", {
+        timeZone: "Asia/Jakarta",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }).replace(/\./g, ":");
+
+      results.push({
+        timestamp: timestampInMillis,
+        ...data,
+        dateFormatted,
+        timeFormatted,
+      });
+    });
+
+    return results;
+  } catch (error) {
+    console.error(`Gagal mengambil data sensor berdasarkan nilai untuk field ${field}:`, error);
+    throw error;
+  }
+}
+
 
 /**
  * Mengambil data sensor dalam rentang waktu yang ditentukan.

@@ -12,9 +12,16 @@ import {
   Sprout,
   CloudRain,
   CloudRainWind,
-  Calendar as CalendarIcon,
-  Edit,
+  CalendarIcon,
+  Edit
 } from "lucide-react";
+import {cn} from "@/lib/utils";
+import { 
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+ } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 
@@ -26,6 +33,7 @@ import {
   editSensorDataByTimestamp,
   deleteSensorDataByTimestamp,
   fetchSensorDataByDateRange,
+  fetchSensorDataByValue,
   SensorDate
 } from "@/lib/FetchingSensorData";
 import ChartComponent from "@/components/ChartComponent";
@@ -43,13 +51,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 // Define the structure for selectable periods
 interface Period {
@@ -133,6 +135,10 @@ export default function DataPage() {
     rainrate: number;
   } | null>(null);
 
+  // State untuk pencarian
+  const [searchField, setSearchField] = useState<string>("temperature");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
   // Fetch user's devices from Firestore
   useEffect(() => {
     if (user?.uid) {
@@ -169,7 +175,29 @@ export default function DataPage() {
     }
   }, [user]);
 
-  // Fungsi untuk memproses dan mengatur state data
+  // Fungsi untuk memproses dan mengatur state data tabel
+  const processTableData = (data: SensorDate[]) => {
+    if (data.length > 0) {
+      const dataArray: WeatherData[] = data.map((entry) => ({
+        timestamp: entry.timestamp,
+        date: entry.dateFormatted || new Date(entry.timestamp).toLocaleString('id-ID', { timeZone: "Asia/Jakarta" }),
+        temperature: entry.temperature,
+        humidity: entry.humidity,
+        pressure: entry.pressure,
+        dew: entry.dew,
+        rainfall: entry.rainfall,
+        rainrate: entry.rainrate,
+      }));
+      setWeatherData(dataArray.reverse());
+      setError(null);
+      setCurrentPage(1); // Reset ke halaman pertama saat data baru dimuat
+    } else {
+      setWeatherData([]);
+      setError("Tidak ada data yang cocok dengan pencarian Anda.");
+    }
+  };
+
+  // Fungsi untuk memproses dan mengatur state data grafik dan tabel
   const processAndSetData = (data: SensorDate[]) => {
     if (data.length > 0) {
       const fetchedTimestamps: string[] = data.map(d => d.timeFormatted || new Date(d.timestamp).toLocaleString('id-ID', { timeZone: "Asia/Jakarta" }));
@@ -188,25 +216,16 @@ export default function DataPage() {
       setRainfall(fetchedRainfall);
       setRainrate(fetchedRainrate);
 
-      const dataArray: WeatherData[] = data.map((entry) => ({
-        timestamp: entry.timestamp,
-        date: entry.dateFormatted || new Date(entry.timestamp).toLocaleString('id-ID', { timeZone: "Asia/Jakarta" }),
-        temperature: entry.temperature,
-        humidity: entry.humidity,
-        pressure: entry.pressure,
-        dew: entry.dew,
-        rainfall: entry.rainfall,
-        rainrate: entry.rainrate,
-      }));
-      setWeatherData(dataArray.reverse());
-      setError(null);
-      setCurrentPage(1); // Reset ke halaman pertama saat data baru dimuat
+      // Juga perbarui data tabel
+      processTableData(data);
     } else {
       setTimestamps([]);
       setTemperatures([]);
       setHumidity([]);
       setPressure([]);
       setDew([]);
+      setRainfall([]);
+      setRainrate([]);
       setWeatherData([]);
       setError("Tidak ada data yang tersedia untuk periode ini.");
     }
@@ -235,6 +254,7 @@ export default function DataPage() {
     setError(null);
     try {
       let data: SensorDate[];
+      // Pencarian hanya akan ditangani oleh handleSearch, fetchData kembali ke logika aslinya.
       if (dateRange?.from && dateRange?.to) {
         // Fetch by date range if selected
         const startTimestamp = dateRange.from.getTime();
@@ -268,6 +288,32 @@ export default function DataPage() {
       setLoading(false);
     }
   }, [sensorId, selectedPeriod, dateRange]);
+
+  // Fungsi baru untuk menangani pencarian spesifik untuk tabel
+  const handleSearch = useCallback(async () => {
+    if (!sensorId || !searchQuery) {
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const value = parseFloat(searchQuery);
+      if (isNaN(value)) {
+        setError("Nilai pencarian harus berupa angka.");
+        setLoading(false);
+        return;
+      }
+      const data = await fetchSensorDataByValue(sensorId, searchField, value);
+      processTableData(data); // Hanya perbarui data tabel
+      setActiveTab("table"); // Pindahkan fokus ke tab tabel
+    } catch (err: any) {
+      console.error("Error searching data: ", err);
+      setError("Gagal melakukan pencarian: " + (err.message || "Terjadi kesalahan."));
+      setWeatherData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [sensorId, searchField, searchQuery]);
 
   // Inisialisasi komponen dan refresh data
   useEffect(() => {
@@ -450,6 +496,16 @@ export default function DataPage() {
   const handlePeriodChange = (period: Period) => {
     setSelectedPeriod(period);
     setDateRange(undefined); // Reset rentang tanggal saat periode baru dipilih
+    if (searchQuery) {
+      setSearchQuery(""); // Reset pencarian juga
+      fetchData(); // Panggil fetchData untuk mengembalikan tabel ke state semula
+    }
+  };
+
+  // Fungsi untuk menangani reset pencarian
+  const handleResetSearch = () => {
+    setSearchQuery("");
+    fetchData(); // Panggil fetchData untuk me-reset data tabel ke kondisi awal
   };
 
   // Fungsi untuk mengunduh data (contoh sederhana)
@@ -602,6 +658,38 @@ export default function DataPage() {
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Search Inputs */}
+            <div className="flex items-center gap-2">
+              <Select value={searchField} onValueChange={setSearchField}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Cari berdasarkan..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="temperature">Suhu</SelectItem>
+                  <SelectItem value="humidity">Kelembapan</SelectItem>
+                  <SelectItem value="pressure">Tekanan</SelectItem>
+                  <SelectItem value="dew">Titik Embun</SelectItem>
+                  <SelectItem value="rainfall">Curah Hujan</SelectItem>
+                  <SelectItem value="rainrate">Laju Hujan</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                type="number"
+                placeholder="Masukkan nilai..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-[150px]"
+              />
+              <Button onClick={handleSearch} disabled={loading || !searchQuery}>
+                Cari
+              </Button>
+              {searchQuery && (
+                <Button variant="ghost" onClick={handleResetSearch} disabled={loading}>
+                  Reset
+                </Button>
+              )}
+            </div>
 
             {/* Date Range Picker */}
             <Popover>
