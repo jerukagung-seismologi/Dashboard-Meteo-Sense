@@ -109,7 +109,7 @@ export default function DataPage() {
 
   // State untuk pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 15; // Jumlah item per halaman
+  const [itemsPerPage, setItemsPerPage] = useState(15); // Jumlah item per halaman
 
   // State untuk sensor dan jumlah data
   const [sensorOptions, setSensorOptions] = useState<SensorOption[]>([]);
@@ -174,6 +174,11 @@ export default function DataPage() {
       loadUserDevices();
     }
   }, [user]);
+
+  // Reset halaman saat item per halaman berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
   // Fungsi untuk memproses dan mengatur state data tabel
   const processTableData = (data: SensorDate[]) => {
@@ -668,6 +673,23 @@ export default function DataPage() {
                 {sensorOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Items per page selector */}
+            <Select
+              value={String(itemsPerPage)}
+              onValueChange={(value) => setItemsPerPage(Number(value))}
+            >
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectValue placeholder="Item per Halaman" />
+              </SelectTrigger>
+              <SelectContent>
+                {[15, 20, 50, 70, 100].map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size} / Halaman
                   </SelectItem>
                 ))}
               </SelectContent>
