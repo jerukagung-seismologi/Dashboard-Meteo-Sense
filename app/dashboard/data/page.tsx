@@ -416,9 +416,17 @@ export default function DataPage() {
         rainfall: editForm.rainfall,
         rainrate: editForm.rainrate,
       });
-      const updatedData = [...weatherData];
-      updatedData[editingIndex] = { ...editForm };
-      setWeatherData(updatedData);
+
+      // Jika sedang dalam mode pencarian, refresh hasil pencarian
+      if (searchQuery) {
+        await handleSearch();
+      } else {
+        // Jika tidak, perbarui state lokal secara manual
+        const updatedData = [...weatherData];
+        updatedData[editingIndex] = { ...editForm };
+        setWeatherData(updatedData);
+      }
+
       setEditModalOpen(false);
       setEditingIndex(null);
       setEditForm(null);
@@ -464,9 +472,15 @@ export default function DataPage() {
     const row = weatherData[deleteRowIndex];
     try {
       await deleteSensorDataByTimestamp(sensorId, row.timestamp);
+
+      // Hapus item dari state lokal untuk pembaruan UI instan
       const updatedData = [...weatherData];
       updatedData.splice(deleteRowIndex, 1);
       setWeatherData(updatedData);
+
+      // Tidak perlu me-refresh dari server jika hanya menghapus,
+      // karena item sudah hilang dari UI. Ini membuat UX lebih cepat.
+
       setDeleteModalOpen(false);
       setDeleteRowIndex(null);
     } catch (err: any) {
