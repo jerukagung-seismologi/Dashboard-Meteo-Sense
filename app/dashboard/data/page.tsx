@@ -26,8 +26,8 @@ import {
   editSensorDataByTimestamp,
   deleteSensorDataByTimestamp,
   fetchSensorDataByDateRange,
+  SensorDate
 } from "@/lib/FetchingSensorData";
-import type { SensorDate } from "@/lib/FetchingSensorData";
 import ChartComponent from "@/components/ChartComponent";
 import { Button } from "@/components/ui/button";
 import {

@@ -11,9 +11,7 @@ import {
   CloudRain,
   CloudRainWind,
   Calendar as CalendarIcon,
-  Wind,
   Eye,
-  Compass,
 } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -23,8 +21,8 @@ import { fetchAllDevices } from "@/lib/FetchingDevice";
 import {
   fetchSensorData,
   fetchSensorDataByDateRange,
+  SensorDate
 } from "@/lib/FetchingSensorData";
-import type { SensorDate } from "@/lib/FetchingSensorData";
 import ChartComponent from "@/components/ChartComponent";
 import { Button } from "@/components/ui/button";
 import {

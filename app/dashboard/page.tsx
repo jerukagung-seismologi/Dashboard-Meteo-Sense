@@ -21,7 +21,7 @@ import {
 } from "lucide-react"
 import { EmptyState } from "@/components/empty-state"
 import { useAuth } from "@/hooks/useAuth"
-import Loading from "../loading"
+import Loading from "@/app/loading"
 import { fetchAllDevices, Device } from "@/lib/FetchingDevice"
 import { fetchSensorMetadata, fetchSensorData, SensorDate } from "@/lib/FetchingSensorData"
 import { fetchRecentAlerts, LogEvent } from "@/lib/FetchingLogs"
@@ -120,7 +120,7 @@ export default function DashboardPage() {
   }
 
   if (authLoading || (!user && !authLoading)) {
-    return <Loading />
+    return <Loading/>
   }
 
   if (!authLoading && user && devices.length === 0 && !refreshing) {
