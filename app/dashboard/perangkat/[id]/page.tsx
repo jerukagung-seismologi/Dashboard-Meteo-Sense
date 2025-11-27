@@ -202,7 +202,8 @@ export default function DeviceDetailPage() {
   const basicCards = [
     {
       title: "Suhu Lingkungan",
-      value: `${values.temp.toFixed(1)}°C`,
+      value: values.temp.toFixed(1),
+      unit: "°C",
       icon: Thermometer,
       color: "text-rose-500",
       bgColor: "bg-rose-500/10 dark:bg-rose-500/20",
@@ -212,7 +213,8 @@ export default function DeviceDetailPage() {
     },
     {
       title: "Kelembapan",
-      value: `${values.hum.toFixed(1)}%`,
+      value: values.hum.toFixed(1),
+      unit: "%",
       icon: Droplets,
       color: "text-blue-500",
       bgColor: "bg-blue-500/10 dark:bg-blue-500/20",
@@ -222,7 +224,8 @@ export default function DeviceDetailPage() {
     },
     {
       title: "Tekanan",
-      value: `${values.press.toFixed(1)} hPa`,
+      value: values.press.toFixed(1),
+      unit: "hPa",
       icon: Gauge,
       color: "text-amber-500",
       bgColor: "bg-amber-500/10 dark:bg-amber-500/20",
@@ -232,7 +235,8 @@ export default function DeviceDetailPage() {
     },
     {
       title: "Titik Embun",
-      value: `${values.dew.toFixed(1)}°C`,
+      value: values.dew.toFixed(1),
+      unit: "°C",
       icon: Sprout,
       color: "text-emerald-500",
       bgColor: "bg-emerald-500/10 dark:bg-emerald-500/20",
@@ -242,7 +246,8 @@ export default function DeviceDetailPage() {
     },
     {
       title: "Baterai",
-      value: `${values.volt.toFixed(2)}V`,
+      value: values.volt.toFixed(2),
+      unit: "V",
       icon: Battery,
       color: "text-purple-500",
       bgColor: "bg-purple-500/10 dark:bg-purple-500/20",
@@ -256,7 +261,12 @@ export default function DeviceDetailPage() {
     <div className="space-y-6 pb-10">
       {/* Header Page */}
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" onClick={() => router.back()}>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={() => router.back()}
+          className="dark:text-white dark:border-white"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex flex-col">
@@ -283,10 +293,10 @@ export default function DeviceDetailPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">{card.title}</p>
-                  <div className="flex items-center gap-2">
-                    {/* Mengubah ukuran font dari text-2xl ke text-4xl */}
+                  <div className="flex items-baseline gap-1">
                     <h3 className="text-3xl font-bold text-foreground">{card.value}</h3>
-                    {card.trend}
+                    <span className="text-lg font-medium text-muted-foreground">{card.unit}</span>
+                    <div className="ml-1">{card.trend}</div>
                   </div>
                 </div>
                 <div className={cn("p-2 rounded-full", card.bgColor)}>
@@ -307,17 +317,16 @@ export default function DeviceDetailPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center justify-between">
               <span>Angin</span>
-              <div className="p-1.5 rounded-full bg-sky-100 dark:bg-sky-900">
-                <Wind className="h-4 w-4 text-sky-600" />
+              <div className="p-2 rounded-full bg-sky-500/10 dark:bg-sky-500/20">
+                <Wind className="h-5 w-5 text-sky-500" />
               </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center pt-0">
             <div className="flex justify-between items-center w-full mb-4">
-               <div>
-                 {/* Mengubah ukuran font dari text-3xl ke text-5xl */}
-                 <span className="text-5xl font-bold">{values.windSpeed}</span>
-                 <span className="text-sm ml-1 text-muted-foreground">km/j</span>
+               <div className="flex items-baseline gap-1">
+                 <span className="text-4xl font-bold">{values.windSpeed.toFixed(1)}</span>
+                 <span className="text-xl font-medium text-muted-foreground">km/j</span>
                </div>
                <Badge variant="secondary" className="bg-sky-100 text-sky-700 hover:bg-sky-100 dark:bg-sky-900 dark:text-sky-300">
                  {getWindDescription(values.windSpeed)}
@@ -340,17 +349,16 @@ export default function DeviceDetailPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center justify-between">
               <span>Laju Hujan</span>
-              <div className="p-1.5 rounded-full bg-cyan-100 dark:bg-cyan-900">
-                <CloudRain className="h-4 w-4 text-cyan-600" />
+              <div className="p-2 rounded-full bg-cyan-500/10 dark:bg-cyan-500/20">
+                <CloudRain className="h-5 w-5 text-cyan-500" />
               </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
              <div className="flex justify-between items-end mb-4">
-               <div>
-                 {/* Mengubah ukuran font dari text-3xl ke text-5xl */}
-                 <span className="text-5xl font-bold">{values.rainRate.toFixed(2)}</span>
-                 <span className="text-sm ml-1 text-muted-foreground">mm/h</span>
+               <div className="flex items-baseline gap-1">
+                 <span className="text-4xl font-bold">{values.rainRate.toFixed(2)}</span>
+                 <span className="text-xl font-medium text-muted-foreground">mm/h</span>
                </div>
                <Badge variant="outline" className="border-cyan-200 text-cyan-700 dark:border-cyan-800 dark:text-cyan-300">
                  {getHourlyRainfallCategory(values.rainRate)}
@@ -371,17 +379,16 @@ export default function DeviceDetailPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center justify-between">
               <span>Akumulasi Hujan</span>
-              <div className="p-1.5 rounded-full bg-indigo-100 dark:bg-indigo-900">
-                <Umbrella className="h-4 w-4 text-indigo-600" />
+              <div className="p-2 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20">
+                <Umbrella className="h-5 w-5 text-indigo-500" />
               </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
              <div className="flex justify-between items-end mb-4">
-               <div>
-                 {/* Mengubah ukuran font dari text-3xl ke text-5xl */}
-                 <span className="text-5xl font-bold">{values.rainTotal.toFixed(2)}</span>
-                 <span className="text-sm ml-1 text-muted-foreground">mm</span>
+               <div className="flex items-baseline gap-1">
+                 <span className="text-4xl font-bold">{values.rainTotal.toFixed(2)}</span>
+                 <span className="text-xl font-medium text-muted-foreground">mm</span>
                </div>
                <Badge variant="outline" className="border-indigo-200 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300">
                  {getDailyRainfallCategory(values.rainTotal)}
@@ -402,17 +409,16 @@ export default function DeviceDetailPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center justify-between">
               <span>Cahaya Matahari</span>
-              <div className="p-1.5 rounded-full bg-yellow-100 dark:bg-yellow-900">
-                <Sun className="h-4 w-4 text-yellow-600" />
+              <div className="p-2 rounded-full bg-yellow-500/10 dark:bg-yellow-500/20">
+                <Sun className="h-5 w-5 text-yellow-500" />
               </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
              <div className="flex justify-between items-end mb-4">
-               <div>
-                 {/* Mengubah ukuran font dari text-3xl ke text-5xl */}
-                 <span className="text-5xl font-bold">{values.sunlight.toLocaleString()}</span>
-                 <span className="text-sm ml-1 text-muted-foreground">lux</span>
+               <div className="flex items-baseline gap-1">
+                 <span className="text-4xl font-bold">{values.sunlight.toLocaleString()}</span>
+                 <span className="text-xl font-medium text-muted-foreground">lux</span>
                </div>
                <Badge variant="outline" className="border-yellow-200 text-yellow-700 dark:border-yellow-800 dark:text-yellow-300">
                  {getSunlightCategory(values.sunlight)}
