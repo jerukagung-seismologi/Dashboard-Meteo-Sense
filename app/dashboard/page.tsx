@@ -18,6 +18,8 @@ import {
   CheckCircleIcon,
   CalendarIcon,
   ClockIcon,
+  ChevronRight, // Import icon baru
+  ExternalLink, // Import icon baru
 } from "lucide-react"
 import { EmptyState } from "@/components/empty-state"
 import { useAuth } from "@/hooks/useAuth"
@@ -48,7 +50,6 @@ export default function DashboardPage() {
   })
   const [recentAlerts, setRecentAlerts] = useState<LogEvent[]>([])
   const [refreshing, setRefreshing] = useState(false)
-  const [currentDateTime, setCurrentDateTime] = useState(new Date())
 
   const loadDashboardData = useCallback(async () => {
     if (!user?.uid) return
@@ -103,13 +104,6 @@ export default function DashboardPage() {
       loadDashboardData()
     }
   }, [user, authLoading, router, loadDashboardData])
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentDateTime(new Date())
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [])
 
   const handleRefresh = () => {
     loadDashboardData()
@@ -191,26 +185,32 @@ export default function DashboardPage() {
                 .map((device) => (
                   <div
                     key={device.id}
-                    className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg dark:bg-gradient-to-r dark:from-gray-700/50 dark:to-gray-700"
+                    onClick={() => router.push(`/dashboard/perangkat/${device.id}`)}
+                    className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg dark:bg-gradient-to-r dark:from-gray-700/50 dark:to-gray-700 cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-600 transition-colors group"
                   >
                     <div>
-                      <h4 className="font-medium text-gray-800 dark:text-gray-200">{device.name}</h4>
+                      <h4 className="font-medium text-gray-800 dark:text-gray-200 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
+                        {device.name}
+                      </h4>
                       <p className="text-sm text-gray-600 dark:text-gray-400">{device.location}</p>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="default" className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
+                    <div className="flex items-center space-x-3">
+                      <Badge variant="default" className="bg-gradient-to-r from-green-500 to-emerald-500 text-white hidden sm:flex">
                         <WifiIcon className="h-3 w-3 mr-1" />
                         Online
                       </Badge>
-                      <div className="text-right">
+                      <div className="text-right hidden sm:block">
                         <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
                           {device.latestData?.temperature.toFixed(1) ?? "N/A"}°C
                         </div>
-                        <div className="flex items-center text-gray-600 dark:text-gray-400">
+                        <div className="flex items-center text-gray-600 dark:text-gray-400 justify-end">
                           <ThermometerIcon className="h-3 w-3" />
                           <span className="text-xs ml-1">Suhu</span>
                         </div>
                       </div>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                        <ChevronRight className="h-5 w-5" />
+                      </Button>
                     </div>
                   </div>
                 ))
@@ -268,9 +268,16 @@ export default function DashboardPage() {
         <CardContent className="pt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {devices.map((device) => (
-              <div key={device.id} className="p-4 bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg dark:bg-gradient-to-br dark:from-gray-700/50 dark:to-gray-700">
+              <div 
+                key={device.id} 
+                onClick={() => router.push(`/dashboard/device/${device.id}`)}
+                className="p-4 bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg dark:bg-gradient-to-br dark:from-gray-700/50 dark:to-gray-700 cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
+              >
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-gray-800 dark:text-gray-200 truncate">{device.name}</h4>
+                  <h4 className="font-medium text-gray-800 dark:text-gray-200 truncate flex items-center gap-2">
+                    {device.name}
+                    <ExternalLink className="h-3 w-3 text-gray-400" />
+                  </h4>
                   <div className={`flex items-center ${getStatusColor(device.status)}`}>
                     {device.status === "online" ? <WifiIcon className="h-4 w-4" /> : <WifiOffIcon className="h-4 w-4" />}
                   </div>
