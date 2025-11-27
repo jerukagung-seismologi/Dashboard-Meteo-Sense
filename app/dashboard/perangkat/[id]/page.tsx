@@ -201,7 +201,7 @@ export default function DeviceDetailPage() {
   // Basic Cards Data
   const basicCards = [
     {
-      title: "Suhu",
+      title: "Suhu Lingkungan",
       value: `${values.temp.toFixed(1)}°C`,
       icon: Thermometer,
       color: "text-rose-500",
@@ -284,7 +284,8 @@ export default function DeviceDetailPage() {
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">{card.title}</p>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-2xl font-bold text-foreground">{card.value}</h3>
+                    {/* Mengubah ukuran font dari text-2xl ke text-4xl */}
+                    <h3 className="text-3xl font-bold text-foreground">{card.value}</h3>
                     {card.trend}
                   </div>
                 </div>
@@ -299,7 +300,6 @@ export default function DeviceDetailPage() {
       </div>
 
       {/* 2. Enhanced Cards Grid (Rain, Wind, Sun) */}
-      <h2 className="text-lg font-semibold mt-8 mb-4">Analisis Lingkungan</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Card: Angin */}
@@ -315,7 +315,8 @@ export default function DeviceDetailPage() {
           <CardContent className="flex flex-col items-center pt-0">
             <div className="flex justify-between items-center w-full mb-4">
                <div>
-                 <span className="text-3xl font-bold">{values.windSpeed}</span>
+                 {/* Mengubah ukuran font dari text-3xl ke text-5xl */}
+                 <span className="text-5xl font-bold">{values.windSpeed}</span>
                  <span className="text-sm ml-1 text-muted-foreground">km/j</span>
                </div>
                <Badge variant="secondary" className="bg-sky-100 text-sky-700 hover:bg-sky-100 dark:bg-sky-900 dark:text-sky-300">
@@ -347,7 +348,8 @@ export default function DeviceDetailPage() {
           <CardContent>
              <div className="flex justify-between items-end mb-4">
                <div>
-                 <span className="text-3xl font-bold">{values.rainRate.toFixed(2)}</span>
+                 {/* Mengubah ukuran font dari text-3xl ke text-5xl */}
+                 <span className="text-5xl font-bold">{values.rainRate.toFixed(2)}</span>
                  <span className="text-sm ml-1 text-muted-foreground">mm/h</span>
                </div>
                <Badge variant="outline" className="border-cyan-200 text-cyan-700 dark:border-cyan-800 dark:text-cyan-300">
@@ -377,7 +379,8 @@ export default function DeviceDetailPage() {
           <CardContent>
              <div className="flex justify-between items-end mb-4">
                <div>
-                 <span className="text-3xl font-bold">{values.rainTotal.toFixed(2)}</span>
+                 {/* Mengubah ukuran font dari text-3xl ke text-5xl */}
+                 <span className="text-5xl font-bold">{values.rainTotal.toFixed(2)}</span>
                  <span className="text-sm ml-1 text-muted-foreground">mm</span>
                </div>
                <Badge variant="outline" className="border-indigo-200 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300">
@@ -407,7 +410,8 @@ export default function DeviceDetailPage() {
           <CardContent>
              <div className="flex justify-between items-end mb-4">
                <div>
-                 <span className="text-3xl font-bold">{values.sunlight.toLocaleString()}</span>
+                 {/* Mengubah ukuran font dari text-3xl ke text-5xl */}
+                 <span className="text-5xl font-bold">{values.sunlight.toLocaleString()}</span>
                  <span className="text-sm ml-1 text-muted-foreground">lux</span>
                </div>
                <Badge variant="outline" className="border-yellow-200 text-yellow-700 dark:border-yellow-800 dark:text-yellow-300">
