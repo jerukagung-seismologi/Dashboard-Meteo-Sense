@@ -39,7 +39,8 @@ const getHourlyRainfallCategory = (amount: number) => {
   if (amount < 0.5) return "Ringan";
   if (amount < 4) return "Sedang";
   if (amount < 8) return "Lebat";
-  return "Sangat Lebat";
+  if (amount < 16) return "Sangat Lebat";
+  return "Ekstrem";
 };
 
 const getDailyRainfallCategory = (amount: number) => {
@@ -47,7 +48,8 @@ const getDailyRainfallCategory = (amount: number) => {
   if (amount <= 20) return "Hujan Ringan";
   if (amount <= 50) return "Hujan Sedang";
   if (amount <= 100) return "Hujan Lebat";
-  return "Hujan Sangat Lebat";
+  if (amount <= 150) return "Hujan Sangat Lebat";
+  return "Ekstrem";
 };
 
 const getWindDescription = (speed: number) => {

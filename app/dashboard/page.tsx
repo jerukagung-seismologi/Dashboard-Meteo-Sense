@@ -270,7 +270,7 @@ export default function DashboardPage() {
             {devices.map((device) => (
               <div 
                 key={device.id} 
-                onClick={() => router.push(`/dashboard/device/${device.id}`)}
+                onClick={() => router.push(`/dashboard/perangkat/${device.id}`)}
                 className="p-4 bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg dark:bg-gradient-to-br dark:from-gray-700/50 dark:to-gray-700 cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
               >
                 <div className="flex items-center justify-between mb-2">
