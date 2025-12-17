@@ -11,12 +11,12 @@ import ParticleBackground from "@/components/ParticleBackground"
 export default async function LandingPage() {
   return (
     <>
-      <Header />
+      <Header/>
       {/* Hero Section (particles only here) */}
       <section className="relative h-[80vh] flex items-center justify-center overflow-hidden">
         <ParticleBackground />
         {/* Overlay made more transparent to let particles show through */}
-        <div className="absolute inset-0 pointer-events-none bg-white dark:bg-gray-900" />
+        <div className="absolute inset-0 pointer-events-none bg-gray-100 dark:bg-gray-900" />
         <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center">
           <div className="mb-6 animate-fade-in">
             <Image 
@@ -31,7 +31,7 @@ export default async function LandingPage() {
             Meteo Sense
           </h1>
           <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-200 mb-8 max-w-2xl drop-shadow-lg animate-fade-in">
-            Aplikasi Pemantauan dan Analisis Data Jaringan Sensor Cuaca
+            Aplikasi Pemantauan dan Analisis Data Jaringan Sensor Cuaca Jerukagung Meteorologi
           </p>
           <Button size="lg" asChild className="bg-primary-700 text-white hover:bg-primary-800 mb-4 animate-pop">
             <Link href="/login" className="flex items-center gap-2">
@@ -42,7 +42,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Tentang Section (no particles here) */}
-      <section className="py-12 bg-white dark:bg-gray-900">
+      <section className="py-12 bg-gray-100 dark:bg-gray-900">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center gap-8">
           <div className="flex-1 text-center md:text-left">
             <h2 className="text-2xl font-semibold text-primary-700 dark:text-primary-50 mb-4">Tentang Meteo Sense</h2>
@@ -58,7 +58,7 @@ export default async function LandingPage() {
         </div>
       </section>
       <div className="relative z-20">
-        <Footer />
+        <Footer/>
       </div>
     </>
   )

@@ -20,7 +20,7 @@ export interface SensorValue {
   pressure: number;
   dew: number;
   rainfall: number;
-  rainrate: number
+  rainrate: number;
   volt: number;
 }
 

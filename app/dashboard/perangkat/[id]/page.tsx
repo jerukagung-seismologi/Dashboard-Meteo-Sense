@@ -263,7 +263,6 @@ export default function DeviceDetailPage() {
   };
 
   const sunlightPct = Math.min(Math.round((values.sunlight / 120000) * 100), 100);
-  const rainRatePct = Math.min(Math.round((values.rainRate / 25) * 100), 100);
 
   const basicCards = [
     {
@@ -463,7 +462,7 @@ export default function DeviceDetailPage() {
                 <RainMeasuringCup value={values.rainTotal} maxValue={150} />
              </div>
 
-             <p className="text-xs text-muted-foreground mt-4 text-center">Total hujan tercatat sejak jam 00:00.</p>
+             <p className="text-xs text-muted-foreground mt-4 text-center">Total hujan tercatat sejak jam 07:00 WIB Kemarin</p>
           </CardContent>
         </Card>
 
