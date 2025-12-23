@@ -22,18 +22,21 @@ import {
   Thermometer, 
   Droplets,
   Wind,
-  // Import Ikon Cuaca Lengkap dari Lucide
+  // Icon Lucide untuk UI Select
   Sun,
-  Moon,
   Cloud,
   CloudSun,
-  CloudMoon,
+  CloudFog,
   CloudRain,
   CloudLightning,
-  CloudDrizzle
+  CloudDrizzle,
+  Wind as WindIcon
 } from "lucide-react"
 
 import html2canvas from "html2canvas"
+
+// --- IMPORT LIBRARY IKON BASMILIUS LINE ---
+import { getBasmiliusLineIcon } from "@/components/icons/BasmiliusIcons"
 
 // --- TIPE DATA ---
 
@@ -44,6 +47,9 @@ export type WeatherCondition =
   | "Hujan Ringan"
   | "Hujan Sedang"
   | "Hujan Lebat"
+  | "Badai Petir"
+  | "Kabut"
+  | "Angin Kencang"
 
 export type ForecastRow = {
   time: string
@@ -55,53 +61,44 @@ export type ForecastRow = {
 
 const initialTimes = ["07:00", "10:00", "13:00", "16:00", "19:00"]
 
-// --- HELPER FUNCTIONS ---
+// --- HELPER FUNCTIONS (COLOR PALETTE) ---
 
-const getRowStyles = (time: string) => {
-  const hour = parseInt(time.split(":")[0]) || 0
-  
-  // Pagi/Siang Cerah (Kuning) - 06:00 s/d 11:00
-  if (hour >= 6 && hour < 12) {
-    return { bg: "#FEF3C7", border: "#F59E0B", text: "#92400E", iconColor: "#F59E0B" }
-  }
-  // Siang/Sore Hujan/Berawan (Biru) - 12:00 s/d 17:00
-  if (hour >= 12 && hour < 18) {
-    return { bg: "#DBEAFE", border: "#3B82F6", text: "#1E40AF", iconColor: "#2563EB" }
-  }
-  // Malam (Ungu) - 18:00 ke atas atau sebelum 06:00
-  return { bg: "#F3E8FF", border: "#9333EA", text: "#6B21A8", iconColor: "#7E22CE" }
-}
-
-// Helper Ikon menggunakan LUCIDE REACT
-const getWeatherIcon = (condition: string, time: string, size: number = 24) => {
+const getRowStyles = (condition: string, time: string) => {
   const hour = parseInt(time.split(":")[0]) || 0
   const isNight = hour >= 18 || hour < 6
-  
-  // Kita set strokeWidth agak tebal biar tegas di gambar
-  const props = { size, strokeWidth: 2 } 
 
-  switch (condition as WeatherCondition) {
-    case "Cerah":
-      return isNight ? <Moon {...props} /> : <Sun {...props} />
-    
-    case "Cerah Berawan":
-      return isNight ? <CloudMoon {...props} /> : <CloudSun {...props} />
-    
-    case "Berawan":
-      return <Cloud {...props} />
-    
-    case "Hujan Ringan":
-      return <CloudDrizzle {...props} />
-    
-    case "Hujan Sedang":
-      return <CloudRain {...props} />
-    
-    case "Hujan Lebat":
-      return <CloudLightning {...props} />
-      
-    default:
-      return <Wind {...props} />
+  let styles = { 
+    iconBg: "#E2E8F0", descBg: "#F8FAFC", border: "#94A3B8", text: "#1E293B", iconColor: "#475569" 
   }
+
+  switch (condition) {
+    case "Cerah":
+    case "Cerah Berawan":
+      if (isNight) {
+        styles = { iconBg: "#C7D2FE", descBg: "#EEF2FF", border: "#6366F1", text: "#1E1B4B", iconColor: "#4338CA" }
+      } else {
+        styles = { iconBg: "#FDE68A", descBg: "#FFFBEB", border: "#F59E0B", text: "#451A03", iconColor: "#B45309" }
+      }
+      break;
+    case "Berawan":
+    case "Kabut":
+      styles = { iconBg: "#CBD5E1", descBg: "#F1F5F9", border: "#64748B", text: "#0F172A", iconColor: "#334155" }
+      break;
+    case "Hujan Ringan":
+    case "Hujan Sedang":
+      styles = { iconBg: "#BFDBFE", descBg: "#EFF6FF", border: "#2563EB", text: "#172554", iconColor: "#1D4ED8" }
+      break;
+    case "Hujan Lebat":
+    case "Badai Petir":
+    case "Angin Kencang":
+      styles = { iconBg: "#DDD6FE", descBg: "#F5F3FF", border: "#7C3AED", text: "#2E1065", iconColor: "#6D28D9" }
+      break;
+    default:
+      if (isNight) styles = { iconBg: "#D8B4FE", descBg: "#FAF5FF", border: "#9333EA", text: "#3B0764", iconColor: "#7E22CE" }
+      else styles = { iconBg: "#FDE047", descBg: "#FEFCE8", border: "#EAB308", text: "#422006", iconColor: "#A16207" }
+      break;
+  }
+  return styles
 }
 
 // --- KOMPONEN UTAMA ---
@@ -120,7 +117,6 @@ export default function ForecastForm() {
   )
   const [location, setLocation] = React.useState<string>("")
   
-  // Refs
   const printRef = React.useRef<HTMLDivElement>(null)
   
   const tomorrowStr = React.useMemo(() => {
@@ -151,18 +147,15 @@ export default function ForecastForm() {
     toast({ title: "Debug", description: "Cek console untuk data JSON." })
   }
 
-  // --- FUNGSI SAVE IMAGE (LUCIDE VERSION - CEPAT & STABIL) ---
   const onSaveAsImage = async () => {
     if (!printRef.current) return;
 
     try {
-      toast({ title: "Memproses Gambar...", description: "Sedang membuat layout..." })
-
-      // Delay sangat singkat cukup karena Lucide itu SVG internal (bukan gambar external)
+      toast({ title: "Memproses Gambar...", description: "Mohon tunggu..." })
       await new Promise(resolve => setTimeout(resolve, 100));
 
       const canvas = await html2canvas(printRef.current, {
-        scale: 2, // Resolusi tinggi (Retina)
+        scale: 2, 
         backgroundColor: "#ffffff",
         logging: false,
         width: 800, 
@@ -233,14 +226,17 @@ export default function ForecastForm() {
                 <TableCell>
                   <Select value={row.condition} onValueChange={(v) => updateRow(idx, { condition: v as WeatherCondition })}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="Pilih..." /></SelectTrigger>
-                    {/* INI BAGIAN YANG KAMU SUKA TADI (DROPDOWN + ICON LUCIDE) */}
+                    
                     <SelectContent>
                       <SelectItem value="Cerah"><span className="flex items-center gap-2"><Sun size={14} className="text-orange-500"/> Cerah</span></SelectItem>
                       <SelectItem value="Cerah Berawan"><span className="flex items-center gap-2"><CloudSun size={14} className="text-orange-400"/> Cerah Berawan</span></SelectItem>
                       <SelectItem value="Berawan"><span className="flex items-center gap-2"><Cloud size={14} className="text-gray-500"/> Berawan</span></SelectItem>
+                      <SelectItem value="Kabut"><span className="flex items-center gap-2"><CloudFog size={14} className="text-slate-400"/> Kabut</span></SelectItem>
                       <SelectItem value="Hujan Ringan"><span className="flex items-center gap-2"><CloudDrizzle size={14} className="text-blue-400"/> Hujan Ringan</span></SelectItem>
                       <SelectItem value="Hujan Sedang"><span className="flex items-center gap-2"><CloudRain size={14} className="text-blue-500"/> Hujan Sedang</span></SelectItem>
                       <SelectItem value="Hujan Lebat"><span className="flex items-center gap-2"><CloudLightning size={14} className="text-indigo-600"/> Hujan Lebat</span></SelectItem>
+                      <SelectItem value="Badai Petir"><span className="flex items-center gap-2"><CloudLightning size={14} className="text-purple-600"/> Badai Petir</span></SelectItem>
+                      <SelectItem value="Angin Kencang"><span className="flex items-center gap-2"><WindIcon size={14} className="text-teal-600"/> Angin Kencang</span></SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>
@@ -255,9 +251,6 @@ export default function ForecastForm() {
       </div>
 
       {/* --- HIDDEN AREA UNTUK GENERATE GAMBAR --- */}
-      {/* Teknik: Fixed Position di luar layar (-9999px).
-          Lucide Icon aman dirender di sini.
-      */}
       <div 
         style={{ 
           position: "fixed", 
@@ -276,8 +269,7 @@ export default function ForecastForm() {
               padding: 40px; 
               box-sizing: border-box;
               background-color: white; 
-              /* Background gradient halus */
-              background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+              background: linear-gradient(160deg, #ffffff 0%, #f1f5f9 100%);
             }
             
             .header-title { font-size: 36px; font-weight: 800; color: #1e3a8a; line-height: 1.1; margin-bottom: 5px; letter-spacing: -0.5px; }
@@ -288,20 +280,11 @@ export default function ForecastForm() {
               border-radius: 16px;
               margin-bottom: 14px;
               overflow: hidden;
-              color: #fff;
-              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+              box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
               position: relative;
+              border: 2px solid;
             }
             
-            /* Shine effect overlay */
-            .weather-row::after {
-              content: "";
-              position: absolute;
-              top: 0; left: 0; right: 0; bottom: 0;
-              background: linear-gradient(120deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 70%);
-              pointer-events: none;
-            }
-
             .col-time-h {
               width: 12%;
               display: flex;
@@ -310,18 +293,26 @@ export default function ForecastForm() {
               font-weight: 800;
               font-size: 18px;
               padding: 15px;
-              border-right: 1px solid rgba(255,255,255,0.2);
-              background-color: rgba(0,0,0,0.05);
+              background-color: rgba(255,255,255,0.7);
+              border-right: 1px solid rgba(0,0,0,0.05);
             }
 
-            .col-main {
-              width: 63%; 
-              padding: 15px 25px;
+            .col-icon {
+              width: 15%; 
               display: flex;
               align-items: center;
-              gap: 25px;
+              justify-content: center;
+              padding: 10px;
             }
-            
+
+            .col-desc {
+              width: 48%; 
+              padding: 15px 25px;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+            }
+
             .col-metrics {
               width: 25%;
               padding: 10px 20px; 
@@ -329,8 +320,8 @@ export default function ForecastForm() {
               flex-direction: column;
               justify-content: center;
               gap: 12px; 
-              background-color: rgba(255,255,255,0.25);
-              border-left: 1px solid rgba(255,255,255,0.2);
+              background-color: rgba(255,255,255,0.6); 
+              border-left: 1px solid rgba(0,0,0,0.05);
             }
 
             .metric-item {
@@ -339,7 +330,6 @@ export default function ForecastForm() {
               gap: 12px;
               font-size: 20px;
               font-weight: 700;
-              text-shadow: 0 1px 2px rgba(0,0,0,0.1);
             }
             
             .footer {
@@ -370,45 +360,47 @@ export default function ForecastForm() {
                 </div>
               </div>
               <div style={{ width: "64px", height: "64px", background: "#f3f4f6", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.05)" }}>
-                 {/* Logo Placeholder */}
                  <Wind size={32} color="#1e3a8a" strokeWidth={2} />
               </div>
             </div>
           </div>
 
-          {/* Column Headers */}
+          {/* Column Headers (UPDATED) */}
           <div style={{ display: "flex", padding: "0 10px 10px 10px", fontWeight: "bold", color: "#64748B", textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.5px" }}>
             <div style={{ width: "12%", textAlign: "center" }}>WIB</div>
-            <div style={{ width: "63%" }}>Prakiraan</div>
-            <div style={{ width: "25%", paddingLeft: "20px" }}>Suhu & RH</div>
+            {/* Header "Cuaca" dihapus, "Prakiraan" diperlebar (15% + 48% = 63%) */}
+            <div style={{ width: "63%", paddingLeft: "15px" }}>Prakiraan</div>
+            <div style={{ width: "25%", paddingLeft: "20px" }}>Suhu & Kelembapan</div>
           </div>
 
           {/* Rows */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {rows.map((row, i) => {
-              const styles = getRowStyles(row.time)
+              const styles = getRowStyles(row.condition || "", row.time)
               return (
-                <div key={i} className="weather-row" style={{ backgroundColor: styles.bg, color: styles.text }}>
-                  <div className="col-time-h" style={{ borderColor: styles.border }}>
+                <div key={i} className="weather-row" style={{ borderColor: styles.border, color: styles.text }}>
+                  
+                  {/* JAM */}
+                  <div className="col-time-h">
                     {row.time}
                   </div>
 
-                  <div className="col-main">
-                    {/* Render Icon Lucide (Besar untuk Gambar) */}
-                    <div style={{ minWidth: "64px", color: styles.iconColor }}>
-                      {getWeatherIcon(row.condition || "", row.time, 64)}
+                  {/* ICON */}
+                  <div className="col-icon" style={{ backgroundColor: styles.iconBg }}>
+                    {getBasmiliusLineIcon(row.condition || "", row.time, 60)}
+                  </div>
+
+                  {/* DESKRIPSI */}
+                  <div className="col-desc" style={{ backgroundColor: styles.descBg }}>
+                    <div style={{ fontSize: "22px", fontWeight: "800", lineHeight: "1.2" }}>
+                        {row.prediction.split(',')[0] || row.condition || "-"}
                     </div>
-                    
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <div style={{ fontSize: "22px", fontWeight: "800", lineHeight: "1.2" }}>
-                         {row.prediction.split(',')[0] || row.condition || "-"}
-                      </div>
-                      <div style={{ fontSize: "15px", opacity: 0.85, marginTop: "4px", fontWeight: "500" }}>
-                        {row.prediction.split(',').slice(1).join(', ') || ""}
-                      </div>
+                    <div style={{ fontSize: "15px", opacity: 0.85, marginTop: "4px", fontWeight: "500" }}>
+                      {row.prediction.split(',').slice(1).join(', ') || ""}
                     </div>
                   </div>
 
+                  {/* METRIK */}
                   <div className="col-metrics">
                     <div className="metric-item">
                       <Thermometer size={24} color="#E11D48" strokeWidth={2.5} /> 
@@ -419,6 +411,7 @@ export default function ForecastForm() {
                       <span>{row.humidity ? `${row.humidity}%` : "-"} <span style={{fontSize: "12px", opacity: 0.7}}>(±5.0)</span></span>
                     </div>
                   </div>
+
                 </div>
               )
             })}
