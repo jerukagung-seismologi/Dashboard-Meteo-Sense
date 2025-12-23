@@ -50,6 +50,7 @@ export default function DashboardLayout({
     { name: "Analisis", href: "/dashboard/analisis", icon: ChartNoAxesCombined },
     { name: "Data", href: "/dashboard/data", icon: Database },
     { name: "Laporan", href: "/dashboard/laporan", icon: FileText },
+    { name: "Prakirawan", href: "/dashboard/prakirawan", icon: FileText },
     { name: "Profil", href: "/dashboard/profil", icon: User },
   ]
 
