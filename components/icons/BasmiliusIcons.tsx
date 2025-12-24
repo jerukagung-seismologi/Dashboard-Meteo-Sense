@@ -4,127 +4,192 @@ import React from "react";
 // --- BASE PROPS ---
 type IconProps = {
   size?: number;
-  color?: string;
-  strokeWidth?: number;
+  className?: string;
+  // Opsional: Jika ingin override warna default di dalam SVG
+  color?: string; 
 };
 
-// --- LINE ICONS (BASMILIUS STYLE) ---
-
-export const BasmiliusLineSun = ({ size = 64, color = "#F59E0B", strokeWidth = 2 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="32" cy="32" r="14" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M32 9V5M32 59V55M9 32H5M59 32H55M15.74 15.74L12.91 12.91M51.09 51.09L48.26 48.26M15.74 48.26L12.91 51.09M51.09 12.91L48.26 15.74" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+// ============================================================================
+// 1. CLEAR DAY (CERAH SIANG)
+// ============================================================================
+export const BasmiliusClearDay = ({ size = 64, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <defs>
+      <symbol id="clear-day-symbol" viewBox="0 0 375 375">
+        <circle cx="187.5" cy="187.5" r="84" fill="none" stroke="#fbbf24" strokeMiterlimit="10" strokeWidth="15"/>
+        <path fill="none" stroke="#fbbf24" strokeLinecap="round" strokeMiterlimit="10" strokeWidth="15" d="M187.5 57.2V7.5m0 360v-49.7m92.2-222.5 35-35M60.3 314.7l35.1-35.1m0-184.4-35-35m254.5 254.5-35.1-35.1M57.2 187.5H7.5m360 0h-49.7"/>
+      </symbol>
+    </defs>
+    <use href="#clear-day-symbol" width="375" height="375" transform="translate(68.5 68.5)"/>
   </svg>
 );
 
-export const BasmiliusLineMoon = ({ size = 64, color = "#7C3AED", strokeWidth = 2 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M43.5 24.5C43.5 37.4787 32.9787 48 20 48C17.25 48 14.62 47.53 12.18 46.67C15.63 53.07 22.37 57.5 30.13 57.5C41.72 57.5 51.13 48.09 51.13 36.5C51.13 28.74 46.7 22 40.3 18.55C42.36 20.21 43.5 22.25 43.5 24.5Z" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+// ============================================================================
+// 2. CLEAR NIGHT (CERAH MALAM)
+// ============================================================================
+export const BasmiliusClearNight = ({ size = 64, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <defs>
+      <symbol id="clear-night-symbol" viewBox="0 0 279 279">
+        <path fill="none" stroke="#72b9d5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="15" d="M256.8 173.1A133.3 133.3 0 01122.4 40.7 130.5 130.5 0 01127 7.5 133 133 0 007.5 139.1c0 73.1 60 132.4 134.2 132.4 62.5 0 114.8-42.2 129.8-99.2a135.6 135.6 0 01-14.8.8Z"/>
+      </symbol>
+    </defs>
+    <use href="#clear-night-symbol" width="279" height="279" transform="translate(116.5 116.5)"/>
   </svg>
 );
 
-export const BasmiliusLineCloud = ({ size = 64, color = "#64748B", strokeWidth = 2 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M46.5 22.5C46.5 13.66 39.34 6.5 30.5 6.5C23.5 6.5 17.61 10.99 15.42 17.27C14.61 17.18 13.81 17.15 13 17.15C6.92 17.15 2 22.08 2 28.15C2 34.22 6.92 39.15 13 39.15H46.5C53.68 39.15 59.5 33.33 59.5 26.15C59.5 18.97 53.68 13.15 46.5 13.15" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" transform="translate(0, 10)"/>
+// ============================================================================
+// 3. OVERCAST (BERAWAN TEBAL / MENDUNG)
+// ============================================================================
+export const BasmiliusOvercast = ({ size = 64, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <defs>
+      <symbol id="ovc-c" viewBox="0 0 214.3 140.1">
+        <path fill="none" stroke="#94a3b8" strokeLinejoin="round" strokeWidth="15" d="M7.5 100.2a32.4 32.4 0 0032.4 32.4h129.8v-.1l2.3.1a34.8 34.8 0 006.5-68.9 32.4 32.4 0 00-48.5-33 48.6 48.6 0 00-88.6 37.1h-1.5a32.4 32.4 0 00-32.4 32.4Z"/>
+      </symbol>
+      <symbol id="ovc-d" viewBox="0 0 359 231">
+        <path fill="none" stroke="#e2e8f0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="15" d="M295.5 223.5a56 56 0 000-112l-2.5.1a83.9 83.9 0 00-153-64.2 56 56 0 00-84.6 48.1 56.6 56.6 0 00.8 9 60 60 0 0011.2 119"/>
+      </symbol>
+      <symbol id="ovc-b" viewBox="0 0 447.7 371.5">
+        <g clipPath="url(#ovc-a)">
+          <use href="#ovc-c" width="214.3" height="140.1" transform="translate(195.51 165.01)"/>
+        </g>
+        <use href="#ovc-d" width="359" height="231" transform="translate(0 140.5)"/>
+      </symbol>
+      <clipPath id="ovc-a">
+        <path fill="none" d="M351.5 308a56 56 0 00-56-56l-2.5.1A83.7 83.7 0 00211.5 148V0h236.2v308Z"/>
+      </clipPath>
+    </defs>
+    <use href="#ovc-b" width="447.7" height="371.5" transform="translate(64.34)"/>
   </svg>
 );
 
-export const BasmiliusLineCloudSun = ({ size = 64, color = "#F59E0B", strokeWidth = 2 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    {/* Sun Behind */}
-    <circle cx="26" cy="22" r="8" stroke="#F59E0B" strokeWidth={strokeWidth} strokeLinecap="round" />
-    <path d="M26 6V3M26 41V38M7 22H4M48 22H45M13.27 9.27L11.15 7.15M40.85 36.85L38.73 34.73M13.27 34.73L11.15 36.85M40.85 7.15L38.73 9.27" stroke="#F59E0B" strokeWidth={strokeWidth} strokeLinecap="round"/>
-    
-    {/* Cloud Front */}
-    <path d="M46.5 31.5C46.5 25.15 41.35 20 35 20C34.1 20 33.2 20.1 32.35 20.3C30.25 15.5 25.45 12 19.85 12C12.35 12 6.35 18 6.35 25.5C6.35 26.1 6.35 26.7 6.45 27.3C2.8 29.1 0 32.8 0 37.2C0 43.1 4.9 48 11 48H46.5C53.7 48 59.5 42.2 59.5 35C59.5 27.8 53.7 22 46.5 22" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" fill="white" />
+// ============================================================================
+// 4. OVERCAST DAY (CERAH BERAWAN SIANG)
+// ============================================================================
+export const BasmiliusOvercastDay = ({ size = 64, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <defs>
+      <symbol id="ovcd-d" viewBox="0 0 193 193">
+        <circle cx="96.5" cy="96.5" r="40" fill="none" stroke="#fbbf24" strokeMiterlimit="10" strokeWidth="9"/>
+        <path fill="none" stroke="#fbbf24" strokeLinecap="round" strokeMiterlimit="10" strokeWidth="9" d="M96.5 29.9V4.5m0 184v-25.4m47.1-113.7 18-18M31.4 161.6l18-18m0-94.2-18-18m130.2 130.2-18-18M4.5 96.5h25.4m158.6 0h-25.4"/>
+      </symbol>
+      <symbol id="ovcd-f" viewBox="0 0 214.3 140.1">
+        <path fill="none" stroke="#94a3b8" strokeLinejoin="round" strokeWidth="15" d="M7.5 100.2a32.4 32.4 0 0032.4 32.4h129.8v-.1l2.3.1a34.8 34.8 0 006.5-68.9 32.4 32.4 0 00-48.5-33 48.6 48.6 0 00-88.6 37.1h-1.5a32.4 32.4 0 00-32.4 32.4Z"/>
+      </symbol>
+      <symbol id="ovcd-g" viewBox="0 0 359 231">
+        <path fill="none" stroke="#e2e8f0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="15" d="M295.5 223.5a56 56 0 000-112l-2.5.1a83.9 83.9 0 00-153-64.2 56 56 0 00-84.6 48.1 56.6 56.6 0 00.8 9 60 60 0 0011.2 119"/>
+      </symbol>
+      <symbol id="ovcd-e" viewBox="0 0 447.7 371.5">
+        <g clipPath="url(#ovcd-a)">
+          <use href="#ovcd-f" width="214.3" height="140.1" transform="translate(195.51 165.01)"/>
+        </g>
+        <use href="#ovcd-g" width="359" height="231" transform="translate(0 140.5)"/>
+      </symbol>
+      <symbol id="ovcd-c" viewBox="0 0 512 371.5">
+        <g clipPath="url(#ovcd-b)">
+          <use href="#ovcd-d" width="193" height="193" transform="translate(57.5 110.5)"/>
+        </g>
+        <use href="#ovcd-e" width="447.7" height="371.5" transform="translate(64.34)"/>
+      </symbol>
+      <clipPath id="ovcd-a">
+        <path fill="none" d="M351.5 308a56 56 0 00-56-56l-2.5.1A83.7 83.7 0 00211.5 148V0h236.2v308Z"/>
+      </clipPath>
+      <clipPath id="ovcd-b">
+        <path fill="none" d="M276 148a83.8 83.8 0 00-71.4 40 56 56 0 00-84.6 48 56.6 56.6 0 00.8 9A60 60 0 0072 304H0V0h276Z"/>
+      </clipPath>
+    </defs>
+    <use href="#ovcd-c" width="512" height="371.5"/>
   </svg>
 );
 
-export const BasmiliusLineCloudMoon = ({ size = 64, color = "#7C3AED", strokeWidth = 2 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    {/* Moon Behind */}
-    <path d="M36 10C36 17 30 22 23 22C21.5 22 20 21.8 18.6 21.5C20.6 25.3 24.6 28 29.2 28C35.8 28 41.2 22.6 41.2 16C41.2 13.5 40.5 11.2 39.3 9.2C38.3 9.6 37.2 9.9 36 10Z" stroke="#7C3AED" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-    
-    {/* Cloud Front */}
-    <path d="M46.5 31.5C46.5 25.15 41.35 20 35 20C34.1 20 33.2 20.1 32.35 20.3C30.25 15.5 25.45 12 19.85 12C12.35 12 6.35 18 6.35 25.5C6.35 26.1 6.35 26.7 6.45 27.3C2.8 29.1 0 32.8 0 37.2C0 43.1 4.9 48 11 48H46.5C53.7 48 59.5 42.2 59.5 35C59.5 27.8 53.7 22 46.5 22" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" fill="white" />
+// ============================================================================
+// 5. OVERCAST NIGHT (CERAH BERAWAN MALAM)
+// ============================================================================
+export const BasmiliusOvercastNight = ({ size = 64, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <defs>
+      <symbol id="ovcn-d" viewBox="0 0 178 178">
+        <path fill="none" stroke="#72b9d5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="10" d="M163.6 110.4a84.8 84.8 0 01-85.4-84.3A83.3 83.3 0 0181 5 84.7 84.7 0 005 88.7 84.8 84.8 0 0090.4 173a85.2 85.2 0 0082.6-63.1 88 88 0 01-9.4.5Z"/>
+      </symbol>
+      <symbol id="ovcn-f" viewBox="0 0 214.3 140.1">
+        <path fill="none" stroke="#94a3b8" strokeLinejoin="round" strokeWidth="15" d="M7.5 100.2a32.4 32.4 0 0032.4 32.4h129.8v-.1l2.3.1a34.8 34.8 0 006.5-68.9 32.4 32.4 0 00-48.5-33 48.6 48.6 0 00-88.6 37.1h-1.5a32.4 32.4 0 00-32.4 32.4Z"/>
+      </symbol>
+      <symbol id="ovcn-g" viewBox="0 0 359 231">
+        <path fill="none" stroke="#e2e8f0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="15" d="M295.5 223.5a56 56 0 000-112l-2.5.1a83.9 83.9 0 00-153-64.2 56 56 0 00-84.6 48.1 56.6 56.6 0 00.8 9 60 60 0 0011.2 119"/>
+      </symbol>
+      <symbol id="ovcn-e" viewBox="0 0 447.7 371.5">
+        <g clipPath="url(#ovcn-a)">
+          <use href="#ovcn-f" width="214.3" height="140.1" transform="translate(195.51 165.01)"/>
+        </g>
+        <use href="#ovcn-g" width="359" height="231" transform="translate(0 140.5)"/>
+      </symbol>
+      <symbol id="ovcn-c" viewBox="0 0 512 371.5">
+        <g clipPath="url(#ovcn-b)">
+          <use href="#ovcn-d" width="178" height="178" transform="translate(65 118)"/>
+        </g>
+        <use href="#ovcn-e" width="447.7" height="371.5" transform="translate(64.34)"/>
+      </symbol>
+      <clipPath id="ovcn-a">
+        <path fill="none" d="M351.5 308a56 56 0 00-56-56l-2.5.1A83.7 83.7 0 00211.5 148V0h236.2v308Z"/>
+      </clipPath>
+      <clipPath id="ovcn-b">
+        <path fill="none" d="M276 148a83.8 83.8 0 00-71.4 40 56 56 0 00-84.6 48 56.6 56.6 0 00.8 9A60 60 0 0072 304H0V0h276Z"/>
+      </clipPath>
+    </defs>
+    <use href="#ovcn-c" width="512" height="371.5"/>
   </svg>
 );
 
-export const BasmiliusLineRain = ({ size = 64, color = "#3B82F6", strokeWidth = 2, heavy = false }: any) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M46.5 21.5C46.5 12.66 39.34 5.5 30.5 5.5C23.5 5.5 17.61 9.99 15.42 16.27C14.61 16.18 13.81 16.15 13 16.15C6.92 16.15 2 21.08 2 27.15C2 33.22 6.92 38.15 13 38.15H46.5C53.68 38.15 59.5 32.33 59.5 25.15C59.5 17.97 53.68 12.15 46.5 12.15" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M22 46L19 54" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"/>
-    <path d="M32 46L29 54" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"/>
-    <path d="M42 46L39 54" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"/>
-    {heavy && (
-      <>
-        <path d="M27 52L24 60" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"/>
-        <path d="M37 52L34 60" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"/>
-      </>
-    )}
+// --- 6. HUJAN RINGAN / DRIZZLE (DARI KODE SEBELUMNYA) ---
+// Kita sesuaikan sedikit agar viewBoxnya sama 512
+export const BasmiliusDrizzle = ({ size = 64, className, color = "#0a5ad4" }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <defs>
+      <symbol id="drizzle-a" viewBox="0 0 359 231">
+        <path fill="none" stroke="#e2e8f0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="15" d="M295.5 223.5a56 56 0 000-112l-2.5.1a83.9 83.9 0 00-153-64.2 56 56 0 00-84.6 48.1 56.6 56.6 0 00.8 9 60 60 0 0011.2 119"/>
+      </symbol>
+    </defs>
+    <use href="#drizzle-a" width="359" height="231" transform="translate(76.5 140.5)"/>
+    <path fill={color} d="M200 376a8 8 0 01-8-8v-12a8 8 0 0116 0v12a8 8 0 01-8 8Zm56 80a8 8 0 01-8-8v-12a8 8 0 0116 0v12a8 8 0 01-8 8Zm56-50a8 8 0 01-8-8v-12a8 8 0 0116 0v12a8 8 0 01-8 8Z"/>
   </svg>
 );
 
-export const BasmiliusLineStorm = ({ size = 64, color = "#1E3A8A", strokeWidth = 2 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M46.5 21.5C46.5 12.66 39.34 5.5 30.5 5.5C23.5 5.5 17.61 9.99 15.42 16.27C14.61 16.18 13.81 16.15 13 16.15C6.92 16.15 2 21.08 2 27.15C2 33.22 6.92 38.15 13 38.15H46.5C53.68 38.15 59.5 32.33 59.5 25.15C59.5 17.97 53.68 12.15 46.5 12.15" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M34 42L26 52H32L28 62" stroke="#F59E0B" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-export const BasmiliusLineFog = ({ size = 64, color = "#94A3B8", strokeWidth = 2 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M10 24H54" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"/>
-    <path d="M14 32H50" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"/>
-    <path d="M6 40H58" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"/>
-    <path d="M18 48H46" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"/>
-  </svg>
-);
-
-export const BasmiliusLineWind = ({ size = 64, color = "#64748B", strokeWidth = 2 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M47 18C47 18 52 16 52 12C52 8 48 8 48 10C48 14 54 12 54 12" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M8 26H48C48 26 56 26 56 32C56 38 48 36 48 34" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M4 38H40C40 38 46 38 46 44C46 50 40 48 40 46" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-// --- MAIN SELECTOR ---
+// ============================================================================
+// LOGIC PEMILIH IKON UTAMA
+// ============================================================================
 
 export const getBasmiliusLineIcon = (condition: string, time: string, size: number = 72) => {
   const hour = parseInt(time.split(":")[0]) || 0;
   const isNight = hour >= 18 || hour < 6;
-  const commonProps = { size, strokeWidth: 3.5 }; // Garis sedikit tebal agar tegas di gambar
+  
+  // Styling props
+  const props = { size };
 
   switch (condition) {
     case "Cerah":
-      return isNight ? <BasmiliusLineMoon {...commonProps} /> : <BasmiliusLineSun {...commonProps} />;
+      return isNight ? <BasmiliusClearNight {...props} /> : <BasmiliusClearDay {...props} />;
     
     case "Cerah Berawan":
-      return isNight ? <BasmiliusLineCloudMoon {...commonProps} /> : <BasmiliusLineCloudSun {...commonProps} />;
+      return isNight ? <BasmiliusOvercastNight {...props} /> : <BasmiliusOvercastDay {...props} />;
     
     case "Berawan":
-      return <BasmiliusLineCloud {...commonProps} />;
+      return <BasmiliusOvercast {...props} />;
     
     case "Hujan Ringan":
-      return <BasmiliusLineRain {...commonProps} heavy={false} />;
+      // Kita pakai icon Drizzle biru
+      return <BasmiliusDrizzle {...props} color="#3B82F6" />;
     
     case "Hujan Sedang":
-      return <BasmiliusLineRain {...commonProps} heavy={false} />; // Bisa di-tweak
+      // Untuk sementara pakai Drizzle tapi warna lebih gelap/tegas
+      return <BasmiliusDrizzle {...props} color="#1D4ED8" />;
     
     case "Hujan Lebat":
-      return <BasmiliusLineRain {...commonProps} heavy={true} />;
-    
-    case "Badai Petir":
-      return <BasmiliusLineStorm {...commonProps} />;
-    
-    case "Kabut":
-      return <BasmiliusLineFog {...commonProps} />;
-    
-    case "Angin Kencang":
-      return <BasmiliusLineWind {...commonProps} />;
+      // Nanti bisa tambah SVG baru untuk hujan lebat/petir
+      return <BasmiliusDrizzle {...props} color="#1E40AF" />;
       
+    // Fallback pakai awan mendung
     default:
-      return <BasmiliusLineCloud {...commonProps} />;
+      return <BasmiliusOvercast {...props} />;
   }
 };
