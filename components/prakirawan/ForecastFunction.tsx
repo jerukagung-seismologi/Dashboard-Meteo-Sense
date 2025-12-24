@@ -477,7 +477,7 @@ export default function ForecastForm() {
 
                   {/* ICON (Background Warna Cerah) */}
                   <div className="col-icon" style={{ backgroundColor: styles.iconBg }}>
-                    {getErikFlowersIcon(row.condition || "", row.time, 88, styles.iconColor)}
+                    {getErikFlowersIcon(row.condition || "", row.time, 90, styles.iconColor)}
                   </div>
 
                   {/* DESKRIPSI (Latar Belakang Putih) */}
