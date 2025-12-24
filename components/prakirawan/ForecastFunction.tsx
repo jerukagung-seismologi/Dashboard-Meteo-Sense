@@ -22,7 +22,7 @@ import {
   Thermometer, 
   Droplets,
   Wind,
-  // Icon Lucide untuk UI
+  // Icon Lucide untuk UI Form
   Sun as LucideSun,
   Cloud as LucideCloud,
   CloudRain as LucideRain,
@@ -72,86 +72,52 @@ export type ForecastRow = {
 
 const initialTimes = ["07:00", "10:00", "13:00", "16:00", "19:00"]
 
-// --- HELPER 1: PALET WARNA MIRIP REFERENSI ---
+// --- HELPER 1: PALET WARNA (FULL CARD PASTEL - ANEMOS STYLE) ---
+// Warna background (bg) untuk seluruh baris, Aksen (accent) untuk border kiri & ikon
+
 const getRowStyles = (condition: string, time: string) => {
   const hour = parseInt(time.split(":")[0]) || 0
   const isNight = hour >= 18 || hour < 6
 
-  // Default Style: Baris Putih dengan Border Halus
+  // Default: Abu-abu Netral
   let styles = { 
-    iconBg: "#F1F5F9", // Slate-100 (Abu-abu sangat muda untuk default)
-    descBg: "#FFFFFF", // Putih bersih untuk deskripsi
-    border: "#E2E8F0", // Slate-200 (Border halus)
-    text: "#334155",   // Slate-700 (Teks gelap)
-    iconColor: "#64748B" // Slate-500 (Ikon abu-abu)
+    bg: "#F8FAFC",      // Slate 50
+    accent: "#64748B",  // Slate 500
   }
 
   switch (condition) {
-    // 1. CERAH (Kuning Cerah)
+    // 1. CERAH (Kuning / Indigo Malam)
     case "Cerah":
     case "Cerah Berawan":
       if (isNight) {
-        // Malam: Biru Tua Cerah
-        styles = { 
-          iconBg: "#60A5FA", // Blue-400 (Biru langit cerah)
-          descBg: "#FFFFFF",
-          border: "#BFDBFE", // Blue-200
-          text: "#1E3A8A",   // Blue-900
-          iconColor: "#FFFFFF" // Ikon Putih
-        }
+        styles = { bg: "#EEF2FF", accent: "#6366F1" } // Malam: Indigo Pastel + Indigo Tua
       } else {
-        // Siang: Kuning Cerah
-        styles = { 
-          iconBg: "#FDE047", // Yellow-300 (Kuning cerah)
-          descBg: "#FFFFFF",
-          border: "#FEF08A", // Yellow-200
-          text: "#854D0E",   // Yellow-800
-          iconColor: "#1E3A8A" // Ikon Biru Tua agar kontras
-        }
+        styles = { bg: "#FFFBEB", accent: "#F59E0B" } // Siang: Kuning Pastel + Orange Emas
       }
       break;
 
-    // 2. BERAWAN / KABUT (Ungu Muda Cerah / Abu-abu Kebiruan)
+    // 2. BERAWAN (Biru Langit Muda)
     case "Berawan":
     case "Kabut":
-      styles = { 
-        iconBg: "#A78BFA", // Violet-400 (Ungu muda cerah, mirip referensi)
-        descBg: "#FFFFFF",
-        border: "#DDD6FE", // Violet-200
-        text: "#4C1D95",   // Violet-900
-        iconColor: "#FFFFFF" // Ikon Putih
-      }
+      styles = { bg: "#EFF6FF", accent: "#3B82F6" } // Biru Muda + Biru Royal
       break;
 
-    // 3. HUJAN (Biru Cerah)
+    // 3. HUJAN (Biru Agak Gelap/Sejuk)
     case "Hujan Ringan":
     case "Hujan Sedang":
-      styles = { 
-        iconBg: "#3B82F6", // Blue-500 (Biru cerah standar)
-        descBg: "#FFFFFF",
-        border: "#93C5FD", // Blue-300
-        text: "#1E40AF",   // Blue-800
-        iconColor: "#FFFFFF" // Ikon Putih
-      }
+      styles = { bg: "#E0F2FE", accent: "#0284C7" } // Sky Blue + Ocean Blue
       break;
 
-    // 4. EKSTREM (Biru Lebih Tua/Ungu)
+    // 4. EKSTREM / LEBAT (Ungu)
     case "Hujan Lebat":
     case "Badai Petir":
     case "Angin Kencang":
-      styles = { 
-        iconBg: "#6366F1", // Indigo-500 (Biru-ungu cerah)
-        descBg: "#FFFFFF",
-        border: "#A5B4FC", // Indigo-300
-        text: "#312E81",   // Indigo-900
-        iconColor: "#FFFFFF" // Ikon Putih
-      }
+      styles = { bg: "#F3E8FF", accent: "#9333EA" } // Ungu Muda + Ungu Neon
       break;
       
     default:
-      // Fallback
-      if (isNight) styles = { iconBg: "#818CF8", descBg: "#FFFFFF", border: "#C7D2FE", text: "#312E81", iconColor: "#FFFFFF" }
-      else styles = { iconBg: "#FCD34D", descBg: "#FFFFFF", border: "#FDE68A", text: "#854D0E", iconColor: "#1E3A8A" }
+      if (isNight) styles = { bg: "#FAF5FF", accent: "#A855F7" }
+      else styles = { bg: "#FEFCE8", accent: "#EAB308" }
       break;
   }
   return styles
@@ -327,7 +293,7 @@ export default function ForecastForm() {
         </Table>
       </div>
 
-      {/* --- HIDDEN AREA (OUTPUT IMAGE COMPACT & BIG - WARNA MIRIP REFERENSI) --- */}
+      {/* --- HIDDEN AREA (OUTPUT IMAGE COMPACT & FULL COLOR) --- */}
       <div 
         style={{ 
           position: "fixed", 
@@ -342,73 +308,67 @@ export default function ForecastForm() {
             
             .print-container { 
               font-family: 'Poppins', sans-serif; 
-              color: #334155; /* Slate-700 */
-              padding: 20px;
+              color: #0F172A; 
+              padding: 20px; 
               box-sizing: border-box;
               background-color: white; 
-              /* Latar belakang putih bersih dengan sedikit gradien di bawah, mirip referensi */
-              background: linear-gradient(180deg, #FFFFFF 80%, #F1F5F9 100%);
+              background: linear-gradient(160deg, #FFFFFF 0%, #F1F5F9 100%);
             }
             
-            /* HEADER LEBIH MIRIP REFERENSI */
+            /* HEADER LEBIH COMPACT */
             .header-container { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-            .header-title { font-size: 32px; font-weight: 800; color: #1E3A8A; /* Biru Tua */ line-height: 1.1; letter-spacing: -0.5px; }
-            .header-subtitle { font-size: 20px; font-weight: 600; color: #EA580C; /* Orange Tua */ margin-top: 4px; }
-            .sub-label { font-size: 14px; color: #64748B; /* Slate-500 */ text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 2px; }
+            .header-title { font-size: 32px; font-weight: 800; color: #1E3A8A; line-height: 1.1; letter-spacing: -0.5px; }
+            .header-subtitle { font-size: 20px; font-weight: 600; color: #EA580C; margin-top: 4px; }
+            .sub-label { font-size: 14px; color: #64748B; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 2px; }
             
-            /* ROW DESIGN: PUTIH DENGAN BORDER WARNA */
+            /* ROW DESIGN: FULL COLOR CARD */
             .weather-row {
               display: flex;
               border-radius: 12px;
-              margin-bottom: 10px;
+              margin-bottom: 10px; /* Jarak rapat */
               overflow: hidden;
-              box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Shadow lebih halus */
+              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
               position: relative;
-              border-left: 6px solid; /* Border warna hanya di kiri */
-              border-top: 1px solid #E2E8F0;
-              border-right: 1px solid #E2E8F0;
-              border-bottom: 1px solid #E2E8F0;
-              height: 110px;
-              background-color: #FFFFFF; /* Latar belakang baris putih */
+              /* Border Kiri Tebal Penanda Warna */
+              border-left-width: 8px; 
+              border-left-style: solid;
+              height: 110px; 
             }
             
-            /* 1. JAM (Font Besar, Putih) */
+            /* 1. JAM (Transparent BG - Menyatu dengan Card) */
             .col-time-h {
               width: 14%;
               display: flex;
               align-items: center;
               justify-content: center;
               font-weight: 800;
-              font-size: 26px;
+              font-size: 26px; /* Font Besar */
               padding: 0;
-              background-color: transparent; /* Transparan agar ikut putih */
               border-right: 1px solid rgba(0,0,0,0.05);
-              color: #1E3A8A; /* Biru Tua */
+              color: #334155; /* Slate 700 */
             }
 
-            /* 2. ICON (Background Warna Cerah) */
+            /* 2. ICON (Transparent BG - Menyatu dengan Card) */
             .col-icon {
               width: 18%; 
               display: flex;
               align-items: center;
               justify-content: center;
               padding: 0;
-              /* Background diatur inline dari Logic */
             }
 
-            /* 3. DESKRIPSI (Putih) */
+            /* 3. DESKRIPSI (Transparent BG - Menyatu dengan Card) */
             .col-desc {
               width: 43%; 
               padding: 0 20px;
               display: flex;
               flex-direction: column;
               justify-content: center;
-              background-color: transparent; /* Transparan agar ikut putih */
             }
-            .desc-main { font-size: 28px; font-weight: 800; line-height: 1.1; margin-bottom: 2px; color: #1E3A8A; /* Biru Tua */ }
-            .desc-sub { font-size: 18px; opacity: 0.85; font-weight: 500; color: #334155; }
+            .desc-main { font-size: 28px; font-weight: 800; line-height: 1.1; margin-bottom: 2px; color: #1E293B; /* Slate 800 */ }
+            .desc-sub { font-size: 18px; opacity: 0.85; font-weight: 500; color: #475569; /* Slate 600 */ }
 
-            /* 4. METRIK (Putih) */
+            /* 4. METRIK (Transparent BG - Menyatu dengan Card) */
             .col-metrics {
               width: 25%;
               padding: 0 20px; 
@@ -416,7 +376,6 @@ export default function ForecastForm() {
               flex-direction: column;
               justify-content: center;
               gap: 8px;
-              background-color: transparent; /* Transparan agar ikut putih */
               border-left: 1px solid rgba(0,0,0,0.05);
             }
 
@@ -429,7 +388,7 @@ export default function ForecastForm() {
               color: #334155;
             }
             
-            /* FOOTER COMPACT */
+            /* FOOTER */
             .footer {
               margin-top: 30px;
               padding-top: 10px;
@@ -456,8 +415,8 @@ export default function ForecastForm() {
             </div>
           </div>
 
-          {/* Column Headers */}
-          <div style={{ display: "flex", padding: "0 10px 8px 10px", fontWeight: "bold", color: "#64748B", textTransform: "uppercase", fontSize: "14px", letterSpacing: "0.5px" }}>
+          {/* Column Headers (Bisa dihapus jika mau lebih minimalis) */}
+          <div style={{ display: "flex", padding: "0 10px 8px 10px", fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "14px", letterSpacing: "0.5px" }}>
             <div style={{ width: "14%", textAlign: "center" }}>WIB</div>
             <div style={{ width: "61%", paddingLeft: "15px" }}>Prakiraan</div>
             <div style={{ width: "25%", paddingLeft: "20px" }}>Parameter</div>
@@ -468,19 +427,27 @@ export default function ForecastForm() {
             {rows.map((row, i) => {
               const styles = getRowStyles(row.condition || "", row.time)
               return (
-                <div key={i} className="weather-row" style={{ borderLeftColor: styles.iconBg }}>
+                <div 
+                  key={i} 
+                  className="weather-row" 
+                  style={{ 
+                    backgroundColor: styles.bg, /* FULL CARD BACKGROUND (PASTEL) */
+                    borderLeftColor: styles.accent /* BORDER KIRI TEBAL (TUA) */
+                  }}
+                >
                   
                   {/* JAM */}
                   <div className="col-time-h">
                     {row.time}
                   </div>
 
-                  {/* ICON (Background Warna Cerah) */}
-                  <div className="col-icon" style={{ backgroundColor: styles.iconBg }}>
-                    {getErikFlowersIcon(row.condition || "", row.time, 90, styles.iconColor)}
+                  {/* ICON */}
+                  <div className="col-icon">
+                    {/* Warna Ikon mengikuti Aksen (Tua) agar kontras di BG Muda */}
+                    {getErikFlowersIcon(row.condition || "", row.time, 88, styles.accent)}
                   </div>
 
-                  {/* DESKRIPSI (Latar Belakang Putih) */}
+                  {/* DESKRIPSI */}
                   <div className="col-desc">
                     <div className="desc-main">
                         {row.prediction.split(',')[0] || row.condition || "-"}
@@ -490,7 +457,7 @@ export default function ForecastForm() {
                     </div>
                   </div>
 
-                  {/* METRIK (Latar Belakang Putih) */}
+                  {/* METRIK */}
                   <div className="col-metrics">
                     <div className="metric-item">
                       <Thermometer size={28} color="#EF4444" strokeWidth={3} /> 
