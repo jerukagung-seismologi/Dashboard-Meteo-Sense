@@ -3,13 +3,15 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { LayoutDashboard, Network, FileText, Database, Earth, ChartNoAxesCombined, User } from "lucide-react"
+import { Inter } from "next/font/google"
+import { LayoutDashboard, Network, FileText, Database, Earth, ChartNoAxesCombined, User, CloudRain } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { signOutUser } from "@/lib/FetchingAuth"
 import { Sidebar } from "@/components/dashboard/Sidebar"
 import { Topbar } from "@/components/dashboard/Topbar"
 import type { NavigationItem } from "@/components/dashboard/navigation"
-import Loading from "../loading"
+import Loading from "@/app/loading"
+const inter = Inter({ subsets: ["latin"] });
 
 export default function DashboardLayout({
   children,
@@ -50,7 +52,7 @@ export default function DashboardLayout({
     { name: "Analisis", href: "/dashboard/analisis", icon: ChartNoAxesCombined },
     { name: "Data", href: "/dashboard/data", icon: Database },
     { name: "Laporan", href: "/dashboard/laporan", icon: FileText },
-    { name: "Prakirawan", href: "/dashboard/prakirawan", icon: FileText },
+    { name: "Prakirawan", href: "/dashboard/prakirawan", icon: CloudRain },
     { name: "Profil", href: "/dashboard/profil", icon: User },
   ]
 

@@ -64,16 +64,18 @@ export type WeatherCondition =
 
 export type ForecastRow = {
   time: string
-  condition: WeatherCondition | ""
-  prediction: string
+  conditionMain: WeatherCondition | ""
+  probMain: string
+  conditionSub: WeatherCondition | ""
+  probSub: string
   temperature?: number | ""
   humidity?: number | ""
 }
 
 const initialTimes = ["07:00", "10:00", "13:00", "16:00", "19:00"]
+const probabilities = ["100", "90", "80", "70", "60", "50", "40", "30", "20", "10", "0"]
 
-// --- HELPER 1: PALET WARNA (FULL CARD PASTEL - ANEMOS STYLE) ---
-// Warna background (bg) untuk seluruh baris, Aksen (accent) untuk border kiri & ikon
+// --- HELPER 1: PALET WARNA (FULL PASTEL BG + COLORED TEXT) ---
 
 const getRowStyles = (condition: string, time: string) => {
   const hour = parseInt(time.split(":")[0]) || 0
@@ -83,41 +85,34 @@ const getRowStyles = (condition: string, time: string) => {
   let styles = { 
     bg: "#F8FAFC",      // Slate 50
     accent: "#64748B",  // Slate 500
+    text: "#334155",    // Slate 700
   }
 
   switch (condition) {
-    // 1. CERAH (Kuning / Indigo Malam)
     case "Cerah":
     case "Cerah Berawan":
       if (isNight) {
-        styles = { bg: "#EEF2FF", accent: "#6366F1" } // Malam: Indigo Pastel + Indigo Tua
+        styles = { bg: "#EEF2FF", accent: "#6366F1", text: "#312E81" } // Malam: Indigo
       } else {
-        styles = { bg: "#FFFBEB", accent: "#F59E0B" } // Siang: Kuning Pastel + Orange Emas
+        styles = { bg: "#FFFBEB", accent: "#F59E0B", text: "#92400E" } // Siang: Amber
       }
       break;
-
-    // 2. BERAWAN (Biru Langit Muda)
     case "Berawan":
     case "Kabut":
-      styles = { bg: "#EFF6FF", accent: "#3B82F6" } // Biru Muda + Biru Royal
+      styles = { bg: "#EFF6FF", accent: "#3B82F6", text: "#1E3A8A" } // Biru Laut
       break;
-
-    // 3. HUJAN (Biru Agak Gelap/Sejuk)
     case "Hujan Ringan":
     case "Hujan Sedang":
-      styles = { bg: "#E0F2FE", accent: "#0284C7" } // Sky Blue + Ocean Blue
+      styles = { bg: "#E0F2FE", accent: "#0284C7", text: "#0C4A6E" } // Biru Langit
       break;
-
-    // 4. EKSTREM / LEBAT (Ungu)
     case "Hujan Lebat":
     case "Badai Petir":
     case "Angin Kencang":
-      styles = { bg: "#F3E8FF", accent: "#9333EA" } // Ungu Muda + Ungu Neon
+      styles = { bg: "#F3E8FF", accent: "#9333EA", text: "#581C87" } // Ungu
       break;
-      
     default:
-      if (isNight) styles = { bg: "#FAF5FF", accent: "#A855F7" }
-      else styles = { bg: "#FEFCE8", accent: "#EAB308" }
+      if (isNight) styles = { bg: "#FAF5FF", accent: "#A855F7", text: "#581C87" }
+      else styles = { bg: "#FEFCE8", accent: "#EAB308", text: "#713F12" }
       break;
   }
   return styles
@@ -152,8 +147,10 @@ export default function ForecastForm() {
   const [rows, setRows] = React.useState<ForecastRow[]>(
     initialTimes.map((t) => ({ 
       time: t, 
-      condition: "", 
-      prediction: "", 
+      conditionMain: "", 
+      probMain: "80", 
+      conditionSub: "", 
+      probSub: "",
       temperature: "", 
       humidity: "" 
     }))
@@ -178,7 +175,7 @@ export default function ForecastForm() {
   }
 
   const addRow = () => {
-    setRows((prev) => [...prev, { time: "", condition: "", prediction: "", temperature: "", humidity: "" }])
+    setRows((prev) => [...prev, { time: "", conditionMain: "", probMain: "80", conditionSub: "", probSub: "", temperature: "", humidity: "" }])
   }
 
   const removeRow = (index: number) => {
@@ -198,7 +195,7 @@ export default function ForecastForm() {
       await new Promise(resolve => setTimeout(resolve, 200));
 
       const canvas = await html2canvas(printRef.current, {
-        scale: 2, 
+        scale: 4, 
         backgroundColor: "#ffffff",
         logging: false,
         useCORS: true,
@@ -221,6 +218,21 @@ export default function ForecastForm() {
       toast({ title: "Gagal", description: "Terjadi kesalahan.", variant: "destructive" });
     }
   };
+
+  // Helper render dropdown
+  const WeatherSelectItems = () => (
+    <>
+      <SelectItem value="Cerah"><span className="flex items-center gap-2"><LucideSun size={14} className="text-orange-500"/> Cerah</span></SelectItem>
+      <SelectItem value="Cerah Berawan"><span className="flex items-center gap-2"><LucideCloud size={14} className="text-orange-400"/> Cerah Berawan</span></SelectItem>
+      <SelectItem value="Berawan"><span className="flex items-center gap-2"><LucideCloud size={14} className="text-gray-500"/> Berawan</span></SelectItem>
+      <SelectItem value="Kabut"><span className="flex items-center gap-2"><LucideCloud size={14} className="text-slate-400"/> Kabut</span></SelectItem>
+      <SelectItem value="Hujan Ringan"><span className="flex items-center gap-2"><LucideRain size={14} className="text-blue-400"/> Hujan Ringan</span></SelectItem>
+      <SelectItem value="Hujan Sedang"><span className="flex items-center gap-2"><LucideRain size={14} className="text-blue-500"/> Hujan Sedang</span></SelectItem>
+      <SelectItem value="Hujan Lebat"><span className="flex items-center gap-2"><LucideZap size={14} className="text-indigo-600"/> Hujan Lebat</span></SelectItem>
+      <SelectItem value="Badai Petir"><span className="flex items-center gap-2"><LucideZap size={14} className="text-purple-600"/> Badai Petir</span></SelectItem>
+      <SelectItem value="Angin Kencang"><span className="flex items-center gap-2"><LucideWind size={14} className="text-teal-600"/> Angin Kencang</span></SelectItem>
+    </>
+  )
 
   return (
     <div className="space-y-6">
@@ -253,37 +265,67 @@ export default function ForecastForm() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">Jam</TableHead>
-              <TableHead className="w-[200px]">Kondisi</TableHead>
-              <TableHead>Deskripsi (Prediksi)</TableHead>
-              <TableHead className="w-[100px]">Suhu</TableHead>
-              <TableHead className="w-[100px]">Kelembapan</TableHead>
+              <TableHead className="w-[80px]">Jam</TableHead>
+              <TableHead className="w-[80px] text-center">%</TableHead>
+              <TableHead className="w-[180px]">Kondisi Utama</TableHead>
+              <TableHead className="w-[80px] text-center">% (Ops)</TableHead>
+              <TableHead className="w-[180px]">Kondisi Tambahan</TableHead>
+              <TableHead className="w-[80px]">Suhu</TableHead>
+              <TableHead className="w-[80px]">RH</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((row, idx) => (
               <TableRow key={idx}>
+                {/* JAM */}
                 <TableCell>
                   <Input value={row.time} onChange={(e) => updateRow(idx, { time: e.target.value })} className="h-9"/>
                 </TableCell>
+
+                {/* UTAMA */}
                 <TableCell>
-                  <Select value={row.condition} onValueChange={(v) => updateRow(idx, { condition: v as WeatherCondition })}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Pilih..." /></SelectTrigger>
+                  <Select value={row.probMain} onValueChange={(v) => updateRow(idx, { probMain: v })}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="%" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Cerah"><span className="flex items-center gap-2"><LucideSun size={14} className="text-orange-500"/> Cerah</span></SelectItem>
-                      <SelectItem value="Cerah Berawan"><span className="flex items-center gap-2"><LucideCloud size={14} className="text-orange-400"/> Cerah Berawan</span></SelectItem>
-                      <SelectItem value="Berawan"><span className="flex items-center gap-2"><LucideCloud size={14} className="text-gray-500"/> Berawan</span></SelectItem>
-                      <SelectItem value="Kabut"><span className="flex items-center gap-2"><LucideCloud size={14} className="text-slate-400"/> Kabut</span></SelectItem>
-                      <SelectItem value="Hujan Ringan"><span className="flex items-center gap-2"><LucideRain size={14} className="text-blue-400"/> Hujan Ringan</span></SelectItem>
-                      <SelectItem value="Hujan Sedang"><span className="flex items-center gap-2"><LucideRain size={14} className="text-blue-500"/> Hujan Sedang</span></SelectItem>
-                      <SelectItem value="Hujan Lebat"><span className="flex items-center gap-2"><LucideZap size={14} className="text-indigo-600"/> Hujan Lebat</span></SelectItem>
-                      <SelectItem value="Badai Petir"><span className="flex items-center gap-2"><LucideZap size={14} className="text-purple-600"/> Badai Petir</span></SelectItem>
-                      <SelectItem value="Angin Kencang"><span className="flex items-center gap-2"><LucideWind size={14} className="text-teal-600"/> Angin Kencang</span></SelectItem>
+                      {probabilities.map((p) => <SelectItem key={p} value={p}>{p}%</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </TableCell>
-                <TableCell><Textarea value={row.prediction} onChange={(e) => updateRow(idx, { prediction: e.target.value })} placeholder="..." className="min-h-[40px] h-9 py-1 text-sm resize-none"/></TableCell>
+                <TableCell>
+                  <Select value={row.conditionMain} onValueChange={(v) => updateRow(idx, { conditionMain: v as WeatherCondition })}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Utama..." /></SelectTrigger>
+                    <SelectContent><WeatherSelectItems /></SelectContent>
+                  </Select>
+                </TableCell>
+
+                {/* TAMBAHAN */}
+                <TableCell>
+                  <Select 
+                    value={row.probSub || "none"} 
+                    onValueChange={(v) => updateRow(idx, { probSub: v === "none" ? "" : v })}
+                  >
+                    <SelectTrigger className="h-9 text-muted-foreground"><SelectValue placeholder="-" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">-</SelectItem>
+                      {probabilities.map((p) => <SelectItem key={p} value={p}>{p}%</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell>
+                  <Select 
+                    value={row.conditionSub || "none"} 
+                    onValueChange={(v) => updateRow(idx, { conditionSub: v === "none" ? "" : v as WeatherCondition })}
+                  >
+                    <SelectTrigger className="h-9 text-muted-foreground"><SelectValue placeholder="(Opsional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">- Kosong -</SelectItem>
+                      <WeatherSelectItems />
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+
+                {/* PARAMETER */}
                 <TableCell><Input type="number" value={row.temperature || ""} onChange={(e) => updateRow(idx, { temperature: e.target.value })} className="h-9" /></TableCell>
                 <TableCell><Input type="number" value={row.humidity || ""} onChange={(e) => updateRow(idx, { humidity: e.target.value })} className="h-9" /></TableCell>
                 <TableCell><Button variant="ghost" size="icon" onClick={() => removeRow(idx)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
@@ -293,7 +335,7 @@ export default function ForecastForm() {
         </Table>
       </div>
 
-      {/* --- HIDDEN AREA (OUTPUT IMAGE COMPACT & FULL COLOR) --- */}
+      {/* --- HIDDEN AREA (OUTPUT IMAGE - ALIGNMENT FIXED) --- */}
       <div 
         style={{ 
           position: "fixed", 
@@ -315,40 +357,39 @@ export default function ForecastForm() {
               background: linear-gradient(160deg, #FFFFFF 0%, #F1F5F9 100%);
             }
             
-            /* HEADER LEBIH COMPACT */
+            /* HEADER */
             .header-container { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
             .header-title { font-size: 32px; font-weight: 800; color: #1E3A8A; line-height: 1.1; letter-spacing: -0.5px; }
             .header-subtitle { font-size: 20px; font-weight: 600; color: #EA580C; margin-top: 4px; }
             .sub-label { font-size: 14px; color: #64748B; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 2px; }
             
-            /* ROW DESIGN: FULL COLOR CARD */
+            /* ROW DESIGN */
             .weather-row {
               display: flex;
               border-radius: 12px;
-              margin-bottom: 10px; /* Jarak rapat */
+              margin-bottom: 10px;
               overflow: hidden;
               box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
               position: relative;
-              /* Border Kiri Tebal Penanda Warna */
               border-left-width: 8px; 
               border-left-style: solid;
               height: 110px; 
             }
             
-            /* 1. JAM (Transparent BG - Menyatu dengan Card) */
+            /* 1. JAM */
             .col-time-h {
               width: 14%;
               display: flex;
               align-items: center;
               justify-content: center;
               font-weight: 800;
-              font-size: 26px; /* Font Besar */
+              font-size: 26px;
               padding: 0;
               border-right: 1px solid rgba(0,0,0,0.05);
-              color: #334155; /* Slate 700 */
+              color: #334155;
             }
 
-            /* 2. ICON (Transparent BG - Menyatu dengan Card) */
+            /* 2. ICON */
             .col-icon {
               width: 18%; 
               display: flex;
@@ -357,7 +398,7 @@ export default function ForecastForm() {
               padding: 0;
             }
 
-            /* 3. DESKRIPSI (Transparent BG - Menyatu dengan Card) */
+            /* 3. DESKRIPSI */
             .col-desc {
               width: 43%; 
               padding: 0 20px;
@@ -365,16 +406,17 @@ export default function ForecastForm() {
               flex-direction: column;
               justify-content: center;
             }
-            .desc-main { font-size: 28px; font-weight: 800; line-height: 1.1; margin-bottom: 2px; color: #1E293B; /* Slate 800 */ }
-            .desc-sub { font-size: 18px; opacity: 0.85; font-weight: 500; color: #475569; /* Slate 600 */ }
+            .desc-main { font-size: 28px; font-weight: 800; line-height: 1.1; margin-bottom: 0px; }
+            .desc-sub { font-size: 18px; opacity: 0.85; font-weight: 500; margin-top: 2px; }
 
-            /* 4. METRIK (Transparent BG - Menyatu dengan Card) */
+            /* 4. METRIK (FIXED ALIGNMENT) */
             .col-metrics {
               width: 25%;
-              padding: 0 20px; 
+              padding: 0 24px; /* Padding kiri kanan biar tidak mepet */
               display: flex;
               flex-direction: column;
-              justify-content: center;
+              justify-content: center; /* Center Vertikal */
+              align-items: flex-start; /* Default align left, nanti diatur di item */
               gap: 8px;
               border-left: 1px solid rgba(0,0,0,0.05);
             }
@@ -382,12 +424,20 @@ export default function ForecastForm() {
             .metric-item {
               display: flex;
               align-items: center;
-              gap: 12px;
+              gap: 16px; /* Jarak antara ikon dan angka */
               font-size: 24px;
               font-weight: 700;
               color: #334155;
+              width: 100%; /* Pastikan lebar penuh */
             }
             
+            /* Ikon di dalam parameter dibuat fixed width agar angka lurus vertikal */
+            .metric-icon-wrap {
+               width: 32px; /* Lebar tetap untuk ikon */
+               display: flex;
+               justify-content: center;
+            }
+
             /* FOOTER */
             .footer {
               margin-top: 30px;
@@ -415,24 +465,24 @@ export default function ForecastForm() {
             </div>
           </div>
 
-          {/* Column Headers (Bisa dihapus jika mau lebih minimalis) */}
-          <div style={{ display: "flex", padding: "0 10px 8px 10px", fontWeight: "bold", color: "#475569", textTransform: "uppercase", fontSize: "14px", letterSpacing: "0.5px" }}>
+          {/* Column Headers */}
+          <div style={{ display: "flex", padding: "0 10px 8px 10px", fontWeight: "bold", color: "#1E3A8A", textTransform: "uppercase", fontSize: "14px", letterSpacing: "0.5px" }}>
             <div style={{ width: "14%", textAlign: "center" }}>WIB</div>
-            <div style={{ width: "61%", paddingLeft: "15px" }}>Prakiraan</div>
-            <div style={{ width: "25%", paddingLeft: "20px" }}>Parameter</div>
+            <div style={{ width: "61%", paddingLeft: "15px" }}>Kemungkinan Cuaca</div>
+            <div style={{ width: "25%", paddingLeft: "24px" }}>Parameter</div>
           </div>
 
           {/* Rows */}
           <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
             {rows.map((row, i) => {
-              const styles = getRowStyles(row.condition || "", row.time)
+              const styles = getRowStyles(row.conditionMain || "", row.time)
               return (
                 <div 
                   key={i} 
                   className="weather-row" 
                   style={{ 
-                    backgroundColor: styles.bg, /* FULL CARD BACKGROUND (PASTEL) */
-                    borderLeftColor: styles.accent /* BORDER KIRI TEBAL (TUA) */
+                    backgroundColor: styles.bg, 
+                    borderLeftColor: styles.accent,
                   }}
                 >
                   
@@ -443,28 +493,33 @@ export default function ForecastForm() {
 
                   {/* ICON */}
                   <div className="col-icon">
-                    {/* Warna Ikon mengikuti Aksen (Tua) agar kontras di BG Muda */}
-                    {getErikFlowersIcon(row.condition || "", row.time, 88, styles.accent)}
+                    {getErikFlowersIcon(row.conditionMain || "", row.time, 88, styles.accent)}
                   </div>
 
                   {/* DESKRIPSI */}
                   <div className="col-desc">
-                    <div className="desc-main">
-                        {row.prediction.split(',')[0] || row.condition || "-"}
+                    <div className="desc-main" style={{ color: styles.text }}>
+                        {row.probMain ? `${row.probMain}% ` : ""}{row.conditionMain || "-"}
                     </div>
-                    <div className="desc-sub">
-                      {row.prediction.split(',').slice(1).join(', ') || ""}
-                    </div>
+                    {row.conditionSub && (
+                      <div className="desc-sub" style={{ color: styles.text }}>
+                        {row.probSub ? `${row.probSub}% ` : ""}{row.conditionSub}
+                      </div>
+                    )}
                   </div>
 
-                  {/* METRIK */}
+                  {/* METRIK (Aligned) */}
                   <div className="col-metrics">
                     <div className="metric-item">
-                      <Thermometer size={28} color="#EF4444" strokeWidth={3} /> 
+                      <div className="metric-icon-wrap">
+                        <Thermometer size={30} color="#EF4444" strokeWidth={3} /> 
+                      </div>
                       <span>{row.temperature ? `${row.temperature}°` : "-"}</span>
                     </div>
                     <div className="metric-item">
-                      <Droplets size={28} color="#3B82F6" strokeWidth={3} />
+                      <div className="metric-icon-wrap">
+                        <Droplets size={30} color="#3B82F6" strokeWidth={3} />
+                      </div>
                       <span>{row.humidity ? `${row.humidity}%` : "-"}</span>
                     </div>
                   </div>
@@ -477,7 +532,7 @@ export default function ForecastForm() {
           <div className="footer">
             <div style={{ display: "flex", gap: "20px" }}>
                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><Thermometer size={18} color="#EF4444"/> Suhu</span>
-               <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><Droplets size={18} color="#3B82F6"/> Kelembapan</span>
+               <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><Droplets size={18} color="#3B82F6"/> Kelembapan Relatif</span>
             </div>
             <div>
               <span style={{ opacity: 0.7 }}>Powered by</span> <strong style={{ color: "#1E3A8A" }}>Meteo Sense</strong>
