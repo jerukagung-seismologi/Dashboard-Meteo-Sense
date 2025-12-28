@@ -252,11 +252,11 @@ export default function ForecastForm() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={addRow}><Plus className="w-4 h-4 mr-1"/> Tambah Jam</Button>
-          <Button variant="default" size="sm" onClick={onSaveDebug}><Save className="w-4 h-4 mr-1"/> Debug Data</Button>
-          <Button variant="secondary" size="sm" onClick={onSaveAsImage}>
+            <Button variant="default" size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700"><Plus className="w-4 h-4 mr-1"/> Tambah Jam</Button>
+            <Button variant="default" size="sm" onClick={onSaveDebug} className="bg-orange-500 hover:bg-orange-600"><Save className="w-4 h-4 mr-1"/> Debug Data</Button>
+            <Button variant="default" size="sm" onClick={onSaveAsImage} className="bg-green-600 hover:bg-green-700">
             <Download className="w-4 h-4 mr-1"/> Simpan Gambar
-          </Button>
+            </Button>
         </div>
       </div>
 
