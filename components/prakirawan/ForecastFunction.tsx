@@ -68,8 +68,8 @@ export type ForecastRow = {
   probMain: string
   conditionSub: WeatherCondition | ""
   probSub: string
-  temperature?: number | ""
-  humidity?: number | ""
+  temperature: number | ""
+  humidity: number | ""
 }
 
 const initialTimes = ["07:00", "10:00", "13:00", "16:00", "19:00"]

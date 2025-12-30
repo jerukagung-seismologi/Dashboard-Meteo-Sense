@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import type { NavigationItem } from "./navigation"
+import type { NavigationItem } from "@/components/dashboard/navigation"
 import { Sun } from "lucide-react"
 
 interface DesktopSidebarProps {

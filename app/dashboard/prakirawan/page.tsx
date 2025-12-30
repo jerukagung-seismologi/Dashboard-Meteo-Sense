@@ -2,6 +2,8 @@
 
 import ForecastForm from "@/components/prakirawan/ForecastFunction"
 import { Toaster } from "@/components/ui/toaster"
+import BMKGNowcasting from "@/components/prakirawan/FetchBMKGData"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 export default function Page() {
     const printedAt = new Date()
@@ -64,7 +66,20 @@ export default function Page() {
                 </header>
 
                 <div className="p-8 print:p-2 dark:bg-slate-900">
-                    <ForecastForm />
+                    <Tabs defaultValue="bmkg" className="w-full">
+                        <TabsList className="mb-4">
+                            <TabsTrigger value="bmkg">Prakiraan BMKG</TabsTrigger>
+                            <TabsTrigger value="generator">Buat Prakiraan</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="bmkg" className="mt-0">
+                            <BMKGNowcasting className="w-full" limit={9} />
+                        </TabsContent>
+
+                        <TabsContent value="generator" className="mt-0">
+                            <ForecastForm />
+                        </TabsContent>
+                    </Tabs>
                 </div>
             </main>
 
