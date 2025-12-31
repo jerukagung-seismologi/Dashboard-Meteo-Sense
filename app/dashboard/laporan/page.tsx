@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth"
 import ChartComponent from "@/components/ChartComponent"
 import { ToastProvider, ToastViewport } from "@/components/ui/toast"
 import { useToast } from "@/hooks/use-toast"
+import { fetchAllDevices } from "@/lib/FetchingDevice"
 
 // --- IMPORT DARI UTILS (RUMUS DI PISAH) ---
 import { 
@@ -101,7 +102,8 @@ export default function PelaporanPage() {
   const displayName = profile?.displayName || user?.displayName || "Pengamat Cuaca";
   const { toast } = useToast();
 
-  const [sensorId, setSensorId] = useState("id-05");
+  const [sensorOptions, setSensorOptions] = useState<{ label: string; value: string; }[]>([]);
+  const [sensorId, setSensorId] = useState("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -109,6 +111,42 @@ export default function PelaporanPage() {
   const [rawData, setRawData] = useState<SensorDate[]>([]); // Masih butuh raw data untuk hitung Min/Max absolut
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch user's devices from Firestore
+  useEffect(() => {
+    if (user?.uid) {
+      const loadUserDevices = async () => {
+        try {
+          const devices = await fetchAllDevices(user.uid);
+          if (devices.length > 0) {
+            const options = devices
+              .filter((device) => device.authToken) // Only include devices with an authToken
+              .map((device) => ({
+                label: device.name,
+                value: device.authToken!,
+              }));
+
+            if (options.length > 0) {
+              setSensorOptions(options);
+              setSensorId(options[0].value); // Set the first sensor as default
+            } else {
+              setError("Tidak ada sensor yang dapat ditampilkan. Pastikan perangkat Anda memiliki authToken.");
+              setSensorOptions([]);
+              setSensorId("");
+            }
+          } else {
+            setError("Tidak ada perangkat yang terhubung dengan akun Anda.");
+            setSensorOptions([]);
+            setSensorId("");
+          }
+        } catch (err) {
+          setError("Gagal memuat daftar perangkat.");
+          console.error(err);
+        }
+      };
+      loadUserDevices();
+    }
+  }, [user]);
 
   // Init Date Range
   useEffect(() => {
@@ -132,7 +170,7 @@ export default function PelaporanPage() {
 
   // Load Data Handler
   async function loadData() {
-    if (!startDate || !endDate) return;
+    if (!startDate || !endDate || !sensorId) return;
     setLoading(true);
     setError(null);
     
@@ -213,14 +251,16 @@ export default function PelaporanPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium">Pilih Sensor</label>
-                <Select value={sensorId} onValueChange={setSensorId}>
-                  <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
+                <Select value={sensorId} onValueChange={setSensorId} disabled={!sensorId}>
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Pilih Sensor" />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="id-01">Sensor 1</SelectItem>
-                    <SelectItem value="id-02">Sensor 2</SelectItem>
-                    <SelectItem value="id-03">Sensor 3</SelectItem>
-                    <SelectItem value="id-04">Sensor 4</SelectItem>
-                    <SelectItem value="id-05">Sensor 5</SelectItem>
+                    {sensorOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
