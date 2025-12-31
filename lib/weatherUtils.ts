@@ -34,25 +34,46 @@ type HourlyRecord = {
 // Format "dd MMMM yyyy" (id-ID)
 const ID_DATE_FMT = new Intl.DateTimeFormat("id-ID", {
   timeZone: "Asia/Jakarta",
-  day: "2-digit", month: "long", year: "numeric",
+  day: "2-digit", 
+  month: "long", 
+  year: "numeric",
 });
 
 // Format "dd MMMM" (id-ID)
 const ID_DATE_SHORT_FMT = new Intl.DateTimeFormat("id-ID", {
   timeZone: "Asia/Jakarta",
-  day: "2-digit", month: "long",
+  day: "2-digit", 
+  month: "long",
 });
 
 // Format "YYYY-MM-DD"
 const FMT_YMD = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Jakarta",
-  year: "numeric", month: "2-digit", day: "2-digit",
+  year: "numeric", 
+  month: "2-digit", 
+  day: "2-digit",
+});
+
+// Format "YYYY-MM-DD" in UTC
+const FMT_YMD_UTC = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "UTC",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
 });
 
 // Format Jam "HH"
 const FMT_HOUR = new Intl.DateTimeFormat("id-ID", {
   timeZone: "Asia/Jakarta",
-  hour: "2-digit", hour12: false,
+  hour: "2-digit", 
+  hour12: false,
+});
+
+// Format Jam "HH" in UTC
+const FMT_HOUR_UTC = new Intl.DateTimeFormat("id-ID", {
+  timeZone: "UTC",
+  hour: "2-digit",
+  hour12: false,
 });
 
 export const formatIdDateDash = (input: string | Date): string => {
@@ -141,6 +162,9 @@ export function aggregateDaily(rows: SensorDate[]): WeatherRecord[] {
     const temps = rawData.map(r => r.temperature).filter(Number.isFinite);
     const humis = rawData.map(r => r.humidity).filter(Number.isFinite);
     const press = rawData.map(r => r.pressure).filter(Number.isFinite);
+    
+    // Get the last record of the day to get the final rainfall value.
+    const lastRecordOfDay = rawData.length > 0 ? rawData[rawData.length - 1] : null;
 
     result.push({
       date,
@@ -156,66 +180,91 @@ export function aggregateDaily(rows: SensorDate[]): WeatherRecord[] {
       pressureMax: press.length ? Math.max(...press) : 0,
       dewPointAvg: wsum(i => i.dewPointAvg) / totalSamples,
       windSpeedAvg: 0,
-      rainfallTot: items.reduce((acc, it) => acc + it.rainfallTot, 0),
+      rainfallTot: lastRecordOfDay ? lastRecordOfDay.rainfall : 0,
     });
   }
   return result.sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/**
- * Aggregates sensor data by UTC day. This is useful for metrics like daily rainfall
- * that should be calculated from 00:00 to 23:59 UTC.
- * @param rows - An array of raw sensor data.
- * @returns An array of WeatherRecord objects, with each object representing one UTC day.
- */
-export function aggregateDailyUTC(rows: SensorDate[]): WeatherRecord[] {
-  const byDayUTC = new Map<string, SensorDate[]>();
-
-  // Group data by UTC date string (YYYY-MM-DD)
+function aggregateHourlyUTC(rows: SensorDate[]): HourlyRecord[] {
+  const byHour = new Map<string, SensorDate[]>();
   for (const r of rows) {
     const d = new Date(r.timestamp);
-    const year = d.getUTCFullYear();
-    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(d.getUTCDate()).padStart(2, '0');
-    const dateKey = `${year}-${month}-${day}`;
+    const dayKey = FMT_YMD_UTC.format(d);
+    const hour = FMT_HOUR_UTC.format(d);
+    const hourKey = `${dayKey}T${hour}`;
+    if (!byHour.has(hourKey)) byHour.set(hourKey, []);
+    byHour.get(hourKey)!.push(r);
+  }
 
-    if (!byDayUTC.has(dateKey)) {
-      byDayUTC.set(dateKey, []);
-    }
-    byDayUTC.get(dateKey)!.push(r);
+  const hours: HourlyRecord[] = [];
+  for (const [hourKey, items] of byHour) {
+    const n = items.length || 1;
+    const sum = (ns: number[]) => ns.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+
+    hours.push({
+      hourKey,
+      dateKey: hourKey.slice(0, 10),
+      sampleCount: n,
+      temperatureAvg: sum(items.map(i => i.temperature)) / n,
+      humidityAvg: sum(items.map(i => i.humidity)) / n,
+      pressureAvg: sum(items.map(i => i.pressure)) / n,
+      dewPointAvg: sum(items.map(i => i.dew)) / n,
+      rainfallTot: Math.max(...items.map(i => i.rainrate).filter(Number.isFinite), 0),
+    });
+  }
+  return hours.sort((a, b) => a.hourKey.localeCompare(b.hourKey));
+}
+
+export function aggregateDailyUTC(rows: SensorDate[]): WeatherRecord[] {
+  const hourly = aggregateHourlyUTC(rows);
+  const byDay = new Map<string, HourlyRecord[]>();
+
+  for (const h of hourly) {
+    if (!byDay.has(h.dateKey)) byDay.set(h.dateKey, []);
+    byDay.get(h.dateKey)!.push(h);
+  }
+
+  const byDayRaw = new Map<string, SensorDate[]>();
+  for (const r of rows) {
+    const d = new Date(r.timestamp);
+    const dayKey = FMT_YMD_UTC.format(d);
+    if (!byDayRaw.has(dayKey)) byDayRaw.set(dayKey, []);
+    byDayRaw.get(dayKey)!.push(r);
   }
 
   const result: WeatherRecord[] = [];
-  for (const [date, items] of byDayUTC) {
-    // Correct logic for accumulated rainfall:
-    // Find the difference between the max and min 'rainfall' values for the day,
-    // as 'rainfall' is an accumulating counter.
-    const rainfallValues = items.map(it => it.rainfall).filter(Number.isFinite);
-    const rainfallTot = rainfallValues.length > 1
-      ? Math.max(...rainfallValues) - Math.min(...rainfallValues)
-      : 0;
+  for (const [date, items] of byDay) {
+    const totalSamples = items.reduce((acc, it) => acc + it.sampleCount, 0) || 1;
+    const wsum = (pick: (h: HourlyRecord) => number) =>
+      items.reduce((acc, it) => acc + pick(it) * it.sampleCount, 0);
+
+    const rawData = byDayRaw.get(date) || [];
+    const temps = rawData.map(r => r.temperature).filter(Number.isFinite);
+    const humis = rawData.map(r => r.humidity).filter(Number.isFinite);
+    const press = rawData.map(r => r.pressure).filter(Number.isFinite);
+
+    const lastRecordOfDay = rawData.length > 0 ? rawData[rawData.length - 1] : null;
 
     result.push({
       date,
-      sampleCount: items.length,
-      rainfallTot: rainfallTot,
-      // Fill other fields with 0 as they are not calculated here
-      temperatureAvg: 0,
-      temperatureMin: 0,
-      temperatureMax: 0,
-      humidityAvg: 0,
-      humidityMin: 0,
-      humidityMax: 0,
-      pressureAvg: 0,
-      pressureMin: 0,
-      pressureMax: 0,
-      dewPointAvg: 0,
+      sampleCount: totalSamples,
+      temperatureAvg: wsum(i => i.temperatureAvg) / totalSamples,
+      temperatureMin: temps.length ? Math.min(...temps) : 0,
+      temperatureMax: temps.length ? Math.max(...temps) : 0,
+      humidityAvg: wsum(i => i.humidityAvg) / totalSamples,
+      humidityMin: humis.length ? Math.min(...humis) : 0,
+      humidityMax: humis.length ? Math.max(...humis) : 0,
+      pressureAvg: wsum(i => i.pressureAvg) / totalSamples,
+      pressureMin: press.length ? Math.min(...press) : 0,
+      pressureMax: press.length ? Math.max(...press) : 0,
+      dewPointAvg: wsum(i => i.dewPointAvg) / totalSamples,
       windSpeedAvg: 0,
+      rainfallTot: lastRecordOfDay ? lastRecordOfDay.rainfall : 0,
     });
   }
   return result.sort((a, b) => a.date.localeCompare(b.date));
 }
-
 
 // --- HELPER LOGIC ---
 
