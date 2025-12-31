@@ -8,7 +8,7 @@ export default function PetaPage() {
   // react-simple-maps memerlukan environment browser.
   const Map = useMemo(
     () =>
-      dynamic(() => import("@/components/Map"), {
+      dynamic(() => import("@/components/peta/Map"), {
         loading: () => <p>Memuat peta...</p>,
         ssr: false,
       }),

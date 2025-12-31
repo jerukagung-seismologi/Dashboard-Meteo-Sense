@@ -44,7 +44,7 @@ export default function Page() {
                     <div className="mt-6 flex items-end justify-between border-t border-gray-200 pt-4 dark:border-slate-700">
                         <div>
                             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                                Generator Prakiraan Cuaca
+                                Form Prakiraan Cuaca
                             </h1>
                             <p className="text-sm text-gray-500 dark:text-slate-300">
                                 Silakan isi data di bawah untuk menghasilkan gambar outlook.
@@ -68,8 +68,8 @@ export default function Page() {
                 <div className="p-8 print:p-2 dark:bg-slate-900">
                     <Tabs defaultValue="bmkg" className="w-full">
                         <TabsList className="mb-4">
-                            <TabsTrigger value="bmkg">Prakiraan BMKG</TabsTrigger>
-                            <TabsTrigger value="generator">Buat Prakiraan</TabsTrigger>
+                            <TabsTrigger value="bmkg">Prakiraan Cuaca BMKG</TabsTrigger>
+                            <TabsTrigger value="generator">Form Prakiraan Cuaca</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="bmkg" className="mt-0">
