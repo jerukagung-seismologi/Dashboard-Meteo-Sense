@@ -1,7 +1,23 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
+import { Check, ChevronsUpDown } from "lucide-react"
 import { fetchBMKGData, BMKGOutputData } from "@/lib/FetchingBMKGPrediction"
+import { KEBUMEN_VILLAGES } from "@/lib/kebumen-villages"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 type Props = {
   className?: string
@@ -17,7 +33,7 @@ function deepFlatten(arr: any[]): any[] {
   }, [])
 }
 
-// Helper: normalize varied BMKG response shapes into BMKGOutputData[]
+// Helper: normalize varied BMKG response shapes
 function normalizeBMKGResponse(input: any): BMKGOutputData[] {
   // If it's already an array of forecast objects (has "t", "weather_desc", etc.)
   if (Array.isArray(input) && input.length && typeof input[0] === "object" && ("t" in input[0] || "weather_desc" in input[0])) {
@@ -48,7 +64,7 @@ function normalizeBMKGResponse(input: any): BMKGOutputData[] {
   return []
 }
 
-// Helper: robust date parsing for "YYYY-MM-DD HH:mm:ss" or ISO
+// Helper: robust date parsing
 function parseDateValue(s?: string): number {
   if (!s || typeof s !== "string") return NaN
   const candidate = s.includes("T") ? s : s.replace(" ", "T")
@@ -91,7 +107,7 @@ function degFromWdString(wd?: string): number | null {
   return key in map ? map[key] : null
 }
 
-// Wind direction indicator (arrow points to where wind comes FROM, like meteorological convention)
+// Wind direction indicator
 function WindDirectionIndicator({ deg }: { deg: number | null }) {
   const d = normalizeDeg(deg ?? undefined)
   const rotation = d ?? 0
@@ -112,17 +128,24 @@ function WindDirectionIndicator({ deg }: { deg: number | null }) {
   )
 }
 
-export default function BMKGNowcasting({ className, limit = 6}: Props) {
+export default function BMKGNowcasting({ className, limit = 6 }: Props) {
   const [data, setData] = useState<BMKGOutputData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedVillage, setSelectedVillage] = useState("33.05.12.1009") // Default to Kebumen
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    fetchBMKGData()
+    fetchBMKGData(selectedVillage)
       .then((res: any) => {
         if (!cancelled) {
+          if (!res || typeof res !== "object") {
+            setData([])
+            setError("Lokasi tidak ditemukan atau data tidak valid.")
+            return
+          }
           const normalized = normalizeBMKGResponse(res)
           setData(normalized || [])
           setError(null)
@@ -130,7 +153,11 @@ export default function BMKGNowcasting({ className, limit = 6}: Props) {
       })
       .catch((e: any) => {
         if (!cancelled) {
-          setError(typeof e?.message === "string" ? e.message : "Gagal memuat data BMKG")
+          setError(
+            typeof e?.message === "string"
+              ? e.message
+              : "Gagal memuat data BMKG"
+          )
         }
       })
       .finally(() => {
@@ -139,113 +166,139 @@ export default function BMKGNowcasting({ className, limit = 6}: Props) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [selectedVillage])
 
   const items = useMemo(() => {
     const sorted = [...data].sort((a, b) => {
       const ta = parseDateValue(a.local_datetime || a.datetime)
       const tb = parseDateValue(b.local_datetime || b.datetime)
-      // If parse fails, keep original order
       if (Number.isNaN(ta) || Number.isNaN(tb)) return 0
       return ta - tb
     })
     return sorted.slice(0, limit)
   }, [data, limit])
 
+  const currentVillageName = useMemo(() => {
+    return (
+      KEBUMEN_VILLAGES.find(d => d.code === selectedVillage)?.name || "Unknown"
+    )
+  }, [selectedVillage])
+
   return (
     <section className={className}>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">BMKG Nowcasting</h2>
-        {data[0]?.analysis_date ? (
-          <span className="text-xs text-muted-foreground">
-            Analisis: {data[0].analysis_date}
-          </span>
-        ) : null}
+      <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold">
+            Prakiraan BMKG: {currentVillageName}
+          </h2>
+          {data[0]?.analysis_date ? (
+            <span className="text-xs text-muted-foreground">
+              Analisis: {data[0].analysis_date}
+            </span>
+          ) : null}
+        </div>
+        <div className="w-full sm:w-72">
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="w-full justify-between"
+              >
+                {selectedVillage
+                  ? KEBUMEN_VILLAGES.find(
+                      village => village.code === selectedVillage
+                    )?.name
+                  : "Pilih Desa..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+              <Command>
+                <CommandInput placeholder="Cari desa..." />
+                <CommandEmpty>Desa tidak ditemukan.</CommandEmpty>
+                <CommandGroup className="max-h-64 overflow-y-auto">
+                  {KEBUMEN_VILLAGES.map(village => (
+                    <CommandItem
+                      key={village.code}
+                      value={village.name}
+                      onSelect={() => {
+                        setSelectedVillage(village.code)
+                        setOpen(false)
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          selectedVillage === village.code
+                            ? "opacity-100"
+                            : "opacity-0"
+                        )}
+                      />
+                      {village.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
       {loading ? (
-        <div className="rounded-lg border p-4 text-sm">Memuat Nowcasting BMKG...</div>
+        <div className="rounded-lg border p-4 text-sm">
+          Memuat Prakiraan BMKG untuk {currentVillageName}...
+        </div>
       ) : error ? (
         <div className="rounded-lg border p-4 text-sm text-red-600 dark:text-red-500">
-          Terjadi kesalahan: {error}
+          Error: {error}
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-lg border p-4 text-sm">Data tidak tersedia.</div>
+        <div className="rounded-lg border p-4 text-sm">
+          Tidak ada data prakiraan tersedia untuk {currentVillageName}.
+        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {items.map((it, idx) => {
-            // Prefer local time, fallback to UTC datetime, else try to format parsed Date
-            const timeText =
-              (it.local_datetime?.split(" ")?.[1]?.slice(0, 5)) ||
-              (it.datetime?.split("T")?.[1]?.slice(0, 5)) ||
-              (() => {
-                const ts = parseDateValue(it.datetime || it.local_datetime)
-                if (!Number.isNaN(ts)) {
-                  return new Date(ts).toLocaleTimeString("id-ID", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    timeZone: "Asia/Jakarta",
-                    hour12: false,
-                  })
-                }
-                return it.time_index || "—"
-              })()
-
-            const tempText = formatNumber(it.t, { decimals: 0 })
-            const rhText = formatNumber(it.hu, { decimals: 0 })
-            const cloudText = formatNumber(it.tcc, { decimals: 0 })
-            const rainText = formatNumber(it.tp, { decimals: 1 })
-            const windSpdText = formatNumber(it.ws, { decimals: 1 })
-
-            // Visibility: API appears to provide meters; convert to km with 1 decimal
-            const visKm =
-              typeof it.vs === "number" && Number.isFinite(it.vs)
-                ? (it.vs / 1000).toFixed(1)
-                : null
-
-            // Wind direction
-            const dirDeg = normalizeDeg(typeof it.wd_deg === "number" ? it.wd_deg : degFromWdString(it.wd) || undefined)
-            const dirLabel = it.wd || degreesToCompass(dirDeg ?? undefined)
-
-            // Encode image URL to handle spaces safely
-            const imageSrc = it.image ? encodeURI(it.image) : null
-
-            return (
-              <div key={idx} className="rounded-lg border p-4 bg-card">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-medium">{timeText} WIB</div>
-                  {imageSrc ? (
-                    // image URL provided by API
-                    <img
-                      src={imageSrc}
-                      alt={it.weather_desc_en || it.weather_desc || "Cuaca"}
-                      className="h-8 w-8 object-contain"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="h-8 w-8 rounded-full bg-muted" />
-                  )}
-                </div>
-
-                <div className="flex items-baseline gap-2">
-                  <div className="text-2xl font-semibold">{tempText}°C</div>
-                  <div className="text-xs text-muted-foreground">{it.weather_desc || "—"}</div>
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                  <div>RH: {rhText}%</div>
-                  <div>Cloud: {cloudText}%</div>
-                  <div>Hujan: {rainText} mm</div>
-                  <div className="flex items-center gap-2">
-                    <WindDirectionIndicator deg={dirDeg} />
-                    <span>Angin: {windSpdText} m/s {dirLabel}</span>
-                  </div>
-                  <div className="col-span-2">
-                    Vis: {visKm ? `${visKm} km` : "—"} {it.vs_text ? `(${it.vs_text})` : ""}
-                  </div>
-                </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+          {items.map((item, index) => (
+            <div
+              key={index}
+              className="flex flex-col items-center justify-center gap-2 rounded-lg border bg-card p-3 text-center text-sm shadow-sm"
+            >
+              <div className="font-semibold">
+                {new Date(
+                  parseDateValue(item.local_datetime || item.datetime)
+                ).toLocaleTimeString("id-ID", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  timeZone: "Asia/Jakarta",
+                })}
               </div>
-            )
-          })}
+              <div className="text-xs text-muted-foreground">
+                {new Date(
+                  parseDateValue(item.local_datetime || item.datetime)
+                ).toLocaleDateString("id-ID", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                })}
+              </div>
+              <img
+                src={`https://www.bmkg.go.id/asset/img/weather_icon/${item.weather}.png`}
+                alt={item.weather_desc}
+                className="h-12 w-12 object-contain"
+                title={item.weather_desc}
+              />
+              <div className="text-base font-bold">{formatNumber(item.t)}°C</div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <WindDirectionIndicator deg={item.wd_deg} />
+                <span>{degreesToCompass(item.wd_deg)}</span>
+                <span>{formatNumber(item.ws, { decimals: 1 })} km/j</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Kelembapan: {formatNumber(item.hu)}%
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </section>

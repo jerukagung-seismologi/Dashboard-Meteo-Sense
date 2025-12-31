@@ -30,14 +30,14 @@ function deepFlatten(arr: any[]): any[] {
 }
 
 // Fetch and normalize BMKG response into flat BMKGOutputData[]
-export async function fetchBMKGData(): Promise<BMKGOutputData[]> {
+export async function fetchBMKGData(areaCode: string = '33.05.15.2009'): Promise<BMKGOutputData[]> {
   try {
     const _fetch: any = (globalThis as any).fetch;
     if (typeof _fetch !== 'function') {
       throw new Error('Fetch API is not available in this runtime.');
     }
 
-    const response = await _fetch('https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=33.05.05.2009');
+    const response = await _fetch(`https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=${areaCode}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
