@@ -21,14 +21,14 @@ const RainMeasuringCup = ({ value, maxValue = 100, unit = "mm" }: { value: numbe
   const ticks = [100, 75, 50, 25, 0];
 
   return (
-    <div className="flex items-end gap-3 py-2">
+    <div className="flex items-end gap-4 py-2">
       {/* Labels */}
-      <div className="flex flex-col justify-between h-48 text-xs text-gray-500 font-mono font-medium py-1 text-right">
+      <div className="flex flex-col justify-between h-56 text-sm text-gray-500 font-mono font-medium py-1 text-right">
         {ticks.map((tick) => <span key={tick} className="leading-none">{tick}</span>)}
       </div>
 
       {/* Glass Container with Curved Bottom */}
-      <div className="relative w-20 h-48">
+      <div className="relative w-24 h-56">
         {/* The Glass Outline */}
         <div className="absolute inset-0 z-0 bg-slate-100/50 rounded-b-3xl border-2 border-slate-300"></div>
 
@@ -125,7 +125,7 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
 
     toast({ title: "Membuat Gambar...", description: "Mohon tunggu sebentar." });
 
-    html2canvas(componentRef.current, { useCORS: true, scale: 2, backgroundColor: null })
+    html2canvas(componentRef.current, { useCORS: true, scale: 4, backgroundColor: null })
       .then((canvas) => {
         const dataUrl = canvas.toDataURL('image/png');
         const link = document.createElement('a');
@@ -179,13 +179,13 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
 
       {error && <div className="no-print mx-auto mb-3 max-w-xl text-red-700 text-center p-4 bg-red-50 rounded-md">{error}</div>}
 
-      <main ref={componentRef} className="mx-auto my-0 mb-6 w-full max-w-xl aspect-square bg-white text-gray-900 shadow-lg print:shadow-none relative overflow-hidden flex flex-col justify-between p-8">
+      <main ref={componentRef} className="mx-auto my-0 mb-6 w-full max-w-xl aspect-square bg-white text-gray-900 shadow-lg print:shadow-none relative overflow-hidden flex flex-col justify-between p-4">
         <header className="relative z-10">
-          <div className="flex items-center gap-3">
-            <img src="/img/logo.webp" alt="Logo" className="h-12 w-12 object-contain" />
+          <div className="flex items-center gap-4">
+            <img src="/img/logo.webp" alt="Logo" className="h-14 w-14 object-contain" />
             <div>
-              <div className="text-sm font-medium text-gray-600">Laporan Hujan Harian</div>
-              <div className="text-lg font-bold text-gray-800">JERUKAGUNG METEOROLOGI</div>
+              <div className="text-base font-medium text-gray-600">Laporan Hujan Harian</div>
+              <div className="text-xl font-bold text-gray-800">JERUKAGUNG METEOROLOGI</div>
             </div>
           </div>
         </header>
@@ -193,19 +193,19 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
         <div className="relative z-10 flex-grow flex flex-col items-center justify-center text-center">
           {loading ? <section className="text-center text-gray-600 py-10">Memuat data...</section> : !reportData ? <section className="text-center text-gray-600 py-10">Tidak ada data.</section> : (
             <>
-              <h2 className="text-base font-semibold text-gray-700">Akumulasi Curah Hujan 24 Jam</h2>
-              <p className="text-sm text-gray-500">{formatIdDateDash(selectedDate)}</p>
-              <div className="my-4">
+              <h2 className="text-lg font-semibold text-gray-700">Akumulasi Curah Hujan 24 Jam</h2>
+              <p className="text-base text-gray-500">{formatIdDateDash(selectedDate)}</p>
+              <div className="my-6">
                 <RainMeasuringCup value={rainfall} />
               </div>
-              <div className="text-5xl font-bold text-blue-600">{rainfall.toFixed(2)} <span className="text-2xl font-medium text-gray-600">mm</span></div>
-              <div className={cn("mt-2 text-lg font-semibold", rainfall > 0 ? "text-blue-800" : "text-gray-700")}>{category}</div>
+              <div className="text-5xl font-bold text-blue-600">{rainfall.toFixed(2)} <span className="text-4xl font-medium text-gray-600 align-middle">mm</span></div>
+              <div className={cn("mt-2 text-xl font-semibold", rainfall > 0 ? "text-blue-800" : "text-gray-700")}>{category}</div>
             </>
           )}
         </div>
 
         <footer className="relative z-10 text-center">
-          <p className="text-xs text-gray-500">
+          <p className="text-sm text-gray-500">
             Sensor: {sensorName} • <span style={{ opacity: 0.7 }}>Powered by</span> <strong style={{ color: "#1E3A8A" }}>Meteo Sense</strong>
           </p>
         </footer>
