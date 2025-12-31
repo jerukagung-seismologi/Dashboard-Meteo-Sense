@@ -283,7 +283,7 @@ export default function BMKGNowcasting({ className, limit = 6 }: Props) {
                 })}
               </div>
               <img
-                src={`https://www.bmkg.go.id/asset/img/weather_icon/${item.weather}.png`}
+                src={item.image}
                 alt={item.weather_desc}
                 className="h-12 w-12 object-contain"
                 title={item.weather_desc}
