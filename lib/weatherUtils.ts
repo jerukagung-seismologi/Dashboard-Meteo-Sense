@@ -162,6 +162,61 @@ export function aggregateDaily(rows: SensorDate[]): WeatherRecord[] {
   return result.sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/**
+ * Aggregates sensor data by UTC day. This is useful for metrics like daily rainfall
+ * that should be calculated from 00:00 to 23:59 UTC.
+ * @param rows - An array of raw sensor data.
+ * @returns An array of WeatherRecord objects, with each object representing one UTC day.
+ */
+export function aggregateDailyUTC(rows: SensorDate[]): WeatherRecord[] {
+  const byDayUTC = new Map<string, SensorDate[]>();
+
+  // Group data by UTC date string (YYYY-MM-DD)
+  for (const r of rows) {
+    const d = new Date(r.timestamp);
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
+
+    if (!byDayUTC.has(dateKey)) {
+      byDayUTC.set(dateKey, []);
+    }
+    byDayUTC.get(dateKey)!.push(r);
+  }
+
+  const result: WeatherRecord[] = [];
+  for (const [date, items] of byDayUTC) {
+    // Correct logic for accumulated rainfall:
+    // Find the difference between the max and min 'rainfall' values for the day,
+    // as 'rainfall' is an accumulating counter.
+    const rainfallValues = items.map(it => it.rainfall).filter(Number.isFinite);
+    const rainfallTot = rainfallValues.length > 1
+      ? Math.max(...rainfallValues) - Math.min(...rainfallValues)
+      : 0;
+
+    result.push({
+      date,
+      sampleCount: items.length,
+      rainfallTot: rainfallTot,
+      // Fill other fields with 0 as they are not calculated here
+      temperatureAvg: 0,
+      temperatureMin: 0,
+      temperatureMax: 0,
+      humidityAvg: 0,
+      humidityMin: 0,
+      humidityMax: 0,
+      pressureAvg: 0,
+      pressureMin: 0,
+      pressureMax: 0,
+      dewPointAvg: 0,
+      windSpeedAvg: 0,
+    });
+  }
+  return result.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+
 // --- HELPER LOGIC ---
 
 export function getDayAtSeven(dateStr: string): Date {
