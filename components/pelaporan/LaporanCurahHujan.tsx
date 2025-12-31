@@ -18,33 +18,38 @@ import { Calendar } from "@/components/ui/calendar";
 // --- Helper UI: Rain Measuring Cup ---
 const RainMeasuringCup = ({ value, maxValue = 100, unit = "mm" }: { value: number, maxValue?: number, unit?: string }) => {
   const percentage = Math.min((value / maxValue) * 100, 100);
-  const ticks = [100, 80, 60, 40, 20, 0];
+  const ticks = [100, 75, 50, 25, 0];
 
   return (
     <div className="flex items-end gap-3 py-2">
-      <div className="flex flex-col justify-between h-48 text-xs text-gray-600 dark:text-gray-300 font-mono font-medium py-1 text-right">
+      {/* Labels */}
+      <div className="flex flex-col justify-between h-48 text-xs text-gray-500 font-mono font-medium py-1 text-right">
         {ticks.map((tick) => <span key={tick} className="leading-none">{tick}</span>)}
       </div>
+
+      {/* Glass Container with Curved Bottom */}
       <div className="relative w-20 h-48">
-        <div className="absolute inset-0 z-0 bg-black/5 rounded-b-3xl border-x border-b border-white/10"></div>
-        <div className="absolute inset-[2px] z-10 rounded-b-[20px] overflow-hidden flex items-end">
+        {/* The Glass Outline */}
+        <div className="absolute inset-0 z-0 bg-slate-100/50 rounded-b-3xl border-2 border-slate-300"></div>
+
+        {/* The Liquid (inset within the glass) */}
+        <div className="absolute inset-[3px] z-10 rounded-b-[22px] overflow-hidden flex items-end">
           <div
             className="w-full relative transition-all duration-1000 ease-in-out bg-gradient-to-t from-blue-600 via-sky-500 to-cyan-300"
             style={{ height: `${percentage}%` }}
           >
-            {/* Simplified water surface line to prevent rendering artifacts */}
+            {/* Water Surface */}
             <div className="absolute -top-px left-0 right-0 h-0.5 bg-white/90"></div>
           </div>
         </div>
-        <div className="absolute inset-0 z-20 pointer-events-none rounded-b-3xl border-x-2 border-b-2 border-t-0 border-gray-300/80 dark:border-gray-500/50 shadow-[inset_0_-4px_8px_rgba(0,0,0,0.1)]">
-          <div className="absolute inset-0 rounded-b-3xl bg-gradient-to-r from-white/30 via-transparent to-transparent opacity-60"></div>
-          <div className="absolute inset-0 flex flex-col justify-between py-1 px-2">
-            {ticks.map((tick, index) => (
-              <div key={index} className="relative h-px bg-gray-400/50">
-                <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1.5 h-px bg-gray-500/80"></span>
-              </div>
-            ))}
-          </div>
+
+        {/* Tick Marks */}
+        <div className="absolute inset-0 z-20 flex flex-col justify-between py-1 px-2 pointer-events-none">
+          {ticks.map((tick, index) => (
+            <div key={index} className="relative h-px bg-gray-400/30">
+              <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1.5 h-px bg-gray-500/60"></span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
