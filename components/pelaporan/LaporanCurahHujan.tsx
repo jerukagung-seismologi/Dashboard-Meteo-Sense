@@ -7,17 +7,24 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { fetchSensorDataByDateRange } from "@/lib/FetchingSensorData"
 import { useToast } from "@/hooks/use-toast"
-import {
-  WeatherRecord,
-  aggregateDailyUTC,
-  formatIdDateDash,
-} from "@/lib/weatherUtils"
+import { WeatherRecord, aggregateDailyUTC, formatIdDateDash } from "@/lib/weatherUtils"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
 // --- Helper UI: Rain Measuring Cup ---
 const RainMeasuringCup = ({ value, maxValue = 100, unit = "mm" }: { value: number, maxValue?: number, unit?: string }) => {
-  const percentage = Math.min((value / maxValue) * 100, 100);
+  // Pastikan value aman
+  const safeValue = isNaN(value) || value < 0 ? 0 : value;
+
+  // --- LOGIKA BARU ---
+  // Jika value ada isinya (> 0) tapi kurang dari 1, kita anggap visualnya 1
+  // Supaya airnya tetap kelihatan sedikit di gelas.
+  // Jika 0 tetap 0. Jika >= 1 gunakan nilai aslinya.
+  const visualValue = (safeValue > 0 && safeValue < 1) ? 1 : safeValue;
+
+  // Hitung persentase berdasarkan visualValue
+  const percentage = Math.min((visualValue / maxValue) * 100, 100);
+  
   const ticks = [100, 75, 50, 25, 0];
 
   return (
@@ -35,7 +42,7 @@ const RainMeasuringCup = ({ value, maxValue = 100, unit = "mm" }: { value: numbe
         {/* The Liquid (inset within the glass) */}
         <div className="absolute inset-[3px] z-10 rounded-b-[22px] overflow-hidden flex items-end">
           <div
-            className="w-full relative transition-all duration-1000 ease-in-out bg-gradient-to-t from-blue-600 via-sky-500 to-cyan-300"
+            className="liquid-bar w-full relative transition-all duration-1000 ease-in-out bg-gradient-to-t from-blue-600 via-sky-500 to-cyan-300"
             style={{ height: `${percentage}%` }}
           >
             {/* Water Surface */}
@@ -67,7 +74,18 @@ const getDailyRainfallCategory = (amount: number) => {
 
 export default function LaporanCurahHujan({ sensorId, sensorName, displayName }: { sensorId: string, sensorName: string, displayName: string }) {
   const { toast } = useToast();
-  const [reportData, setReportData] = useState<WeatherRecord | null>(null);
+  
+  // Inisialisasi sesuai tipe WeatherRecord
+  const [reportData, setReportData] = useState<WeatherRecord>({
+    date: new Date().toISOString().split('T')[0],
+    sampleCount: 0,
+    temperatureAvg: 0, temperatureMin: 0, temperatureMax: 0,
+    humidityAvg: 0, humidityMin: 0, humidityMax: 0,
+    pressureAvg: 0, pressureMin: 0, pressureMax: 0,
+    dewPointAvg: 0, windSpeedAvg: 0,
+    rainfallTot: 0, // Default 0
+  });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -84,8 +102,6 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
 
       try {
         const targetDate = selectedDate;
-
-        // Define the start and end of the selected day in UTC
         const startUTC = new Date(Date.UTC(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0, 0));
         const endUTC = new Date(Date.UTC(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999));
 
@@ -98,14 +114,24 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
           setReportData(daily[0]);
           toast({ title: "Sukses", description: `Data curah hujan berhasil dimuat.` });
         } else {
-          setReportData(null);
-          setError(`Tidak ditemukan data untuk tanggal ${formatIdDateDash(targetDate)}.`);
-          toast({ variant: "destructive", title: "Data Tidak Ditemukan", description: `Tidak ada data untuk tanggal ${formatIdDateDash(targetDate)}.` });
+          // JIKA KOSONG: Set objek dummy dengan nilai 0 agar tidak error dan tetap tampil
+          const zeroData: WeatherRecord = {
+            date: targetDate.toISOString().split('T')[0],
+            sampleCount: 0,
+            temperatureAvg: 0, temperatureMin: 0, temperatureMax: 0,
+            humidityAvg: 0, humidityMin: 0, humidityMax: 0,
+            pressureAvg: 0, pressureMin: 0, pressureMax: 0,
+            dewPointAvg: 0, windSpeedAvg: 0,
+            rainfallTot: 0,
+          };
+          setReportData(zeroData);
+          // Tidak perlu setError, karena "tidak hujan" atau "tidak ada data" tetap valid untuk ditampilkan laporannya
         }
       } catch (e: any) {
         const msg = e?.message || "Gagal memuat data.";
         setError(msg);
-        setReportData(null);
+        // Fallback ke 0 jika error koneksi, supaya UI tidak crash
+        setReportData(prev => ({ ...prev, rainfallTot: 0 }));
         toast({ variant: "destructive", title: "Error", description: msg });
       } finally {
         setLoading(false);
@@ -125,7 +151,18 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
 
     toast({ title: "Membuat Gambar...", description: "Mohon tunggu sebentar." });
 
-    html2canvas(componentRef.current, { useCORS: true, scale: 4, backgroundColor: null })
+    setTimeout(() => {
+      html2canvas(componentRef.current as HTMLElement, {
+        useCORS: true,
+        scale: 3,
+        backgroundColor: null,
+        onclone: (clonedDoc) => {
+          const liquidBars = clonedDoc.getElementsByClassName('liquid-bar');
+          for (let i = 0; i < liquidBars.length; i++) {
+            (liquidBars[i] as HTMLElement).style.transition = 'none';
+          }
+        }
+      })
       .then((canvas) => {
         const dataUrl = canvas.toDataURL('image/png');
         const link = document.createElement('a');
@@ -143,6 +180,7 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
           description: "Terjadi kesalahan saat membuat gambar.",
         });
       });
+    }, 100);
   }, [componentRef, selectedDate, sensorName, toast]);
 
   const rainfall = reportData?.rainfallTot ?? 0;
@@ -172,7 +210,7 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
             />
           </PopoverContent>
         </Popover>
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleDownloadImage} disabled={!reportData || loading}>
+        <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleDownloadImage} disabled={loading}>
           <Download className="mr-2 h-4 w-4" /> Unduh Gambar
         </Button>
       </div>
@@ -182,7 +220,13 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
       <main ref={componentRef} className="mx-auto my-0 mb-6 w-full max-w-xl aspect-square bg-white text-gray-900 shadow-lg print:shadow-none relative overflow-hidden flex flex-col justify-between p-4">
         <header className="relative z-10">
           <div className="flex items-center gap-4">
-            <img src="/img/logo.webp" alt="Logo" className="h-14 w-14 object-contain" />
+            <img 
+              src="/img/logo.webp" 
+              alt="Logo" 
+              width={56} 
+              height={56} 
+              className="h-14 w-14 object-contain" 
+            />
             <div>
               <div className="text-base font-medium text-gray-600">Laporan Hujan Harian</div>
               <div className="text-xl font-bold text-gray-800">JERUKAGUNG METEOROLOGI</div>
@@ -191,14 +235,20 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
         </header>
 
         <div className="relative z-10 flex-grow flex flex-col items-center justify-center text-center">
-          {loading ? <section className="text-center text-gray-600 py-10">Memuat data...</section> : !reportData ? <section className="text-center text-gray-600 py-10">Tidak ada data.</section> : (
+          {loading ? (
+            <section className="text-center text-gray-600 py-10 animate-pulse">Menyiapkan laporan...</section>
+          ) : (
             <>
               <h2 className="text-lg font-semibold text-gray-700">Akumulasi Curah Hujan 24 Jam</h2>
               <p className="text-base text-gray-500">{formatIdDateDash(selectedDate)}</p>
               <div className="my-6">
+                {/* Visual Value akan minimal 1% jika ada hujan sedikit, tapi value asli tetap dipassing */}
                 <RainMeasuringCup value={rainfall} />
               </div>
-              <div className="text-5xl font-bold text-blue-600">{rainfall.toFixed(2)} <span className="text-4xl font-medium text-gray-600 align-middle">mm</span></div>
+              <div className="text-5xl font-bold text-blue-600">
+                {/* Menampilkan nilai ASLI, bukan nilai visual */}
+                {rainfall.toFixed(2)} <span className="text-4xl font-medium text-gray-600 align-middle">mm</span>
+              </div>
               <div className={cn("mt-2 text-xl font-semibold", rainfall > 0 ? "text-blue-800" : "text-gray-700")}>{category}</div>
             </>
           )}
