@@ -17,10 +17,8 @@ const RainMeasuringCup = ({ value, maxValue = 100, unit = "mm" }: { value: numbe
   const safeValue = isNaN(value) || value < 0 ? 0 : value;
 
   // --- LOGIKA BARU ---
-  // Jika value ada isinya (> 0) tapi kurang dari 1, kita anggap visualnya 1
-  // Supaya airnya tetap kelihatan sedikit di gelas.
-  // Jika 0 tetap 0. Jika >= 1 gunakan nilai aslinya.
-  const visualValue = (safeValue > 0 && safeValue < 1) ? 1 : safeValue;
+  // Jika value ada isinya (>= 0) tapi kurang dari 1, kita anggap visualnya 1
+  const visualValue = (safeValue >= 0 && safeValue < 1) ? 1 : safeValue;
 
   // Hitung persentase berdasarkan visualValue
   const percentage = Math.min((visualValue / maxValue) * 100, 100);
