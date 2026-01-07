@@ -1,49 +1,57 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  RefreshCw,
-  Trash2,
-  Download,
-  Plus,
-  ThermometerSun,
-  Droplets,
-  Gauge,
-  Sprout,
-  CloudRain,
-  CloudRainWind,
-  CalendarIcon,
-  Edit
-} from "lucide-react";
-import {cn} from "@/lib/utils";
-import { 
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
- } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { DateRange } from "react-day-picker";
-
-import { useAuth } from "@/hooks/useAuth";
-import { fetchAllDevices } from "@/lib/FetchingDevice";
-import {
-  fetchSensorData,
-  deleteSensorData,
-  editSensorDataByTimestamp,
-  deleteSensorDataByTimestamp,
-  fetchSensorDataByDateRange,
-  fetchSensorDataByValue,
-  SensorDate
-} from "@/lib/FetchingSensorData";
-import ChartComponent from "@/components/ChartComponent";
-import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  ThermometerIcon,
+  CloudRainIcon,
+  WindIcon,
+  GaugeIcon,
+  RadioIcon,
+  WifiIcon,
+  WifiOffIcon,
+  RefreshCwIcon,
+  AlertTriangleIcon,
+  CheckCircleIcon,
+  CalendarIcon,
+  ClockIcon,
+  ChevronRight,
+  ExternalLink,
+  Download,
+  Plus,
+  Trash2,
+  ThermometerSun,
+  Droplets,
+  Sprout,
+  CloudRainWind,
+  EditIcon,
+} from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
+import Loading from "@/app/loading";
+import { fetchAllDevices, Device } from "@/lib/FetchingDevice";
+import {
+  fetchSensorMetadata,
+  fetchSensorData,
+  SensorDate,
+  fetchSensorDataByDateRange,
+  fetchSensorDataByValue,
+  deleteSensorData,
+  editSensorDataByTimestamp,
+  deleteSensorDataByTimestamp,
+} from "@/lib/FetchingSensorData";
+import { fetchRecentAlerts, LogEvent } from "@/lib/FetchingLogs";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -52,6 +60,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
+import dynamic from "next/dynamic";
+
+const ChartComponent = dynamic(() => import("@/components/ChartComponent"), {
+  ssr: false,
+  loading: () => <Skeleton className="h-[300px] w-full" />,
+});
 
 // Define the structure for selectable periods
 interface Period {
@@ -84,6 +105,18 @@ interface SensorOption {
   label: string;
   value: string;
 }
+
+const ChartSkeleton = () => (
+  <Card>
+    <CardHeader className="flex flex-row items-center gap-3 bg-gray-50 dark:bg-gray-800 border-b py-3 px-6">
+      <Skeleton className="h-5 w-5 rounded-full" />
+      <Skeleton className="h-6 w-1/3" />
+    </CardHeader>
+    <CardContent className="pt-6">
+      <Skeleton className="h-[300px] w-full" />
+    </CardContent>
+  </Card>
+);
 
 export default function DataPage() {
   const { user } = useAuth();
@@ -742,11 +775,11 @@ export default function DataPage() {
                   {dateRange?.from ? (
                     dateRange.to ? (
                       <>
-                        {format(dateRange.from, "LLL dd, y")} -{" "}
-                        {format(dateRange.to, "LLL dd, y")}
+                        {new Date(dateRange.from).toLocaleDateString("id-ID", { month: "short", day: "2-digit", year: "numeric" })} -{" "}
+                        {new Date(dateRange.to).toLocaleDateString("id-ID", { month: "short", day: "2-digit", year: "numeric" })}
                       </>
                     ) : (
-                      format(dateRange.from, "LLL dd, y")
+                      new Date(dateRange.from).toLocaleDateString("id-ID", { month: "short", day: "2-digit", year: "numeric" })
                     )
                   ) : (
                     <span>Pilih rentang tanggal</span>
@@ -771,7 +804,7 @@ export default function DataPage() {
               size="icon"
               onClick={fetchData} disabled={loading}
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""} ${isDarkMode ? "text-gray-200" : ""}`} />
+              <RefreshCwIcon className={`h-4 w-4 ${loading ? "animate-spin" : ""} ${isDarkMode ? "text-gray-200" : ""}`} />
               <span className="sr-only">Refresh data</span>
             </Button>
 
@@ -839,104 +872,136 @@ export default function DataPage() {
       </div>
 
       {/* Tab Content */}
-      {loading ? (
-        <div className="flex justify-center items-center h-[400px]">
-          <RefreshCw className={`h-8 w-8 animate-spin ${isDarkMode ? "text-primary-400" : "text-primary-500"}`} />
-          <p className={`ml-4 ${isDarkMode ? "text-gray-200" : "text-gray-500"}`}>Memuat data...</p>
-        </div>
-      ) : error ? (
+      {error ? (
         <div className={`border p-4 rounded-md mb-6 ${isDarkMode ? "bg-red-950 border-red-900 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>{error}</div>
       ) : (
         <>
           {/* Data Table Content */}
           {activeTab === 'table' && (
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className={isDarkMode ? "bg-gray-800 text-left" : "bg-gray-50 dark:bg-gray-800 text-left"}>
-                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Waktu</th>
-                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Suhu (°C)</th>
-                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Kelembapan (%)</th>
-                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Tekanan (hPa)</th>
-                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Titik Embun (°C)</th>
-                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Curah Hujan (mm)</th>
-                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Laju Hujan (mm/jam)</th>
-                        <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody id="datalogger">
-                      {currentTableData.length === 0 ? (
+            loading ? (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                          <td colSpan={6} className={`p-8 text-center ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"}`}>
-                            Tidak ada data yang tersedia.
-                          </td>
+                          {[...Array(8)].map((_, i) => (
+                            <th key={i} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
+                              <Skeleton className="h-4 w-20" />
+                            </th>
+                          ))}
                         </tr>
-                      ) : (
-                        currentTableData.map((entry, index) => (
-                          <tr
-                            key={index}
-                            className={isDarkMode
-                              ? (index % 2 === 0 ? "bg-gray-900" : "bg-gray-800")
-                              : (index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800")}
-                          >
-                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{entry.date}</td>
-                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.temperature)}</td>
-                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.humidity)}</td>
-                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.pressure)}</td>
-                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.dew)}</td>
-                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.rainfall)}</td>
-                            <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.rainrate)}</td>
-                            <td className={`p-4 border-t flex gap-2`}>
-                              <button
-                                className={`p-2 rounded hover:bg-primary-100 dark:hover:bg-primary-900`}
-                                title="Edit"
-                                onClick={() => openEditModal(entry, indexOfFirstItem + index)}
-                              >
-                                <Edit className={`h-4 w-4 ${isDarkMode ? "text-primary-300" : "text-primary-600"}`} />
-                              </button>
-                              <button
-                                className={`p-2 rounded hover:bg-red-100 dark:hover:bg-red-900`}
-                                title="Hapus"
-                                onClick={() => openDeleteModal(indexOfFirstItem + index)}
-                              >
-                                <Trash2 className={`h-4 w-4 ${isDarkMode ? "text-red-300" : "text-red-600"}`} />
-                              </button>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
+                        {[...Array(itemsPerPage)].map((_, i) => (
+                          <tr key={i}>
+                            {[...Array(8)].map((_, j) => (
+                              <td key={j} className="px-6 py-4 whitespace-nowrap">
+                                <Skeleton className="h-4 w-full" />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className={isDarkMode ? "bg-gray-800 text-left" : "bg-gray-50 dark:bg-gray-800 text-left"}>
+                          <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Waktu</th>
+                          <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Suhu (°C)</th>
+                          <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Kelembapan (%)</th>
+                          <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Tekanan (hPa)</th>
+                          <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Titik Embun (°C)</th>
+                          <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Curah Hujan (mm)</th>
+                          <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Laju Hujan (mm/jam)</th>
+                          <th className={`p-4 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody id="datalogger">
+                        {currentTableData.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className={`p-8 text-center ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"}`}>
+                              Tidak ada data yang tersedia.
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                {weatherData.length > itemsPerPage && (
-                  <div className="flex items-center justify-between p-4 border-t bg-slate-200 dark:bg-slate-700">
-                    <Button onClick={handlePreviousPage} disabled={currentPage === 1} variant="outline">
-                      Sebelumnya
-                    </Button>
-                    <span className="text-sm text-gray-800 dark:text-gray-200">
-                      Halaman {currentPage} dari {totalPages}
-                    </span>
-                    <Button onClick={handleNextPage} disabled={currentPage === totalPages} variant="outline">
-                      Berikutnya
-                    </Button>
+                        ) : (
+                          currentTableData.map((entry, index) => (
+                            <tr
+                              key={index}
+                              className={isDarkMode
+                                ? (index % 2 === 0 ? "bg-gray-900" : "bg-gray-800")
+                                : (index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800")}
+                            >
+                              <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{entry.date}</td>
+                              <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.temperature)}</td>
+                              <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.humidity)}</td>
+                              <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.pressure)}</td>
+                              <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.dew)}</td>
+                              <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.rainfall)}</td>
+                              <td className={`p-4 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.rainrate)}</td>
+                              <td className={`p-4 border-t flex gap-2`}>
+                                <button
+                                  className={`p-2 rounded hover:bg-primary-100 dark:hover:bg-primary-900`}
+                                  title="Edit"
+                                  onClick={() => openEditModal(entry, indexOfFirstItem + index)}
+                                >
+                                  <EditIcon className={`h-4 w-4 ${isDarkMode ? "text-primary-300" : "text-primary-600"}`} />
+                                </button>
+                                <button
+                                  className={`p-2 rounded hover:bg-red-100 dark:hover:bg-red-900`}
+                                  title="Hapus"
+                                  onClick={() => openDeleteModal(indexOfFirstItem + index)}
+                                >
+                                  <Trash2 className={`h-4 w-4 ${isDarkMode ? "text-red-300" : "text-red-600"}`} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  {weatherData.length > itemsPerPage && (
+                    <div className="flex items-center justify-between p-4 border-t bg-slate-200 dark:bg-slate-700">
+                      <Button onClick={handlePreviousPage} disabled={currentPage === 1} variant="outline">
+                        Sebelumnya
+                      </Button>
+                      <span className="text-sm text-gray-800 dark:text-gray-200">
+                        Halaman {currentPage} dari {totalPages}
+                      </span>
+                      <Button onClick={handleNextPage} disabled={currentPage === totalPages} variant="outline">
+                        Berikutnya
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )
           )}
 
           {/* Grafik Content */}
           {activeTab === 'grafik' && (
-            <div className="space-y-6">
-              <ChartCard title="Suhu Lingkungan (°C)" data={temperatures} color={chartColors.temperature} Icon={ThermometerSun}  />
-              <ChartCard title="Kelembapan Relatif (%)" data={humidity} color={chartColors.humidity} Icon={Droplets} />
-              <ChartCard title="Tekanan Udara (hPa)" data={pressure} color={chartColors.pressure} Icon={Gauge} />
-              <ChartCard title="Titik Embun (°C)" data={dew} color={chartColors.dew} Icon={Sprout}/>
-              <ChartCard title="Curah Hujan (mm)" data={rainfall} color={chartColors.rainfall} Icon={CloudRain} />
-              <ChartCard title="Laju Hujan (mm/jam)" data={rainrate} color={chartColors.rainrate} Icon={CloudRainWind} />
-            </div>
+            loading ? (
+              <div className="space-y-6">
+                {[...Array(6)].map((_, i) => <ChartSkeleton key={i} />)}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <ChartCard title="Suhu Lingkungan (°C)" data={temperatures} color={chartColors.temperature} Icon={ThermometerSun}  />
+                <ChartCard title="Kelembapan Relatif (%)" data={humidity} color={chartColors.humidity} Icon={Droplets} />
+                <ChartCard title="Tekanan Udara (hPa)" data={pressure} color={chartColors.pressure} Icon={GaugeIcon} />
+                <ChartCard title="Titik Embun (°C)" data={dew} color={chartColors.dew} Icon={Sprout}/>
+                <ChartCard title="Curah Hujan (mm)" data={rainfall} color={chartColors.rainfall} Icon={CloudRainIcon} />
+                <ChartCard title="Laju Hujan (mm/jam)" data={rainrate} color={chartColors.rainrate} Icon={CloudRainWind} />
+              </div>
+            )
           )}
         </>
       )}

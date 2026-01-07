@@ -27,6 +27,7 @@ import Loading from "@/app/loading"
 import { fetchAllDevices, Device } from "@/lib/FetchingDevice"
 import { fetchSensorMetadata, fetchSensorData, SensorDate } from "@/lib/FetchingSensorData"
 import { fetchRecentAlerts, LogEvent } from "@/lib/FetchingLogs"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface DeviceWithStatus extends Device {
   status: "online" | "offline"
@@ -39,6 +40,107 @@ interface DeviceStats {
   onlineDevices: number
 }
 
+const DashboardSkeleton = () => (
+  <div className="space-y-6">
+    {/* Header Skeleton */}
+    <div className="flex justify-between items-center">
+      <div>
+        <Skeleton className="h-8 w-32 mb-2" />
+        <Skeleton className="h-4 w-64" />
+      </div>
+      <Skeleton className="h-10 w-28" />
+    </div>
+
+    {/* Stats Overview Skeleton */}
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Skeleton className="h-4 w-2/4" />
+          <Skeleton className="h-4 w-4" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-8 w-1/4 mb-2" />
+          <Skeleton className="h-3 w-3/4" />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Skeleton className="h-4 w-2/4" />
+          <Skeleton className="h-4 w-4" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-8 w-1/4 mb-2" />
+          <Skeleton className="h-3 w-3/4" />
+        </CardContent>
+      </Card>
+    </div>
+
+    {/* Device Status Grid Skeleton */}
+    <div className="grid gap-6 md:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-1/2 mb-2" />
+          <Skeleton className="h-4 w-3/4" />
+        </CardHeader>
+        <CardContent className="pt-4 space-y-4">
+          {[...Array(2)].map((_, i) => (
+            <div key={i} className="flex items-center justify-between p-3 rounded-lg">
+              <div className="flex-1">
+                <Skeleton className="h-5 w-2/4 mb-2" />
+                <Skeleton className="h-4 w-1/4" />
+              </div>
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-1/2 mb-2" />
+          <Skeleton className="h-4 w-3/4" />
+        </CardHeader>
+        <CardContent className="pt-4 space-y-4">
+          {[...Array(2)].map((_, i) => (
+            <div key={i} className="flex items-start space-x-3 p-3">
+              <Skeleton className="h-4 w-4 mt-1" />
+              <div className="flex-1">
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+
+    {/* Device Performance Summary Skeleton */}
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-6 w-1/3 mb-2" />
+        <Skeleton className="h-4 w-2/3" />
+      </CardHeader>
+      <CardContent className="pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="p-4 rounded-lg border bg-background">
+              <div className="flex items-center justify-between mb-3">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-4" />
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+)
+
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
@@ -49,11 +151,11 @@ export default function DashboardPage() {
     onlineDevices: 0,
   })
   const [recentAlerts, setRecentAlerts] = useState<LogEvent[]>([])
-  const [refreshing, setRefreshing] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   const loadDashboardData = useCallback(async () => {
     if (!user?.uid) return
-    setRefreshing(true)
+    setLoading(true)
 
     try {
       // Fetch all registered devices for the user
@@ -93,7 +195,7 @@ export default function DashboardPage() {
     } catch (error) {
       console.error("Failed to load dashboard data:", error)
     } finally {
-      setRefreshing(false)
+      setLoading(false)
     }
   }, [user?.uid])
 
@@ -105,6 +207,13 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, router, loadDashboardData])
 
+  useEffect(() => {
+    // Set initial loading state based on auth
+    if (authLoading) {
+      setLoading(true)
+    }
+  }, [authLoading])
+
   const handleRefresh = () => {
     loadDashboardData()
   }
@@ -113,12 +222,16 @@ export default function DashboardPage() {
     return status === "online" ? "text-green-500 dark:text-green-400" : "text-red-500 dark:text-red-400"
   }
 
-  if (authLoading || (!user && !authLoading)) {
-    return <Loading/>
+  if (authLoading) {
+    return <DashboardSkeleton />
   }
 
-  if (!authLoading && user && devices.length === 0 && !refreshing) {
+  if (!loading && devices.length === 0) {
     return <EmptyState type="dashboard" />
+  }
+
+  if (loading) {
+    return <DashboardSkeleton />
   }
 
   return (
@@ -130,11 +243,11 @@ export default function DashboardPage() {
         </div>
         <Button
           onClick={handleRefresh}
-          disabled={refreshing}
+          disabled={loading}
           variant="outline"
           className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-green-700 dark:hover:bg-green-800 dark:text-gray-50"
         >
-          <RefreshCwIcon className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+          <RefreshCwIcon className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
           Refresh
         </Button>
       </div>
