@@ -533,6 +533,7 @@ export default function ForecastForm() {
             <div style={{ display: "flex", gap: "20px" }}>
                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><Thermometer size={18} color="#EF4444"/> Suhu</span>
                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><Droplets size={18} color="#3B82F6"/> Kelembapan Relatif</span>
+               <span style={{ fontStyle: "italic" }}>Prediksi Ini Bersifat Eksperimental</span>
             </div>
             <div>
               <span style={{ opacity: 0.7 }}>Powered by</span> <strong style={{ color: "#1E3A8A" }}>Meteo Sense</strong>
