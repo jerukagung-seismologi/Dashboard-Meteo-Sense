@@ -420,6 +420,12 @@ export default function DashboardPage() {
                       {device.latestData?.rainrate?.toFixed(2) ?? "N/A"} mm/h
                     </span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Tegangan:</span>
+                    <span className="font-medium text-gray-800 dark:text-gray-200">
+                      {device.latestData?.volt?.toFixed(2) ?? "N/A"} V
+                    </span>
+                  </div>
                   <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 pt-1 border-t border-gray-200 dark:border-gray-600 mt-2">
                     <span>Update terakhir:</span>
                     <span>{device.lastUpdate ? new Date(device.lastUpdate).toLocaleTimeString("id-ID") : "N/A"}</span>
