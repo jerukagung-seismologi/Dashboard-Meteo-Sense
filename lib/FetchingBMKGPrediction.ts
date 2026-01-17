@@ -1,18 +1,18 @@
 export interface BMKGOutputData {
-  datetime: string; // Tanggal ISO
-  t: number; // Suhu dalam Celsius
-  tcc: number; // Tutupan awan dalam persentase
-  tp: number; // Curah hujan dalam mm
-  weather: number; // Kode cuaca
+  tanggal: string; // Tanggal ISO
+  suhu: number; // Suhu dalam Celsius
+  tutupanAwan: number; // Tutupan awan dalam persentase
+  curahHujan: number; // Curah hujan dalam mm
+  kodeCuaca: number; // Kode cuaca
   weather_desc: string; // Deskripsi cuaca dalam bahasa Indonesia
   weather_desc_en: string; // Deskripsi cuaca dalam bahasa Inggris
-  wd_deg: number; // Arah angin dalam derajat
-  wd: string; // Arah angin asal
-  wd_to: string; // Arah angin tujuan
-  ws: number; // Kecepatan angin dalam km/jam
-  hu: number; // Kelembapan dalam persentase
-  vs: number;
-  vs_text: string;
+  derajatAngin: number; // Arah angin dalam derajat
+  asalAngin: string; // Arah angin asal
+  tujuAngin: string; // Arah angin tujuan
+  kecepatanAngin: number; // Kecepatan angin dalam km/jam
+  kelembapan: number; // Kelembapan dalam persentase
+  visual: number;
+  visualText: string;
   time_index: string;
   analysis_date: string;
   image: string;
@@ -56,26 +56,26 @@ export async function fetchBMKGData(areaCode: string = '33.05.15.2009'): Promise
     );
     const rawForecasts: any[] = deepFlatten(cuacaGroups);
 
-    const formattedData: BMKGOutputData[] = rawForecasts.map((item: any) => ({
-      datetime: String(item?.datetime ?? ''),
-      t: Number(item?.t ?? 0),
-      tcc: Number(item?.tcc ?? 0),
-      tp: Number(item?.tp ?? 0),
-      weather: Number(item?.weather ?? 0),
-      weather_desc: String(item?.weather_desc ?? ''),
-      weather_desc_en: String(item?.weather_desc_en ?? ''),
-      wd_deg: Number(item?.wd_deg ?? 0),
-      wd: String(item?.wd ?? ''),
-      wd_to: String(item?.wd_to ?? ''),
-      ws: Number(item?.ws ?? 0),
-      hu: Number(item?.hu ?? 0),
-      vs: Number(item?.vs ?? 0),
-      vs_text: String(item?.vs_text ?? ''),
-      time_index: String(item?.time_index ?? ''),
-      analysis_date: String(item?.analysis_date ?? ''),
-      image: String(item?.image ?? ''),
-      utc_datetime: String(item?.utc_datetime ?? ''),
-      local_datetime: String(item?.local_datetime ?? ''),
+    const formattedData: BMKGOutputData[] = rawForecasts.map((cuacaBmkg: any) => ({
+      tanggal: String(cuacaBmkg?.datetime ?? ''),
+      suhu: Number(cuacaBmkg?.t ?? 0),
+      tutupanAwan: Number(cuacaBmkg?.tcc ?? 0),
+      curahHujan: Number(cuacaBmkg?.tp ?? 0),
+      kodeCuaca: Number(cuacaBmkg?.weather ?? 0),
+      weather_desc: String(cuacaBmkg?.weather_desc ?? ''),
+      weather_desc_en: String(cuacaBmkg?.weather_desc_en ?? ''),
+      derajatAngin: Number(cuacaBmkg?.wd_deg ?? 0),
+      asalAngin: String(cuacaBmkg?.wd ?? ''),
+      tujuAngin: String(cuacaBmkg?.wd_to ?? ''),
+      kecepatanAngin: Number(cuacaBmkg?.ws ?? 0),
+      kelembapan: Number(cuacaBmkg?.hu ?? 0),
+      visual: Number(cuacaBmkg?.vs ?? 0),
+      visualText: String(cuacaBmkg?.vs_text ?? ''),
+      time_index: String(cuacaBmkg?.time_index ?? ''),
+      analysis_date: String(cuacaBmkg?.analysis_date ?? ''),
+      image: String(cuacaBmkg?.image ?? ''),
+      utc_datetime: String(cuacaBmkg?.utc_datetime ?? ''),
+      local_datetime: String(cuacaBmkg?.local_datetime ?? ''),
     }));
 
     return formattedData;

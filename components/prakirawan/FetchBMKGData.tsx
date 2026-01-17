@@ -170,8 +170,8 @@ export default function BMKGNowcasting({ className, limit = 6 }: Props) {
 
   const items = useMemo(() => {
     const sorted = [...data].sort((a, b) => {
-      const ta = parseDateValue(a.local_datetime || a.datetime)
-      const tb = parseDateValue(b.local_datetime || b.datetime)
+      const ta = parseDateValue(a.local_datetime || a.tanggal)
+      const tb = parseDateValue(b.local_datetime || b.tanggal)
       if (Number.isNaN(ta) || Number.isNaN(tb)) return 0
       return ta - tb
     })
@@ -266,7 +266,7 @@ export default function BMKGNowcasting({ className, limit = 6 }: Props) {
             >
               <div className="font-semibold">
                 {new Date(
-                  parseDateValue(item.local_datetime || item.datetime)
+                  parseDateValue(item.local_datetime || item.tanggal)
                 ).toLocaleTimeString("id-ID", {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -275,7 +275,7 @@ export default function BMKGNowcasting({ className, limit = 6 }: Props) {
               </div>
               <div className="text-xs text-muted-foreground">
                 {new Date(
-                  parseDateValue(item.local_datetime || item.datetime)
+                  parseDateValue(item.local_datetime || item.tanggal)
                 ).toLocaleDateString("id-ID", {
                   weekday: "short",
                   day: "numeric",
@@ -289,16 +289,16 @@ export default function BMKGNowcasting({ className, limit = 6 }: Props) {
                 className="h-12 w-12 object-contain"
                 title={item.weather_desc}
               />
-              <div className="text-base font-bold">{formatNumber(item.t)}°C / {formatNumber(item.hu)}%</div>
+              <div className="text-base font-bold">{formatNumber(item.suhu)}°C / {formatNumber(item.kelembapan)}%</div>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <WindDirectionIndicator deg={item.wd_deg} />
-                <span>{degreesToCompass(item.wd_deg)}</span>
-                <span>{formatNumber(item.ws, { decimals: 1 })} km/j</span>
+                <WindDirectionIndicator deg={item.derajatAngin} />
+                <span>{degreesToCompass(item.derajatAngin)}</span>
+                <span>{formatNumber(item.kecepatanAngin, { decimals: 1 })} km/j</span>
               </div>
               <div className="text-xs text-muted-foreground">
-                Curah hujan: {formatNumber(item.tp)} mm
-                Visibilitas: {formatNumber(item.vs)} km
-                Tutupan awan: {formatNumber(item.tcc)}%
+                Curah hujan: {formatNumber(item.curahHujan)} mm
+                Visibilitas: {formatNumber(item.visual)} km
+                Tutupan awan: {formatNumber(item.tutupanAwan)}%
               </div>
             </div>
           ))}
