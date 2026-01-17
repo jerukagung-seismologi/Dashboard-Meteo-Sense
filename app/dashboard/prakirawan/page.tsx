@@ -25,23 +25,6 @@ export default function Page() {
             {/* Main Area: DIPERLEBAR (Hapus max-w-210mm, ganti max-w-full atau container-2xl) */}
             <main className="mx-auto my-0 mb-6 min-h-[500px] w-full max-w-7xl rounded-lg overflow-hidden border border-gray-100 bg-white text-gray-900 shadow-md shadow-slate-200/70 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:shadow-black/40 print:border-0 print:bg-white print:text-black">
                 <header className="mb-2 border-b border-gray-300 px-8 py-6 bg-gray-50 dark:bg-slate-800/70 dark:border-slate-700 print:bg-white">
-                    <div className="flex items-center gap-4">
-                        <img
-                            src="/img/logo.webp"
-                            alt="Logo Meteorologi Jerukagung"
-                            className="h-16 w-16 object-contain"
-                        />
-                        <div>
-                            <div className="text-sm font-medium text-gray-500 uppercase tracking-wide dark:text-slate-300">
-                                Departemen Penelitian Sains Atmosfer
-                            </div>
-                            <div className="text-2xl font-bold text-gray-800 dark:text-white">
-                                JERUKAGUNG METEOROLOGI
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-6 flex items-end justify-between border-t border-gray-200 pt-4 dark:border-slate-700">
                         <div>
                             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                                 Form Prakiraan Cuaca
@@ -62,21 +45,20 @@ export default function Page() {
                                 })}
                             </div>
                         </div>
-                    </div>
                 </header>
 
                 <div className="p-8 print:p-2 dark:bg-slate-900">
-                    <Tabs defaultValue="bmkg" className="w-full">
+                    <Tabs defaultValue="prakiraan_bmkg" className="w-full">
                         <TabsList className="mb-4">
-                            <TabsTrigger value="bmkg">Prakiraan Cuaca BMKG</TabsTrigger>
-                            <TabsTrigger value="generator">Form Prakiraan Cuaca</TabsTrigger>
+                            <TabsTrigger value="prakiraan_bmkg">Prakiraan Cuaca BMKG</TabsTrigger>
+                            <TabsTrigger value="outlook">Form Prakiraan Cuaca</TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="bmkg" className="mt-0">
-                            <BMKGNowcasting className="w-full" limit={9} />
+                        <TabsContent value="prakiraan_bmkg" className="mt-0">
+                            <BMKGNowcasting className="w-full" limit={12} />
                         </TabsContent>
 
-                        <TabsContent value="generator" className="mt-0">
+                        <TabsContent value="outlook" className="mt-0">
                             <ForecastForm />
                         </TabsContent>
                     </Tabs>

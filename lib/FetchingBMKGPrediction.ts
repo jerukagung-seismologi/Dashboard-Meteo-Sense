@@ -1,16 +1,16 @@
 export interface BMKGOutputData {
-  datetime: string;
-  t: number;
-  tcc: number;
-  tp: number;
-  weather: number;
-  weather_desc: string;
-  weather_desc_en: string;
-  wd_deg: number;
-  wd: string;
-  wd_to: string;
-  ws: number;
-  hu: number;
+  datetime: string; // Tanggal ISO
+  t: number; // Suhu dalam Celsius
+  tcc: number; // Tutupan awan dalam persentase
+  tp: number; // Curah hujan dalam mm
+  weather: number; // Kode cuaca
+  weather_desc: string; // Deskripsi cuaca dalam bahasa Indonesia
+  weather_desc_en: string; // Deskripsi cuaca dalam bahasa Inggris
+  wd_deg: number; // Arah angin dalam derajat
+  wd: string; // Arah angin asal
+  wd_to: string; // Arah angin tujuan
+  ws: number; // Kecepatan angin dalam km/jam
+  hu: number; // Kelembapan dalam persentase
   vs: number;
   vs_text: string;
   time_index: string;

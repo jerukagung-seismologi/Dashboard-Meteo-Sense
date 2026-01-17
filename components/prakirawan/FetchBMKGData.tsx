@@ -132,7 +132,7 @@ export default function BMKGNowcasting({ className, limit = 6 }: Props) {
   const [data, setData] = useState<BMKGOutputData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedVillage, setSelectedVillage] = useState("33.05.12.1009") // Default to Kebumen
+  const [selectedVillage, setSelectedVillage] = useState("33.05.05.2014") // Default to Kebumen
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -282,20 +282,23 @@ export default function BMKGNowcasting({ className, limit = 6 }: Props) {
                   month: "short",
                 })}
               </div>
+              <div className="text-base font-bold">{item.weather_desc}</div>
               <img
                 src={item.image}
                 alt={item.weather_desc}
                 className="h-12 w-12 object-contain"
                 title={item.weather_desc}
               />
-              <div className="text-base font-bold">{formatNumber(item.t)}°C</div>
+              <div className="text-base font-bold">{formatNumber(item.t)}°C / {formatNumber(item.hu)}%</div>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <WindDirectionIndicator deg={item.wd_deg} />
                 <span>{degreesToCompass(item.wd_deg)}</span>
                 <span>{formatNumber(item.ws, { decimals: 1 })} km/j</span>
               </div>
               <div className="text-xs text-muted-foreground">
-                Kelembapan: {formatNumber(item.hu)}%
+                Curah hujan: {formatNumber(item.tp)} mm
+                Visibilitas: {formatNumber(item.vs)} km
+                Tutupan awan: {formatNumber(item.tcc)}%
               </div>
             </div>
           ))}
