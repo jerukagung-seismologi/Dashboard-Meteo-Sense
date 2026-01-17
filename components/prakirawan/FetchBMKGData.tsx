@@ -132,7 +132,7 @@ export default function BMKGNowcasting({ className, limit = 6 }: Props) {
   const [data, setData] = useState<BMKGOutputData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedVillage, setSelectedVillage] = useState("33.05.05.2014") // Default to Kebumen
+  const [selectedVillage, setSelectedVillage] = useState("33.05.05.2009") // Default to Jerukagung
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
