@@ -19,11 +19,11 @@ import { db } from "@/lib/ConfigFirebase";
 // 1. Tipe data mentah untuk INPUT (saat bikin laporan)
 export interface CitizenReportInput {
   waktu: Date;
-  alamat?: string;
+  alamat: string;
   intensitasHujan: "Tidak Hujan" | "Gerimis" | "Sedang" | "Lebat" | "Badai";
-  kondisiAngin: "Tenang" | "Sepoi-sepoi" | "Kencang" | "Ekstrem";
+  kondisiAngin: "Tenang" | "Sepoi-sepoi" | "Kencang" | "Angin Ribut";
   dampak: string[];
-  lokasi: { 
+  lokasi?: { 
     latitude: number; 
     longitude: number 
   };
@@ -40,11 +40,15 @@ export interface CitizenReport extends CitizenReportInput {
 // --- 1. CREATE (Membuat Laporan) ---
 export const createReport = async (data: CitizenReportInput) => {
   try {
-    const payload = {
+    const payload: any = {
       ...data,
       waktu: Timestamp.fromDate(data.waktu), // Convert JS Date -> Firestore Timestamp
-      lokasi: new GeoPoint(data.lokasi.latitude, data.lokasi.longitude), // Convert -> GeoPoint
     };
+
+    // Hanya konversi lokasi jika ada
+    if (data.lokasi) {
+      payload.lokasi = new GeoPoint(data.lokasi.latitude, data.lokasi.longitude); // Convert -> GeoPoint
+    }
 
     const docRef = await addDoc(collection(db, "citizen_reports"), payload);
     return docRef.id;
@@ -66,17 +70,22 @@ export const getAllReports = async (): Promise<CitizenReport[]> => {
     // Mapping data Firestore ke format aplikasi kita
     const reports: CitizenReport[] = querySnapshot.docs.map((doc) => {
       const data = doc.data();
-      return {
+      const reportData: any = {
         id: doc.id,
         ...data,
         // Konversi balik: Firestore Timestamp -> JS Date
         waktu: (data.waktu as Timestamp).toDate(), 
-        // Konversi balik: GeoPoint -> {lat, long}
-        lokasi: { 
+      };
+
+      // Konversi balik lokasi jika ada
+      if (data.lokasi) {
+        reportData.lokasi = { 
           latitude: data.lokasi.latitude, 
           longitude: data.lokasi.longitude 
-        },
-      } as CitizenReport;
+        };
+      }
+      
+      return reportData as CitizenReport;
     });
 
     return reports;
@@ -94,15 +103,20 @@ export const getReportById = async (id: string): Promise<CitizenReport | null> =
 
     if (docSnap.exists()) {
       const data = docSnap.data();
-      return {
+      const reportData: any = {
         id: docSnap.id,
         ...data,
         waktu: (data.waktu as Timestamp).toDate(),
-        lokasi: { 
+      };
+
+      if (data.lokasi) {
+        reportData.lokasi = { 
           latitude: data.lokasi.latitude, 
           longitude: data.lokasi.longitude 
-        },
-      } as CitizenReport;
+        };
+      }
+
+      return reportData as CitizenReport;
     } else {
       console.log("No such document!");
       return null;
@@ -127,6 +141,9 @@ export const updateReport = async (id: string, data: Partial<CitizenReportInput>
     }
     if (data.lokasi) {
       payload.lokasi = new GeoPoint(data.lokasi.latitude, data.lokasi.longitude);
+    } else if (data.hasOwnProperty('lokasi') && data.lokasi === undefined) {
+      // Handle jika lokasi sengaja dihapus
+      payload.lokasi = null;
     }
 
     await updateDoc(docRef, payload);

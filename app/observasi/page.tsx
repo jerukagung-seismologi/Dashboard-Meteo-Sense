@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 
 // --- OPSI PILIHAN (Citizen Science Friendly) ---
 const WEATHER_OPTIONS = ["Cerah", "Berawan", "Hujan Ringan", "Hujan Lebat", "Badai"];
-const ANGIN_OPTIONS = ["Tenang", "Sepoi-sepoi","Sedang", "Kencang", "Ekstrem"];
+const ANGIN_OPTIONS = ["Tenang", "Sepoi-sepoi","Sedang", "Angin Kencang", "Angin Ribut"];
 const DAMPAK_OPTIONS = [
   "Aman Terkendali",
   "Jalan Tergenang",
@@ -93,12 +93,8 @@ export default function ObservationPage() {
     e.preventDefault();
 
     // Validasi
-    if (!intensitas || !angin) {
-      toast({ variant: "destructive", title: "Data Kurang", description: "Mohon isi Intensitas Hujan dan Kondisi Angin." });
-      return;
-    }
-    if (!lokasi) {
-      toast({ variant: "destructive", title: "Lokasi Kosong", description: "Mohon izinkan akses lokasi GPS." });
+    if (!intensitas || !angin || !alamat) {
+      toast({ variant: "destructive", title: "Data Kurang", description: "Mohon isi Alamat, Cuaca, dan Kondisi Angin." });
       return;
     }
 
@@ -111,7 +107,7 @@ export default function ObservationPage() {
         intensitasHujan: intensitas as any,
         kondisiAngin: angin as any,
         dampak: dampakSelected,
-        lokasi: lokasi,
+        lokasi: lokasi || undefined, // Kirim undefined jika lokasi null
         catatan: catatan,
       };
 
@@ -153,7 +149,7 @@ export default function ObservationPage() {
               <CardTitle className="text-2xl font-bold text-emerald-600 dark:text-white">Lapor Cuaca Warga</CardTitle>
               <CardDescription className="pt-8 text-gray-700 dark:text-white" > Bantu kami meningkatkan model prakiraan cuaca</CardDescription>
               <p className="text-xs text-yellow-600 dark:text-yellow-400 pt-5">
-                Disclaimer: Data yang Anda kirimkan HANYA akan digunakan untuk tujuan penelitian dan pengembangan model perkiraan cuaca lokal. Jika anda membutuhkan data survei ini silahkan hubungi email jerukagunglabs@gmail.com atau kontak 0882-2541-8750
+                Disclaimer: Data yang Anda kirimkan HANYA akan digunakan untuk tujuan penelitian dan pengembangan model perkiraan cuaca lokal. Jika suatu hari anda membutuhkan data survei ini silahkan hubungi email jerukagunglabs@gmail.com atau kontak 0882-2541-8750
               </p>
             </CardHeader>
 
@@ -182,12 +178,13 @@ export default function ObservationPage() {
 
                 {/* Alamat */}
                 <div className="space-y-3">
-                  <Label htmlFor="alamat">Alamat (Opsional)</Label>
+                  <Label htmlFor="alamat">Alamat <span className="text-red-500">*</span></Label>
                   <Input 
                     id="alamat" 
                     placeholder="Contoh: Jl. Merdeka No. 10, Kelurahan, Kecamatan" 
                     value={alamat}
                     onChange={(e) => setAlamat(e.target.value)}
+                    required
                   />
                 </div>
 
@@ -254,7 +251,7 @@ export default function ObservationPage() {
                   />
                 </div>
 
-                <Button type="submit" size="lg" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading || locationStatus !== 'success'}>
+                <Button type="submit" size="lg" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
                   {isLoading ? (
                     <>Mengirim <Loader2 className="ml-2 h-4 w-4 animate-spin" /></>
                   ) : (
