@@ -5,7 +5,7 @@ import { X, Sun } from "lucide-react"
 
 interface MobileSidebarProps {
   sidebarOpen: boolean
-  setSidebarOpen: (open: boolean) => void
+  setSidebarOpen: (open: boolean) => void 
   navigation: NavigationItem[]
 }
 

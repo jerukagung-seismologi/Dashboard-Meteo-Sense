@@ -48,7 +48,7 @@ export default function DashboardLayout({
   const navigation: NavigationItem[] = [
     { name: "Beranda", href: "/dashboard", icon: LayoutDashboard },
     { name: "Perangkat", href: "/dashboard/perangkat", icon: Network },
-    { name: "Peta", href: "/dashboard/peta", icon: Earth },
+    //{ name: "Peta", href: "/dashboard/peta", icon: Earth },
     { name: "Analisis", href: "/dashboard/analisis", icon: ChartNoAxesCombined },
     { name: "Data", href: "/dashboard/data", icon: Database },
     { name: "Laporan", href: "/dashboard/laporan", icon: FileText },

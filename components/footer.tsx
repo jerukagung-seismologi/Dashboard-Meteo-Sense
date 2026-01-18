@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { MapPin, Phone, Mail, Instagram, Facebook, Twitter, Youtube } from "lucide-react"
+import { MapPin, Phone, Mail, Instagram, Facebook, Twitter, Youtube, Github } from "lucide-react"
 
 function NavigationLinks() {
   return (
@@ -18,8 +18,8 @@ function NavigationLinks() {
         </Link>
       </li>
             <li>
-        <Link href="/api" className="text-sm">
-          Layanan API
+        <Link href="/developer" className="text-sm">
+          Pengembangan
         </Link>
       </li>
     </ul>
@@ -47,17 +47,17 @@ export default async function Footer() {
                   <Facebook className="h-5 w-5" />
                   <span className="sr-only">Facebook</span>
                 </a>
-                <a href="#" className="bg-white/10 hover:bg-white/20 p-2 rounded-full">
+                <a href="https://twitter.com/jeris2518" className="bg-white/10 hover:bg-white/20 p-2 rounded-full">
                   <Twitter className="h-5 w-5" />
                   <span className="sr-only">Twitter</span>
                 </a>
-                <a href="https://www.instagram.com/jeris_seismologi/" className="bg-white/10 hover:bg-white/20 p-2 rounded-full">
+                <a href="https://www.instagram.com/jeris_meteorologi/" className="bg-white/10 hover:bg-white/20 p-2 rounded-full">
                   <Instagram className="h-5 w-5" />
                   <span className="sr-only">Instagram</span>
                 </a>
-                <a href="#" className="bg-white/10 hover:bg-white/20 p-2 rounded-full">
-                  <Youtube className="h-5 w-5" />
-                  <span className="sr-only">YouTube</span>
+                <a href="https://github.com/jerukagung-seismologi" className="bg-white/10 hover:bg-white/20 p-2 rounded-full">
+                  <Github className="h-5 w-5" />
+                  <span className="sr-only">GitHub</span>
                 </a>
               </div>
             </div>
@@ -89,7 +89,7 @@ export default async function Footer() {
           </div>
 
           <div className="border-t border-white mt-8 pt-8 text-center">
-            <p className="text-sm">&copy; 2025 Jerukagung Seismologi. All Rights Reserved.</p>
+            <p className="text-sm">&copy; 2026 Jerukagung Seismologi. All Rights Reserved.</p>
           </div>
         </div>
       </div>
