@@ -19,6 +19,7 @@ import { db } from "@/lib/ConfigFirebase";
 // 1. Tipe data mentah untuk INPUT (saat bikin laporan)
 export interface CitizenReportInput {
   waktu: Date;
+  alamat?: string;
   intensitasHujan: "Tidak Hujan" | "Gerimis" | "Sedang" | "Lebat" | "Badai";
   kondisiAngin: "Tenang" | "Sepoi-sepoi" | "Kencang" | "Ekstrem";
   dampak: string[];

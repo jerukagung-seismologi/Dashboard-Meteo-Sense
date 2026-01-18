@@ -5,7 +5,6 @@ import { ArrowLeft, Send, MapPin, Loader2, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/components/header";
-import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -15,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { createReport, CitizenReportInput } from "@/lib/sendObservation"; // Import service baru
+import { Input } from "@/components/ui/input";
 
 // --- OPSI PILIHAN (Citizen Science Friendly) ---
 const WEATHER_OPTIONS = ["Cerah", "Berawan", "Hujan Ringan", "Hujan Lebat", "Badai"];
@@ -43,6 +43,7 @@ export default function ObservationPage() {
   const [dampakSelected, setDampakSelected] = useState<string[]>([]);
   const [catatan, setCatatan] = useState("");
   const [lokasi, setLokasi] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [alamat, setAlamat] = useState("");
 
   // Ambil Lokasi saat halaman dimuat
   useEffect(() => {
@@ -106,6 +107,7 @@ export default function ObservationPage() {
     try {
       const payload: CitizenReportInput = {
         waktu: new Date(),
+        alamat: alamat,
         intensitasHujan: intensitas as any,
         kondisiAngin: angin as any,
         dampak: dampakSelected,
@@ -149,9 +151,9 @@ export default function ObservationPage() {
                 </Link>
               </Button>
               <CardTitle className="text-2xl font-bold text-emerald-600 dark:text-white">Lapor Cuaca Warga</CardTitle>
-              <CardDescription className="pt-8 text-gray-700" > Bantu kami meningkatkan model prakiraan cuaca</CardDescription>
+              <CardDescription className="pt-8 text-gray-700 dark:text-white" > Bantu kami meningkatkan model prakiraan cuaca</CardDescription>
               <p className="text-xs text-yellow-600 dark:text-yellow-400 pt-5">
-                Disclaimer: Data yang Anda kirimkan akan HANYA akan digunakan untuk tujuan penelitian dan pengembangan model perkiraan cuaca lokal. Jika anda membutuhkan data survei ini silahkan hubungi email jerukagunglabs@gmail.com atau kontak 0882-2541-8750
+                Disclaimer: Data yang Anda kirimkan HANYA akan digunakan untuk tujuan penelitian dan pengembangan model perkiraan cuaca lokal. Jika anda membutuhkan data survei ini silahkan hubungi email jerukagunglabs@gmail.com atau kontak 0882-2541-8750
               </p>
             </CardHeader>
 
@@ -176,6 +178,17 @@ export default function ObservationPage() {
                   {locationStatus === 'error' && (
                     <Button type="button" variant="outline" size="sm" onClick={getLocation}>Coba Lagi</Button>
                   )}
+                </div>
+
+                {/* Alamat */}
+                <div className="space-y-3">
+                  <Label htmlFor="alamat">Alamat (Opsional)</Label>
+                  <Input 
+                    id="alamat" 
+                    placeholder="Contoh: Jl. Merdeka No. 10, Kelurahan, Kecamatan" 
+                    value={alamat}
+                    onChange={(e) => setAlamat(e.target.value)}
+                  />
                 </div>
 
                 {/* 2. Intensitas Hujan */}
