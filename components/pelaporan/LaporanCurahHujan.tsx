@@ -168,7 +168,10 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
         link.download = `laporan-hujan-${sensorName.replace(/\s+/g, '_')}-${dateStr}.png`;
         link.href = dataUrl;
         link.click();
-        toast({ title: "Sukses", description: "Gambar berhasil diunduh." });
+        toast({ 
+          title: "Sukses", 
+          description: "Gambar berhasil diunduh." 
+        });
       })
       .catch((err) => {
         console.error('Gagal membuat gambar!', err);
@@ -199,7 +202,7 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="end">
-            <Calendar
+            <Calendar 
               mode="single"
               selected={selectedDate}
               onSelect={(date) => date && setSelectedDate(date)}
