@@ -205,8 +205,8 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
             <Calendar 
               mode="single"
               selected={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
-              disabled={(date) => date > new Date() || date < new Date("2000-01-01")}
+              onSelect={(date: Date | undefined) => date && setSelectedDate(date)}
+              disabled={(date: Date) => date > new Date() || date < new Date("2000-01-01")}
               autoFocus
             />
           </PopoverContent>
