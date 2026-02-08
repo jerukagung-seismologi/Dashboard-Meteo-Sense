@@ -257,7 +257,7 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
 
         <footer className="relative z-10 text-center">
           <p className="text-sm text-gray-500">
-            Sensor: {sensorName} • <span style={{ opacity: 0.7 }}>Powered by</span> <strong style={{ color: "#1E3A8A" }}>Meteo Sense</strong>
+            Sensor: {sensorName} • <span style={{ opacity: 0.7 }}>Powered by</span> <strong style={{ color: "#1E3A8A" }}>Meteo Sense 2.1</strong>
           </p>
         </footer>
       </main>
