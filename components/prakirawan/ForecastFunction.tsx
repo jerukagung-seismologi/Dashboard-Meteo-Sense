@@ -22,6 +22,7 @@ import {
   Thermometer, 
   Droplets,
   Wind,
+  RefreshCw,
   // Icon Lucide untuk UI Form
   Sun as LucideSun,
   Cloud as LucideCloud,
@@ -31,6 +32,7 @@ import {
 } from "lucide-react"
 
 import html2canvas from "html2canvas"
+import { fetchOpenMeteoForecast } from "@/lib/FetchingOpenMeteo"
 
 // --- IMPORT ERIK FLOWERS WEATHER ICONS ---
 import { 
@@ -156,6 +158,9 @@ export default function ForecastForm() {
     }))
   )
   const [location, setLocation] = React.useState<string>("")
+  const [latitude, setLatitude] = React.useState<string>("-7.6797")
+  const [longitude, setLongitude] = React.useState<string>("109.6483")
+  const [isFetching, setIsFetching] = React.useState<boolean>(false)
   
   const printRef = React.useRef<HTMLDivElement>(null)
   
@@ -180,6 +185,62 @@ export default function ForecastForm() {
 
   const removeRow = (index: number) => {
     setRows((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const onFetchOpenMeteo = async () => {
+    const lat = parseFloat(latitude)
+    const lon = parseFloat(longitude)
+    if (isNaN(lat) || isNaN(lon)) {
+      toast({ title: "Koordinat Tidak Valid", description: "Masukkan lintang dan bujur yang benar.", variant: "destructive" })
+      return
+    }
+
+    setIsFetching(true)
+    try {
+      // Tomorrow's date in Asia/Jakarta timezone as "YYYY-MM-DD"
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const forecastDate = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Jakarta",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(tomorrow)
+
+      const hourlyData = await fetchOpenMeteoForecast(lat, lon, forecastDate)
+
+      // Build a lookup map: "HH:00" → hourly entry
+      const byHour = new Map(
+        hourlyData.map((h) => {
+          // h.time is "YYYY-MM-DDTHH:00" — extract "HH:00"
+          const timePart = h.time.split("T")[1] ?? ""
+          return [timePart, h]
+        })
+      )
+
+      setRows((prev) =>
+        prev.map((row) => {
+          // Trim whitespace so "07:00" matches the API key exactly
+          const normalised = row.time.trim()
+          const entry = byHour.get(normalised)
+          if (!entry) return row
+          return {
+            ...row,
+            temperature: entry.temperature,
+            humidity: entry.humidity,
+            conditionMain: entry.condition,
+            // probMain, probSub, conditionSub remain unchanged (manual)
+          }
+        })
+      )
+
+      toast({ title: "Data Berhasil Dimuat", description: `Prakiraan Open Meteo untuk ${forecastDate} telah diisi otomatis.` })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Terjadi kesalahan saat mengambil data."
+      toast({ title: "Gagal Mengambil Data", description: message, variant: "destructive" })
+    } finally {
+      setIsFetching(false)
+    }
   }
 
   const onSaveDebug = () => {
@@ -241,17 +302,44 @@ export default function ForecastForm() {
         <div className="space-y-2">
           <h2 className="text-3xl font-bold tracking-tight">Input Prakiraan Cuaca</h2>
           <p className="text-muted-foreground">Isi data di bawah untuk menghasilkan tabel outlook grafis.</p>
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex flex-wrap items-center gap-2 mt-2">
             <span className="font-semibold">Lokasi:</span>
             <Input 
               value={location} 
               onChange={(e) => setLocation(e.target.value)} 
               placeholder="Contoh: Kebumen" 
-              className="w-[250px]"
+              className="w-[160px]"
+            />
+            <span className="font-semibold">Lintang:</span>
+            <Input
+              value={latitude}
+              onChange={(e) => setLatitude(e.target.value)}
+              placeholder="-7.6797"
+              className="w-[100px]"
+            />
+            <span className="font-semibold">Bujur:</span>
+            <Input
+              value={longitude}
+              onChange={(e) => setLongitude(e.target.value)}
+              placeholder="109.6483"
+              className="w-[100px]"
             />
           </div>
+          <p className="text-xs text-muted-foreground">
+            Koordinat default: Kebumen, Jawa Tengah. Klik &ldquo;Ambil Data Otomatis&rdquo; untuk mengisi suhu, kelembapan, dan kondisi cuaca dari Open Meteo API.
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={onFetchOpenMeteo}
+              disabled={isFetching}
+              className="bg-sky-600 hover:bg-sky-700"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1 ${isFetching ? "animate-spin" : ""}`} />
+              {isFetching ? "Memuat..." : "Ambil Data Otomatis"}
+            </Button>
             <Button variant="default" size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700"><Plus className="w-4 h-4 mr-1"/> Tambah Jam</Button>
             <Button variant="default" size="sm" onClick={onSaveDebug} className="bg-orange-500 hover:bg-orange-600"><Save className="w-4 h-4 mr-1"/> Debug Data</Button>
             <Button variant="default" size="sm" onClick={onSaveAsImage} className="bg-green-600 hover:bg-green-700">
