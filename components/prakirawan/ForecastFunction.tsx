@@ -22,14 +22,13 @@ import {
   Thermometer, 
   Droplets,
   Wind,
-  // Icon Lucide untuk UI Form
+  DatabaseZap,
   Sun as LucideSun,
   Cloud as LucideCloud,
   CloudRain as LucideRain,
   CloudLightning as LucideZap,
   Wind as LucideWind
 } from "lucide-react"
-
 import html2canvas from "html2canvas"
 
 // --- IMPORT ERIK FLOWERS WEATHER ICONS ---
@@ -74,6 +73,101 @@ export type ForecastRow = {
 
 const initialTimes = ["07:00", "10:00", "13:00", "16:00", "19:00"]
 const probabilities = ["100", "90", "80", "70", "60", "50", "40", "30", "20", "10", "0"]
+
+// --- CONSTANTS ---
+const KEBUMEN_LAT = -7.7366
+const KEBUMEN_LON = 109.6458
+
+// --- HELPER 3: WEATHER CODE MAPPING ---
+const mapWeatherCodeToCondition = (code: number, windSpeed: number): WeatherCondition => {
+  if (windSpeed >= 12) return "Angin Kencang"
+  if (code === 0) return "Cerah"
+  if (code === 1 || code === 2) return "Cerah Berawan"
+  if (code === 3) return "Berawan"
+  if (code === 45 || code === 48) return "Kabut"
+  if ((code >= 51 && code <= 57) || (code >= 80 && code <= 82)) return "Hujan Ringan"
+  if ((code >= 61 && code <= 65)) return "Hujan Sedang"
+  if ((code >= 66 && code <= 69) || (code >= 95 && code <= 99)) return "Badai Petir"
+  if (code === 77 || code === 85 || code === 86) return "Hujan Lebat"
+  return "Berawan"
+}
+
+// --- HELPER 4: CHECK IF CONDITION IS RAIN-RELATED ---
+const isRainCondition = (condition: WeatherCondition): boolean => {
+  return [
+    "Hujan Ringan",
+    "Hujan Sedang",
+    "Hujan Lebat",
+    "Badai Petir"
+  ].includes(condition)
+}
+
+// --- HELPER 5: DETERMINE CONDITION BASED ON RAIN PROBABILITY ---
+const getConditionFromRainProbability = (
+  rainProbability: number,
+  weatherCode: number,
+  windSpeed: number
+): WeatherCondition => {
+  // Jika rain_probability > 50%, gunakan kondisi hujan
+  if (rainProbability > 50) {
+    // Tentukan severity hujan berdasarkan weather code
+    if (weatherCode >= 95 && weatherCode <= 99) return "Badai Petir"
+    if ((weatherCode >= 66 && weatherCode <= 69) || weatherCode === 85 || weatherCode === 86) return "Hujan Lebat"
+    if ((weatherCode >= 61 && weatherCode <= 65)) return "Hujan Sedang"
+    if ((weatherCode >= 51 && weatherCode <= 57) || (weatherCode >= 80 && weatherCode <= 82)) return "Hujan Ringan"
+    // Default hujan
+    return "Hujan Sedang"
+  }
+  
+  // Jika rain_probability <= 50%, gunakan kondisi non-hujan dari weather code
+  return mapWeatherCodeToCondition(weatherCode, windSpeed)
+}
+
+// --- HELPER 6: WMO WEATHER CODE TRANSLATOR (COMPREHENSIVE) ---
+const translateWMOCode = (code: number): WeatherCondition => {
+  // WMO Weather Interpretation Codes (WW)
+  if (code === 0) return "Cerah"
+  if (code === 1 || code === 2) return "Cerah Berawan"
+  if (code === 3) return "Berawan"
+  if (code === 45 || code === 48) return "Kabut"
+  if (code >= 51 && code <= 57) return "Hujan Ringan" // Drizzle
+  if (code >= 61 && code <= 65) return "Hujan Sedang" // Rain
+  if (code >= 66 && code <= 67) return "Hujan Lebat" // Freezing rain
+  if (code >= 71 && code <= 77) return "Hujan Lebat" // Snow
+  if (code >= 80 && code <= 82) return "Hujan Ringan" // Rain showers
+  if (code >= 85 && code <= 86) return "Hujan Lebat" // Snow showers
+  if (code >= 95 && code <= 99) return "Badai Petir" // Thunderstorm
+  return "Berawan"
+}
+
+// --- HELPER 7: DETERMINE CONDITION WITH RAIN PROBABILITY ---
+const determineConditionWithRainProb = (
+  rainProbability: number,
+  weatherCode: number,
+  windSpeed: number
+): WeatherCondition => {
+  // Check wind speed first (priority)
+  if (windSpeed >= 12) return "Angin Kencang"
+  
+  // If rain probability > 50%, prioritize rain condition
+  if (rainProbability > 50) {
+    const codeCondition = translateWMOCode(weatherCode)
+    // If WMO code suggests rain, use it
+    if (isRainCondition(codeCondition)) {
+      return codeCondition
+    }
+    // Otherwise, default to Hujan Sedang for high rain probability
+    return "Hujan Sedang"
+  }
+  
+  // If rain probability <= 50%, use non-rain condition from WMO code
+  const condition = translateWMOCode(weatherCode)
+  // If WMO suggests rain but probability is low, override to non-rain
+  if (isRainCondition(condition)) {
+    return "Berawan" // Fallback to cloudy for low rain probability
+  }
+  return condition
+}
 
 // --- HELPER 1: PALET WARNA (FULL PASTEL BG + COLORED TEXT) ---
 
@@ -155,7 +249,8 @@ export default function ForecastForm() {
       humidity: "" 
     }))
   )
-  const [location, setLocation] = React.useState<string>("")
+  const [location, setLocation] = React.useState<string>("Kebumen")
+  const [loadingFetch, setLoadingFetch] = React.useState<boolean>(false)
   
   const printRef = React.useRef<HTMLDivElement>(null)
   
@@ -219,6 +314,215 @@ export default function ForecastForm() {
     }
   };
 
+  // --- FETCH FORECAST: REFACTORED WITH OPENMETEO ECMWF ---
+  const fetchForecast = async () => {
+    if (!location || location.trim() === "") {
+      toast({ title: "Lokasi kosong", description: "Masukkan nama lokasi terlebih dahulu.", variant: "destructive" })
+      return
+    }
+  
+    setLoadingFetch(true)
+  
+    try {
+      toast({ title: "Mengambil data...", description: "Sedang menghubungi API lokasi dan forecast" })
+
+      let lat = KEBUMEN_LAT
+      let lon = KEBUMEN_LON
+      let locationName = "Kebumen"
+
+      // 1) Geocoding (Open-Meteo) - hanya jika lokasi bukan Kebumen
+      if (location.toLowerCase() !== "kebumen") {
+        try {
+          const geoRes = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=id`
+          )
+          const geoJson = await geoRes.json()
+          
+          if (geoJson?.results && geoJson.results.length > 0) {
+            const place = geoJson.results[0]
+            lat = place.latitude
+            lon = place.longitude
+            locationName = place.name || location
+            console.log(`✓ Lokasi ditemukan: ${place.name}, ${place.admin1 || place.country}`)
+          } else {
+            console.warn(`✗ Lokasi "${location}" tidak ditemukan. Menggunakan Kebumen default.`)
+            toast({ 
+              title: "Lokasi tidak ditemukan", 
+              description: `"${location}" tidak ditemukan. Menggunakan Kebumen sebagai default.`, 
+              variant: "destructive" 
+            })
+          }
+        } catch (geoErr) {
+          console.error("Geocoding error:", geoErr)
+          toast({ 
+            title: "Error geocoding", 
+            description: "Gagal mencari lokasi. Menggunakan Kebumen default.", 
+            variant: "destructive" 
+          })
+        }
+      }
+
+      // 2) Calculate tomorrow's date
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const tomorrowDateStr = tomorrow.toISOString().split('T')[0]
+
+      // 3) Fetch Forecast dari Open-Meteo ECMWF API
+      const params = new URLSearchParams({
+        latitude: lat.toString(),
+        longitude: lon.toString(),
+        hourly: "temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m,precipitation_probability",
+        models: "ecmwf_ifs",
+        timezone: "Asia/Bangkok",
+        forecast_days: "2" // Ambil 2 hari untuk memastikan data besok ada
+      })
+
+      const forecastUrl = `https://api.open-meteo.com/v1/forecast?${params.toString()}`
+      console.log("Fetching from:", forecastUrl)
+
+      const response = await fetch(forecastUrl)
+
+      if (!response.ok) {
+        throw new Error(`API Response: ${response.status} ${response.statusText}`)
+      }
+
+      const fcJson = await response.json()
+
+      if (!fcJson?.hourly || !fcJson.hourly.time) {
+        throw new Error("Invalid forecast data structure")
+      }
+
+      const times: string[] = fcJson.hourly.time || []
+      const temps: number[] = fcJson.hourly.temperature_2m || []
+      const hums: number[] = fcJson.hourly.relative_humidity_2m || []
+      const codes: number[] = fcJson.hourly.weather_code || []
+      const winds: number[] = fcJson.hourly.wind_speed_10m || []
+      const rainProbs: number[] = fcJson.hourly.precipitation_probability || []
+
+      console.log(`✓ Forecast data received: ${times.length} hourly records`)
+      console.log(`  Tomorrow date filter: ${tomorrowDateStr}`)
+
+      // 4) Helper: Find index untuk waktu spesifik
+      const findIndexFor = (targetTime: string): number => {
+        const suffixTomorrow = `${tomorrowDateStr}T${targetTime}:00`
+        
+        // Exact match
+        let idx = times.findIndex(t => t === suffixTomorrow)
+        if (idx !== -1) {
+          console.log(`  ✓ Exact match found for ${targetTime}: index ${idx}`)
+          return idx
+        }
+
+        // Fallback: cari yang paling dekat untuk esok hari
+        const targetDateTime = new Date(`${tomorrowDateStr}T${targetTime}:00`)
+        let bestIdx = -1
+        let bestDiff = Infinity
+
+        for (let i = 0; i < times.length; i++) {
+          const forecastDateTime = new Date(times[i])
+          const forecastDate = times[i].split('T')[0]
+          const diff = Math.abs(forecastDateTime.getTime() - targetDateTime.getTime())
+
+          // Hanya pertimbangkan data dari esok hari
+          if (diff < bestDiff && forecastDate === tomorrowDateStr) {
+            bestDiff = diff
+            bestIdx = i
+          }
+        }
+
+        if (bestIdx !== -1) {
+          const closestTime = times[bestIdx]
+          console.log(`  ⚠ Closest match for ${targetTime}: ${closestTime}`)
+        } else {
+          console.warn(`  ✗ No data found for ${targetTime} on ${tomorrowDateStr}`)
+        }
+
+        return bestIdx
+      }
+
+      // 5) Process rows untuk setiap jam
+      const fetchedRows: Partial<ForecastRow>[] = initialTimes.map((targetTime) => {
+        const idx = findIndexFor(targetTime)
+
+        if (idx === -1) {
+          return { 
+            time: targetTime, 
+            conditionMain: "", 
+            temperature: "", 
+            humidity: "",
+            probMain: "0"
+          }
+        }
+
+        // Extract values with safety checks
+        const temp = typeof temps[idx] === "number" ? Math.round(temps[idx]) : ""
+        const hum = typeof hums[idx] === "number" ? Math.round(hums[idx]) : ""
+        const code = typeof codes[idx] === "number" ? Math.round(codes[idx]) : 0
+        const ws = typeof winds[idx] === "number" ? winds[idx] : 0
+        const rainProb = typeof rainProbs[idx] === "number" ? Math.round(rainProbs[idx]) : 0
+
+        // Determine condition using rain probability logic
+        const condition = determineConditionWithRainProb(rainProb, code, ws)
+
+        // Use rain_probability sebagai probability utama
+        const probMain = rainProb.toString()
+
+        console.log(
+          `[${targetTime}] Code: ${code} | WS: ${ws}m/s | RainProb: ${rainProb}% | Temp: ${temp}° | Condition: ${condition}`
+        )
+
+        return {
+          time: targetTime,
+          conditionMain: condition,
+          probMain: probMain,
+          temperature: temp,
+          humidity: hum
+        }
+      })
+
+      // 6) Merge dengan existing rows (preserve sub conditions & extra fields)
+      setRows((prev) => {
+        return prev.map((r, i) => {
+          const f = fetchedRows[i] || {}
+          return {
+            ...r,
+            time: f.time ?? r.time,
+            conditionMain: (f.conditionMain && f.conditionMain !== "") 
+              ? (f.conditionMain as WeatherCondition) 
+              : r.conditionMain,
+            temperature: (f.temperature !== undefined && f.temperature !== "") 
+              ? (f.temperature as number) 
+              : r.temperature,
+            humidity: (f.humidity !== undefined && f.humidity !== "") 
+              ? (f.humidity as number) 
+              : r.humidity,
+            probMain: f.probMain ?? r.probMain,
+            probSub: r.probSub, // Preserve manual sub condition
+            conditionSub: r.conditionSub
+          } as ForecastRow
+        })
+      })
+
+      toast({ 
+        title: "✓ Selesai", 
+        description: `Data prakiraan ECMWF untuk ${tomorrowStr} berhasil diambil dari OpenMeteo.` 
+      })
+
+      console.log("✓ Forecast fetch completed successfully")
+
+    } catch (err) {
+      console.error("❌ fetchForecast error:", err)
+      const errorMsg = err instanceof Error ? err.message : "Unknown error"
+      toast({ 
+        title: "Gagal mengambil data", 
+        description: `${errorMsg} Periksa console untuk detail.`, 
+        variant: "destructive" 
+      })
+    } finally {
+      setLoadingFetch(false)
+    }
+  }
+
   // Helper render dropdown
   const WeatherSelectItems = () => (
     <>
@@ -254,6 +558,9 @@ export default function ForecastForm() {
         <div className="flex gap-2">
             <Button variant="default" size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700"><Plus className="w-4 h-4 mr-1"/> Tambah Jam</Button>
             <Button variant="default" size="sm" onClick={onSaveDebug} className="bg-orange-500 hover:bg-orange-600"><Save className="w-4 h-4 mr-1"/> Debug Data</Button>
+            <Button variant="default" size="sm" onClick={fetchForecast} className="bg-indigo-600 hover:bg-indigo-700" disabled={loadingFetch}>
+            <DatabaseZap className="w-4 h-4 mr-1"/> {loadingFetch ? "Mengambil..." : "Ambil Otomatis"}
+            </Button>
             <Button variant="default" size="sm" onClick={onSaveAsImage} className="bg-green-600 hover:bg-green-700">
             <Download className="w-4 h-4 mr-1"/> Simpan Gambar
             </Button>
@@ -376,7 +683,7 @@ export default function ForecastForm() {
               height: 110px; 
             }
             
-            /* 1. JAM */
+            /* 1. JAM */ 
             .col-time-h {
               width: 14%;
               display: flex;
@@ -389,7 +696,7 @@ export default function ForecastForm() {
               color: #334155;
             }
 
-            /* 2. ICON */
+            /* 2. ICON */ 
             .col-icon {
               width: 18%; 
               display: flex;
@@ -398,7 +705,7 @@ export default function ForecastForm() {
               padding: 0;
             }
 
-            /* 3. DESKRIPSI */
+            /* 3. DESKRIPSI */ 
             .col-desc {
               width: 43%; 
               padding: 0 20px;
@@ -409,7 +716,7 @@ export default function ForecastForm() {
             .desc-main { font-size: 28px; font-weight: 800; line-height: 1.1; margin-bottom: 0px; }
             .desc-sub { font-size: 18px; opacity: 0.85; font-weight: 500; margin-top: 2px; }
 
-            /* 4. METRIK (FIXED ALIGNMENT) */
+            /* 4. METRIK (FIXED ALIGNMENT) */ 
             .col-metrics {
               width: 25%;
               padding: 0 24px; /* Padding kiri kanan biar tidak mepet */
@@ -536,7 +843,7 @@ export default function ForecastForm() {
                <span style={{ fontStyle: "italic" }}>Prediksi Ini Bersifat Eksperimental</span>
             </div>
             <div>
-              <span style={{ opacity: 0.7 }}>Powered by</span> <strong style={{ color: "#1E3A8A" }}>Meteo Sense</strong>
+              <span style={{ opacity: 0.7 }}>Powered by</span> <strong style={{ color: "#1E3A8A" }}>Meteo Sense 3.1.5</strong>
             </div>
           </div>
 
