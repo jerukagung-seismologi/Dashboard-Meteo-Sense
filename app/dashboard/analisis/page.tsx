@@ -12,6 +12,8 @@ import {
   CloudRainWind,
   Calendar as CalendarIcon,
   Eye,
+  Sun,            // NEW: icon for light
+  Thermometer,    // NEW: icon for soil temperature
 } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -61,6 +63,8 @@ interface WeatherData {
   dew: number;
   rainfall: number;
   rainrate: number;
+  lux?: number;
+  soil_temp?: number;
 }
 
 // Daftar periode yang bisa dipilih
@@ -89,6 +93,8 @@ export default function DataPage() {
   const [dew, setDew] = useState<number[]>([]); //Float64
   const [rainfall, setRainfall] = useState<number[]>([]); //Float64
   const [rainrate, setRainrate] = useState<number[]>([]); //Float64
+  const [lights, setLights] = useState<number[]>([]); // NEW: light (lux)
+  const [soilTemps, setSoilTemps] = useState<number[]>([]); // NEW: soil temperature
 
   // State untuk data tabel
   const [weatherData, setWeatherData] = useState<WeatherData[]>([]);
@@ -158,6 +164,8 @@ export default function DataPage() {
       const fetchedDew: number[] = data.map(d => d.dew);
       const fetchedRainfall: number[] = data.map(d => d.rainfall);
       const fetchedRainrate: number[] = data.map(d => d.rainrate);
+      const fetchedLights: number[] = data.map(d => (d as any).lux ?? 0);
+      const fetchedSoilTemps: number[] = data.map(d => (d as any).soil_temp ?? 0);
 
       setTimestamps(fetchedTimestamps);
       setTemperatures(fetchedTemperatures);
@@ -166,6 +174,8 @@ export default function DataPage() {
       setDew(fetchedDew);
       setRainfall(fetchedRainfall);
       setRainrate(fetchedRainrate);
+      setLights(fetchedLights);
+      setSoilTemps(fetchedSoilTemps);
       setError(null);
     } else {
       setTimestamps([]);
@@ -175,6 +185,8 @@ export default function DataPage() {
       setDew([]);
       setRainfall([]);
       setRainrate([]);
+      setLights([]);
+      setSoilTemps([]);
       setError("Tidak ada data yang tersedia untuk periode ini.");
     }
   };
@@ -229,6 +241,8 @@ export default function DataPage() {
       setDew([]);
       setRainfall([]);
       setRainrate([]);
+      setLights([]);
+      setSoilTemps([]);
     } finally {
       setLoading(false);
     }
@@ -274,6 +288,8 @@ export default function DataPage() {
     rainrate: isDarkMode ? "#c4b5fd" : "#a78bfa",
     heatIndex: isDarkMode ? "#fb923c" : "#f97316",
     windChill: isDarkMode ? "#7dd3fc" : "#0ea5e9",
+    lux: isDarkMode ? "#fcd34d" : "#f59e0b",      // NEW: lux color
+    soil_temp: isDarkMode ? "#fb7185" : "#ef4444",   // NEW: soil temp color
   };
 
   // Fungsi untuk mengunduh data (contoh sederhana)
@@ -282,9 +298,9 @@ export default function DataPage() {
       alert("Tidak ada data untuk diunduh.");
       return;
     }
-    const headers = ["Waktu", "Suhu (°C)", "Kelembapan (%)", "Tekanan (hPa)", "Titik Embun (°C)", "Curah Hujan (mm)", "Laju Hujan (mm/jam)"];
+    const headers = ["Waktu", "Suhu (°C)", "Kelembapan (%)", "Tekanan (hPa)", "Titik Embun (°C)", "Curah Hujan (mm)", "Laju Hujan (mm/jam)", "Cahaya (lux)", "Suhu Tanah (°C)"];
     const rows = timestamps.map((time, i) =>
-      `${time},${temperatures[i].toFixed(2)},${humidity[i].toFixed(2)},${pressure[i].toFixed(2)},${dew[i].toFixed(2)},${rainfall[i].toFixed(2)},${rainrate[i].toFixed(2)}`
+      `${time},${temperatures[i].toFixed(2)},${humidity[i].toFixed(2)},${pressure[i].toFixed(2)},${dew[i].toFixed(2)},${rainfall[i].toFixed(2)},${rainrate[i].toFixed(2)},${(lights[i] ?? 0).toFixed(2)},${(soilTemps[i] ?? 0).toFixed(2)}`
     );
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -492,7 +508,7 @@ export default function DataPage() {
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
-                  initialFocus
+                  autoFocus
                   mode="range"
                   defaultMonth={dateRange?.from}
                   selected={dateRange}
@@ -554,6 +570,8 @@ export default function DataPage() {
           <ChartCard title="Titik Embun" data={dew} color={chartColors.dew} Icon={Sprout} unit="°C" />
           <ChartCard title="Curah Hujan Kumulatif" data={rainfall} color={chartColors.rainfall} Icon={CloudRain} unit="mm" />
           <ChartCard title="Laju Hujan" data={rainrate} color={chartColors.rainrate} Icon={CloudRainWind} unit="mm/jam" />
+          <ChartCard title="Intensitas Cahaya" data={lights} color={chartColors.lux} Icon={Sun} unit="lux" />
+          <ChartCard title="Suhu Tanah" data={soilTemps} color={chartColors.soil_temp} Icon={Thermometer} unit="°C" />
           <ChartCard title="Indeks Panas (Heat Index)" data={heatIndexData} color={chartColors.heatIndex} Icon={ThermometerSun} unit="°C" />
           <ChartCard title="Indeks Kenyamanan" data={comfortIndexData} color={chartColors.windChill} Icon={Eye} unit="°C" />
         </div>

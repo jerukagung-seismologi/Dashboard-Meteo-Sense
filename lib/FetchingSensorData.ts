@@ -22,6 +22,8 @@ export interface SensorValue {
   rainfall: number;
   rainrate: number;
   volt: number;
+  lux: number;
+  soil_temp: number;
 }
 
 export interface SensorDate extends SensorValue {
@@ -90,7 +92,15 @@ export async function fetchSensorDataByValue(
 
       results.push({
         timestamp: timestampInMillis,
-        ...data,
+        temperature: data.temperature,
+        humidity: data.humidity,
+        pressure: data.pressure,
+        dew: data.dew,
+        volt: data.volt,
+        rainfall: data.rainfall,
+        rainrate: data.rainrate,
+        lux: data.lux ?? 0,
+        soil_temp: data.soil_temp ?? 0,
         dateFormatted,
         timeFormatted,
       });
@@ -188,6 +198,8 @@ export async function fetchSensorDataByDateRange(
         volt: data.volt,
         rainfall: data.rainfall,
         rainrate: data.rainrate,
+        lux: data.lux ?? 0,
+        soil_temp: data.soil_temp ?? 0,
         dateFormatted: dateFormatted,
         timeFormatted: formattedTime,
       };
@@ -343,6 +355,8 @@ export async function fetchSensorData(
         volt: data.volt,
         rainfall: data.rainfall,
         rainrate: data.rainrate,
+        lux: data.lux ?? 0,
+        soil_temp: data.soil_temp ?? 0,
         dateFormatted: dateFormatted,
         timeFormatted: formattedTime,
       };
