@@ -4,7 +4,7 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Inter } from "next/font/google"
-import { LayoutDashboard, Network, FileText, Database, Earth, ChartNoAxesCombined, User, CloudRain } from "lucide-react"
+import { LayoutDashboard, Network, FileText, Database, Earth, Sprout, ChartNoAxesCombined, User, CloudRain } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { signOutUser } from "@/lib/FetchingAuth"
 import { Sidebar } from "@/components/dashboard/Sidebar"
@@ -48,11 +48,12 @@ export default function DashboardLayout({
   const navigation: NavigationItem[] = [
     { name: "Beranda", href: "/dashboard", icon: LayoutDashboard },
     { name: "Perangkat", href: "/dashboard/perangkat", icon: Network },
-    //{ name: "Peta", href: "/dashboard/peta", icon: Earth },
-    { name: "Analisis", href: "/dashboard/analisis", icon: ChartNoAxesCombined },
-    { name: "Data", href: "/dashboard/data", icon: Database },
-    { name: "Laporan", href: "/dashboard/laporan", icon: FileText },
-    { name: "Prakirawan", href: "/dashboard/prakirawan", icon: CloudRain },
+    { name: "Sistem Geografis", href: "/dashboard/peta", icon: Earth },
+    { name: "Agrometeorologi", href: "/dashboard/agromet", icon: Sprout },
+    { name: "Analisis Prediksi", href: "/dashboard/analisis", icon: ChartNoAxesCombined },
+    { name: "Basis Data", href: "/dashboard/data", icon: Database },
+    { name: "Laporan Cuaca", href: "/dashboard/laporan", icon: FileText },
+    { name: "Prakirawan Cuaca", href: "/dashboard/prakirawan", icon: CloudRain },
     { name: "Profil", href: "/dashboard/profil", icon: User },
   ]
 

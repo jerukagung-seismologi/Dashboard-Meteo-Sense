@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
-
 import { useAuth } from "@/hooks/useAuth";
 import { fetchAllDevices } from "@/lib/FetchingDevice";
 import {
@@ -89,15 +88,11 @@ export default function DataPage() {
   const [timestamps, setTimestamps] = useState<string[]>([]); // Akan menggunakan timeFormatted
   const [temperatures, setTemperatures] = useState<number[]>([]); //Float64
   const [humidity, setHumidity] = useState<number[]>([]); //Float64
-  const [pressure, setPressure] = useState<number[]>([]); //Float64
   const [dew, setDew] = useState<number[]>([]); //Float64
   const [rainfall, setRainfall] = useState<number[]>([]); //Float64
   const [rainrate, setRainrate] = useState<number[]>([]); //Float64
   const [lights, setLights] = useState<number[]>([]); // NEW: light (lux)
   const [soilTemps, setSoilTemps] = useState<number[]>([]); // NEW: soil temperature
-
-  // State untuk data tabel
-  const [weatherData, setWeatherData] = useState<WeatherData[]>([]);
 
   // UI state
   const [loading, setLoading] = useState(true);
@@ -170,7 +165,6 @@ export default function DataPage() {
       setTimestamps(fetchedTimestamps);
       setTemperatures(fetchedTemperatures);
       setHumidity(fetchedHumidity);
-      setPressure(fetchedPressure);
       setDew(fetchedDew);
       setRainfall(fetchedRainfall);
       setRainrate(fetchedRainrate);
@@ -181,7 +175,6 @@ export default function DataPage() {
       setTimestamps([]);
       setTemperatures([]);
       setHumidity([]);
-      setPressure([]);
       setDew([]);
       setRainfall([]);
       setRainrate([]);
@@ -237,7 +230,6 @@ export default function DataPage() {
       setTimestamps([]);
       setTemperatures([]);
       setHumidity([]);
-      setPressure([]);
       setDew([]);
       setRainfall([]);
       setRainrate([]);
@@ -290,26 +282,6 @@ export default function DataPage() {
     windChill: isDarkMode ? "#7dd3fc" : "#0ea5e9",
     lux: isDarkMode ? "#fcd34d" : "#f59e0b",      // NEW: lux color
     soil_temp: isDarkMode ? "#fb7185" : "#ef4444",   // NEW: soil temp color
-  };
-
-  // Fungsi untuk mengunduh data (contoh sederhana)
-  const handleDownloadData = () => {
-    if (timestamps.length === 0) {
-      alert("Tidak ada data untuk diunduh.");
-      return;
-    }
-    const headers = ["Waktu", "Suhu (°C)", "Kelembapan (%)", "Tekanan (hPa)", "Titik Embun (°C)", "Curah Hujan (mm)", "Laju Hujan (mm/jam)", "Cahaya (lux)", "Suhu Tanah (°C)"];
-    const rows = timestamps.map((time, i) =>
-      `${time},${temperatures[i].toFixed(2)},${humidity[i].toFixed(2)},${pressure[i].toFixed(2)},${dew[i].toFixed(2)},${rainfall[i].toFixed(2)},${rainrate[i].toFixed(2)},${(lights[i] ?? 0).toFixed(2)},${(soilTemps[i] ?? 0).toFixed(2)}`
-    );
-    const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `data_sensor_${sensorId}_${new Date().toISOString()}.csv`);
-    link.click();
-    URL.revokeObjectURL(url); // Membersihkan URL objek setelah diunduh
   };
 
   // Fungsi untuk mendapatkan domain sumbu Y
@@ -456,8 +428,8 @@ export default function DataPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Analisis dan Prediksi</h2>
-          <p className="text-muted-foreground dark:text-gray-50">Analisis dan visualisasi data sensor cuaca</p>
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Agrometeorologi</h2>
+          <p className="text-muted-foreground dark:text-gray-50">Analisis data Agrometeorologi</p>
         </div>
       </div>
       
@@ -526,10 +498,6 @@ export default function DataPage() {
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""} ${isDarkMode ? "text-gray-200" : ""}`} />
               <span className="sr-only">Refresh data</span>
             </Button>
-
-            <Button variant="outline" size="sm" className={`${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"}`} onClick={handleDownloadData}>
-              <Download className="h-4 w-4 mr-1" /> Unduh Data
-            </Button>
           </div>
         </CardHeader>
         <CardContent className="pt-4 bg-slate-100 dark:bg-slate-800">
@@ -566,14 +534,11 @@ export default function DataPage() {
         <div className="space-y-6">
           <ChartCard title="Suhu Lingkungan" data={temperatures} color={chartColors.temperature} Icon={ThermometerSun} unit="°C" />
           <ChartCard title="Kelembapan Relatif" data={humidity} color={chartColors.humidity} Icon={Droplets} unit="%" />
-          <ChartCard title="Tekanan Udara" data={pressure} color={chartColors.pressure} Icon={Gauge} unit="hPa" />
           <ChartCard title="Titik Embun" data={dew} color={chartColors.dew} Icon={Sprout} unit="°C" />
-          <ChartCard title="Curah Hujan Per Jam" data={rainrate} color={chartColors.rainrate} Icon={CloudRainWind} unit="mm/jam" />
-          <ChartCard title="Curah Hujan Kumulatif" data={rainfall} color={chartColors.rainfall} Icon={CloudRain} unit="mm" />
           <ChartCard title="Intensitas Cahaya" data={lights} color={chartColors.lux} Icon={Sun} unit="lux" />
           <ChartCard title="Suhu Tanah" data={soilTemps} color={chartColors.soil_temp} Icon={Thermometer} unit="°C" />
-          <ChartCard title="Indeks Panas (Heat Index)" data={heatIndexData} color={chartColors.heatIndex} Icon={ThermometerSun} unit="°C" />
-          <ChartCard title="Indeks Kenyamanan" data={comfortIndexData} color={chartColors.windChill} Icon={Eye} unit="°C" />
+          <ChartCard title="Curah Hujan Per Jam" data={rainrate} color={chartColors.rainrate} Icon={CloudRainWind} unit="mm/jam" />
+          <ChartCard title="Curah Hujan Kumulatif" data={rainfall} color={chartColors.rainfall} Icon={CloudRain} unit="mm" />
         </div>
       )}
     </div>
