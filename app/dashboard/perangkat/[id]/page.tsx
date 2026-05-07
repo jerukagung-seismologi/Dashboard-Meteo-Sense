@@ -259,7 +259,7 @@ export default function DeviceDetailPage() {
     rainTotal: data.rainfall ?? 0,
     windSpeed: (data as any).windspeed ?? 0,
     windDir: (data as any).winddir ?? 0,
-    sunlight: (data as any).sunlight ?? 0,
+    sunlight: (data as any).lux ?? 0,
   };
 
   const sunlightPct = Math.min(Math.round((values.sunlight / 120000) * 100), 100);
