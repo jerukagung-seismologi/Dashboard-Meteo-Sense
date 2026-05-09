@@ -19,15 +19,18 @@ import {
   Trash2, 
   Save, 
   Download, 
-  Thermometer, 
+  Thermometer,
+  ThermometerSun,
   Droplets,
   Wind,
   DatabaseZap,
-  Sun as LucideSun,
-  Cloud as LucideCloud,
-  CloudRain as LucideRain,
-  CloudLightning as LucideZap,
-  Wind as LucideWind
+  Sun,
+  Cloud,
+  CloudSun,
+  CloudFog,
+  CloudDrizzle,
+  CloudRain,
+  CloudLightning,
 } from "lucide-react"
 import html2canvas from "html2canvas"
 
@@ -47,6 +50,7 @@ import {
   WiStrongWind, 
   WiNa
 } from "react-icons/wi";
+import { he } from "date-fns/locale"
 
 // --- TIPE DATA ---
 
@@ -68,7 +72,11 @@ export type ForecastRow = {
   conditionSub: WeatherCondition | ""
   probSub: string
   temperature: number | ""
+  temperatureError: number | ""
   humidity: number | ""
+  humidityError: number | ""
+  heatIndex: number | ""
+  heatIndexError: number | ""
 }
 
 const initialTimes = ["07:00", "10:00", "13:00", "16:00", "19:00"]
@@ -212,24 +220,87 @@ const getRowStyles = (condition: string, time: string) => {
   return styles
 }
 
+// --- HELPER: FORMAT CUACA & NILAI DENGAN ERROR ---
+const formatWeatherLine = (prob: string, condition: string) => {
+  const p = (prob || "").trim()
+  const c = (condition || "").trim()
+
+  if (!p && !c) return "-"
+  if (p && c) return `${p}% ${c}`
+  if (c) return c
+  return `${p}%`
+}
+
+const formatValueWithError = (
+  value: number | "",
+  error: number | "",
+  unit: string = ""
+) => {
+  if (value === "") return "-"
+  const err = error === "" ? "" : ` ±${error}`
+  return `${value}${unit}${err}`
+}
+
 // --- HELPER 2: ICON SELECTOR ---
 
 const getErikFlowersIcon = (condition: string, time: string, size: number = 72, color: string) => {
-  const hour = parseInt(time.split(":")[0]) || 0;
-  const isNight = hour >= 18 || hour < 6;
-  const props = { size, color };
+  const hour = parseInt(time.split(":")[0]) || 0
+  const isNight = hour >= 18 || hour < 6
+  const props = { size, color }
 
   switch (condition) {
-    case "Cerah": return isNight ? <WiNightClear {...props} /> : <WiDaySunny {...props} />;
-    case "Cerah Berawan": return isNight ? <WiNightAltCloudy {...props} /> : <WiDayCloudy {...props} />;
-    case "Berawan": return <WiCloudy {...props} />;
-    case "Kabut": return <WiFog {...props} />;
-    case "Hujan Ringan": return isNight ? <WiNightAltShowers {...props} /> : <WiDayShowers {...props} />;
-    case "Hujan Sedang": return <WiRain {...props} />;
-    case "Hujan Lebat": return <WiRainWind {...props} />;
-    case "Badai Petir": return <WiThunderstorm {...props} />;
-    case "Angin Kencang": return <WiStrongWind {...props} />;
-    default: return <WiNa {...props} />;
+    case "Cerah": return isNight ? <WiNightClear {...props} /> : <WiDaySunny {...props} />
+    case "Cerah Berawan": return isNight ? <WiNightAltCloudy {...props} /> : <WiDayCloudy {...props} />
+    case "Berawan": return <WiCloudy {...props} />
+    case "Kabut": return <WiFog {...props} />
+    case "Hujan Ringan": return isNight ? <WiNightAltShowers {...props} /> : <WiDayShowers {...props} />
+    case "Hujan Sedang": return <WiRain {...props} />
+    case "Hujan Lebat": return <WiRainWind {...props} />
+    case "Badai Petir": return <WiThunderstorm {...props} />
+    case "Angin Kencang": return <WiStrongWind {...props} />
+    default: return <WiNa {...props} />
+  }
+};
+
+// Helper: return icon JSX + color for a condition
+const getConditionColor = (condition: string) => {
+  switch (condition) {
+    case "Cerah": return "#F59E0B"       // amber
+    case "Cerah Berawan": return "#FBBF24" // warm yellow
+    case "Berawan": return "#64748B"     // gray
+    case "Hujan Ringan": return "#3B82F6" // blue
+    case "Hujan Sedang": return "#2563EB" // darker blue
+    case "Hujan Lebat": return "#1E40AF"  // deep blue
+    case "Badai Petir": return "#7C3AED"  // purple
+    case "Kabut": return "#0EA5A4"        // teal
+    case "Angin Kencang": return "#0F172A"// indigo/near black
+    default: return "#64748B"
+  }
+}
+
+const getLucideIconForCondition = (condition: string, size: number = 16) => {
+  const color = getConditionColor(condition)
+  switch (condition) {
+    case "Cerah":
+      return <Sun size={size} color={color} />
+    case "Cerah Berawan":
+      return <CloudSun size={size} color={color} />
+    case "Berawan":
+      return <Cloud size={size} color={color} />
+    case "Hujan Ringan":
+      return <CloudDrizzle size={size} color={color} />
+    case "Hujan Sedang":
+      return <CloudRain size={size} color={color} />
+    case "Hujan Lebat":
+      return <CloudRain size={size} color={color} />
+    case "Badai Petir":
+      return <CloudLightning size={size} color={color} />
+    case "Kabut":
+      return <CloudFog size={size} color={color} />
+    case "Angin Kencang":
+      return <Wind size={size} color={color} />
+    default:
+      return <Cloud size={size} color={color} />
   }
 };
 
@@ -239,14 +310,18 @@ export default function ForecastForm() {
   const { toast } = useToast()
 
   const [rows, setRows] = React.useState<ForecastRow[]>(
-    initialTimes.map((t) => ({ 
-      time: t, 
-      conditionMain: "", 
-      probMain: "80", 
-      conditionSub: "", 
+    initialTimes.map((t) => ({
+      time: t,
+      conditionMain: "",
+      probMain: "80",
+      conditionSub: "",
       probSub: "",
-      temperature: "", 
-      humidity: "" 
+      temperature: "",
+      temperatureError: 10,
+      humidity: "",
+      humidityError: 5,
+      heatIndex: "",
+      heatIndexError: 2,
     }))
   )
   const [location, setLocation] = React.useState<string>("Kebumen")
@@ -265,12 +340,81 @@ export default function ForecastForm() {
     })
   }, [])
 
+  const currentTimeStr = React.useMemo(() => {
+    const now = new Date()
+    return now.toLocaleString("id-ID", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    })
+  }, [rows]) // Re-compute setiap kali rows berubah untuk update dinamis
+
   const updateRow = (index: number, patch: Partial<ForecastRow>) => {
     setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)))
   }
 
   const addRow = () => {
-    setRows((prev) => [...prev, { time: "", conditionMain: "", probMain: "80", conditionSub: "", probSub: "", temperature: "", humidity: "" }])
+    setRows((prev) => [
+      ...prev,
+      {
+        time: "",
+        conditionMain: "",
+        probMain: "80",
+        conditionSub: "",
+        probSub: "",
+        temperature: "",
+        temperatureError: 10,
+        humidity: "",
+        humidityError: 10,
+        heatIndex: "",
+        heatIndexError: 12,
+      },
+    ])
+  }
+
+  const updateTemperature = (index: number, value: string) => {
+    const nextTemp = toNumberOrEmpty(value)
+    setRows((prev) =>
+      prev.map((r, i) => {
+        if (i !== index) return r
+        const hi =
+          nextTemp !== "" && r.humidity !== ""
+            ? calculateHeatIndexCelsius(nextTemp, r.humidity)
+            : ""
+        return { ...r, temperature: nextTemp, heatIndex: hi }
+      })
+    )
+  }
+
+  const updateHumidity = (index: number, value: string) => {
+    const nextHum = toNumberOrEmpty(value)
+    setRows((prev) =>
+      prev.map((r, i) => {
+        if (i !== index) return r
+        const hi =
+          r.temperature !== "" && nextHum !== ""
+            ? calculateHeatIndexCelsius(r.temperature, nextHum)
+            : ""
+        return { ...r, humidity: nextHum, heatIndex: hi }
+      })
+    )
+  }
+
+  const updateHeatIndex = (index: number) => {
+    setRows((prev) =>
+      prev.map((r, i) => {
+        if (i !== index) return r
+        const hi =
+          r.temperature !== "" && r.humidity !== ""
+            ? calculateHeatIndexCelsius(r.temperature, r.humidity)
+            : ""
+        return { ...r, heatIndex: hi }
+      })
+    )
   }
 
   const removeRow = (index: number) => {
@@ -365,13 +509,13 @@ export default function ForecastForm() {
       // 2) Calculate tomorrow's date
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
-      const tomorrowDateStr = tomorrow.toISOString().split('T')[0]
+      const tomorrowDateStr = tomorrow.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })
 
       // 3) Fetch Forecast dari Open-Meteo ECMWF API
       const params = new URLSearchParams({
         latitude: lat.toString(),
         longitude: lon.toString(),
-        hourly: "temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m,precipitation_probability",
+        hourly: "temperature_2m,weather_code,surface_pressure,precipitation_probability,rain,relative_humidity_2m,wind_speed_10m",
         models: "ecmwf_ifs",
         timezone: "Asia/Bangkok",
         forecast_days: "2" // Ambil 2 hari untuk memastikan data besok ada
@@ -387,8 +531,7 @@ export default function ForecastForm() {
       }
 
       const fcJson = await response.json()
-
-      if (!fcJson?.hourly || !fcJson.hourly.time) {
+      if (!fcJson?.hourly?.time) {
         throw new Error("Invalid forecast data structure")
       }
 
@@ -474,34 +617,45 @@ export default function ForecastForm() {
         return {
           time: targetTime,
           conditionMain: condition,
-          probMain: probMain,
+          probMain,
           temperature: temp,
-          humidity: hum
+          humidity: hum,
+          heatIndex: calculateHeatIndexCelsius(temp, hum),
         }
       })
 
-      // 6) Merge dengan existing rows (preserve sub conditions & extra fields)
-      setRows((prev) => {
-        return prev.map((r, i) => {
+      // 6) Merge
+      setRows((prev) =>
+        prev.map((r, i) => {
           const f = fetchedRows[i] || {}
           return {
             ...r,
             time: f.time ?? r.time,
-            conditionMain: (f.conditionMain && f.conditionMain !== "") 
-              ? (f.conditionMain as WeatherCondition) 
-              : r.conditionMain,
-            temperature: (f.temperature !== undefined && f.temperature !== "") 
-              ? (f.temperature as number) 
-              : r.temperature,
-            humidity: (f.humidity !== undefined && f.humidity !== "") 
-              ? (f.humidity as number) 
-              : r.humidity,
+            conditionMain:
+              f.conditionMain && f.conditionMain !== ""
+                ? (f.conditionMain as WeatherCondition)
+                : r.conditionMain,
+            temperature:
+              f.temperature !== undefined && f.temperature !== ""
+                ? (f.temperature as number)
+                : r.temperature,
+            humidity:
+              f.humidity !== undefined && f.humidity !== ""
+                ? (f.humidity as number)
+                : r.humidity,
+            heatIndex:
+              f.heatIndex !== undefined && f.heatIndex !== ""
+                ? (f.heatIndex as number)
+                : r.heatIndex,
+            temperatureError: r.temperatureError === "" ? 10 : r.temperatureError,
+            humidityError: r.humidityError === "" ? 10 : r.humidityError,
+            heatIndexError: r.heatIndexError === "" ? 12 : r.heatIndexError,
             probMain: f.probMain ?? r.probMain,
-            probSub: r.probSub, // Preserve manual sub condition
-            conditionSub: r.conditionSub
+            probSub: r.probSub,
+            conditionSub: r.conditionSub,
           } as ForecastRow
         })
-      })
+      )
 
       toast({ 
         title: "✓ Selesai", 
@@ -523,18 +677,98 @@ export default function ForecastForm() {
     }
   }
 
-  // Helper render dropdown
+  // Helper render dropdown untuk probability dengan kelipatan 10
+  const ProbabilitySelectItems = () => (
+    <>
+      <SelectItem value="0">0%</SelectItem>
+      <SelectItem value="10">10%</SelectItem>
+      <SelectItem value="20">20%</SelectItem>
+      <SelectItem value="30">30%</SelectItem>
+      <SelectItem value="40">40%</SelectItem>
+      <SelectItem value="50">50%</SelectItem>
+      <SelectItem value="60">60%</SelectItem>
+      <SelectItem value="70">70%</SelectItem>
+      <SelectItem value="80">80%</SelectItem>
+      <SelectItem value="90">90%</SelectItem>
+      <SelectItem value="100">100%</SelectItem>
+    </>
+  )
+
+  // Helper render dropdown untuk weather dengan ikon
   const WeatherSelectItems = () => (
     <>
-      <SelectItem value="Cerah"><span className="flex items-center gap-2"><LucideSun size={14} className="text-orange-500"/> Cerah</span></SelectItem>
-      <SelectItem value="Cerah Berawan"><span className="flex items-center gap-2"><LucideCloud size={14} className="text-orange-400"/> Cerah Berawan</span></SelectItem>
-      <SelectItem value="Berawan"><span className="flex items-center gap-2"><LucideCloud size={14} className="text-gray-500"/> Berawan</span></SelectItem>
-      <SelectItem value="Kabut"><span className="flex items-center gap-2"><LucideCloud size={14} className="text-slate-400"/> Kabut</span></SelectItem>
-      <SelectItem value="Hujan Ringan"><span className="flex items-center gap-2"><LucideRain size={14} className="text-blue-400"/> Hujan Ringan</span></SelectItem>
-      <SelectItem value="Hujan Sedang"><span className="flex items-center gap-2"><LucideRain size={14} className="text-blue-500"/> Hujan Sedang</span></SelectItem>
-      <SelectItem value="Hujan Lebat"><span className="flex items-center gap-2"><LucideZap size={14} className="text-indigo-600"/> Hujan Lebat</span></SelectItem>
-      <SelectItem value="Badai Petir"><span className="flex items-center gap-2"><LucideZap size={14} className="text-purple-600"/> Badai Petir</span></SelectItem>
-      <SelectItem value="Angin Kencang"><span className="flex items-center gap-2"><LucideWind size={14} className="text-teal-600"/> Angin Kencang</span></SelectItem>
+      <SelectItem value="Cerah">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 20 }}>
+            {getLucideIconForCondition("Cerah", 18)}
+          </span>
+          <span>Cerah</span>
+        </div>
+      </SelectItem>
+      <SelectItem value="Cerah Berawan">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 20 }}>
+            {getLucideIconForCondition("Cerah Berawan", 18)}
+          </span>
+          <span>Cerah Berawan</span>
+        </div>
+      </SelectItem>
+      <SelectItem value="Berawan">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 20 }}>
+            {getLucideIconForCondition("Berawan", 18)}
+          </span>
+          <span>Berawan</span>
+        </div>
+      </SelectItem>
+      <SelectItem value="Hujan Ringan">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 20 }}>
+            {getLucideIconForCondition("Hujan Ringan", 18)}
+          </span>
+          <span>Hujan Ringan</span>
+        </div>
+      </SelectItem>
+      <SelectItem value="Hujan Sedang">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 20 }}>
+            {getLucideIconForCondition("Hujan Sedang", 18)}
+          </span>
+          <span>Hujan Sedang</span>
+        </div>
+      </SelectItem>
+      <SelectItem value="Hujan Lebat">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 20 }}>
+            {getLucideIconForCondition("Hujan Lebat", 18)}
+          </span>
+          <span>Hujan Lebat</span>
+        </div>
+      </SelectItem>
+      <SelectItem value="Badai Petir">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 20 }}>
+            {getLucideIconForCondition("Badai Petir", 18)}
+          </span>
+          <span>Badai Petir</span>
+        </div>
+      </SelectItem>
+      <SelectItem value="Kabut">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 20 }}>
+            {getLucideIconForCondition("Kabut", 18)}
+          </span>
+          <span>Kabut</span>
+        </div>
+      </SelectItem>
+      <SelectItem value="Angin Kencang">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 20 }}>
+            {getLucideIconForCondition("Angin Kencang", 18)}
+          </span>
+          <span>Angin Kencang</span>
+        </div>
+      </SelectItem>
     </>
   )
 
@@ -568,89 +802,234 @@ export default function ForecastForm() {
       </div>
 
       {/* --- FORM INPUT TABEL --- */}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[80px]">Jam</TableHead>
-              <TableHead className="w-[80px] text-center">%</TableHead>
-              <TableHead className="w-[180px]">Kondisi Utama</TableHead>
-              <TableHead className="w-[80px] text-center">% (Ops)</TableHead>
-              <TableHead className="w-[180px]">Kondisi Tambahan</TableHead>
-              <TableHead className="w-[80px]">Suhu</TableHead>
-              <TableHead className="w-[80px]">RH</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[70px] text-center">Jam</TableHead>
+              <TableHead className="w-[160px]">Kondisi Utama</TableHead>
+              <TableHead className="w-[90px] text-center">Prob %</TableHead>
+              <TableHead className="w-[160px]">Kondisi Tambahan</TableHead>
+              <TableHead className="w-[90px] text-center">Prob %</TableHead>
+              <TableHead className="w-[140px]">Suhu (°C)</TableHead>
+              <TableHead className="w-[140px]">Kelembapan (%)</TableHead>
+              <TableHead className="w-[140px]">Indeks Panas (°C)</TableHead>
+              <TableHead className="w-[50px] text-center">Hapus</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((row, idx) => (
               <TableRow key={idx}>
                 {/* JAM */}
-                <TableCell>
-                  <Input value={row.time} onChange={(e) => updateRow(idx, { time: e.target.value })} className="h-9"/>
+                <TableCell className="text-center">
+                  <Input
+                    value={row.time}
+                    onChange={(e) => updateRow(idx, { time: e.target.value })}
+                    className="h-8 text-center font-semibold"
+                  />
                 </TableCell>
 
-                {/* UTAMA */}
+                {/* KONDISI UTAMA */}
                 <TableCell>
-                  <Select value={row.probMain} onValueChange={(v) => updateRow(idx, { probMain: v })}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="%" /></SelectTrigger>
-                    <SelectContent>
-                      {probabilities.map((p) => <SelectItem key={p} value={p}>{p}%</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  <Select value={row.conditionMain} onValueChange={(v) => updateRow(idx, { conditionMain: v as WeatherCondition })}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Utama..." /></SelectTrigger>
-                    <SelectContent><WeatherSelectItems /></SelectContent>
-                  </Select>
-                </TableCell>
-
-                {/* TAMBAHAN */}
-                <TableCell>
-                  <Select 
-                    value={row.probSub || "none"} 
-                    onValueChange={(v) => updateRow(idx, { probSub: v === "none" ? "" : v })}
+                  <Select
+                    value={row.conditionMain || "__empty__"}
+                    onValueChange={(value) =>
+                      updateRow(idx, {
+                        conditionMain: value === "__empty__" ? "" : (value as WeatherCondition),
+                      })
+                    }
                   >
-                    <SelectTrigger className="h-9 text-muted-foreground"><SelectValue placeholder="-" /></SelectTrigger>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Pilih" />
+                    </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">-</SelectItem>
-                      {probabilities.map((p) => <SelectItem key={p} value={p}>{p}%</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  <Select 
-                    value={row.conditionSub || "none"} 
-                    onValueChange={(v) => updateRow(idx, { conditionSub: v === "none" ? "" : v as WeatherCondition })}
-                  >
-                    <SelectTrigger className="h-9 text-muted-foreground"><SelectValue placeholder="(Opsional)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">- Kosong -</SelectItem>
-                      <WeatherSelectItems />
+                      <SelectItem value="__empty__">
+                        <div className="flex items-center gap-2">
+                          <span className="min-w-[20px]" />
+                          <span>-</span>
+                        </div>
+                      </SelectItem>
+                      {weatherOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          <div className="flex items-center gap-3">
+                            <span style={{ width: 22, display: "inline-flex", justifyContent: "center", alignItems: "center" }}>
+                              <opt.Icon size={18} color={opt.color} />
+                            </span>
+                            <span className="text-sm">{opt.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </TableCell>
 
-                {/* PARAMETER */}
-                <TableCell><Input type="number" value={row.temperature || ""} onChange={(e) => updateRow(idx, { temperature: e.target.value })} className="h-9" /></TableCell>
-                <TableCell><Input type="number" value={row.humidity || ""} onChange={(e) => updateRow(idx, { humidity: e.target.value })} className="h-9" /></TableCell>
-                <TableCell><Button variant="ghost" size="icon" onClick={() => removeRow(idx)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
+                {/* PROB UTAMA */}
+                <TableCell>
+                  <Select
+                    value={row.probMain}
+                    onValueChange={(value) => updateRow(idx, { probMain: value })}
+                  >
+                    <SelectTrigger className="h-8 text-center">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <ProbabilitySelectItems />
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+
+                {/* KONDISI TAMBAHAN */}
+                <TableCell>
+                  <Select
+                    value={row.conditionSub || "__empty__"}
+                    onValueChange={(value) =>
+                      updateRow(idx, {
+                        conditionSub: value === "__empty__" ? "" : (value as WeatherCondition),
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Pilih" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__empty__">
+                        <div className="flex items-center gap-2">
+                          <span className="min-w-[20px]" />
+                          <span>-</span>
+                        </div>
+                      </SelectItem>
+                      {weatherOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          <div className="flex items-center gap-3">
+                            <span style={{ width: 22, display: "inline-flex", justifyContent: "center", alignItems: "center" }}>
+                              <opt.Icon size={18} color={opt.color} />
+                            </span>
+                            <span className="text-sm">{opt.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+
+                {/* PROB TAMBAHAN */}
+                <TableCell>
+                  <Select
+                    value={row.probSub}
+                    onValueChange={(value) => updateRow(idx, { probSub: value })}
+                  >
+                    <SelectTrigger className="h-8 text-center">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <ProbabilitySelectItems />
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+
+                {/* SUHU + ERROR */}
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex gap-1 items-center">
+                      <span className="text-xs text-muted-foreground min-w-fit">Nilai:</span>
+                      <Input
+                        type="number"
+                        value={row.temperature}
+                        onChange={(e) => updateTemperature(idx, e.target.value)}
+                        className="h-7 text-sm flex-1"
+                        placeholder="—"
+                      />
+                    </div>
+                    <div className="flex gap-1 items-center">
+                      <span className="text-xs text-muted-foreground min-w-fit">Error:</span>
+                      <Input
+                        type="number"
+                        value={row.temperatureError}
+                        onChange={(e) =>
+                          updateRow(idx, { temperatureError: toNumberOrEmpty(e.target.value) })
+                        }
+                        className="h-7 text-sm flex-1"
+                        placeholder="—"
+                      />
+                    </div>
+                  </div>
+                </TableCell>
+
+                {/* KELEMBAPAN + ERROR */}
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex gap-1 items-center">
+                      <span className="text-xs text-muted-foreground min-w-fit">Nilai:</span>
+                      <Input
+                        type="number"
+                        value={row.humidity}
+                        onChange={(e) => updateHumidity(idx, e.target.value)}
+                        className="h-7 text-sm flex-1"
+                        placeholder="—"
+                      />
+                    </div>
+                    <div className="flex gap-1 items-center">
+                      <span className="text-xs text-muted-foreground min-w-fit">Error:</span>
+                      <Input
+                        type="number"
+                        value={row.humidityError}
+                        onChange={(e) =>
+                          updateRow(idx, { humidityError: toNumberOrEmpty(e.target.value) })
+                        }
+                        className="h-7 text-sm flex-1"
+                        placeholder="—"
+                      />
+                    </div>
+                  </div>
+                </TableCell>
+
+                {/* INDEKS PANAS + ERROR */}
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex gap-1 items-center">
+                      <span className="text-xs text-muted-foreground min-w-fit">Nilai:</span>
+                      <Input
+                        type="number"
+                        value={getHeatIndexDisplay(row)}
+                        readOnly
+                        className="h-7 text-sm flex-1 bg-muted"
+                        placeholder="—"
+                      />
+                    </div>
+                    <div className="flex gap-1 items-center">
+                      <span className="text-xs text-muted-foreground min-w-fit">Error:</span>
+                      <Input
+                        type="number"
+                        value={row.heatIndexError}
+                        onChange={(e) =>
+                          updateRow(idx, { heatIndexError: toNumberOrEmpty(e.target.value) })
+                        }
+                        className="h-7 text-sm flex-1"
+                        placeholder="—"
+                      />
+                    </div>
+                  </div>
+                </TableCell>
+
+                {/* HAPUS */}
+                <TableCell className="text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeRow(idx)}
+                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
 
-      {/* --- HIDDEN AREA (OUTPUT IMAGE - ALIGNMENT FIXED) --- */}
-      <div 
-        style={{ 
-          position: "fixed", 
-          left: "-9999px", 
-          top: 0,
-          zIndex: -10 
-        }}
-      >
+      {/* --- HIDDEN AREA (OUTPUT IMAGE) --- */}
+      <div style={{ position: "fixed", left: "-9999px", top: 0, zIndex: -10 }}>
         <div ref={printRef} className="print-container" style={{ width: "800px", margin: "0 auto" }}>
           <style>{`
             @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap');
@@ -680,7 +1059,7 @@ export default function ForecastForm() {
               position: relative;
               border-left-width: 8px; 
               border-left-style: solid;
-              height: 110px; 
+              height: 132px; 
             }
             
             /* 1. JAM */ 
@@ -719,11 +1098,11 @@ export default function ForecastForm() {
             /* 4. METRIK (FIXED ALIGNMENT) */ 
             .col-metrics {
               width: 25%;
-              padding: 0 24px; /* Padding kiri kanan biar tidak mepet */
+              padding: 0 18px;
               display: flex;
               flex-direction: column;
-              justify-content: center; /* Center Vertikal */
-              align-items: flex-start; /* Default align left, nanti diatur di item */
+              justify-content: center;
+              align-items: flex-start;
               gap: 8px;
               border-left: 1px solid rgba(0,0,0,0.05);
             }
@@ -731,31 +1110,27 @@ export default function ForecastForm() {
             .metric-item {
               display: flex;
               align-items: center;
-              gap: 16px; /* Jarak antara ikon dan angka */
-              font-size: 24px;
+              gap: 10px;
+              font-size: 18px;
               font-weight: 700;
               color: #334155;
-              width: 100%; /* Pastikan lebar penuh */
-            }
-            
-            /* Ikon di dalam parameter dibuat fixed width agar angka lurus vertikal */
-            .metric-icon-wrap {
-               width: 32px; /* Lebar tetap untuk ikon */
-               display: flex;
-               justify-content: center;
+              width: 100%;
+              line-height: 1;
             }
 
-            /* FOOTER */
-            .footer {
-              margin-top: 30px;
-              padding-top: 10px;
-              border-top: 2px solid #E2E8F0;
-              font-size: 14px;
-              color: #64748B;
+            .metric-icon-wrap {
+              width: 42px;
+              min-width: 42px;
               display: flex;
-              justify-content: space-between;
-              font-weight: 600;
+              justify-content: center;
               align-items: center;
+              flex: 0 0 42px;
+            }
+
+            .metric-value {
+              display: inline-flex;
+              align-items: center;
+              white-space: nowrap;
             }
           `}</style>
 
@@ -782,55 +1157,72 @@ export default function ForecastForm() {
           {/* Rows */}
           <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
             {rows.map((row, i) => {
-              const styles = getRowStyles(row.conditionMain || "", row.time)
+              const styles = getRowStyles(row.conditionMain || row.conditionSub || "", row.time)
+              const mainLine = formatWeatherLine(row.probMain, row.conditionMain)
+              const subLine = formatWeatherLine(row.probSub, row.conditionSub)
+
+              const heatIndexDisplay =
+                row.heatIndex !== ""
+                  ? row.heatIndex
+                  : row.temperature !== "" && row.humidity !== ""
+                    ? calculateHeatIndexCelsius(row.temperature, row.humidity)
+                    : ""
+
+              const heatIndexValue =
+                heatIndexDisplay === ""
+                  ? "-"
+                  : formatValueWithError(heatIndexDisplay, row.heatIndexError, "°C")
+
               return (
-                <div 
-                  key={i} 
-                  className="weather-row" 
-                  style={{ 
-                    backgroundColor: styles.bg, 
+                <div
+                  key={i}
+                  className="weather-row"
+                  style={{
+                    backgroundColor: styles.bg,
                     borderLeftColor: styles.accent,
                   }}
                 >
-                  
-                  {/* JAM */}
-                  <div className="col-time-h">
+                  <div className="col-time-h" style={{ color: styles.text }}>
                     {row.time}
                   </div>
 
-                  {/* ICON */}
                   <div className="col-icon">
-                    {getErikFlowersIcon(row.conditionMain || "", row.time, 88, styles.accent)}
+                    {getErikFlowersIcon(row.conditionMain || row.conditionSub || "", row.time, 78, styles.accent)}
                   </div>
 
-                  {/* DESKRIPSI */}
-                  <div className="col-desc">
-                    <div className="desc-main" style={{ color: styles.text }}>
-                        {row.probMain ? `${row.probMain}% ` : ""}{row.conditionMain || "-"}
-                    </div>
-                    {row.conditionSub && (
-                      <div className="desc-sub" style={{ color: styles.text }}>
-                        {row.probSub ? `${row.probSub}% ` : ""}{row.conditionSub}
-                      </div>
+                  <div className="col-desc" style={{ color: styles.text }}>
+                    <div className="desc-main">{mainLine}</div>
+                    {row.probSub && row.conditionSub && row.conditionSub !== row.conditionMain && (
+                      <div className="desc-sub">{subLine}</div>
                     )}
                   </div>
 
-                  {/* METRIK (Aligned) */}
-                  <div className="col-metrics">
+                  <div className="col-metrics" style={{ color: styles.text }}>
                     <div className="metric-item">
-                      <div className="metric-icon-wrap">
-                        <Thermometer size={30} color="#EF4444" strokeWidth={3} /> 
-                      </div>
-                      <span>{row.temperature ? `${row.temperature}°` : "-"}</span>
+                      <span className="metric-icon-wrap">
+                        <Thermometer size={30} color="#EF4444" />
+                      </span>
+                      <span className="metric-value">
+                        {formatValueWithError(row.temperature, row.temperatureError, "°C")}
+                      </span>
                     </div>
+
                     <div className="metric-item">
-                      <div className="metric-icon-wrap">
-                        <Droplets size={30} color="#3B82F6" strokeWidth={3} />
-                      </div>
-                      <span>{row.humidity ? `${row.humidity}%` : "-"}</span>
+                      <span className="metric-icon-wrap">
+                        <Droplets size={30} color="#3B82F6" />
+                      </span>
+                      <span className="metric-value">
+                        {formatValueWithError(row.humidity, row.humidityError, "%")}
+                      </span>
+                    </div>
+
+                    <div className="metric-item">
+                      <span className="metric-icon-wrap">
+                        <ThermometerSun size={30} color="#F97316" />
+                      </span>
+                      <span className="metric-value">{heatIndexValue}</span>
                     </div>
                   </div>
-
                 </div>
               )
             })}
@@ -838,17 +1230,75 @@ export default function ForecastForm() {
 
           <div className="footer">
             <div style={{ display: "flex", gap: "20px" }}>
-               <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><Thermometer size={18} color="#EF4444"/> Suhu</span>
-               <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><Droplets size={18} color="#3B82F6"/> Kelembapan Relatif</span>
-               <span style={{ fontStyle: "italic" }}>Prediksi Ini Bersifat Eksperimental</span>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <Thermometer size={18} color="#EF4444" /> Suhu
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <Droplets size={18} color="#3B82F6" /> Kelembapan Relatif
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <ThermometerSun size={18} color="#F97316" /> Indeks Panas
+              </span>
+              <span style={{ fontStyle: "italic" }}>Prediksi Ini Bersifat Eksperimental</span>
             </div>
             <div>
               <span style={{ opacity: 0.7 }}>Powered by</span> <strong style={{ color: "#1E3A8A" }}>Meteo Sense 3.1.5</strong>
             </div>
+            <div>
+              <span style={{ opacity: 0.7 }}>Waktu Kirim:</span> <strong style={{ color: "#1E3A8A" }}>{currentTimeStr}</strong>
+            </div>
           </div>
-
         </div>
       </div>
     </div>
   )
 }
+
+// --- HELPER FUNCTIONS ---
+
+const toNumberOrEmpty = (value: string): number | "" => {
+  if (value.trim() === "") return ""
+  const n = Number(value)
+  return Number.isFinite(n) ? n : ""
+}
+
+// NOAA heat index (Celsius output)
+const calculateHeatIndexCelsius = (tempC: number, rh: number): number => {
+  const tF = (tempC * 9) / 5 + 32
+  const hiF =
+    -42.379 +
+    2.04901523 * tF +
+    10.14333127 * rh -
+    0.22475541 * tF * rh -
+    0.00683783 * tF * tF -
+    0.05481717 * rh * rh +
+    0.00122874 * tF * tF * rh +
+    0.00085282 * tF * rh * rh -
+    0.00000199 * tF * tF * rh * rh
+
+  const hiC = ((hiF - 32) * 5) / 9
+  return Math.round(hiC)
+}
+
+const getHeatIndexDisplay = (row: ForecastRow) => {
+  if (row.heatIndex !== "") {
+    return row.heatIndex
+  }
+  if (row.temperature !== "" && row.humidity !== "") {
+    return calculateHeatIndexCelsius(row.temperature, row.humidity)
+  }
+  return ""
+}
+
+// Add weather options with icons and colors
+const weatherOptions: { value: WeatherCondition; label: string; Icon: any; color: string }[] = [
+  { value: "Cerah", label: "Cerah", Icon: Sun, color: "#F97316" },
+  { value: "Cerah Berawan", label: "Cerah Berawan", Icon: CloudSun, color: "#FB923C" },
+  { value: "Berawan", label: "Berawan", Icon: Cloud, color: "#64748B" },
+  { value: "Kabut", label: "Kabut", Icon: CloudFog, color: "#94A3B8" },
+  { value: "Hujan Ringan", label: "Hujan Ringan", Icon: CloudRain, color: "#60A5FA" },
+  { value: "Hujan Sedang", label: "Hujan Sedang", Icon: CloudRain, color: "#3B82F6" },
+  { value: "Hujan Lebat", label: "Hujan Lebat", Icon: CloudRain, color: "#6366F1" },
+  { value: "Badai Petir", label: "Badai Petir", Icon: CloudLightning, color: "#7C3AED" },
+  { value: "Angin Kencang", label: "Angin Kencang", Icon: Wind, color: "#06B6D4" },
+]
