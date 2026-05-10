@@ -620,7 +620,10 @@ export default function ForecastForm() {
           probMain,
           temperature: temp,
           humidity: hum,
-          heatIndex: calculateHeatIndexCelsius(temp, hum),
+          heatIndex:
+            typeof temp === "number" && typeof hum === "number"
+              ? calculateHeatIndexCelsius(temp, hum)
+              : "",
         }
       })
 
@@ -632,7 +635,7 @@ export default function ForecastForm() {
             ...r,
             time: f.time ?? r.time,
             conditionMain:
-              f.conditionMain && f.conditionMain !== ""
+              f.conditionMain
                 ? (f.conditionMain as WeatherCondition)
                 : r.conditionMain,
             temperature:
