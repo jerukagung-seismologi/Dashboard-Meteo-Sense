@@ -338,32 +338,67 @@ export default function DashboardPage() {
               <AlertTriangleIcon className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" />
               Peringatan Terbaru
             </CardTitle>
-            <CardDescription className="text-red-600 dark:text-red-400">Notifikasi sistem</CardDescription>
+            <CardDescription className="text-red-600 dark:text-red-400">Notifikasi sistem dan status perangkat</CardDescription>
           </CardHeader>
           <CardContent className="pt-4 space-y-4">
-            {recentAlerts.length === 0 ? (
+            {devices.filter((d) => d.status === "offline").length === 0 && recentAlerts.length === 0 ? (
               <div className="text-center py-4 text-muted-foreground dark:text-gray-400">
                 <CheckCircleIcon className="h-8 w-8 mx-auto mb-2 text-green-500 dark:text-green-400" />
                 Tidak ada peringatan terbaru
               </div>
             ) : (
-              recentAlerts.map((alert) => (
-                <div
-                  key={alert.id}
-                  className="flex items-start space-x-3 p-3 bg-gradient-to-r from-red-50 to-pink-50 rounded-lg dark:bg-gradient-to-r dark:from-gray-700/50 dark:to-gray-700"
-                >
-                  <AlertTriangleIcon className="h-4 w-4 text-red-600 dark:text-red-400 mt-1" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{alert.message}</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {new Date(alert.timestamp).toLocaleString("id-ID")} • {alert.device}
-                    </p>
+              <>
+                {devices
+                  .filter((d) => d.status === "offline")
+                  .map((device) => {
+                    const offlineDuration = device.lastUpdate ? Date.now() - device.lastUpdate : null
+                    let offlineText = "beberapa waktu"
+                    if (offlineDuration) {
+                      const minutes = Math.floor(offlineDuration / 60000)
+                      const hours = Math.floor(minutes / 60)
+                      const days = Math.floor(hours / 24)
+                      if (days > 0) offlineText = `${days} hari`
+                      else if (hours > 0) offlineText = `${hours} jam`
+                      else if (minutes > 0) offlineText = `${minutes} menit`
+                    }
+                    return (
+                      <div
+                        key={`offline-${device.id}`}
+                        className="flex items-start space-x-3 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg dark:bg-gradient-to-r dark:from-gray-700/50 dark:to-gray-700"
+                      >
+                        <WifiOffIcon className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-1" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                            Perangkat <span className="font-bold">{device.name}</span> offline
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            Terakhir aktif sekitar {offlineText} yang lalu
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300">
+                          OFFLINE
+                        </Badge>
+                      </div>
+                    )
+                  })}
+                {recentAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className="flex items-start space-x-3 p-3 bg-gradient-to-r from-red-50 to-pink-50 rounded-lg dark:bg-gradient-to-r dark:from-gray-700/50 dark:to-gray-700"
+                  >
+                    <AlertTriangleIcon className="h-4 w-4 text-red-600 dark:text-red-400 mt-1" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{alert.message}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        {new Date(alert.timestamp).toLocaleString("id-ID")} • {alert.device}
+                      </p>
+                    </div>
+                    <Badge variant="destructive" className="text-xs">
+                      {alert.severity}
+                    </Badge>
                   </div>
-                  <Badge variant="destructive" className="text-xs">
-                    {alert.severity}
-                  </Badge>
-                </div>
-              ))
+                ))}
+              </>
             )}
           </CardContent>
         </Card>
