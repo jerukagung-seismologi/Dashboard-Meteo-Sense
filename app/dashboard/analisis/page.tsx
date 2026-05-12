@@ -12,8 +12,9 @@ import {
   CloudRainWind,
   Calendar as CalendarIcon,
   Eye,
-  Sun,            // NEW: icon for light
-  Thermometer,    // NEW: icon for soil temperature
+  Sun,
+  Thermometer,
+  Zap,
 } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -65,6 +66,7 @@ interface WeatherData {
   rainrate: number;
   lux?: number;
   soil_temp?: number;
+  volt?: number;
 }
 
 // Daftar periode yang bisa dipilih
@@ -93,8 +95,9 @@ export default function DataPage() {
   const [dew, setDew] = useState<number[]>([]); //Float64
   const [rainfall, setRainfall] = useState<number[]>([]); //Float64
   const [rainrate, setRainrate] = useState<number[]>([]); //Float64
-  const [lights, setLights] = useState<number[]>([]); // NEW: light (lux)
-  const [soilTemps, setSoilTemps] = useState<number[]>([]); // NEW: soil temperature
+  const [lights, setLights] = useState<number[]>([]);
+  const [soilTemps, setSoilTemps] = useState<number[]>([]);
+  const [volts, setVolts] = useState<number[]>([]);
 
   // State untuk data tabel
   const [weatherData, setWeatherData] = useState<WeatherData[]>([]);
@@ -164,8 +167,9 @@ export default function DataPage() {
       const fetchedDew: number[] = data.map(d => d.dew);
       const fetchedRainfall: number[] = data.map(d => d.rainfall);
       const fetchedRainrate: number[] = data.map(d => d.rainrate);
-      const fetchedLights: number[] = data.map(d => (d as any).lux ?? 0);
-      const fetchedSoilTemps: number[] = data.map(d => (d as any).soil_temp ?? 0);
+      const fetchedLights: number[] = data.map(d => d.lux ?? 0);
+      const fetchedSoilTemps: number[] = data.map(d => d.soil_temp ?? 0);
+      const fetchedVolts: number[] = data.map(d => d.volt ?? 0);
 
       setTimestamps(fetchedTimestamps);
       setTemperatures(fetchedTemperatures);
@@ -176,6 +180,7 @@ export default function DataPage() {
       setRainrate(fetchedRainrate);
       setLights(fetchedLights);
       setSoilTemps(fetchedSoilTemps);
+      setVolts(fetchedVolts);
       setError(null);
     } else {
       setTimestamps([]);
@@ -187,6 +192,7 @@ export default function DataPage() {
       setRainrate([]);
       setLights([]);
       setSoilTemps([]);
+      setVolts([]);
       setError("Tidak ada data yang tersedia untuk periode ini.");
     }
   };
@@ -243,6 +249,7 @@ export default function DataPage() {
       setRainrate([]);
       setLights([]);
       setSoilTemps([]);
+      setVolts([]);
     } finally {
       setLoading(false);
     }
@@ -256,8 +263,7 @@ export default function DataPage() {
 
     // Atur interval untuk polling, hanya jika periode tertentu dipilih
     if (sensorId && selectedPeriod.valueInMinutes <= 60 && !dateRange) {
-      // Contoh: polling untuk periode 1 jam atau kurang, dan tidak ada date range aktif
-      const interval = setInterval(updateData, 60000); // Panggil updateData untuk polling
+      const interval = setInterval(updateData, 60000);
       return () => clearInterval(interval);
     }
   }, [fetchData, updateData, selectedPeriod.valueInMinutes, dateRange, sensorId]);
@@ -269,7 +275,6 @@ export default function DataPage() {
     };
     checkDarkMode();
     window.addEventListener('resize', checkDarkMode);
-    // Juga listen ke perubahan class 'dark'
     const observer = new MutationObserver(checkDarkMode);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => {
@@ -288,8 +293,9 @@ export default function DataPage() {
     rainrate: isDarkMode ? "#c4b5fd" : "#a78bfa",
     heatIndex: isDarkMode ? "#fb923c" : "#f97316",
     windChill: isDarkMode ? "#7dd3fc" : "#0ea5e9",
-    lux: isDarkMode ? "#fcd34d" : "#f59e0b",      // NEW: lux color
-    soil_temp: isDarkMode ? "#fb7185" : "#ef4444",   // NEW: soil temp color
+    lux: isDarkMode ? "#fcd34d" : "#f59e0b",
+    soil_temp: isDarkMode ? "#fb7185" : "#ef4444",
+    volt: isDarkMode ? "#4ade80" : "#22c55e",
   };
 
   // Fungsi untuk mengunduh data (contoh sederhana)
@@ -298,9 +304,9 @@ export default function DataPage() {
       alert("Tidak ada data untuk diunduh.");
       return;
     }
-    const headers = ["Waktu", "Suhu (°C)", "Kelembapan (%)", "Tekanan (hPa)", "Titik Embun (°C)", "Curah Hujan (mm)", "Laju Hujan (mm/jam)", "Cahaya (lux)", "Suhu Tanah (°C)"];
+    const headers = ["Waktu", "Suhu (°C)", "Kelembapan (%)", "Tekanan (hPa)", "Titik Embun (°C)", "Curah Hujan (mm)", "Laju Hujan (mm/jam)", "Cahaya (lux)", "Suhu Tanah (°C)", "Tegangan (V)"];
     const rows = timestamps.map((time, i) =>
-      `${time},${temperatures[i].toFixed(2)},${humidity[i].toFixed(2)},${pressure[i].toFixed(2)},${dew[i].toFixed(2)},${rainfall[i].toFixed(2)},${rainrate[i].toFixed(2)},${(lights[i] ?? 0).toFixed(2)},${(soilTemps[i] ?? 0).toFixed(2)}`
+      `${time},${temperatures[i].toFixed(2)},${humidity[i].toFixed(2)},${pressure[i].toFixed(2)},${dew[i].toFixed(2)},${rainfall[i].toFixed(2)},${rainrate[i].toFixed(2)},${(lights[i] ?? 0).toFixed(2)},${(soilTemps[i] ?? 0).toFixed(2)},${(volts[i] ?? 0).toFixed(2)}`
     );
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -309,10 +315,9 @@ export default function DataPage() {
     link.setAttribute("href", url);
     link.setAttribute("download", `data_sensor_${sensorId}_${new Date().toISOString()}.csv`);
     link.click();
-    URL.revokeObjectURL(url); // Membersihkan URL objek setelah diunduh
+    URL.revokeObjectURL(url);
   };
 
-  // Fungsi untuk mendapatkan domain sumbu Y
   function getYAxisDomain(data: number[]) {
     if (data.length === 0) return [-1, 1];
     let min = Math.min(...data);
@@ -328,7 +333,6 @@ export default function DataPage() {
     return [min, max];
   }
 
-  // Pengaturan tata letak umum untuk grafik
   const commonLayout = {
     autosize: true,
     margin: { l: 60, r: 40, t: 40, b: 60 },
@@ -359,7 +363,6 @@ export default function DataPage() {
     hovermode: "closest" as const,
   };
 
-  // Komponen Card untuk setiap grafik
   const ChartCard = ({ title, data, color, Icon, unit = "" }: 
     { title: string; data: number[]; color: string; Icon: React.FC<any>; unit?: string; }) => {
     const yDomain = getYAxisDomain(data);
@@ -374,7 +377,6 @@ export default function DataPage() {
     }];
     const layout = {
       ...commonLayout,
-      //title: { text: title, font: { size: 14 } },
       paper_bgcolor: isDarkMode ? "#1e293b" : "transparent",
       plot_bgcolor: isDarkMode ? "#1e293b" : "transparent",
       font: {
@@ -409,13 +411,11 @@ export default function DataPage() {
     );
   };
 
-  // Hitung Heat Index (Indeks Panas) - rumus sederhana
   const calculateHeatIndex = () => {
     return temperatures.map((temp, i) => {
       const rh = humidity[i];
       const T = temp;
       const R = rh;
-      // Rumus Heat Index (Steadman)
       const HI = -8.78469475556 + 
                  1.61139411 * T + 
                  2.33854883889 * R + 
@@ -429,20 +429,15 @@ export default function DataPage() {
     });
   };
 
-  // Hitung Wind Chill (Suhu yang Terasa) - jika ada data angin (di sini diasumsikan 0)
   const calculateWindChill = () => {
     return temperatures.map((temp) => {
-      // Rumus sederhana Wind Chill dengan asumsi kecepatan angin 0 km/h
-      // Tanpa data angin, Wind Chill akan sama dengan suhu aktual
       return temp;
     });
   };
 
-  // Comfort Index (Indeks Kenyamanan)
   const calculateComfortIndex = () => {
     return temperatures.map((temp, i) => {
       const rh = humidity[i];
-      // Rumus sederhana: Comfort Index = Temperature - (0.55 - 0.55*RH/100) * (Temperature - 14.5)
       const CI = temp - (0.55 - 0.55 * (rh / 100)) * (temp - 14.5);
       return CI;
     });
@@ -572,6 +567,7 @@ export default function DataPage() {
           <ChartCard title="Curah Hujan Kumulatif" data={rainfall} color={chartColors.rainfall} Icon={CloudRain} unit="mm" />
           <ChartCard title="Intensitas Cahaya" data={lights} color={chartColors.lux} Icon={Sun} unit="lux" />
           <ChartCard title="Suhu Tanah" data={soilTemps} color={chartColors.soil_temp} Icon={Thermometer} unit="°C" />
+          <ChartCard title="Tegangan Listrik" data={volts} color={chartColors.volt} Icon={Zap} unit="V" />
           <ChartCard title="Indeks Panas (Heat Index)" data={heatIndexData} color={chartColors.heatIndex} Icon={ThermometerSun} unit="°C" />
           <ChartCard title="Indeks Kenyamanan" data={comfortIndexData} color={chartColors.windChill} Icon={Eye} unit="°C" />
         </div>
