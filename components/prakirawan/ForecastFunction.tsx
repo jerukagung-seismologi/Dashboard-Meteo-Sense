@@ -87,8 +87,7 @@ const KEBUMEN_LAT = -7.7366
 const KEBUMEN_LON = 109.6458
 
 // --- HELPER 3: WEATHER CODE MAPPING ---
-const mapWeatherCodeToCondition = (code: number, windSpeed: number): WeatherCondition => {
-  if (windSpeed >= 12) return "Angin Kencang"
+const mapWeatherCodeToCondition = (code: number): WeatherCondition => {
   if (code === 0) return "Cerah"
   if (code === 1 || code === 2) return "Cerah Berawan"
   if (code === 3) return "Berawan"
@@ -110,27 +109,6 @@ const isRainCondition = (condition: WeatherCondition): boolean => {
   ].includes(condition)
 }
 
-// --- HELPER 5: DETERMINE CONDITION BASED ON RAIN PROBABILITY ---
-const getConditionFromRainProbability = (
-  rainProbability: number,
-  weatherCode: number,
-  windSpeed: number
-): WeatherCondition => {
-  // Jika rain_probability > 50%, gunakan kondisi hujan
-  if (rainProbability > 50) {
-    // Tentukan severity hujan berdasarkan weather code
-    if (weatherCode >= 95 && weatherCode <= 99) return "Badai Petir"
-    if ((weatherCode >= 66 && weatherCode <= 69) || weatherCode === 85 || weatherCode === 86) return "Hujan Lebat"
-    if ((weatherCode >= 61 && weatherCode <= 65)) return "Hujan Sedang"
-    if ((weatherCode >= 51 && weatherCode <= 57) || (weatherCode >= 80 && weatherCode <= 82)) return "Hujan Ringan"
-    // Default hujan
-    return "Hujan Sedang"
-  }
-  
-  // Jika rain_probability <= 50%, gunakan kondisi non-hujan dari weather code
-  return mapWeatherCodeToCondition(weatherCode, windSpeed)
-}
-
 // --- HELPER 6: WMO WEATHER CODE TRANSLATOR (COMPREHENSIVE) ---
 const translateWMOCode = (code: number): WeatherCondition => {
   // WMO Weather Interpretation Codes (WW)
@@ -148,15 +126,11 @@ const translateWMOCode = (code: number): WeatherCondition => {
   return "Berawan"
 }
 
-// --- HELPER 7: DETERMINE CONDITION WITH RAIN PROBABILITY ---
+// --- HELPER 7: DETERMINE CONDITION WITH RAIN PROBABILITY (NO WIND CHECK) ---
 const determineConditionWithRainProb = (
   rainProbability: number,
-  weatherCode: number,
-  windSpeed: number
+  weatherCode: number
 ): WeatherCondition => {
-  // Check wind speed first (priority)
-  if (windSpeed >= 12) return "Angin Kencang"
-  
   // If rain probability > 50%, prioritize rain condition
   if (rainProbability > 50) {
     const codeCondition = translateWMOCode(weatherCode)
@@ -317,7 +291,7 @@ export default function ForecastForm() {
       conditionSub: "",
       probSub: "",
       temperature: "",
-      temperatureError: 10,
+      temperatureError: 3,
       humidity: "",
       humidityError: 5,
       heatIndex: "",
@@ -604,14 +578,14 @@ export default function ForecastForm() {
         const ws = typeof winds[idx] === "number" ? winds[idx] : 0
         const rainProb = typeof rainProbs[idx] === "number" ? Math.round(rainProbs[idx]) : 0
 
-        // Determine condition using rain probability logic
-        const condition = determineConditionWithRainProb(rainProb, code, ws)
+        // Determine condition using rain probability logic (NO wind speed check)
+        const condition = determineConditionWithRainProb(rainProb, code)
 
         // Use rain_probability sebagai probability utama
         const probMain = rainProb.toString()
 
         console.log(
-          `[${targetTime}] Code: ${code} | WS: ${ws}m/s | RainProb: ${rainProb}% | Temp: ${temp}° | Condition: ${condition}`
+          `[${targetTime}] Code: ${code} | RainProb: ${rainProb}% | Temp: ${temp}° | Humidity: ${hum}% | Condition: ${condition}`
         )
 
         return {
@@ -627,7 +601,7 @@ export default function ForecastForm() {
         }
       })
 
-      // 6) Merge
+      // 6) Merge dengan existing rows (preserve sub conditions & extra fields)
       setRows((prev) =>
         prev.map((r, i) => {
           const f = fetchedRows[i] || {}
@@ -654,7 +628,7 @@ export default function ForecastForm() {
             humidityError: r.humidityError === "" ? 10 : r.humidityError,
             heatIndexError: r.heatIndexError === "" ? 12 : r.heatIndexError,
             probMain: f.probMain ?? r.probMain,
-            probSub: r.probSub,
+            probSub: r.probSub, // Preserve manual sub condition
             conditionSub: r.conditionSub,
           } as ForecastRow
         })
@@ -1299,7 +1273,7 @@ const weatherOptions: { value: WeatherCondition; label: string; Icon: any; color
   { value: "Cerah Berawan", label: "Cerah Berawan", Icon: CloudSun, color: "#FB923C" },
   { value: "Berawan", label: "Berawan", Icon: Cloud, color: "#64748B" },
   { value: "Kabut", label: "Kabut", Icon: CloudFog, color: "#94A3B8" },
-  { value: "Hujan Ringan", label: "Hujan Ringan", Icon: CloudRain, color: "#60A5FA" },
+  { value: "Hujan Ringan", label: "Hujan Ringan", Icon: CloudDrizzle, color: "#60A5FA" },
   { value: "Hujan Sedang", label: "Hujan Sedang", Icon: CloudRain, color: "#3B82F6" },
   { value: "Hujan Lebat", label: "Hujan Lebat", Icon: CloudRain, color: "#6366F1" },
   { value: "Badai Petir", label: "Badai Petir", Icon: CloudLightning, color: "#7C3AED" },
