@@ -26,3 +26,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 lib/kode_wilayah.csv
+.firebaserc
+firestore.rules
+firestore.indexes.json
+firebase.rules
+firebase.json
+

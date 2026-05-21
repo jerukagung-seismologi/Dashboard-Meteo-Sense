@@ -10,8 +10,9 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
 } from "firebase/auth";
-import { doc, setDoc, getDoc, Timestamp, updateDoc, deleteDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/ConfigFirebase"; // Mengimpor instance 'auth' dan 'db' yang sudah diinisialisasi
+import { doc, setDoc, getDoc, Timestamp, updateDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
+import { auth, db, functions } from "@/lib/ConfigFirebase"; // Mengimpor instance 'auth', 'db', dan 'functions'
+import { httpsCallable } from "firebase/functions";
 
 export interface UserProfile {
   uid: string
@@ -21,6 +22,69 @@ export interface UserProfile {
   lastLoginAt: Date | Timestamp
   role: "Admin" | "User"
 }
+
+// --- Admin Functions (via Cloud Functions) ---
+
+/**
+ * [Admin] Creates a new user. Requires a Cloud Function.
+ */
+export const adminCreateUser = async (email: string, password: string, displayName: string, role: "Admin" | "User"): Promise<any> => {
+  const createUser = httpsCallable(functions, 'adminCreateUser');
+  try {
+    const result = await createUser({ email, password, displayName, role });
+    return result.data;
+  } catch (error) {
+    console.error("Error calling adminCreateUser function:", error);
+    throw new Error("Gagal membuat pengguna. Pastikan Cloud Function sudah di-deploy.");
+  }
+};
+
+/**
+ * [Admin] Deletes a user. Requires a Cloud Function.
+ */
+export const adminDeleteUser = async (uid: string): Promise<any> => {
+  const deleteUserFunc = httpsCallable(functions, 'adminDeleteUser');
+  try {
+    const result = await deleteUserFunc({ uid });
+    return result.data;
+  } catch (error) {
+    console.error("Error calling adminDeleteUser function:", error);
+    throw new Error("Gagal menghapus pengguna. Pastikan Cloud Function sudah di-deploy.");
+  }
+};
+
+/**
+ * [Admin] Updates a user's profile (e.g., role).
+ */
+export const adminUpdateUserProfile = async (uid: string, data: { displayName?: string; role?: "Admin" | "User" }): Promise<void> => {
+  try {
+    const userDocRef = doc(db, "users", uid);
+    await updateDoc(userDocRef, data);
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    throw new Error("Gagal memperbarui profil pengguna.");
+  }
+};
+
+/**
+ * [Admin] Fetches all users from Firestore.
+ */
+export const getAllUsers = async (): Promise<UserProfile[]> => {
+  try {
+    const usersCollection = collection(db, "users");
+    const snapshot = await getDocs(usersCollection);
+    if (snapshot.empty) {
+      return [];
+    }
+    return snapshot.docs.map(doc => doc.data() as UserProfile);
+  } catch (error) {
+    console.error("Error fetching all users:", error);
+    throw new Error("Gagal mengambil daftar pengguna.");
+  }
+};
+
+
+// --- Standard User Functions ---
 
 // Sign up with email and password
 export const signUpWithEmail = async (
@@ -42,7 +106,7 @@ export const signUpWithEmail = async (
       displayName,
       createdAt: new Date(),
       lastLoginAt: new Date(),
-      role: "User",
+      role: "User", // Default role for self-signup
     }
 
     await setDoc(doc(db, "users", user.uid), userProfile)
