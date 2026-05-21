@@ -2,14 +2,15 @@
 
 import type React from "react"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Inter } from "next/font/google"
 import { LayoutDashboard, Network, FileText, Database, Earth, Sprout, ChartNoAxesCombined, User, CloudRain } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { signOutUser } from "@/lib/FetchingAuth"
 import { Sidebar } from "@/components/dashboard/Sidebar"
 import { Topbar } from "@/components/dashboard/Topbar"
-import type { NavigationItem } from "@/components/dashboard/navigation"
+import { dashboardNavigation } from "@/lib/navigation"
+import type { NavigationItem } from "@/lib/navigation"
 import Loading from "@/app/loading"
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,12 +22,26 @@ export default function DashboardLayout({
   const { user, profile, loading } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+
+  const navigation = dashboardNavigation.filter(item =>
+    item.roles?.includes(profile?.role || 'User')
+  )
 
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login")
+      return
     }
-  }, [user, loading, router])
+
+    if (!loading && profile) {
+      const currentRoute = dashboardNavigation.find(item => item.href === pathname)
+      if (currentRoute && !currentRoute.roles?.includes(profile.role)) {
+        // If user tries to access a page they don't have permission for, redirect them.
+        router.push('/dashboard')
+      }
+    }
+  }, [user, profile, loading, router, pathname])
 
   const handleLogout = async () => {
     try {
@@ -41,21 +56,12 @@ export default function DashboardLayout({
     return <Loading/>
   }
 
-  if (!user) {
+  if (!user || !profile) {
     return null
   }
 
-  const navigation: NavigationItem[] = [
-    { name: "Beranda", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Perangkat", href: "/dashboard/perangkat", icon: Network },
-    { name: "Sistem Geografis", href: "/dashboard/peta", icon: Earth },
-    { name: "Agrometeorologi", href: "/dashboard/agromet", icon: Sprout },
-    { name: "Analisis Prediksi", href: "/dashboard/analisis", icon: ChartNoAxesCombined },
-    { name: "Basis Data", href: "/dashboard/data", icon: Database },
-    { name: "Laporan Cuaca", href: "/dashboard/laporan", icon: FileText },
-    { name: "Prakirawan Cuaca", href: "/dashboard/prakirawan", icon: CloudRain },
-    { name: "Profil", href: "/dashboard/profil", icon: User },
-  ]
+  // The navigation constant is now filtered above based on role.
+  // const navigation: NavigationItem[] = [ ... ] // This is removed.
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-950">

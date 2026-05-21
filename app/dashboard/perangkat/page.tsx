@@ -409,13 +409,15 @@ export default function PerangkatPage() {
     const loadDevices = async () => {
       if (!uid) return
       setLoading(true)
-      const fetched = await fetchAllDevices(uid)
+      const fetched = await fetchAllDevices(uid) // This now fetches ALL devices
       // Ambil status Telemetry untuk setiap device
       const devicesWithStatus = await Promise.all(
         (fetched as Device[]).map(async (device) => {
           let TelemetryStatus: "online" | "offline" = "offline"
           try {
-            const meta = await fetchSensorMetadata(device.id)
+            // Use device.authToken if available, otherwise fall back to device.id
+            const token = device.authToken || device.id;
+            const meta = await fetchSensorMetadata(token)
             TelemetryStatus = meta.TelemetryStatus
           } catch {
             TelemetryStatus = "offline"
@@ -509,7 +511,7 @@ export default function PerangkatPage() {
       ) : (
         <div className="flex flex-col items-center justify-center text-center p-16 mt-10 border-2 border-dashed rounded-lg bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700 max-w-2xl mx-auto">
           <HardDrive className="h-16 w-16 text-gray-400 dark:text-gray-500 mb-6" />
-          <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-200">Belum Ada Perangkat</h2>
+          <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-200">Belum Ada Perangkat di Sistem</h2>
           <p className="text-gray-500 dark:text-gray-400 mt-2 mb-6 max-w-md">Mulai dengan menambahkan perangkat monitoring pertama Anda untuk melihat data cuaca secara real-time.</p>
           <Button
             className="px-6 py-3 rounded-lg flex items-center text-base"

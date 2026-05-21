@@ -274,9 +274,9 @@ export default function AuthPage() {
           <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
             <button
               type="button"
-              onClick={() => !isSignUp && toggleMode()}
+              onClick={() => setIsSignUp(true)}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
-                !isSignUp
+                isSignUp
                   ? "bg-white dark:bg-slate-600 text-emerald-600 dark:text-emerald-400 shadow-sm"
                   : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
               }`}
@@ -285,9 +285,9 @@ export default function AuthPage() {
             </button>
             <button
               type="button"
-              onClick={() => isSignUp && toggleMode()}
+              onClick={() => setIsSignUp(false)}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
-                isSignUp
+                !isSignUp
                   ? "bg-white dark:bg-slate-600 text-emerald-600 dark:text-emerald-400 shadow-sm"
                   : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
               }`}
