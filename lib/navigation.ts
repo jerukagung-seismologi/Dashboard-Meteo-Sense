@@ -6,7 +6,8 @@ import {
   Earth, 
   Sprout, 
   ChartNoAxesCombined, 
-  User, 
+  User,
+  UsersRound,
   CloudRain,
   LucideIcon
 } from "lucide-react"
@@ -30,5 +31,5 @@ export const dashboardNavigation: NavigationItem[] = [
   { name: "Laporan Cuaca", href: "/dashboard/laporan", icon: FileText, badge: "Warga", roles: ['Admin'] },
   { name: "Prakirawan Cuaca", href: "/dashboard/prakirawan", icon: CloudRain, roles: ['Admin'] },
   { name: "Profil", href: "/dashboard/profil", icon: User, roles: ['Admin', 'User'] },
-  { name: "Manajemen", href: "/dashboard/manager", icon: User, roles: ['Admin'] },
+  { name: "Manajemen", href: "/dashboard/manager", icon: UsersRound, roles: ['Admin'] },
 ]

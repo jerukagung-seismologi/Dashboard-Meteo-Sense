@@ -32,7 +32,7 @@ const db = admin.firestore();
 // functions should each use functions.runWith({ maxInstances: 10 }) instead.
 // In the v1 API, each function can only serve one request per container, so
 // this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
+setGlobalOptions({ maxInstances: 5 });
 
 /**
  * A helper function to verify if the calling user is an Admin.
