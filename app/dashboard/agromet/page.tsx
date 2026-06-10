@@ -24,6 +24,7 @@ import {
   fetchSensorDataByDateRange,
   SensorDate
 } from "@/lib/FetchingSensorData";
+import { filterByTimeRange, getPlotlyTimeJakarta } from "@/lib/timeUtils";
 import ChartComponent from "@/components/ChartComponent";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,6 +69,7 @@ interface WeatherData {
 
 // Daftar periode yang bisa dipilih
 const periods: Period[] = [
+  { label: "15 Menit", valueInMinutes: 15 },
   { label: "30 Menit", valueInMinutes: 30 },
   { label: "1 Jam", valueInMinutes: 60 },
   { label: "3 Jam", valueInMinutes: 3 * 60 },
@@ -152,7 +154,7 @@ export default function DataPage() {
   // Fungsi untuk memproses dan mengatur state data
   const processAndSetData = (data: SensorDate[]) => {
     if (data.length > 0) {
-      const fetchedTimestamps: string[] = data.map(d => d.timeFormatted || new Date(d.timestamp).toLocaleString('id-ID', { timeZone: "Asia/Jakarta" }));
+      const fetchedTimestamps: string[] = data.map(d => getPlotlyTimeJakarta(d.timestamp));
       const fetchedTemperatures: number[] = data.map(d => d.temperature);
       const fetchedHumidity: number[] = data.map(d => d.humidity);
       const fetchedPressure: number[] = data.map(d => d.pressure);
@@ -188,8 +190,10 @@ export default function DataPage() {
   const updateData = useCallback(async () => {
     if (!sensorId) return;
     try {
-      const dataPoints = selectedPeriod.valueInMinutes;
-      const data = await fetchSensorData(sensorId, dataPoints);
+      const rangeMs = selectedPeriod.valueInMinutes * 60000;
+      const now = Date.now();
+      const rawData = await fetchSensorDataByDateRange(sensorId, now - rangeMs, now);
+      const data = filterByTimeRange(rawData, rangeMs);
       processAndSetData(data);
     } catch (err: any) {
       console.error("Gagal melakukan polling data:", err);
@@ -217,8 +221,10 @@ export default function DataPage() {
         );
       } else {
         // Fallback to fetch by period
-        const dataPoints = selectedPeriod.valueInMinutes;
-        data = await fetchSensorData(sensorId, dataPoints);
+        const rangeMs = selectedPeriod.valueInMinutes * 60000;
+        const now = Date.now();
+        const rawData = await fetchSensorDataByDateRange(sensorId, now - rangeMs, now);
+        data = filterByTimeRange(rawData, rangeMs);
       }
       processAndSetData(data);
     } catch (err: any) {

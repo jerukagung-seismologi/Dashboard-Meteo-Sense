@@ -26,7 +26,8 @@ import {
   fetchSensorDataByDateRange,
   SensorDate
 } from "@/lib/FetchingSensorData";
-import ChartComponent from "@/components/ChartComponent";
+import { filterByTimeRange, getPlotlyTimeJakarta } from "@/lib/timeUtils";
+import ReactECharts from "echarts-for-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -71,6 +72,7 @@ interface WeatherData {
 
 // Daftar periode yang bisa dipilih
 const periods: Period[] = [
+  { label: "15 Menit", valueInMinutes: 15 },
   { label: "30 Menit", valueInMinutes: 30 },
   { label: "1 Jam", valueInMinutes: 60 },
   { label: "3 Jam", valueInMinutes: 3 * 60 },
@@ -82,6 +84,8 @@ const periods: Period[] = [
 interface SensorOption {
   label: string;
   value: string;
+  lat: number;
+  lng: number;
 }
 
 export default function DataPage() {
@@ -133,6 +137,8 @@ export default function DataPage() {
               .map((device) => ({
                 label: device.name,
                 value: device.authToken!,
+                lat: device.coordinates?.lat || 0,
+                lng: device.coordinates?.lng || 0,
               }));
 
             if (options.length > 0) {
@@ -160,7 +166,7 @@ export default function DataPage() {
   // Fungsi untuk memproses dan mengatur state data
   const processAndSetData = (data: SensorDate[]) => {
     if (data.length > 0) {
-      const fetchedTimestamps: string[] = data.map(d => d.timeFormatted || new Date(d.timestamp).toLocaleString('id-ID', { timeZone: "Asia/Jakarta" }));
+      const fetchedTimestamps: string[] = data.map(d => getPlotlyTimeJakarta(d.timestamp));
       const fetchedTemperatures: number[] = data.map(d => d.temperature);
       const fetchedHumidity: number[] = data.map(d => d.humidity);
       const fetchedPressure: number[] = data.map(d => d.pressure);
@@ -201,8 +207,10 @@ export default function DataPage() {
   const updateData = useCallback(async () => {
     if (!sensorId) return;
     try {
-      const dataPoints = selectedPeriod.valueInMinutes;
-      const data = await fetchSensorData(sensorId, dataPoints);
+      const rangeMs = selectedPeriod.valueInMinutes * 60000;
+      const now = Date.now();
+      const rawData = await fetchSensorDataByDateRange(sensorId, now - rangeMs, now);
+      const data = filterByTimeRange(rawData, rangeMs);
       processAndSetData(data);
     } catch (err: any) {
       console.error("Gagal melakukan polling data:", err);
@@ -230,8 +238,10 @@ export default function DataPage() {
         );
       } else {
         // Fallback to fetch by period
-        const dataPoints = selectedPeriod.valueInMinutes;
-        data = await fetchSensorData(sensorId, dataPoints);
+        const rangeMs = selectedPeriod.valueInMinutes * 60000;
+        const now = Date.now();
+        const rawData = await fetchSensorDataByDateRange(sensorId, now - rangeMs, now);
+        data = filterByTimeRange(rawData, rangeMs);
       }
       processAndSetData(data);
     } catch (err: any) {
@@ -318,84 +328,86 @@ export default function DataPage() {
     URL.revokeObjectURL(url);
   };
 
-  function getYAxisDomain(data: number[]) {
-    if (data.length === 0) return [-1, 1];
-    let min = Math.min(...data);
-    let max = Math.max(...data);
-    if (min === max) {
-        min -= 1;
-        max += 1;
-    } else {
-        const padding = (max - min) * 0.1;
-        min -= padding;
-        max += padding;
-    }
-    return [min, max];
-  }
-
-  const commonLayout = {
-    autosize: true,
-    margin: { l: 60, r: 40, t: 40, b: 60 },
-    paper_bgcolor: "transparent",
-    plot_bgcolor: "transparent",
-    font: {
-      family: "Roboto, sans-serif",
-      color: "#64748b",
-    },
-    xaxis: {
-      gridcolor: "rgba(203, 213, 225, 0.2)",
-      title: {
-        font: { size: 14, color: "#475569" },
-      },
-      nticks: 10,
-    },
-    yaxis: {
-      gridcolor: "rgba(203, 213, 225, 0.2)",
-      title: { font: { size: 14, color: "#475569" } },
-      nticks: 10,
-    },
-    legend: {
-      orientation: "h",
-      y: -0.3,
-      yanchor: 'top',
-      font: { size: 12 },
-    },
-    hovermode: "closest" as const,
-  };
-
   const ChartCard = ({ title, data, color, Icon, unit = "" }: 
     { title: string; data: number[]; color: string; Icon: React.FC<any>; unit?: string; }) => {
-    const yDomain = getYAxisDomain(data);
-    const chartData = [{
-      x: timestamps,
-      y: data,
-      type: "scatter" as const,
-      mode: "lines+markers" as const,
-      marker: { color },
-      name: title,
-      line: { color, width: 3 },
-    }];
-    const layout = {
-      ...commonLayout,
-      paper_bgcolor: isDarkMode ? "#1e293b" : "transparent",
-      plot_bgcolor: isDarkMode ? "#1e293b" : "transparent",
-      font: {
-        family: "Roboto, sans-serif",
-        color: isDarkMode ? "#cbd5e1" : "#64748b",
+    
+    const options = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' },
+        valueFormatter: (value: any) => Number(Number(value).toFixed(3)).toString()
       },
-      xaxis: {
-        ...commonLayout.xaxis,
-        gridcolor: isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)",
-        title: {
-          font: { size: 14, color: isDarkMode ? "#cbd5e1" : "#475569" },
+      grid: {
+        left: '5%',
+        right: '5%',
+        bottom: '15%',
+        top: '15%',
+        containLabel: true
+      },
+      toolbox: {
+        show: true,
+        feature: {
+          dataZoom: { yAxisIndex: 'none' },
+          dataView: { readOnly: true },
+          magicType: { type: ['line', 'bar'] },
+          restore: {},
+          saveAsImage: {}
         },
+        iconStyle: {
+          borderColor: isDarkMode ? '#cbd5e1' : '#64748b'
+        }
       },
-      yaxis: {
-        ...commonLayout.yaxis,
-        title: { text: unit, font: { size: 14, color: isDarkMode ? "#cbd5e1" : "#475569" } },
-        gridcolor: isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)",
-        range: yDomain,
+      dataZoom: [
+        {
+          type: 'slider',
+          show: true,
+          xAxisIndex: [0],
+          textStyle: { color: isDarkMode ? '#cbd5e1' : '#64748b' }
+        },
+        {
+          type: 'inside',
+          xAxisIndex: [0],
+        }
+      ],
+      xAxis: {
+        type: 'time',
+        boundaryGap: false,
+        axisLine: { lineStyle: { color: isDarkMode ? 'rgba(203, 213, 225, 0.2)' : 'rgba(71, 85, 105, 0.2)' } },
+        axisLabel: { color: isDarkMode ? '#cbd5e1' : '#475569' }
       },
+      yAxis: {
+        type: 'value',
+        name: unit,
+        scale: true,
+        axisLine: { show: true, lineStyle: { color: isDarkMode ? 'rgba(203, 213, 225, 0.2)' : 'rgba(71, 85, 105, 0.2)' } },
+        axisLabel: { color: isDarkMode ? '#cbd5e1' : '#475569' },
+        nameTextStyle: { color: isDarkMode ? '#cbd5e1' : '#475569' },
+        splitLine: { lineStyle: { color: isDarkMode ? 'rgba(71, 85, 105, 0.2)' : 'rgba(203, 213, 225, 0.2)' } }
+      },
+      series: [
+        {
+          name: title,
+          type: 'line',
+          showSymbol: false,
+          data: timestamps.map((t, i) => [t, data[i]]),
+          itemStyle: { color },
+          markPoint: {
+            data: [
+              { type: 'max', name: 'Max' },
+              { type: 'min', name: 'Min' }
+            ],
+            label: {
+              formatter: (params: any) => Number(Number(params.value).toFixed(3)).toString()
+            }
+          },
+          markLine: {
+            data: [{ type: 'average', name: 'Rata-rata' }],
+            label: {
+              formatter: (params: any) => Number(Number(params.value).toFixed(3)).toString()
+            }
+          }
+        }
+      ]
     };
 
     return (
@@ -404,8 +416,13 @@ export default function DataPage() {
           <Icon className={`h-5 w-5`} style={{ color }} />
           <CardTitle className="text-lg">{title}</CardTitle>
         </CardHeader>
-        <CardContent className="pt-6">
-          <ChartComponent data={chartData} layout={layout} />
+        <CardContent className="p-4 h-[400px]">
+          <ReactECharts
+            option={options}
+            style={{ height: '100%', width: '100%' }}
+            theme={isDarkMode ? 'dark' : 'light'}
+            opts={{ renderer: 'canvas' }}
+          />
         </CardContent>
       </Card>
     );
@@ -559,17 +576,22 @@ export default function DataPage() {
         <div className={`border p-4 rounded-md mb-6 ${isDarkMode ? "bg-red-950 border-red-900 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>{error}</div>
       ) : (
         <div className="space-y-6">
-          <ChartCard title="Suhu Lingkungan" data={temperatures} color={chartColors.temperature} Icon={ThermometerSun} unit="°C" />
-          <ChartCard title="Kelembapan Relatif" data={humidity} color={chartColors.humidity} Icon={Droplets} unit="%" />
-          <ChartCard title="Tekanan Udara" data={pressure} color={chartColors.pressure} Icon={Gauge} unit="hPa" />
-          <ChartCard title="Titik Embun" data={dew} color={chartColors.dew} Icon={Sprout} unit="°C" />
-          <ChartCard title="Curah Hujan Per Jam" data={rainrate} color={chartColors.rainrate} Icon={CloudRainWind} unit="mm/jam" />
-          <ChartCard title="Curah Hujan Kumulatif" data={rainfall} color={chartColors.rainfall} Icon={CloudRain} unit="mm" />
-          <ChartCard title="Intensitas Cahaya" data={lights} color={chartColors.lux} Icon={Sun} unit="lux" />
-          <ChartCard title="Suhu Tanah" data={soilTemps} color={chartColors.soil_temp} Icon={Thermometer} unit="°C" />
-          <ChartCard title="Tegangan Listrik" data={volts} color={chartColors.volt} Icon={Zap} unit="V" />
-          <ChartCard title="Indeks Panas (Heat Index)" data={heatIndexData} color={chartColors.heatIndex} Icon={ThermometerSun} unit="°C" />
-          <ChartCard title="Indeks Kenyamanan" data={comfortIndexData} color={chartColors.windChill} Icon={Eye} unit="°C" />
+          <div className="grid grid-cols-1 gap-6">
+            <ChartCard title="Suhu Lingkungan" data={temperatures} color={chartColors.temperature} Icon={ThermometerSun} unit="°C" />
+            <ChartCard title="Kelembapan Relatif" data={humidity} color={chartColors.humidity} Icon={Droplets} unit="%" />
+            <ChartCard title="Tekanan Udara" data={pressure} color={chartColors.pressure} Icon={Gauge} unit="hPa" />
+            <ChartCard title="Titik Embun" data={dew} color={chartColors.dew} Icon={Sprout} unit="°C" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ChartCard title="Curah Hujan Per Jam" data={rainrate} color={chartColors.rainrate} Icon={CloudRainWind} unit="mm/jam" />
+            <ChartCard title="Curah Hujan Kumulatif" data={rainfall} color={chartColors.rainfall} Icon={CloudRain} unit="mm" />
+            <ChartCard title="Intensitas Cahaya" data={lights} color={chartColors.lux} Icon={Sun} unit="lux" />
+            <ChartCard title="Suhu Tanah" data={soilTemps} color={chartColors.soil_temp} Icon={Thermometer} unit="°C" />
+            <ChartCard title="Tegangan Listrik" data={volts} color={chartColors.volt} Icon={Zap} unit="V" />
+            <ChartCard title="Indeks Panas (Heat Index)" data={heatIndexData} color={chartColors.heatIndex} Icon={ThermometerSun} unit="°C" />
+            <ChartCard title="Indeks Kenyamanan" data={comfortIndexData} color={chartColors.windChill} Icon={Eye} unit="°C" />
+          </div>
         </div>
       )}
     </div>
