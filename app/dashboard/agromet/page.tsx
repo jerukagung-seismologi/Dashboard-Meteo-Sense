@@ -133,13 +133,13 @@ export default function AgrometPage() {
   const tempMin = daily.temperature_2m_min?.[0];
   const tempMax = daily.temperature_2m_max?.[0];
   const rh = current.relative_humidity_2m;
-  
+
   const rainToday = daily.precipitation_sum?.[0] || 0;
   const rain7d = daily.precipitation_sum?.slice(0, 7).reduce((a: number, b: number) => a + b, 0) || 0;
-  
+
   const solarCurrent = current.shortwave_radiation;
   const solarDaily = daily.shortwave_radiation_sum?.[0];
-  
+
   const windSpeed = current.wind_speed_10m ? (current.wind_speed_10m / 3.6).toFixed(1) : 0; // m/s
   const windDir = current.wind_direction_10m;
 
@@ -201,8 +201,8 @@ export default function AgrometPage() {
     <div className="space-y-6 pb-12">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">Agrometeorologi Dashboard</h2>
-          <p className="text-muted-foreground dark:text-gray-400 mt-1">Monitoring kondisi lingkungan pertanian, air, dan tanah secara real-time.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">Agrometeorologi</h2>
+          <p className="text-muted-foreground dark:text-gray-400 mt-1">Monitoring kondisi lingkungan pertanian, air, dan tanah berdasarkan ERA5-Agro</p>
         </div>
       </div>
 
@@ -246,7 +246,7 @@ export default function AgrometPage() {
       ) : (
         <>
           {/* 1. Overview Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <Card>
               <CardContent className="p-4 flex flex-col justify-between h-full">
                 <div className="flex justify-between items-start">
@@ -259,7 +259,7 @@ export default function AgrometPage() {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4 flex flex-col justify-between h-full">
                 <div className="flex justify-between items-start">
@@ -314,13 +314,13 @@ export default function AgrometPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
+
             {/* 2. Soil & Crop Status (Left Column) */}
             <div className="lg:col-span-1 space-y-6">
-              
+
               <Card>
                 <CardHeader className="pb-2 border-b">
-                  <CardTitle className="text-lg flex items-center gap-2"><Sprout className="h-5 w-5 text-emerald-500"/> Profil Tanah</CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2"><Sprout className="h-5 w-5 text-emerald-500" /> Profil Tanah</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-6">
                   <div>
@@ -331,7 +331,7 @@ export default function AgrometPage() {
                     <Progress value={soilMoistureSurface} className="h-2 bg-slate-200" />
                     <p className="text-xs text-muted-foreground mt-1">Suhu: {soilTempSurface}°C</p>
                   </div>
-                  
+
                   <div>
                     <div className="flex justify-between mb-1">
                       <span className="text-sm font-medium">Kelembapan Zona Akar (9-27cm)</span>
@@ -345,7 +345,7 @@ export default function AgrometPage() {
 
               <Card>
                 <CardHeader className="pb-2 border-b">
-                  <CardTitle className="text-lg flex items-center gap-2"><Droplets className="h-5 w-5 text-blue-500"/> Neraca Air Harian (Water Balance)</CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2"><Droplets className="h-5 w-5 text-blue-500" /> Neraca Air Harian (Water Balance)</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
                   <div className="grid grid-cols-2 gap-4 text-center mb-4">
@@ -358,7 +358,7 @@ export default function AgrometPage() {
                       <div className="text-xl font-bold text-orange-600 dark:text-orange-400">{et0Today.toFixed(1)} mm</div>
                     </div>
                   </div>
-                  
+
                   <div className={`p-3 rounded-lg border ${waterDeficit >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
                     <div className="flex items-center gap-2 font-semibold">
                       <Info className="h-4 w-4" />
@@ -373,7 +373,7 @@ export default function AgrometPage() {
 
               <Card>
                 <CardHeader className="pb-2 border-b">
-                  <CardTitle className="text-lg flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-500"/> Indikator Risiko Pertanian</CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-500" /> Indikator Risiko Pertanian</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center justify-between p-2 rounded bg-slate-50 dark:bg-slate-800/50">
@@ -401,7 +401,7 @@ export default function AgrometPage() {
 
             {/* 3. Charts & Maps (Right Column) */}
             <div className="lg:col-span-2 space-y-6">
-              
+
               <Card>
                 <CardHeader className="pb-2 border-b">
                   <CardTitle className="text-lg">Neraca Air: Hujan vs Evapotranspirasi (7 Hari)</CardTitle>
@@ -413,108 +413,111 @@ export default function AgrometPage() {
               </Card>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
+                <Card className="flex flex-col">
                   <CardHeader className="pb-2 border-b">
                     <CardTitle className="text-lg">Kelembapan Tanah (24 Jam)</CardTitle>
                   </CardHeader>
-                  <CardContent className="p-2 h-[250px]">
+                  <CardContent className="p-2 flex-grow h-[300px]">
                     <ReactECharts option={soilMoistureOption} style={{ height: '100%', width: '100%' }} theme={isDarkMode ? 'dark' : 'light'} />
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="flex flex-col">
                   <CardHeader className="pb-2 border-b">
-                    <CardTitle className="text-lg">Radiasi Matahari Aktif (24 Jam)</CardTitle>
+                    <CardTitle className="text-lg">Radiasi Surya Aktif (24 Jam)</CardTitle>
                   </CardHeader>
-                  <CardContent className="p-2 h-[250px]">
+                  <CardContent className="p-2 flex-grow h-[300px]">
                     <ReactECharts option={solarOption} style={{ height: '100%', width: '100%' }} theme={isDarkMode ? 'dark' : 'light'} />
                   </CardContent>
                 </Card>
               </div>
 
-              <Card>
-                <CardHeader className="pb-2 border-b">
-                  <CardTitle className="text-lg">Peta Lokasi Lahan</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0 h-[300px] overflow-hidden rounded-b-xl relative z-0">
-                  {selectedSensor && (
-                    <MapContainer center={[selectedSensor.lat, selectedSensor.lng]} zoom={13} style={{ height: '100%', width: '100%', zIndex: 0 }}>
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      <Marker position={[selectedSensor.lat, selectedSensor.lng]}>
-                        <Popup>
-                          Lokasi Sensor: {selectedSensor.label} <br />
-                          {selectedSensor.lat.toFixed(4)}, {selectedSensor.lng.toFixed(4)}
-                        </Popup>
-                      </Marker>
-                    </MapContainer>
-                  )}
-                </CardContent>
-              </Card>
-
             </div>
 
           </div>
 
-          {/* 4. Forecast Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            <Card>
+          {/* 4. Map & Forecast Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+            
+            <Card className="lg:col-span-1 flex flex-col h-full">
               <CardHeader className="pb-2 border-b">
-                <CardTitle className="text-lg">Prakiraan 24 Jam Kedepan</CardTitle>
+                <CardTitle className="text-lg">Peta Lokasi Lahan</CardTitle>
               </CardHeader>
-              <CardContent className="p-0 max-h-[300px] overflow-y-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-muted-foreground bg-slate-50 dark:bg-slate-800/50 sticky top-0">
-                    <tr>
-                      <th className="px-4 py-3">Waktu</th>
-                      <th className="px-4 py-3">Suhu</th>
-                      <th className="px-4 py-3">Hujan</th>
-                      <th className="px-4 py-3">Kelembapan Tanah</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {hourly.time?.slice(0, 24).map((timeStr: string, idx: number) => (
-                      <tr key={idx} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
-                        <td className="px-4 py-2 font-medium">{timeStr.substring(11, 16)}</td>
-                        <td className="px-4 py-2">{hourly.temperature_2m[idx]}°C</td>
-                        <td className="px-4 py-2 text-blue-500">{hourly.precipitation[idx]} mm</td>
-                        <td className="px-4 py-2 text-emerald-500">{(hourly.soil_moisture_9_to_27cm[idx] * 100).toFixed(1)}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <CardContent className="p-0 flex-grow h-[400px] overflow-hidden rounded-b-xl relative z-0">
+                {selectedSensor && (
+                  <MapContainer center={[selectedSensor.lat, selectedSensor.lng]} zoom={13} style={{ height: '100%', width: '100%', zIndex: 0 }}>
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <Marker position={[selectedSensor.lat, selectedSensor.lng]}>
+                      <Popup>
+                        Lokasi Sensor: {selectedSensor.label} <br />
+                        {selectedSensor.lat.toFixed(4)}, {selectedSensor.lng.toFixed(4)}
+                      </Popup>
+                    </Marker>
+                  </MapContainer>
+                )}
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-2 border-b">
-                <CardTitle className="text-lg">Prakiraan 7 Hari Kedepan</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 max-h-[300px] overflow-y-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-muted-foreground bg-slate-50 dark:bg-slate-800/50 sticky top-0">
-                    <tr>
-                      <th className="px-4 py-3">Tanggal</th>
-                      <th className="px-4 py-3">Min/Max Suhu</th>
-                      <th className="px-4 py-3">Hujan</th>
-                      <th className="px-4 py-3">Radiasi Surya</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {daily.time?.slice(0, 7).map((timeStr: string, idx: number) => (
-                      <tr key={idx} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
-                        <td className="px-4 py-2 font-medium">{timeStr.substring(5, 10)}</td>
-                        <td className="px-4 py-2">{daily.temperature_2m_min[idx]}° - {daily.temperature_2m_max[idx]}°C</td>
-                        <td className="px-4 py-2 text-blue-500">{daily.precipitation_sum[idx]} mm</td>
-                        <td className="px-4 py-2 text-yellow-500">{daily.shortwave_radiation_sum[idx]} MJ/m²</td>
+            <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+              <Card className="flex flex-col">
+                <CardHeader className="pb-2 border-b">
+                  <CardTitle className="text-lg">Prakiraan 24 Jam Kedepan</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 flex-grow h-[400px] overflow-y-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-muted-foreground bg-slate-50 dark:bg-slate-800/50 sticky top-0">
+                      <tr>
+                        <th className="px-4 py-3">Waktu</th>
+                        <th className="px-4 py-3">Suhu</th>
+                        <th className="px-4 py-3">Hujan</th>
+                        <th className="px-4 py-3">Kel. Tanah</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
+                    </thead>
+                    <tbody>
+                      {hourly.time?.slice(0, 24).map((timeStr: string, idx: number) => (
+                        <tr key={idx} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
+                          <td className="px-4 py-2 font-medium">{timeStr.substring(11, 16)}</td>
+                          <td className="px-4 py-2">{hourly.temperature_2m[idx]}°C</td>
+                          <td className="px-4 py-2 text-blue-500">{hourly.precipitation[idx]} mm</td>
+                          <td className="px-4 py-2 text-emerald-500">{(hourly.soil_moisture_9_to_27cm[idx] * 100).toFixed(1)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+
+              <Card className="flex flex-col">
+                <CardHeader className="pb-2 border-b">
+                  <CardTitle className="text-lg">Prakiraan 7 Hari Kedepan</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 flex-grow h-[400px] overflow-y-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-muted-foreground bg-slate-50 dark:bg-slate-800/50 sticky top-0">
+                      <tr>
+                        <th className="px-4 py-3">Tanggal</th>
+                        <th className="px-4 py-3">Min/Max</th>
+                        <th className="px-4 py-3">Hujan</th>
+                        <th className="px-4 py-3">Radiasi Surya</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {daily.time?.slice(0, 7).map((timeStr: string, idx: number) => (
+                        <tr key={idx} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
+                          <td className="px-4 py-2 font-medium">{timeStr.substring(5, 10)}</td>
+                          <td className="px-4 py-2">{daily.temperature_2m_min[idx]}° - {daily.temperature_2m_max[idx]}°</td>
+                          <td className="px-4 py-2 text-blue-500">{daily.precipitation_sum[idx]} mm</td>
+                          <td className="px-4 py-2 text-yellow-500">{daily.shortwave_radiation_sum[idx]} MJ/m²</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
         </>
