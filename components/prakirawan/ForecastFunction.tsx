@@ -14,11 +14,18 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/hooks/useAuth"
+import { saveForecast, Forecast, ForecastRowData } from "@/lib/forecastService"
+import { ForecastHistoryList } from "./ForecastHistoryList"
+import { ForecastDetailModal } from "./ForecastDetailModal"
+import { getLucideIconForCondition } from "./WeatherIcons"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Plus, 
   Trash2, 
   Save, 
   Download, 
+
   Thermometer,
   ThermometerSun,
   Droplets,
@@ -236,47 +243,7 @@ const getErikFlowersIcon = (condition: string, time: string, size: number = 72, 
   }
 };
 
-// Helper: return icon JSX + color for a condition
-const getConditionColor = (condition: string) => {
-  switch (condition) {
-    case "Cerah": return "#F59E0B"       // amber
-    case "Cerah Berawan": return "#FBBF24" // warm yellow
-    case "Berawan": return "#64748B"     // gray
-    case "Hujan Ringan": return "#3B82F6" // blue
-    case "Hujan Sedang": return "#2563EB" // darker blue
-    case "Hujan Lebat": return "#1E40AF"  // deep blue
-    case "Badai Petir": return "#7C3AED"  // purple
-    case "Kabut": return "#0EA5A4"        // teal
-    case "Angin Kencang": return "#0F172A"// indigo/near black
-    default: return "#64748B"
-  }
-}
 
-const getLucideIconForCondition = (condition: string, size: number = 16) => {
-  const color = getConditionColor(condition)
-  switch (condition) {
-    case "Cerah":
-      return <Sun size={size} color={color} />
-    case "Cerah Berawan":
-      return <CloudSun size={size} color={color} />
-    case "Berawan":
-      return <Cloud size={size} color={color} />
-    case "Hujan Ringan":
-      return <CloudDrizzle size={size} color={color} />
-    case "Hujan Sedang":
-      return <CloudRain size={size} color={color} />
-    case "Hujan Lebat":
-      return <CloudRain size={size} color={color} />
-    case "Badai Petir":
-      return <CloudLightning size={size} color={color} />
-    case "Kabut":
-      return <CloudFog size={size} color={color} />
-    case "Angin Kencang":
-      return <Wind size={size} color={color} />
-    default:
-      return <Cloud size={size} color={color} />
-  }
-};
 
 // --- KOMPONEN UTAMA ---
 
@@ -299,8 +266,17 @@ export default function ForecastForm() {
     }))
   )
   const [location, setLocation] = React.useState<string>("Kebumen")
-  const [loadingFetch, setLoadingFetch] = React.useState<boolean>(false)
+  const currentLocationName = location || "Kebumen"
+
+  const [forecastSource, setForecastSource] = React.useState<string>("Manual Analysis")
+  const [notes, setNotes] = React.useState<string>("")
+  const [selectedForecast, setSelectedForecast] = React.useState<Forecast | null>(null)
+  const [saving, setSaving] = React.useState(false)
+
+  const { user, profile } = useAuth()
   
+  const [loadingFetch, setLoadingFetch] = React.useState<boolean>(false)
+
   const printRef = React.useRef<HTMLDivElement>(null)
   
   const tomorrowStr = React.useMemo(() => {
@@ -395,6 +371,50 @@ export default function ForecastForm() {
     setRows((prev) => prev.filter((_, i) => i !== index))
   }
 
+  const onSaveForecast = async () => {
+    if (!currentLocationName || currentLocationName.trim() === "") {
+      toast({ title: "Error", description: "Pilih lokasi/kota terlebih dahulu.", variant: "destructive" })
+      return
+    }
+
+    setSaving(true)
+    try {
+      const forecastData: Omit<Forecast, "id" | "createdAt" | "version"> = {
+        deviceId: "custom",
+        deviceName: currentLocationName,
+        latitude: KEBUMEN_LAT, // Or get from device
+        longitude: KEBUMEN_LON, // Or get from device
+        forecastDate: new Date().toISOString().split('T')[0], // For today/tomorrow based on your logic, defaulting to today for demo
+        forecasterId: user?.uid || "anonymous",
+        forecasterName: profile?.displayName || user?.email || "Unknown Forecaster",
+        forecastSource: forecastSource,
+        notes: notes,
+        status: "published",
+        hourlyData: rows.map(r => ({
+          time: r.time,
+          conditionMain: r.conditionMain,
+          probMain: r.probMain,
+          conditionSub: r.conditionSub,
+          probSub: r.probSub,
+          temperature: r.temperature,
+          temperatureError: r.temperatureError,
+          humidity: r.humidity,
+          humidityError: r.humidityError,
+          heatIndex: r.heatIndex,
+          heatIndexError: r.heatIndexError
+        }))
+      }
+
+      await saveForecast(forecastData)
+      toast({ title: "Berhasil", description: "Prakiraan cuaca berhasil disimpan ke database." })
+    } catch (error) {
+      console.error("Failed to save forecast", error)
+      toast({ title: "Gagal", description: "Gagal menyimpan prakiraan cuaca.", variant: "destructive" })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const onSaveDebug = () => {
     console.log("Data:", rows)
     toast({ title: "Debug", description: "Cek console." })
@@ -418,7 +438,7 @@ export default function ForecastForm() {
 
       const image = canvas.toDataURL("image/png");
       const link = document.createElement("a");
-      const fileName = `Outlook_${location || "Kota"}_${new Date().toISOString().split('T')[0]}.png`;
+      const fileName = `Outlook_${currentLocationName || "Kota"}_${new Date().toISOString().split('T')[0]}.png`;
       
       link.href = image;
       link.download = fileName;
@@ -434,7 +454,7 @@ export default function ForecastForm() {
 
   // --- FETCH FORECAST: REFACTORED WITH OPENMETEO ECMWF ---
   const fetchForecast = async () => {
-    if (!location || location.trim() === "") {
+    if (!currentLocationName || currentLocationName.trim() === "") {
       toast({ title: "Lokasi kosong", description: "Masukkan nama lokasi terlebih dahulu.", variant: "destructive" })
       return
     }
@@ -448,11 +468,12 @@ export default function ForecastForm() {
       let lon = KEBUMEN_LON
       let locationName = "Kebumen"
 
-      // 1) Geocoding (Open-Meteo) - hanya jika lokasi bukan Kebumen
-      if (location.toLowerCase() !== "kebumen") {
+      // 1) Geocoding (Open-Meteo) - hanya jika currentLocationName bukan Kebumen
+      let locQuery = currentLocationName;
+      if (locQuery.toLowerCase() !== "kebumen") {
         try {
           const geoRes = await fetch(
-            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=id`
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locQuery)}&count=1&language=id`
           )
           const geoJson = await geoRes.json()
           
@@ -460,13 +481,13 @@ export default function ForecastForm() {
             const place = geoJson.results[0]
             lat = place.latitude
             lon = place.longitude
-            locationName = place.name || location
+            locationName = place.name || currentLocationName
             console.log(`✓ Lokasi ditemukan: ${place.name}, ${place.admin1 || place.country}`)
           } else {
-            console.warn(`✗ Lokasi "${location}" tidak ditemukan. Menggunakan Kebumen default.`)
+            console.warn(`✗ Lokasi "${locQuery}" tidak ditemukan. Menggunakan Kebumen default.`)
             toast({ 
               title: "Lokasi tidak ditemukan", 
-              description: `"${location}" tidak ditemukan. Menggunakan Kebumen sebagai default.`, 
+              description: `"${locQuery}" tidak ditemukan. Menggunakan Kebumen sebagai default.`, 
               variant: "destructive" 
             })
           }
@@ -748,35 +769,89 @@ export default function ForecastForm() {
       </SelectItem>
     </>
   )
-
   return (
-    <div className="space-y-6">
-      {/* --- HEADER UI INPUT --- */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b pb-4">
-        <div className="space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight">Input Prakiraan Cuaca</h2>
-          <p className="text-muted-foreground">Isi data di bawah untuk menghasilkan tabel outlook grafis.</p>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="font-semibold">Lokasi:</span>
-            <Input 
-              value={location} 
-              onChange={(e) => setLocation(e.target.value)} 
-              placeholder="Contoh: Kebumen" 
-              className="w-[250px]"
-            />
-          </div>
-        </div>
-        <div className="flex gap-2">
-            <Button variant="default" size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700"><Plus className="w-4 h-4 mr-1"/> Tambah Jam</Button>
-            <Button variant="default" size="sm" onClick={onSaveDebug} className="bg-orange-500 hover:bg-orange-600"><Save className="w-4 h-4 mr-1"/> Debug Data</Button>
-            <Button variant="default" size="sm" onClick={fetchForecast} className="bg-indigo-600 hover:bg-indigo-700" disabled={loadingFetch}>
-            <DatabaseZap className="w-4 h-4 mr-1"/> {loadingFetch ? "Mengambil..." : "Ambil Otomatis"}
-            </Button>
-            <Button variant="default" size="sm" onClick={onSaveAsImage} className="bg-green-600 hover:bg-green-700">
-            <Download className="w-4 h-4 mr-1"/> Simpan Gambar
-            </Button>
+    <div className="space-y-4 max-w-[1200px] mx-auto p-4">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Forecaster Tools</h1>
+          <p className="text-muted-foreground">Buat dan simpan prakiraan cuaca manual</p>
         </div>
       </div>
+
+      <Tabs defaultValue="input" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="input">Input Prakiraan</TabsTrigger>
+          <TabsTrigger value="history">Riwayat Prakiraan</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="input">
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="space-y-4 flex-1">
+              <div>
+                <h2 className="text-xl font-bold">Input Prakiraan Cuaca</h2>
+                <p className="text-muted-foreground">Isi data di bawah untuk menghasilkan tabel outlook grafis.</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-lg border">
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold">Lokasi / Kota</label>
+                  <Input 
+                    value={location} 
+                    onChange={(e) => setLocation(e.target.value)} 
+                    placeholder="Contoh: Kebumen" 
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold">Sumber Prakiraan</label>
+                  <Select value={forecastSource} onValueChange={setForecastSource}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Sumber" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Manual Analysis">Manual Analysis</SelectItem>
+                      <SelectItem value="Open-Meteo">Open-Meteo</SelectItem>
+                      <SelectItem value="ECMWF">ECMWF</SelectItem>
+                      <SelectItem value="GFS">GFS</SelectItem>
+                      <SelectItem value="Hybrid">Hybrid</SelectItem>
+                      <SelectItem value="AI Prediction">AI Prediction</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1 lg:col-span-2">
+                  <label className="text-sm font-semibold">Catatan / Diskusi Prakirawan</label>
+                  <Textarea 
+                    value={notes} 
+                    onChange={(e) => setNotes(e.target.value)} 
+                    placeholder="Tuliskan analisis cuaca di sini..." 
+                    className="h-10 resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex flex-col gap-2 md:max-w-[200px]">
+                <Button variant="default" size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700 w-full"><Plus className="w-4 h-4 mr-1"/> Tambah Jam</Button>
+                <Button variant="default" size="sm" onClick={fetchForecast} className="bg-indigo-600 hover:bg-indigo-700 w-full" disabled={loadingFetch}>
+                  <DatabaseZap className="w-4 h-4 mr-1"/> {loadingFetch ? "Mengambil..." : "Ambil Otomatis"}
+                </Button>
+                <Button variant="default" size="sm" onClick={onSaveAsImage} className="bg-green-600 hover:bg-green-700 w-full">
+                  <Download className="w-4 h-4 mr-1"/> Unduh Gambar
+                </Button>
+                <Button onClick={onSaveForecast} disabled={saving} className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700">
+                  <Save className="w-4 h-4 mr-1"/> {saving ? "Menyimpan..." : "Simpan Prakiraan"}
+                </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <ForecastHistoryList onViewDetail={setSelectedForecast} />
+        </TabsContent>
+      </Tabs>
+      
+      <ForecastDetailModal forecast={selectedForecast} onClose={() => setSelectedForecast(null)} />
 
       {/* --- FORM INPUT TABEL --- */}
       <div className="rounded-md border overflow-x-auto">
@@ -1115,7 +1190,7 @@ export default function ForecastForm() {
           <div className="header-container">
             <div>
               <div className="sub-label">Meteo Sense Outlook</div>
-              <div className="header-title">{location || "Nama Kota"}</div>
+              <div className="header-title">{currentLocationName || "Nama Kota"}</div>
               <div className="header-subtitle">{tomorrowStr}</div>
             </div>
             {/* Logo */}
