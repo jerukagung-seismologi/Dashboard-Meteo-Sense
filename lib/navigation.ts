@@ -10,6 +10,7 @@ import {
   UsersRound,
   CloudRain,
   TrendingUp,
+  Compass,
   LucideIcon
 } from "lucide-react"
 
@@ -29,6 +30,7 @@ export const dashboardNavigation: NavigationItem[] = [
   { name: "Agrometeorologi", href: "/dashboard/agromet", icon: Sprout, roles: ['Admin', 'User'] },
   { name: "Analisis Prediksi", href: "/dashboard/analisis", icon: ChartNoAxesCombined, roles: ['Admin'] },
   { name: "Analisis Klimatologi", href: "/dashboard/klimatologi", icon: TrendingUp, roles: ['Admin', 'User'] },
+  { name: "Reanalisis ERA5", href: "/dashboard/reanalisis-era5", icon: Compass, roles: ['Admin', 'User'] },
   { name: "Basis Data", href: "/dashboard/data", icon: Database, roles: ['Admin'] },
   { name: "Laporan Cuaca", href: "/dashboard/laporan", icon: FileText, badge: "Warga", roles: ['Admin'] },
   { name: "Prakirawan Cuaca", href: "/dashboard/prakirawan", icon: CloudRain, roles: ['Admin'] },
