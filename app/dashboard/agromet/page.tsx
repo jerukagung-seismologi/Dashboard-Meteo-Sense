@@ -320,25 +320,71 @@ export default function AgrometPage() {
 
               <Card>
                 <CardHeader className="pb-2 border-b">
-                  <CardTitle className="text-lg flex items-center gap-2"><Sprout className="h-5 w-5 text-emerald-500" /> Profil Tanah</CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Sprout className="h-5 w-5 text-emerald-500" /> Profil Tanah
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-6">
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">Kelembapan Permukaan (0-1cm)</span>
-                      <span className="text-sm font-bold">{soilMoistureSurface.toFixed(1)}%</span>
+                  {/* Lapisan Permukaan */}
+                  <div className="space-y-3">
+                    <div className="border-b pb-1 border-slate-100 dark:border-slate-800">
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Lapisan Permukaan</span>
                     </div>
-                    <Progress value={soilMoistureSurface} className="h-2 bg-slate-200" />
-                    <p className="text-xs text-muted-foreground mt-1">Suhu: {soilTempSurface}°C</p>
+                    
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Droplets className="h-3.5 w-3.5 text-blue-500" /> Kelembapan (0-1cm)
+                        </span>
+                        <span className="font-bold">{soilMoistureSurface.toFixed(1)}%</span>
+                      </div>
+                      <Progress 
+                        value={soilMoistureSurface} 
+                        className="h-2 bg-slate-200 [&>div]:bg-blue-500" />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Thermometer className="h-3.5 w-3.5 text-red-500" /> Suhu Tanah (0cm)
+                        </span>
+                        <span className="font-bold">{soilTempSurface.toFixed(1)}°C</span>
+                      </div>
+                      <Progress 
+                        value={Math.min(Math.max((soilTempSurface / 50) * 100, 0), 100)} 
+                        className="h-2 bg-slate-200 [&>div]:bg-red-500" 
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">Kelembapan Zona Akar (9-27cm)</span>
-                      <span className="text-sm font-bold text-emerald-600">{soilMoistureRoot.toFixed(1)}%</span>
+                  {/* Lapisan Zona Akar */}
+                  <div className="space-y-3">
+                    <div className="border-b pb-1 border-slate-100 dark:border-slate-800">
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Zona Akar</span>
                     </div>
-                    <Progress value={soilMoistureRoot} className="h-3 bg-slate-200 [&>div]:bg-emerald-500" />
-                    <p className="text-xs text-muted-foreground mt-1">Suhu: {soilTempRoot}°C</p>
+
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Droplets className="h-3.5 w-3.5 text-emerald-500" /> Kelembapan (9-27cm)
+                        </span>
+                        <span className="font-bold text-emerald-600">{soilMoistureRoot.toFixed(1)}%</span>
+                      </div>
+                      <Progress value={soilMoistureRoot} className="h-2 bg-slate-200 [&>div]:bg-emerald-500" />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Thermometer className="h-3.5 w-3.5 text-orange-500" /> Suhu Tanah (18cm)
+                        </span>
+                        <span className="font-bold text-orange-600">{soilTempRoot.toFixed(1)}°C</span>
+                      </div>
+                      <Progress 
+                        value={Math.min(Math.max((soilTempRoot / 50) * 100, 0), 100)} 
+                        className="h-2 bg-slate-200 [&>div]:bg-orange-500" 
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
