@@ -105,6 +105,10 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({
       row.map((val) => (val !== null ? `<b>${val.toFixed(1)}</b>` : ""))
     );
 
+    const flatVals = currentHeatmapData.z.flat().filter((v) => v !== null && Number.isFinite(v)) as number[];
+    const zmin = flatVals.length > 0 ? Math.min(...flatVals) : undefined;
+    const zmax = flatVals.length > 0 ? Math.max(...flatVals) : undefined;
+
     return [
       {
         x: currentHeatmapData.hours,
@@ -113,6 +117,8 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({
         type: "heatmap" as const,
         colorscale: colorscales[activeParam],
         showscale: true,
+        zmin,
+        zmax,
         xgap: 2,
         ygap: 2,
         text: textMatrix as any,
@@ -153,8 +159,6 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({
       zerolinecolor: gridColor,
       tickcolor: textColor,
       type: "category" as const,
-      scaleanchor: "x" as const,
-      scaleratio: 1,
     }
   }), [textColor, gridColor]);
 

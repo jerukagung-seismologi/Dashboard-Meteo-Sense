@@ -193,6 +193,10 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       row.map((val) => (val !== null ? `<b>${val.toFixed(1)}</b>` : ""))
     );
 
+    const flatVals = currentHeatmapData.z.flat().filter((v) => v !== null && Number.isFinite(v)) as number[];
+    const zmin = flatVals.length > 0 ? Math.min(...flatVals) : undefined;
+    const zmax = flatVals.length > 0 ? Math.max(...flatVals) : undefined;
+
     return [
       {
         x: currentHeatmapData.minutes,
@@ -201,6 +205,8 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
         type: "heatmap" as const,
         colorscale: colorscales[activeParam],
         showscale: true,
+        zmin,
+        zmax,
         xgap: 2,
         ygap: 2,
         text: textMatrix as any,
@@ -243,8 +249,6 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       zerolinecolor: gridColor,
       tickcolor: textColor,
       type: "category" as const,
-      scaleanchor: "x" as const,
-      scaleratio: 1,
       tickmode: "array" as const,
       tickvals: Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0")),
     }
