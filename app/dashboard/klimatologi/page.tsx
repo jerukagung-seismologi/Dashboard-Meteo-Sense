@@ -41,7 +41,7 @@ export default function KlimatologiPage() {
   const { user } = useAuth();
   const [devices, setDevices] = useState<DeviceOption[]>([]);
   const [sensorId, setSensorId] = useState<string>("");
-  const [preset, setPreset] = useState<string>("30d");
+  const [preset, setPreset] = useState<string>("weekly");
 
   // Filter selection states
   const [selectedMonth, setSelectedMonth] = useState<number>(() => new Date().getUTCMonth() + 1);

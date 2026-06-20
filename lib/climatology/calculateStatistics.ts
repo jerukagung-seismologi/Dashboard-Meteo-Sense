@@ -23,42 +23,64 @@ export function calculateStats(
   }
 
   let tempSum = 0;
+  let tempCount = 0;
   let tempMin = Infinity;
   let tempMax = -Infinity;
 
   let humSum = 0;
+  let humCount = 0;
   let humMin = Infinity;
   let humMax = -Infinity;
 
   let pressSum = 0;
+  let pressCount = 0;
   let pressMin = Infinity;
   let pressMax = -Infinity;
 
   for (const r of rawPoints) {
     // Temperature
-    tempSum += r.temperature;
-    if (r.temperature < tempMin) tempMin = r.temperature;
-    if (r.temperature > tempMax) tempMax = r.temperature;
+    const t = Number(r.temperature);
+    if (Number.isFinite(t)) {
+      tempSum += t;
+      tempCount++;
+      if (t < tempMin) tempMin = t;
+      if (t > tempMax) tempMax = t;
+    }
 
     // Humidity
-    humSum += r.humidity;
-    if (r.humidity < humMin) humMin = r.humidity;
-    if (r.humidity > humMax) humMax = r.humidity;
+    const h = Number(r.humidity);
+    if (Number.isFinite(h)) {
+      humSum += h;
+      humCount++;
+      if (h < humMin) humMin = h;
+      if (h > humMax) humMax = h;
+    }
 
     // Pressure
-    pressSum += r.pressure;
-    if (r.pressure < pressMin) pressMin = r.pressure;
-    if (r.pressure > pressMax) pressMax = r.pressure;
+    const p = Number(r.pressure);
+    if (Number.isFinite(p)) {
+      pressSum += p;
+      pressCount++;
+      if (p < pressMin) pressMin = p;
+      if (p > pressMax) pressMax = p;
+    }
   }
 
-  const tempMean = tempSum / total;
+  const tempMean = tempCount > 0 ? tempSum / tempCount : 0;
+  const tempFinalMin = tempMin === Infinity ? 0 : tempMin;
+  const tempFinalMax = tempMax === -Infinity ? 0 : tempMax;
 
   // Temperature Standard Deviation
   let tempVarSum = 0;
+  let tempVarCount = 0;
   for (const r of rawPoints) {
-    tempVarSum += Math.pow(r.temperature - tempMean, 2);
+    const t = Number(r.temperature);
+    if (Number.isFinite(t)) {
+      tempVarSum += Math.pow(t - tempMean, 2);
+      tempVarCount++;
+    }
   }
-  const tempStdDev = Math.sqrt(tempVarSum / total);
+  const tempStdDev = tempVarCount > 0 ? Math.sqrt(tempVarSum / tempVarCount) : 0;
 
   // Rainfall Stats
   let totalRain = 0;
@@ -66,15 +88,16 @@ export function calculateStats(
   let maxDailyRainfall = 0;
 
   if (isHourly) {
-    // Daily preset: aggregated hourly
-    totalRain = hourlyPoints.reduce((acc, p) => acc + p.rainfallAccumulation, 0);
+    totalRain = hourlyPoints.reduce((acc, p) => acc + (Number.isFinite(p.rainfallAccumulation) ? p.rainfallAccumulation : 0), 0);
     maxDailyRainfall = totalRain;
     rainDaysCount = totalRain > 0.2 ? 1 : 0;
   } else {
-    // Weekly, Monthly, Yearly preset: aggregated daily
-    totalRain = dailyPoints.reduce((acc, p) => acc + p.rainfallAccumulation, 0);
-    maxDailyRainfall = dailyPoints.reduce((max, p) => p.rainfallAccumulation > max ? p.rainfallAccumulation : max, 0);
-    rainDaysCount = dailyPoints.filter((p) => p.rainfallAccumulation > 0.2).length;
+    totalRain = dailyPoints.reduce((acc, p) => acc + (Number.isFinite(p.rainfallAccumulation) ? p.rainfallAccumulation : 0), 0);
+    maxDailyRainfall = dailyPoints.reduce((max, p) => {
+      const r = Number(p.rainfallAccumulation);
+      return Number.isFinite(r) && r > max ? r : max;
+    }, 0);
+    rainDaysCount = dailyPoints.filter((p) => Number.isFinite(p.rainfallAccumulation) && p.rainfallAccumulation > 0.2).length;
   }
 
   return {
@@ -82,19 +105,19 @@ export function calculateStats(
     totalRecordsCount: total,
     temperature: {
       mean: Math.round(tempMean * 100) / 100,
-      max: Math.round(tempMax * 100) / 100,
-      min: Math.round(tempMin * 100) / 100,
+      max: Math.round(tempFinalMax * 100) / 100,
+      min: Math.round(tempFinalMin * 100) / 100,
       stdDev: Math.round(tempStdDev * 100) / 100,
     },
     humidity: {
-      mean: Math.round((humSum / total) * 100) / 100,
-      max: Math.round(humMax * 100) / 100,
-      min: Math.round(humMin * 100) / 100,
+      mean: Math.round((humSum / (humCount || 1)) * 100) / 100,
+      max: humMax === -Infinity ? 100 : Math.round(humMax * 100) / 100,
+      min: humMin === Infinity ? 0 : Math.round(humMin * 100) / 100,
     },
     pressure: {
-      mean: Math.round((pressSum / total) * 100) / 100,
-      max: Math.round(pressMax * 100) / 100,
-      min: Math.round(pressMin * 100) / 100,
+      mean: Math.round((pressSum / (pressCount || 1)) * 100) / 100,
+      max: pressMax === -Infinity ? 0 : Math.round(pressMax * 100) / 100,
+      min: pressMin === Infinity ? 0 : Math.round(pressMin * 100) / 100,
     },
     rainfall: {
       total: Math.round(totalRain * 100) / 100,
