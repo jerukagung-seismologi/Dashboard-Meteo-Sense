@@ -9,6 +9,7 @@ import {
   User,
   UsersRound,
   CloudRain,
+  TrendingUp,
   LucideIcon
 } from "lucide-react"
 
@@ -27,6 +28,7 @@ export const dashboardNavigation: NavigationItem[] = [
   { name: "Sistem Geografis", href: "/dashboard/peta", icon: Earth, roles: ['Admin'] },
   { name: "Agrometeorologi", href: "/dashboard/agromet", icon: Sprout, roles: ['Admin', 'User'] },
   { name: "Analisis Prediksi", href: "/dashboard/analisis", icon: ChartNoAxesCombined, roles: ['Admin'] },
+  { name: "Analisis Klimatologi", href: "/dashboard/analisis-klimatologi", icon: TrendingUp, roles: ['Admin', 'User'] },
   { name: "Basis Data", href: "/dashboard/data", icon: Database, roles: ['Admin'] },
   { name: "Laporan Cuaca", href: "/dashboard/laporan", icon: FileText, badge: "Warga", roles: ['Admin'] },
   { name: "Prakirawan Cuaca", href: "/dashboard/prakirawan", icon: CloudRain, roles: ['Admin'] },
