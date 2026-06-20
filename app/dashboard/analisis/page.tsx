@@ -377,7 +377,11 @@ export default function AnalisisDashboardPage() {
             {/* Daily Tab Content */}
             <TabsContent value="daily" className="space-y-6 outline-none">
               {dailyData?.points && dailyData.points.length > 0 ? (
-                <DailyAnalysis points={dailyData.points} isDarkMode={isDarkMode} />
+                <DailyAnalysis
+                  points={dailyData.points}
+                  heatmaps={dailyData.heatmaps}
+                  isDarkMode={isDarkMode}
+                />
               ) : (
                 <div className="h-[250px] flex items-center justify-center border border-dashed rounded-lg text-slate-400 dark:text-slate-500">
                   Tidak ada observasi cuaca pada tanggal terpilih

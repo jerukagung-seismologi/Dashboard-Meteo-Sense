@@ -128,7 +128,7 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
           {points.length > 0 && (
             <Plot
               data={tempTraces}
-              layout={{ ...commonLayout, yaxis: { ...commonLayout.yaxis, title: "Suhu (°C)" } }}
+              layout={{ ...commonLayout, yaxis: { ...commonLayout.yaxis, title: { text: "Suhu (°C)" } } }}
               config={{ responsive: true, displayModeBar: false }}
               style={{ width: "100%", height: "350px" }}
             />
@@ -148,7 +148,7 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
           {points.length > 0 && (
             <Plot
               data={humTraces}
-              layout={{ ...commonLayout, yaxis: { ...commonLayout.yaxis, title: "Kelembaban (%)", max: 100, min: 0 } }}
+              layout={{ ...commonLayout, yaxis: { ...commonLayout.yaxis, title: { text: "Kelembaban (%)" }, max: 100, min: 0 } as any }}
               config={{ responsive: true, displayModeBar: false }}
               style={{ width: "100%", height: "350px" }}
             />

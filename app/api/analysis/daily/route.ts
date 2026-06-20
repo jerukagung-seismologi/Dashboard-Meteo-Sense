@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { fetchSensorDataByDateRange } from "@/lib/FetchingSensorData";
 import {
   aggregateHourlyAnalysis,
-  calculateParameterStats
+  calculateParameterStats,
+  generateDailyHeatmapMatrix
 } from "@/lib/climatology/aggregateAnalysis";
 import { AnalysisStats } from "@/lib/climatology/analysisTypes";
 
@@ -43,6 +44,12 @@ export async function GET(request: Request) {
       pressure: calculateParameterStats(rawPoints.map((p) => p.pressure)),
     };
 
+    const heatmaps = {
+      temperature: generateDailyHeatmapMatrix(rawPoints, (p) => p.temperature),
+      humidity: generateDailyHeatmapMatrix(rawPoints, (p) => p.humidity),
+      pressure: generateDailyHeatmapMatrix(rawPoints, (p) => p.pressure),
+    };
+
     const formattedDate = `${yyyy}-${String(mm + 1).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
 
     return NextResponse.json({
@@ -50,6 +57,7 @@ export async function GET(request: Request) {
       date: formattedDate,
       points,
       stats,
+      heatmaps,
     });
   } catch (error: any) {
     console.error("Error in GET /api/analysis/daily:", error);

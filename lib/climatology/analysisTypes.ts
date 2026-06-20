@@ -46,11 +46,22 @@ export interface HeatmapData {
   matrix: [number, number, number][]; // [dayIndex, slotIndex, value] triplets
 }
 
+export interface DailyHeatmapData {
+  hours: string[];
+  minutes: string[];
+  z: (number | null)[][];
+}
+
 export interface DailyAnalysisResponse {
   sensorId: string;
   date: string; // YYYY-MM-DD
   points: AnalysisPoint[]; // 24 points
   stats: AnalysisStats;
+  heatmaps?: {
+    temperature: DailyHeatmapData;
+    humidity: DailyHeatmapData;
+    pressure: DailyHeatmapData;
+  };
 }
 
 export interface WeeklyAnalysisResponse {

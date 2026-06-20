@@ -5,7 +5,8 @@ import {
   ParameterStats,
   AnalysisStats,
   HistogramBin,
-  HeatmapData
+  HeatmapData,
+  DailyHeatmapData
 } from "./analysisTypes";
 
 // Bulletproof WIB timezone component extractor
@@ -246,4 +247,55 @@ export function aggregateHourlyAnalysis(rawPoints: SensorDate[]): AnalysisPoint[
   }
 
   return result.sort((a, b) => a.timestamp - b.timestamp);
+}
+
+export function generateDailyHeatmapMatrix(
+  rawPoints: SensorDate[],
+  extractValue: (p: SensorDate) => number
+): DailyHeatmapData {
+  const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+  
+  // Find all 10-minute intervals present
+  const minutesSet = new Set<string>();
+  for (const p of rawPoints) {
+    const wib = getWibTimeParts(p.timestamp);
+    const [h, m] = wib.hm.split(":");
+    const roundedM = Math.floor(Number(m) / 10) * 10;
+    minutesSet.add(String(roundedM).padStart(2, "0"));
+  }
+  
+  // Default to ["00", "10", "20", "30", "40", "50"] if empty
+  const minutes = minutesSet.size > 0 
+    ? Array.from(minutesSet).sort() 
+    : ["00", "10", "20", "30", "40", "50"];
+
+  const cellSum = Array.from({ length: minutes.length }, () => Array(24).fill(0));
+  const cellCount = Array.from({ length: minutes.length }, () => Array(24).fill(0));
+
+  for (const p of rawPoints) {
+    const wib = getWibTimeParts(p.timestamp);
+    const [h, m] = wib.hm.split(":");
+    const roundedM = Math.floor(Number(m) / 10) * 10;
+    const mStr = String(roundedM).padStart(2, "0");
+
+    const yIdx = minutes.indexOf(mStr);
+    const xIdx = Number(h);
+    const val = extractValue(p);
+
+    if (yIdx !== -1 && xIdx >= 0 && xIdx < 24 && Number.isFinite(val)) {
+      cellSum[yIdx][xIdx] += val;
+      cellCount[yIdx][xIdx]++;
+    }
+  }
+
+  const z: (number | null)[][] = Array.from({ length: minutes.length }, () => Array(24).fill(null));
+  for (let y = 0; y < minutes.length; y++) {
+    for (let x = 0; x < 24; x++) {
+      if (cellCount[y][x] > 0) {
+        z[y][x] = Math.round((cellSum[y][x] / cellCount[y][x]) * 10) / 10;
+      }
+    }
+  }
+
+  return { hours, minutes, z };
 }
