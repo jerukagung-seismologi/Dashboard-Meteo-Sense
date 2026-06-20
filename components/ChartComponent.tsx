@@ -20,7 +20,9 @@ const ChartComponent: React.FC<ChartComponentProps> = ({ data, layout }) => {
   }, []);
 
   // Don't render Plotly on server
-  if (!mounted) return null;
+  if (!mounted) {
+    return <div className="h-[400px] w-full flex items-center justify-center text-muted-foreground">Memuat grafik...</div>;
+  }
 
   return (
     <Plot

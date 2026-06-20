@@ -63,8 +63,8 @@ export const createReport = async (data: CitizenReportInput) => {
 // A. Ambil SEMUA laporan (misal: untuk peta atau list di dashboard)
 export const getAllReports = async (): Promise<CitizenReport[]> => {
   try {
-    // Kita urutkan dari yang terbaru (descending)
-    const q = query(collection(db, "citizen_reports"), orderBy("waktu", "desc"));
+    // Kita urutkan dari yang terbaru (descending), dibatasi 50 laporan terakhir
+    const q = query(collection(db, "citizen_reports"), orderBy("waktu", "desc"), limit(50));
     const querySnapshot = await getDocs(q);
 
     // Mapping data Firestore ke format aplikasi kita

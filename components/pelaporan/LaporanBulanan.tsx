@@ -27,67 +27,129 @@ import {
   exportToCSV,
 } from "@/lib/weatherUtils"
 
-// Dynamically import Plotly to avoid SSR issues
-const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
+// Dynamically import ReactECharts to avoid SSR issues
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
+
+// Helper to compute boxplot statistics manually for ECharts
+const calculateBoxplotStats = (values: number[]) => {
+  if (values.length === 0) return [0, 0, 0, 0, 0];
+  const sorted = [...values].sort((a, b) => a - b);
+  const min = sorted[0];
+  const max = sorted[sorted.length - 1];
+  
+  const getPercentile = (p: number) => {
+    const idx = (sorted.length - 1) * p;
+    const low = Math.floor(idx);
+    const high = Math.ceil(idx);
+    return sorted[low] + (sorted[high] - sorted[low]) * (idx - low);
+  };
+  
+  const q1 = getPercentile(0.25);
+  const median = getPercentile(0.5);
+  const q3 = getPercentile(0.75);
+  
+  return [min, q1, median, q3, max];
+};
 
 // --- CHARTS ---
 const TemperatureTrendChart = ({ data }: { data: WeatherRecord[] }) => {
-  const layout: Partial<Plotly.Layout> = {
-    autosize: true, margin: { l: 40, r: 20, t: 40, b: 40 }, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-    xaxis: { gridcolor: '#e5e7eb', tickformat: '%d %b' }, yaxis: { title: '°C', gridcolor: '#e5e7eb' },
-    legend: { orientation: 'h', y: 1.15, x: 0.5, xanchor: 'center', yanchor: 'top' }, hovermode: 'x unified'
+  const dates = data.map(d => {
+    try {
+      const parts = d.date.split('-');
+      if (parts.length === 3) {
+        const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        return dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+      }
+    } catch {}
+    return d.date;
+  });
+
+  const option = {
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['Max', 'Avg', 'Min'], top: 0 },
+    grid: { left: '3%', right: '3%', bottom: '3%', top: '40px', containLabel: true },
+    xAxis: { type: 'category', data: dates, splitLine: { show: false } },
+    yAxis: { type: 'value', name: '°C', splitLine: { lineStyle: { color: '#f3f4f6' } } },
+    series: [
+      { name: 'Max', type: 'line', data: data.map(d => d.temperatureMax), itemStyle: { color: '#ef4444' }, smooth: true },
+      { name: 'Avg', type: 'line', data: data.map(d => d.temperatureAvg), itemStyle: { color: '#f59e0b' }, lineStyle: { width: 3 }, smooth: true },
+      { name: 'Min', type: 'line', data: data.map(d => d.temperatureMin), itemStyle: { color: '#3b82f6' }, smooth: true }
+    ]
   };
 
-  return (
-    <Plot
-      data={[
-        { x: data.map(d => d.date), y: data.map(d => d.temperatureMax), type: 'scatter', mode: 'lines', name: 'Max', line: { color: '#ef4444' } },
-        { x: data.map(d => d.date), y: data.map(d => d.temperatureAvg), type: 'scatter', mode: 'lines+markers', name: 'Avg', line: { color: '#f59e0b', width: 2 } },
-        { x: data.map(d => d.date), y: data.map(d => d.temperatureMin), type: 'scatter', mode: 'lines', name: 'Min', line: { color: '#3b82f6' } }
-      ] as any[]}
-      layout={layout as any} style={{ width: '100%', height: '260px' }} config={{ displayModeBar: false }}
-    />
-  );
+  return <ReactECharts option={option} style={{ width: '100%', height: '260px' }} />;
 };
 
 const TemperatureBoxPlot = ({ rawData }: { rawData: SensorDate[] }) => {
   const temps = rawData.map(r => r.temperature).filter(Number.isFinite);
-  const layout: Partial<Plotly.Layout> = {
-    autosize: true, margin: { l: 40, r: 20, t: 20, b: 20 }, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-    yaxis: { title: '°C', gridcolor: '#e5e7eb' }
+  const stats = calculateBoxplotStats(temps);
+
+  const option = {
+    tooltip: { trigger: 'item' },
+    grid: { left: '8%', right: '8%', bottom: '15%', top: '10%', containLabel: true },
+    xAxis: { type: 'category', data: ['Distribusi Suhu'] },
+    yAxis: { type: 'value', name: '°C', splitLine: { lineStyle: { color: '#f3f4f6' } } },
+    series: [
+      {
+        name: 'Suhu',
+        type: 'boxplot',
+        data: [stats],
+        itemStyle: { color: '#f59e0b', borderColor: '#d97706' }
+      }
+    ]
   };
-  return (
-    <Plot
-      data={[{ y: temps, type: 'box', name: 'Suhu', marker: { color: '#f59e0b' }, boxpoints: 'outliers' } as any]}
-      layout={layout as any} style={{ width: '100%', height: '260px' }} config={{ displayModeBar: false }}
-    />
-  );
+
+  return <ReactECharts option={option} style={{ width: '100%', height: '260px' }} />;
 };
 
 const RainfallChart = ({ data }: { data: WeatherRecord[] }) => {
-  const layout: Partial<Plotly.Layout> = {
-    autosize: true, margin: { l: 40, r: 20, t: 40, b: 40 }, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-    xaxis: { gridcolor: '#e5e7eb', tickformat: '%d %b' }, yaxis: { title: 'mm', gridcolor: '#e5e7eb' },
+  const dates = data.map(d => {
+    try {
+      const parts = d.date.split('-');
+      if (parts.length === 3) {
+        const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        return dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+      }
+    } catch {}
+    return d.date;
+  });
+
+  const option = {
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '3%', bottom: '3%', top: '20px', containLabel: true },
+    xAxis: { type: 'category', data: dates, splitLine: { show: false } },
+    yAxis: { type: 'value', name: 'mm', splitLine: { lineStyle: { color: '#f3f4f6' } } },
+    series: [
+      { name: 'Curah Hujan', type: 'bar', data: data.map(d => d.rainfallTot), itemStyle: { color: '#3b82f6' } }
+    ]
   };
-  return (
-    <Plot
-      data={[{ x: data.map(d => d.date), y: data.map(d => d.rainfallTot), type: 'bar', name: 'Curah Hujan', marker: { color: '#3b82f6' } } as any]}
-      layout={layout as any} style={{ width: '100%', height: '240px' }} config={{ displayModeBar: false }}
-    />
-  );
+
+  return <ReactECharts option={option} style={{ width: '100%', height: '240px' }} />;
 };
 
 const MetricTrendChart = ({ data, dataKey, name, color, unit }: { data: WeatherRecord[], dataKey: keyof WeatherRecord, name: string, color: string, unit: string }) => {
-  const layout: Partial<Plotly.Layout> = {
-    autosize: true, margin: { l: 40, r: 20, t: 20, b: 40 }, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-    xaxis: { gridcolor: '#e5e7eb', tickformat: '%d %b' }, yaxis: { title: unit, gridcolor: '#e5e7eb' }, hovermode: 'x unified'
+  const dates = data.map(d => {
+    try {
+      const parts = d.date.split('-');
+      if (parts.length === 3) {
+        const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        return dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+      }
+    } catch {}
+    return d.date;
+  });
+
+  const option = {
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '3%', bottom: '5%', top: '20px', containLabel: true },
+    xAxis: { type: 'category', data: dates, splitLine: { show: false } },
+    yAxis: { type: 'value', name: unit, splitLine: { lineStyle: { color: '#f3f4f6' } } },
+    series: [
+      { name, type: 'line', data: data.map(d => (d[dataKey] as number) ?? 0), itemStyle: { color }, smooth: true }
+    ]
   };
-  return (
-    <Plot
-      data={[{ x: data.map(d => d.date), y: data.map(d => d[dataKey] ?? 0), type: 'scatter', mode: 'lines+markers', name, line: { color } } as any]}
-      layout={layout as any} style={{ width: '100%', height: '180px' }} config={{ displayModeBar: false }}
-    />
-  );
+
+  return <ReactECharts option={option} style={{ width: '100%', height: '180px' }} />;
 };
 
 // --- HELPER COMPONENTS ---

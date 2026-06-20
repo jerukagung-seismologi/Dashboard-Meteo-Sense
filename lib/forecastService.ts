@@ -10,6 +10,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
@@ -86,10 +87,10 @@ export async function saveForecast(forecast: Omit<Forecast, "id" | "createdAt" |
 export async function getForecastHistory(filters?: { deviceId?: string }): Promise<Forecast[]> {
   const forecastsRef = collection(db, FORECASTS_COLLECTION);
   
-  let q = query(forecastsRef, orderBy("createdAt", "desc"));
+  let q = query(forecastsRef, orderBy("createdAt", "desc"), limit(50));
   
   if (filters?.deviceId && filters.deviceId !== "ALL") {
-    q = query(forecastsRef, where("deviceId", "==", filters.deviceId), orderBy("createdAt", "desc"));
+    q = query(forecastsRef, where("deviceId", "==", filters.deviceId), orderBy("createdAt", "desc"), limit(50));
   }
 
   const querySnapshot = await getDocs(q);

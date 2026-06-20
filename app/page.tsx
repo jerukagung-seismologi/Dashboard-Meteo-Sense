@@ -1,13 +1,11 @@
-"use server"
-
 import { ArrowRight, ShieldCheck, CloudSun, Code } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import ParticleBackground from "@/components/ParticleBackground"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import ParticleBackgroundWrapper from "@/components/ParticleBackgroundWrapper"
 
 export default async function LandingPage() {
   return (
@@ -16,7 +14,7 @@ export default async function LandingPage() {
       <main className="flex-grow">
         {/* Hero Section */}
         <section className="relative py-20 flex items-center justify-center overflow-hidden">
-          <ParticleBackground />
+          <ParticleBackgroundWrapper />
           <div className="absolute inset-0 pointer-events-none bg-gray-100/80 dark:bg-gray-900/80" />
           <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center">
             <div className="mb-4 animate-fade-in">

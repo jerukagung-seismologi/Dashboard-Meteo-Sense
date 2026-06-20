@@ -10,6 +10,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
 } from "firebase/firestore";
 import { db } from "@/lib/ConfigFirebase";
 
@@ -49,7 +50,7 @@ export async function saveForecast(forecast: Omit<ForecastRecord, "id" | "create
 
 export async function getForecasts(): Promise<ForecastRecord[]> {
   const forecastsRef = collection(db, COLLECTION_NAME);
-  const q = query(forecastsRef, orderBy("createdAt", "desc"));
+  const q = query(forecastsRef, orderBy("createdAt", "desc"), limit(50));
 
   const querySnapshot = await getDocs(q);
   const forecasts: ForecastRecord[] = [];

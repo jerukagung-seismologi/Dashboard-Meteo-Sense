@@ -53,7 +53,6 @@ const formatDate = (date: Date) => {
 export async function fetchAllDevices(userId: string): Promise<Device[]> {
   try {
     const devicesRef = collection(db, "devices")
-    // The query is now simplified to fetch all devices, ignoring the userId.
     const q = query(devicesRef)
     const querySnapshot = await getDocs(q)
 
