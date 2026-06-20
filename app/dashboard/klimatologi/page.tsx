@@ -210,9 +210,9 @@ export default function KlimatologiPage() {
           {/* Detailed Parameter Analytics Tabs */}
           <Tabs defaultValue="temperature" className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-900 border rounded-lg">
-              <TabsTrigger value="temperature" className="py-2.5">Temperatur</TabsTrigger>
+              <TabsTrigger value="temperature" className="py-2.5">Suhu Udara</TabsTrigger>
               <TabsTrigger value="rainfall" className="py-2.5">Curah Hujan</TabsTrigger>
-              <TabsTrigger value="humidity" className="py-2.5">Kelembapan</TabsTrigger>
+              <TabsTrigger value="humidity" className="py-2.5">Kelembaban Relatif</TabsTrigger>
               <TabsTrigger value="pressure" className="py-2.5">Tekanan Udara</TabsTrigger>
             </TabsList>
 
