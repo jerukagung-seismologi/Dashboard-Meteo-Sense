@@ -195,8 +195,8 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
 
     return [
       {
-        x: currentHeatmapData.hours,
-        y: currentHeatmapData.minutes,
+        x: currentHeatmapData.minutes,
+        y: currentHeatmapData.hours,
         z: currentHeatmapData.z,
         type: "heatmap" as const,
         colorscale: colorscales[activeParam],
@@ -223,22 +223,22 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
 
   const heatmapLayout = useMemo(() => ({
     autosize: true,
-    height: 600,
+    height: 380,
     margin: { l: 50, r: 20, t: 20, b: 50 },
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     font: { color: textColor, family: "Inter, sans-serif" },
     xaxis: {
-      title: { text: "Jam (WIB)" },
+      title: { text: "Menit" },
       gridcolor: gridColor,
       zerolinecolor: gridColor,
       tickcolor: textColor,
       type: "category" as const,
       tickmode: "array" as const,
-      tickvals: Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0")),
+      tickvals: Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0")),
     },
     yaxis: {
-      title: { text: "Menit" },
+      title: { text: "Jam (WIB)" },
       gridcolor: gridColor,
       zerolinecolor: gridColor,
       tickcolor: textColor,
@@ -246,7 +246,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       scaleanchor: "x" as const,
       scaleratio: 1,
       tickmode: "array" as const,
-      tickvals: Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0")),
+      tickvals: Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0")),
     }
   }), [textColor, gridColor]);
 
@@ -365,7 +365,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
                 data={heatmapTrace}
                 layout={heatmapLayout}
                 config={{ responsive: true, displayModeBar: false }}
-                style={{ width: "100%", height: "600px" }}
+                style={{ width: "100%", height: "380px" }}
               />
             </div>
           </CardContent>

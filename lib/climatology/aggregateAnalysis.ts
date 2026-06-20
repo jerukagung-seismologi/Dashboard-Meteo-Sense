@@ -129,8 +129,8 @@ export function generateHeatmapMatrix(
     return { days: [], hours, z: [] };
   }
 
-  const cellSum = Array.from({ length: 24 }, () => Array(days.length).fill(0));
-  const cellCount = Array.from({ length: 24 }, () => Array(days.length).fill(0));
+  const cellSum = Array.from({ length: days.length }, () => Array(24).fill(0));
+  const cellCount = Array.from({ length: days.length }, () => Array(24).fill(0));
 
   for (const p of rawPoints) {
     const wib = getWibTimeParts(p.timestamp);
@@ -141,14 +141,14 @@ export function generateHeatmapMatrix(
     const val = extractValue(p);
 
     if (dayIdx !== -1 && hourIdx >= 0 && hourIdx < 24 && Number.isFinite(val)) {
-      cellSum[hourIdx][dayIdx] += val;
-      cellCount[hourIdx][dayIdx]++;
+      cellSum[dayIdx][hourIdx] += val;
+      cellCount[dayIdx][hourIdx]++;
     }
   }
 
-  const z: (number | null)[][] = Array.from({ length: 24 }, () => Array(days.length).fill(null));
-  for (let y = 0; y < 24; y++) {
-    for (let x = 0; x < days.length; x++) {
+  const z: (number | null)[][] = Array.from({ length: days.length }, () => Array(24).fill(null));
+  for (let y = 0; y < days.length; y++) {
+    for (let x = 0; x < 24; x++) {
       if (cellCount[y][x] > 0) {
         z[y][x] = Math.round((cellSum[y][x] / cellCount[y][x]) * 10) / 10;
       }
@@ -264,25 +264,25 @@ export function generateDailyHeatmapMatrix(
   const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
   const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
 
-  const cellSum = Array.from({ length: 60 }, () => Array(24).fill(0));
-  const cellCount = Array.from({ length: 60 }, () => Array(24).fill(0));
+  const cellSum = Array.from({ length: 24 }, () => Array(60).fill(0));
+  const cellCount = Array.from({ length: 24 }, () => Array(60).fill(0));
 
   for (const p of rawPoints) {
     const wib = getWibTimeParts(p.timestamp);
     const [h, m] = wib.hm.split(":");
-    const xIdx = Number(h);
-    const yIdx = Number(m);
+    const xIdx = Number(m);
+    const yIdx = Number(h);
     const val = extractValue(p);
 
-    if (xIdx >= 0 && xIdx < 24 && yIdx >= 0 && yIdx < 60 && Number.isFinite(val)) {
+    if (yIdx >= 0 && yIdx < 24 && xIdx >= 0 && xIdx < 60 && Number.isFinite(val)) {
       cellSum[yIdx][xIdx] += val;
       cellCount[yIdx][xIdx]++;
     }
   }
 
-  const z: (number | null)[][] = Array.from({ length: 60 }, () => Array(24).fill(null));
-  for (let y = 0; y < 60; y++) {
-    for (let x = 0; x < 24; x++) {
+  const z: (number | null)[][] = Array.from({ length: 24 }, () => Array(60).fill(null));
+  for (let y = 0; y < 24; y++) {
+    for (let x = 0; x < 60; x++) {
       if (cellCount[y][x] > 0) {
         z[y][x] = Math.round((cellSum[y][x] / cellCount[y][x]) * 10) / 10;
       }

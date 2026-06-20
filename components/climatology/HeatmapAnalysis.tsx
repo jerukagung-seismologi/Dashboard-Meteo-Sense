@@ -107,8 +107,8 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({
 
     return [
       {
-        x: xData,
-        y: currentHeatmapData.hours,
+        x: currentHeatmapData.hours,
+        y: xData,
         z: currentHeatmapData.z,
         type: "heatmap" as const,
         colorscale: colorscales[activeParam],
@@ -135,20 +135,20 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({
 
   const heatmapLayout = useMemo(() => ({
     autosize: true,
-    height: 550,
+    height: 280,
     margin: { l: 50, r: 20, t: 20, b: 50 },
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     font: { color: textColor, family: "Inter, sans-serif" },
     xaxis: {
-      title: { text: "Hari" },
+      title: { text: "Jam (WIB)" },
       gridcolor: gridColor,
       zerolinecolor: gridColor,
       tickcolor: textColor,
       type: "category" as const,
     },
     yaxis: {
-      title: { text: "Jam (WIB)" },
+      title: { text: "Hari" },
       gridcolor: gridColor,
       zerolinecolor: gridColor,
       tickcolor: textColor,
@@ -212,11 +212,11 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({
               data={heatmapTrace}
               layout={heatmapLayout}
               config={{ responsive: true, displayModeBar: false }}
-              style={{ width: "100%", height: "550px" }}
+              style={{ width: "100%", height: "280px" }}
             />
           </div>
         ) : (
-          <div className="h-[500px] flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">
+          <div className="h-[280px] flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">
             Tidak ada data heatmap yang tersedia
           </div>
         )}
