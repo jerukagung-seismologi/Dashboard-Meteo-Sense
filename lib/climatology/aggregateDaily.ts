@@ -1,28 +1,33 @@
 // lib/climatology/aggregateDaily.ts
 import { SensorDate } from "@/lib/FetchingSensorData";
 import { AggregatedPoint } from "./climatologyTypes";
-import { getJakartaDateParts, getWind, getCardinalDirection } from "./calculateStatistics";
-import { getJakartaEpoch } from "./aggregateHourly";
+import { computeRainDeltas } from "./aggregateHourly";
 
 export function aggregateDaily(rawPoints: SensorDate[]): AggregatedPoint[] {
-  const groups = new Map<string, SensorDate[]>();
+  if (rawPoints.length === 0) return [];
 
-  for (const r of rawPoints) {
-    const parts = getJakartaDateParts(r.timestamp);
-    const key = parts.ymd;
-    if (!groups.has(key)) {
-      groups.set(key, []);
+  // Compute rain deltas on the sorted time series first
+  const pointsWithDelta = computeRainDeltas(rawPoints);
+
+  const groups = new Map<string, typeof pointsWithDelta>();
+
+  for (const p of pointsWithDelta) {
+    const d = new Date(p.timestamp);
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(d.getUTCDate()).padStart(2, "0");
+    const timeKey = `${yyyy}-${mm}-${dd}`; // e.g. "2026-06-20"
+    if (!groups.has(timeKey)) {
+      groups.set(timeKey, []);
     }
-    groups.get(key)!.push(r);
+    groups.get(timeKey)!.push(p);
   }
 
   const result: AggregatedPoint[] = [];
 
-  for (const [ymd, items] of groups) {
+  for (const [timeKey, items] of groups) {
     const count = items.length;
     if (count === 0) continue;
-
-    items.sort((a, b) => a.timestamp - b.timestamp);
 
     let tempSum = 0;
     let tempMin = Infinity;
@@ -36,9 +41,7 @@ export function aggregateDaily(rawPoints: SensorDate[]): AggregatedPoint[] {
     let pressMin = Infinity;
     let pressMax = -Infinity;
 
-    let windSpeedSum = 0;
-    let windSpeedMax = -Infinity;
-    const windDist: Record<string, number> = {};
+    let rainAccum = 0;
 
     for (const item of items) {
       // Temperature
@@ -56,50 +59,26 @@ export function aggregateDaily(rawPoints: SensorDate[]): AggregatedPoint[] {
       if (item.pressure < pressMin) pressMin = item.pressure;
       if (item.pressure > pressMax) pressMax = item.pressure;
 
-      // Wind
-      const w = getWind(item);
-      windSpeedSum += w.speed;
-      if (w.speed > windSpeedMax) windSpeedMax = w.speed;
-      const card = getCardinalDirection(w.direction);
-      windDist[card] = (windDist[card] || 0) + 1;
+      // Rain
+      rainAccum += item.rainDelta;
     }
 
     const tempMean = tempSum / count;
 
-    // Std Dev
+    // Standard deviation of Temperature
     let tempVarSum = 0;
     for (const item of items) {
       tempVarSum += Math.pow(item.temperature - tempMean, 2);
     }
     const tempStdDev = Math.sqrt(tempVarSum / count);
 
-    // Dominant wind direction
-    let dominantWindDir = "U";
-    let maxCount = -1;
-    for (const [dir, count] of Object.entries(windDist)) {
-      if (count > maxCount) {
-        maxCount = count;
-        dominantWindDir = dir;
-      }
-    }
-
-    // Daily rainfall accumulation (positive delta method)
-    let rainAccum = 0;
-    for (let i = 1; i < items.length; i++) {
-      const diff = items[i].rainfall - items[i - 1].rainfall;
-      if (diff >= 0) {
-        rainAccum += diff;
-      } else {
-        rainAccum += items[i].rainfall;
-      }
-    }
-
-    const [yyyy, mm, dd] = ymd.split("-");
-    const epoch = getJakartaEpoch(yyyy, mm, dd, "00");
+    // Start of UTC day epoch
+    const [yyyy, mm, dd] = timeKey.split("-");
+    const timestamp = Date.UTC(Number(yyyy), Number(mm) - 1, Number(dd), 0, 0, 0, 0);
 
     result.push({
-      timeKey: ymd,
-      timestamp: epoch,
+      timeKey,
+      timestamp,
       sampleCount: count,
       temperatureMean: Math.round(tempMean * 100) / 100,
       temperatureMax: Math.round(tempMax * 100) / 100,
@@ -111,9 +90,6 @@ export function aggregateDaily(rawPoints: SensorDate[]): AggregatedPoint[] {
       pressureMean: Math.round((pressSum / count) * 100) / 100,
       pressureMax: Math.round(pressMax * 100) / 100,
       pressureMin: Math.round(pressMin * 100) / 100,
-      windSpeedMean: Math.round((windSpeedSum / count) * 100) / 100,
-      windSpeedMax: Math.round(windSpeedMax * 100) / 100,
-      windDirectionDominant: dominantWindDir,
       rainfallAccumulation: Math.round(rainAccum * 100) / 100,
     });
   }

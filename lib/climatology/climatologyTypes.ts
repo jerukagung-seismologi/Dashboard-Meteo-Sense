@@ -1,8 +1,8 @@
 // lib/climatology/climatologyTypes.ts
 
 export interface AggregatedPoint {
-  timeKey: string; // e.g., "2026-06-20T18" for hourly, "2026-06-20" for daily, "2026-06" for monthly
-  timestamp: number; // millisecond timestamp of the period
+  timeKey: string; // e.g. "2026-06-20T18" (hourly, UTC), "2026-06-20" (daily, UTC)
+  timestamp: number; // UTC millisecond epoch of the start of this interval
   sampleCount: number;
   
   temperatureMean: number;
@@ -18,10 +18,6 @@ export interface AggregatedPoint {
   pressureMax: number;
   pressureMin: number;
 
-  windSpeedMean: number;
-  windSpeedMax: number;
-  windDirectionDominant: string; // Cardinal string (e.g., "U", "S")
-  
   rainfallAccumulation: number;
 }
 
@@ -45,21 +41,16 @@ export interface ClimatologyStats {
     max: number;
     min: number;
   };
-  wind: {
-    meanSpeed: number;
-    maxSpeed: number;
-    dominantDirection: string;
-    distribution: Record<string, number>; // Maps each cardinal direction (U, TL, T, TG, S, BD, B, BL) to count
-  };
   rainfall: {
     total: number;
     rainDaysCount: number;
+    maxDailyRainfall: number;
   };
 }
 
 export interface ClimatologyResponse {
   sensorId: string;
-  range: string;
+  preset: string; // "daily" | "weekly" | "monthly" | "yearly"
   startDate: string;
   endDate: string;
   points: AggregatedPoint[];

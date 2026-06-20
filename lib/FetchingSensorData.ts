@@ -159,9 +159,7 @@ export async function fetchSensorDataByDateRange(
     snapshot.forEach((childSnapshot) => {
       const timestampInSeconds = Number(childSnapshot.key);
       const timestampInMillis = timestampInSeconds * 1000;
-      console.log("Processing timestamp:", timestampInSeconds);
       const data: SensorValue = childSnapshot.val();
-      console.log("Sensor value from child:", data);
 
       const formattedTime = new Date(timestampInMillis)
         .toLocaleString("id-ID", 
@@ -173,8 +171,7 @@ export async function fetchSensorDataByDateRange(
           hour12: false,
         }
       ).replace(/\./g, ":");
-      console.log("Formatted time:", formattedTime);
-      // 2.1 Format tanggal jika diperlukan
+      
       const dateFormatted = new Date(timestampInMillis)
         .toLocaleString("id-ID", 
         {
@@ -188,7 +185,7 @@ export async function fetchSensorDataByDateRange(
           hour12: false,
         }
       ).replace(/\./g, ":");
-      console.log("Formatted date:", dateFormatted);
+
       const resultItem = {
         timestamp: timestampInMillis, // Simpan dalam milidetik
         temperature: data.temperature,
@@ -203,7 +200,6 @@ export async function fetchSensorDataByDateRange(
         dateFormatted: dateFormatted,
         timeFormatted: formattedTime,
       };
-      console.log("Pushing item to results:", resultItem);
       results.push(resultItem);
     });
 
@@ -314,9 +310,7 @@ export async function fetchSensorData(
       // 1. Ambil timestamp dari KEY (detik), dan konversi ke milidetik untuk JS
       const timestampInSeconds = Number(child.key);
       const timestampInMillis = timestampInSeconds * 1000;
-      console.log("Processing timestamp (ms):", timestampInMillis);
       const data: SensorValue = child.val();
-      console.log("Sensor value from child:", data);
 
       // 2. Format waktu menggunakan timestamp yang benar
       const formattedTime = new Date(timestampInMillis)
@@ -329,7 +323,7 @@ export async function fetchSensorData(
           hour12: false,
         }
       ).replace(/\./g, ':');  //replace untuk mengganti titik dengan titik dua
-      console.log("Formatted time:", formattedTime);
+
       // 2.1 Format tanggal jika diperlukan
       const dateFormatted = new Date(timestampInMillis)
       .toLocaleString('id-ID',
@@ -344,7 +338,7 @@ export async function fetchSensorData(
           hour12: false,
         }
       ).replace(/\./g, ':');  //replace untuk mengganti titik dengan titik dua
-      console.log("Formatted time:", dateFormatted);
+
       // 3. Gabungkan semua data sesuai interface SensorData
       const resultItem = {
         timestamp: timestampInMillis, // Simpan dalam milidetik
@@ -360,7 +354,6 @@ export async function fetchSensorData(
         dateFormatted: dateFormatted,
         timeFormatted: formattedTime,
       };
-      console.log("Pushing item to results:", resultItem);
       results.push(resultItem);
     });
 
