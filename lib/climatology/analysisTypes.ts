@@ -42,8 +42,8 @@ export interface HistogramBin {
 
 export interface HeatmapData {
   days: string[]; // List of YYYY-MM-DD days
-  slots: string[]; // List of HH:MM slots in WIB timezone
-  matrix: [number, number, number][]; // [dayIndex, slotIndex, value] triplets
+  hours: string[]; // List of HH hours
+  z: (number | null)[][]; // 2D grid [hourIdx][dayIdx]
 }
 
 export interface DailyHeatmapData {

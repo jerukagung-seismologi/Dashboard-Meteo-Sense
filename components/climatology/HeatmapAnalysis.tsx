@@ -1,15 +1,15 @@
 // components/climatology/HeatmapAnalysis.tsx
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Thermometer, Droplets, Gauge } from "lucide-react";
+import { Thermometer, Droplets, Gauge, Grid } from "lucide-react";
 import { HeatmapData } from "@/lib/climatology/analysisTypes";
 import dynamic from "next/dynamic";
 
-const ReactECharts = dynamic(() => import("echarts-for-react"), {
+const Plot = dynamic(() => import("react-plotly.js"), {
   ssr: false,
   loading: () => (
-    <div className="h-[450px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
-      Membuat visualisasi heatmap 2D...
+    <div className="h-[500px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
+      Membuat visualisasi heatmap mingguan...
     </div>
   ),
 });
@@ -29,144 +29,134 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({
 }) => {
   const [activeParam, setActiveParam] = useState<"temperature" | "humidity" | "pressure">("temperature");
 
-  const chartTheme = isDarkMode ? "dark" : "light";
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
   const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
-
-  // Color mapping definitions
-  const colorPalettes = {
-    temperature: [
-      "#313695", "#4575b4", "#74add1", "#abd9e9", "#e0f3f8",
-      "#ffffbf", "#fee090", "#fdae61", "#f46d43", "#d73027", "#a50026"
-    ], // Coolwarm
-    humidity: ["#eff6ff", "#bfdbfe", "#60a5fa", "#2563eb", "#1e3a8a"], // Blues
-    pressure: ["#440154", "#414487", "#2a788e", "#22a884", "#7ad151", "#fde725"], // Viridis
-  };
 
   const labels = {
     temperature: {
       title: "Heatmap Suhu Udara",
-      desc: "Distribusi suhu udara 2D (Hari vs Waktu WIB)",
+      desc: "Pola distribusi suhu udara mingguan (Hari vs Jam WIB)",
       unit: "°C",
       icon: <Thermometer className="h-5 w-5 text-orange-500" />,
     },
     humidity: {
       title: "Heatmap Kelembaban Relatif",
-      desc: "Distribusi kelembaban relatif 2D (Hari vs Waktu WIB)",
+      desc: "Pola distribusi kelembaban relatif mingguan (Hari vs Jam WIB)",
       unit: "%",
       icon: <Droplets className="h-5 w-5 text-blue-500" />,
     },
     pressure: {
       title: "Heatmap Tekanan Udara",
-      desc: "Distribusi tekanan udara 2D (Hari vs Waktu WIB)",
+      desc: "Pola distribusi tekanan udara mingguan (Hari vs Jam WIB)",
       unit: "hPa",
       icon: <Gauge className="h-5 w-5 text-pink-500" />,
     },
   };
 
-  const option = useMemo(() => {
-    const data = heatmaps[activeParam];
-    if (!data || !data.days || !data.slots || data.matrix.length === 0) return {};
+  const currentHeatmapData = useMemo(() => {
+    return heatmaps?.[activeParam];
+  }, [heatmaps, activeParam]);
 
-    // Calculate min/max for visualMap scale
-    const values = data.matrix.map((item) => item[2]);
-    const minVal = values.length > 0 ? Math.min(...values) : 0;
-    const maxVal = values.length > 0 ? Math.max(...values) : 100;
-
-    // Convert slot labels to clean WIB formatted strings
-    // Format original dates to more friendly labels (e.g. 2026-06-20 -> 20/06)
-    const formattedDays = data.days.map((d) => {
+  // Format YYYY-MM-DD to DD/MM labels for X-axis
+  const xData = useMemo(() => {
+    if (!currentHeatmapData?.days) return [];
+    return currentHeatmapData.days.map((d) => {
       const parts = d.split("-");
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}`;
-      }
+      if (parts.length === 3) return `${parts[2]}/${parts[1]}`;
       return d;
     });
+  }, [currentHeatmapData]);
 
-    return {
-      tooltip: {
-        position: "top",
-        formatter: (params: any) => {
-          const [dayIdx, slotIdx, val] = params.value;
-          const originalDay = data.days[dayIdx];
-          const slotTime = data.slots[slotIdx];
-          
-          // Format date for display
-          let displayDate = originalDay;
-          try {
-            const dateObj = new Date(originalDay);
-            displayDate = dateObj.toLocaleDateString("id-ID", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            });
-          } catch (e) {}
+  const heatmapTrace = useMemo(() => {
+    if (!currentHeatmapData || !currentHeatmapData.z || currentHeatmapData.z.length === 0) return [];
 
-          return `<div class="p-1 text-slate-800 dark:text-slate-100 text-xs leading-normal">
-            <div class="font-bold border-b pb-1 mb-1 border-slate-200 dark:border-slate-700">${displayDate}</div>
-            <div class="flex justify-between gap-4 mt-1">
-              <span>Waktu:</span>
-              <span class="font-semibold">${slotTime} WIB</span>
-            </div>
-            <div class="flex justify-between gap-4">
-              <span>Nilai:</span>
-              <span class="font-bold text-indigo-600 dark:text-indigo-400">${val} ${labels[activeParam].unit}</span>
-            </div>
-          </div>`;
-        },
-      },
-      grid: {
-        left: "3%",
-        right: "10%",
-        top: "5%",
-        bottom: "15%",
-        containLabel: true,
-      },
-      xAxis: {
-        type: "category",
-        data: formattedDays,
-        splitArea: { show: true },
-        axisLabel: { color: textColor },
-        axisLine: { lineStyle: { color: gridColor } },
-      },
-      yAxis: {
-        type: "category",
-        data: data.slots,
-        splitArea: { show: true },
-        axisLabel: {
-          color: textColor,
-          // Only show labels every few ticks if there are too many slots
-          interval: Math.max(0, Math.floor(data.slots.length / 12)),
-        },
-        axisLine: { lineStyle: { color: gridColor } },
-      },
-      visualMap: {
-        min: minVal,
-        max: maxVal,
-        calculable: true,
-        orient: "vertical",
-        right: "1%",
-        top: "center",
-        inRange: { color: colorPalettes[activeParam] },
-        textStyle: { color: textColor },
-      },
-      series: [
-        {
-          name: labels[activeParam].title,
-          type: "heatmap",
-          data: data.matrix,
-          label: { show: false },
-          emphasis: {
-            itemStyle: {
-              shadowBlur: 10,
-              shadowColor: "rgba(0, 0, 0, 0.5)",
-            },
-          },
-        },
+    const colorscales = {
+      temperature: [
+        [0, "#313695"],
+        [0.1, "#4575b4"],
+        [0.2, "#74add1"],
+        [0.3, "#abd9e9"],
+        [0.4, "#e0f3f8"],
+        [0.5, "#ffffbf"],
+        [0.6, "#fee090"],
+        [0.7, "#fdae61"],
+        [0.8, "#f46d43"],
+        [0.9, "#d73027"],
+        [1.0, "#a50026"]
       ],
+      humidity: [
+        [0, "#eff6ff"],
+        [0.25, "#bfdbfe"],
+        [0.5, "#60a5fa"],
+        [0.75, "#2563eb"],
+        [1.0, "#1e3a8a"]
+      ],
+      pressure: [
+        [0, "#440154"],
+        [0.2, "#414487"],
+        [0.4, "#2a788e"],
+        [0.6, "#22a884"],
+        [0.8, "#7ad151"],
+        [1.0, "#fde725"]
+      ]
     };
-  }, [heatmaps, activeParam, textColor, gridColor]);
+
+    const textMatrix = currentHeatmapData.z.map((row) =>
+      row.map((val) => (val !== null ? `<b>${val.toFixed(1)}</b>` : ""))
+    );
+
+    return [
+      {
+        x: xData,
+        y: currentHeatmapData.hours,
+        z: currentHeatmapData.z,
+        type: "heatmap" as const,
+        colorscale: colorscales[activeParam],
+        showscale: true,
+        xgap: 2,
+        ygap: 2,
+        text: textMatrix as any,
+        texttemplate: "%{text}",
+        textfont: {
+          size: 9,
+          color: isDarkMode ? "#ffffff" : "#1e293b",
+          family: "Inter, sans-serif"
+        },
+        colorbar: {
+          tickfont: { color: textColor },
+          title: {
+            text: labels[activeParam].unit,
+            font: { color: textColor }
+          }
+        }
+      } as any
+    ];
+  }, [currentHeatmapData, activeParam, xData, isDarkMode, textColor]);
+
+  const heatmapLayout = useMemo(() => ({
+    autosize: true,
+    height: 550,
+    margin: { l: 50, r: 20, t: 20, b: 50 },
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    font: { color: textColor, family: "Inter, sans-serif" },
+    xaxis: {
+      title: { text: "Hari" },
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickcolor: textColor,
+      type: "category" as const,
+    },
+    yaxis: {
+      title: { text: "Jam (WIB)" },
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickcolor: textColor,
+      type: "category" as const,
+      scaleanchor: "x" as const,
+      scaleratio: 1,
+    }
+  }), [textColor, gridColor]);
 
   const activeInfo = labels[activeParam];
 
@@ -215,15 +205,18 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({
         </div>
       </CardHeader>
 
-      <CardContent className="h-[450px] p-2">
-        {heatmaps[activeParam] && heatmaps[activeParam].matrix.length > 0 ? (
-          <ReactECharts
-            option={option}
-            style={{ height: "100%", width: "100%" }}
-            theme={chartTheme}
-          />
+      <CardContent className="p-2 overflow-x-auto">
+        {currentHeatmapData && currentHeatmapData.z && currentHeatmapData.z.length > 0 ? (
+          <div className="min-w-[650px]">
+            <Plot
+              data={heatmapTrace}
+              layout={heatmapLayout}
+              config={{ responsive: true, displayModeBar: false }}
+              style={{ width: "100%", height: "550px" }}
+            />
+          </div>
         ) : (
-          <div className="h-full flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">
+          <div className="h-[500px] flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">
             Tidak ada data heatmap yang tersedia
           </div>
         )}

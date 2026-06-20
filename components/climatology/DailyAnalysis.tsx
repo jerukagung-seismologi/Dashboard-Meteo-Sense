@@ -223,7 +223,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
 
   const heatmapLayout = useMemo(() => ({
     autosize: true,
-    height: 320,
+    height: 600,
     margin: { l: 50, r: 20, t: 20, b: 50 },
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
@@ -245,6 +245,8 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       type: "category" as const,
       scaleanchor: "x" as const,
       scaleratio: 1,
+      tickmode: "array" as const,
+      tickvals: Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0")),
     }
   }), [textColor, gridColor]);
 
@@ -363,7 +365,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
                 data={heatmapTrace}
                 layout={heatmapLayout}
                 config={{ responsive: true, displayModeBar: false }}
-                style={{ width: "100%", height: "320px" }}
+                style={{ width: "100%", height: "600px" }}
               />
             </div>
           </CardContent>

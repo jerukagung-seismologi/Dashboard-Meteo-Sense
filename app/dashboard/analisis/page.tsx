@@ -415,7 +415,7 @@ export default function AnalisisDashboardPage() {
                   {/* 2D Heatmap Matrix section */}
                   <div className="space-y-2">
                     <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                      <Map className="h-4 w-4 text-pink-500" /> Pola 2D Heatmap Diurnal (ECharts)
+                      <Map className="h-4 w-4 text-pink-500" /> Pola 2D Heatmap Diurnal (Plotly)
                     </h3>
                     <HeatmapAnalysis heatmaps={weeklyData.heatmaps} isDarkMode={isDarkMode} />
                   </div>

@@ -115,39 +115,47 @@ export function generateHeatmapMatrix(
   rawPoints: SensorDate[],
   extractValue: (p: SensorDate) => number
 ): HeatmapData {
-  const sortedPoints = [...rawPoints].sort((a, b) => a.timestamp - b.timestamp);
+  const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
 
+  // Extract unique WIB days present in the dataset
   const daysSet = new Set<string>();
-  const slotsSet = new Set<string>();
-
-  const mappedPoints = sortedPoints.map((p) => {
+  for (const p of rawPoints) {
     const wib = getWibTimeParts(p.timestamp);
     daysSet.add(wib.ymd);
-    slotsSet.add(wib.hm);
-    return {
-      day: wib.ymd,
-      slot: wib.hm,
-      val: extractValue(p)
-    };
-  });
-
+  }
   const days = Array.from(daysSet).sort();
-  const slots = Array.from(slotsSet).sort();
 
-  const dayMap = new Map(days.map((d, idx) => [d, idx]));
-  const slotMap = new Map(slots.map((s, idx) => [s, idx]));
+  if (days.length === 0) {
+    return { days: [], hours, z: [] };
+  }
 
-  const matrix: [number, number, number][] = [];
+  const cellSum = Array.from({ length: 24 }, () => Array(days.length).fill(0));
+  const cellCount = Array.from({ length: 24 }, () => Array(days.length).fill(0));
 
-  for (const p of mappedPoints) {
-    const dIdx = dayMap.get(p.day);
-    const sIdx = slotMap.get(p.slot);
-    if (dIdx !== undefined && sIdx !== undefined && Number.isFinite(p.val)) {
-      matrix.push([dIdx, sIdx, Math.round(p.val * 100) / 100]);
+  for (const p of rawPoints) {
+    const wib = getWibTimeParts(p.timestamp);
+    const [h, m] = wib.hm.split(":");
+    
+    const dayIdx = days.indexOf(wib.ymd);
+    const hourIdx = Number(h);
+    const val = extractValue(p);
+
+    if (dayIdx !== -1 && hourIdx >= 0 && hourIdx < 24 && Number.isFinite(val)) {
+      cellSum[hourIdx][dayIdx] += val;
+      cellCount[hourIdx][dayIdx]++;
     }
   }
 
-  return { days, slots, matrix };
+  const z: (number | null)[][] = Array.from({ length: 24 }, () => Array(days.length).fill(null));
+  for (let y = 0; y < 24; y++) {
+    for (let x = 0; x < days.length; x++) {
+      if (cellCount[y][x] > 0) {
+        z[y][x] = Math.round((cellSum[y][x] / cellCount[y][x]) * 10) / 10;
+      }
+    }
+  }
+
+  return { days, hours, z };
 }
 
 export function aggregateHourlyAnalysis(rawPoints: SensorDate[]): AnalysisPoint[] {
@@ -254,42 +262,26 @@ export function generateDailyHeatmapMatrix(
   extractValue: (p: SensorDate) => number
 ): DailyHeatmapData {
   const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
-  
-  // Find all 10-minute intervals present
-  const minutesSet = new Set<string>();
-  for (const p of rawPoints) {
-    const wib = getWibTimeParts(p.timestamp);
-    const [h, m] = wib.hm.split(":");
-    const roundedM = Math.floor(Number(m) / 10) * 10;
-    minutesSet.add(String(roundedM).padStart(2, "0"));
-  }
-  
-  // Default to ["00", "10", "20", "30", "40", "50"] if empty
-  const minutes = minutesSet.size > 0 
-    ? Array.from(minutesSet).sort() 
-    : ["00", "10", "20", "30", "40", "50"];
+  const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
 
-  const cellSum = Array.from({ length: minutes.length }, () => Array(24).fill(0));
-  const cellCount = Array.from({ length: minutes.length }, () => Array(24).fill(0));
+  const cellSum = Array.from({ length: 60 }, () => Array(24).fill(0));
+  const cellCount = Array.from({ length: 60 }, () => Array(24).fill(0));
 
   for (const p of rawPoints) {
     const wib = getWibTimeParts(p.timestamp);
     const [h, m] = wib.hm.split(":");
-    const roundedM = Math.floor(Number(m) / 10) * 10;
-    const mStr = String(roundedM).padStart(2, "0");
-
-    const yIdx = minutes.indexOf(mStr);
     const xIdx = Number(h);
+    const yIdx = Number(m);
     const val = extractValue(p);
 
-    if (yIdx !== -1 && xIdx >= 0 && xIdx < 24 && Number.isFinite(val)) {
+    if (xIdx >= 0 && xIdx < 24 && yIdx >= 0 && yIdx < 60 && Number.isFinite(val)) {
       cellSum[yIdx][xIdx] += val;
       cellCount[yIdx][xIdx]++;
     }
   }
 
-  const z: (number | null)[][] = Array.from({ length: minutes.length }, () => Array(24).fill(null));
-  for (let y = 0; y < minutes.length; y++) {
+  const z: (number | null)[][] = Array.from({ length: 60 }, () => Array(24).fill(null));
+  for (let y = 0; y < 60; y++) {
     for (let x = 0; x < 24; x++) {
       if (cellCount[y][x] > 0) {
         z[y][x] = Math.round((cellSum[y][x] / cellCount[y][x]) * 10) / 10;
