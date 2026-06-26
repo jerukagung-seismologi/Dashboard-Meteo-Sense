@@ -7,7 +7,7 @@ import {
   HistogramBin,
   HeatmapData,
   DailyHeatmapData
-} from "./analysisTypes";
+} from "@/lib/climatology/analysisTypes";
 
 // Bulletproof WIB timezone component extractor
 export function getWibTimeParts(timestamp: number) {

@@ -1,5 +1,5 @@
 // lib/reanalysis/anomalies.ts
-import { getWibTimeParts } from "../climatology/aggregateAnalysis";
+import { getWibTimeParts } from "@/lib/climatology/aggregateAnalysis";
 
 export interface MonthlyBaseline {
   month: number; // 1 to 12

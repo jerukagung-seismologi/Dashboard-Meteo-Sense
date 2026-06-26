@@ -1,7 +1,7 @@
 // lib/climatology/aggregateDaily.ts
 import { SensorDate } from "@/lib/FetchingSensorData";
-import { AggregatedPoint } from "./climatologyTypes";
-import { computeRainDeltas } from "./aggregateHourly";
+import { AggregatedPoint } from "@/lib/climatology/climatologyTypes";
+import { computeRainDeltas } from "@/lib/climatology/aggregateHourly";
 
 export function aggregateDaily(rawPoints: SensorDate[]): AggregatedPoint[] {
   if (rawPoints.length === 0) return [];

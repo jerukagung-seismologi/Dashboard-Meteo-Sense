@@ -350,7 +350,7 @@ export default function ReanalysisPage() {
             <Sparkles className="h-5 w-5 text-indigo-500 animate-pulse hidden sm:inline" />
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-3xl">
-            Dataset iklim global ECMWF ERA5 generasi kelima. Seluruh kalkulasi statistik (mean, median, mode, skewness, kurtosis), baselines anomali bulanan, mawar angin, dan Hovmöller didelegasikan secara penuh pada server (back-end).
+            Dataset iklim global ECMWF ERA5 generasi kelima.
           </p>
         </div>
       </div>
@@ -624,9 +624,9 @@ export default function ReanalysisPage() {
                 <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto p-1 bg-slate-100 dark:bg-slate-950 border dark:border-slate-800 rounded-lg text-xs gap-1">
                   <TabsTrigger value="time-series" className="py-2.5 font-bold">Deret Waktu</TabsTrigger>
                   <TabsTrigger value="hovmoller" className="py-2.5 font-bold">Diagram Hovmöller</TabsTrigger>
-                  <TabsTrigger value="diurnal" className="py-2.5 font-bold">Frekuensi & Diurnal</TabsTrigger>
+                  <TabsTrigger value="diurnal" className="py-2.5 font-bold">Siklus Distribusi</TabsTrigger>
                   <TabsTrigger value="climatology" className="py-2.5 font-bold">Tren Klimatologi</TabsTrigger>
-                  <TabsTrigger value="wind-diagnostics" className="py-2.5 font-bold">Mawar Angin & Diagnostik</TabsTrigger>
+                  <TabsTrigger value="wind-diagnostics" className="py-2.5 font-bold">Mawar Angin</TabsTrigger>
                 </TabsList>
 
                 {/* Tab content 1: Time Series */}

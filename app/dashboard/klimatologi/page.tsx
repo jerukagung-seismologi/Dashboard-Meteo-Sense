@@ -145,7 +145,7 @@ export default function KlimatologiPage() {
             <Sparkles className="h-5 w-5 text-indigo-500 animate-pulse hidden sm:inline" />
           </div>
           <p className="text-muted-foreground dark:text-slate-400 mt-1">
-            Kalkulasi klimatologi teragregasi server (UTC boundaries, WIB display conversion)
+            Kalkulasi klimatologi
           </p>
         </div>
       </div>

@@ -1,6 +1,6 @@
 // lib/climatology/aggregateHourly.ts
 import { SensorDate } from "@/lib/FetchingSensorData";
-import { AggregatedPoint } from "./climatologyTypes";
+import { AggregatedPoint } from "@/lib/climatology/climatologyTypes";
 
 export function computeRainDeltas(rawPoints: SensorDate[]): (SensorDate & { rainDelta: number })[] {
   const sorted = [...rawPoints].sort((a, b) => a.timestamp - b.timestamp);

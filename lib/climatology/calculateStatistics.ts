@@ -1,6 +1,6 @@
 // lib/climatology/calculateStatistics.ts
 import { SensorDate } from "@/lib/FetchingSensorData";
-import { AggregatedPoint, ClimatologyStats } from "./climatologyTypes";
+import { AggregatedPoint, ClimatologyStats } from "@/lib/climatology/climatologyTypes";
 
 export function calculateStats(
   rawPoints: SensorDate[],

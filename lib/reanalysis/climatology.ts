@@ -1,8 +1,8 @@
 // lib/reanalysis/climatology.ts
-import { getWibTimeParts } from "../climatology/aggregateAnalysis";
-import { calculateStats, ParameterStats } from "./statistics";
-import { calculateMonthlyBaselines, computeAnomalies, AnomalyPoint } from "./anomalies";
-import { calculateWindRose, WindRoseBin } from "./windRose";
+import { getWibTimeParts } from "@/lib/climatology/aggregateAnalysis";
+import { calculateStats, ParameterStats } from "@/lib/reanalysis/statistics";
+import { calculateMonthlyBaselines, computeAnomalies, AnomalyPoint } from "@/lib/reanalysis/anomalies";
+import { calculateWindRose, WindRoseBin } from "@/lib/reanalysis/windRose";
 
 export interface ReanalysisDataPoint {
   timestamp: number; // UTC ms
