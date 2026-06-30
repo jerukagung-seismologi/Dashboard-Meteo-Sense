@@ -44,6 +44,11 @@ export function aggregateDaily(rawPoints: SensorDate[]): AggregatedPoint[] {
     let pressMin = Infinity;
     let pressMax = -Infinity;
 
+    let dewSum = 0;
+    let dewCount = 0;
+    let dewMin = Infinity;
+    let dewMax = -Infinity;
+
     let rainAccum = 0;
 
     for (const item of items) {
@@ -74,6 +79,15 @@ export function aggregateDaily(rawPoints: SensorDate[]): AggregatedPoint[] {
         if (p > pressMax) pressMax = p;
       }
 
+      // Dew Point
+      const d = Number(item.dew);
+      if (Number.isFinite(d)) {
+        dewSum += d;
+        dewCount++;
+        if (d < dewMin) dewMin = d;
+        if (d > dewMax) dewMax = d;
+      }
+
       // Rain
       const r = Number(item.rainDelta);
       if (Number.isFinite(r)) {
@@ -92,6 +106,10 @@ export function aggregateDaily(rawPoints: SensorDate[]): AggregatedPoint[] {
     const pressureMean = pressCount > 0 ? pressSum / pressCount : 0;
     const pressFinalMin = pressMin === Infinity ? 0 : pressMin;
     const pressFinalMax = pressMax === -Infinity ? 0 : pressMax;
+
+    const dewMean = dewCount > 0 ? dewSum / dewCount : 0;
+    const dewFinalMin = dewMin === Infinity ? 0 : dewMin;
+    const dewFinalMax = dewMax === -Infinity ? 0 : dewMax;
 
     // Standard deviation of Temperature
     let tempVarSum = 0;
@@ -123,6 +141,9 @@ export function aggregateDaily(rawPoints: SensorDate[]): AggregatedPoint[] {
       pressureMean: Math.round(pressureMean * 100) / 100,
       pressureMax: Math.round(pressFinalMax * 100) / 100,
       pressureMin: Math.round(pressFinalMin * 100) / 100,
+      dewPointMean: Math.round(dewMean * 100) / 100,
+      dewPointMax: Math.round(dewFinalMax * 100) / 100,
+      dewPointMin: Math.round(dewFinalMin * 100) / 100,
       rainfallAccumulation: Math.round(rainAccum * 100) / 100,
     });
   }

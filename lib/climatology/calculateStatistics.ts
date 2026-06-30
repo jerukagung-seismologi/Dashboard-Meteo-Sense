@@ -18,6 +18,7 @@ export function calculateStats(
       temperature: { mean: 0, max: 0, min: 0, stdDev: 0 },
       humidity: { mean: 0, max: 100, min: 0 },
       pressure: { mean: 0, max: 0, min: 0 },
+      dewPoint: { mean: 0, max: 0, min: 0 },
       rainfall: { total: 0, rainDaysCount: 0, maxDailyRainfall: 0 },
     };
   }
@@ -36,6 +37,11 @@ export function calculateStats(
   let pressCount = 0;
   let pressMin = Infinity;
   let pressMax = -Infinity;
+
+  let dewSum = 0;
+  let dewCount = 0;
+  let dewMin = Infinity;
+  let dewMax = -Infinity;
 
   for (const r of rawPoints) {
     // Temperature
@@ -63,6 +69,15 @@ export function calculateStats(
       pressCount++;
       if (p < pressMin) pressMin = p;
       if (p > pressMax) pressMax = p;
+    }
+
+    // Dew Point
+    const d = Number(r.dew);
+    if (Number.isFinite(d)) {
+      dewSum += d;
+      dewCount++;
+      if (d < dewMin) dewMin = d;
+      if (d > dewMax) dewMax = d;
     }
   }
 
@@ -118,6 +133,11 @@ export function calculateStats(
       mean: Math.round((pressSum / (pressCount || 1)) * 100) / 100,
       max: pressMax === -Infinity ? 0 : Math.round(pressMax * 100) / 100,
       min: pressMin === Infinity ? 0 : Math.round(pressMin * 100) / 100,
+    },
+    dewPoint: {
+      mean: Math.round((dewSum / (dewCount || 1)) * 100) / 100,
+      max: dewMax === -Infinity ? 0 : Math.round(dewMax * 100) / 100,
+      min: dewMin === Infinity ? 0 : Math.round(dewMin * 100) / 100,
     },
     rainfall: {
       total: Math.round(totalRain * 100) / 100,

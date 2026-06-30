@@ -1,7 +1,14 @@
 // components/climatology/SummaryCards.tsx
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Thermometer, CloudRain, Droplets, Gauge } from "lucide-react";
+import {
+  Thermometer,
+  ThermometerSun,
+  ThermometerSnowflake,
+  CloudRain,
+  Droplets,
+  Gauge
+} from "lucide-react";
 import { ClimatologyStats } from "@/lib/climatology/climatologyTypes";
 
 interface SummaryCardsProps {
@@ -15,7 +22,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ stats }) => {
       <Card className="hover:shadow-md transition-all duration-200 border-none bg-gradient-to-br from-orange-50 to-amber-50/50 dark:from-orange-950/20 dark:to-amber-950/10">
         <CardContent className="p-4 flex flex-col justify-between h-[110px]">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">Temperatur Rata-Rata</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">Suhu Udara Rata-Rata</span>
             <Thermometer className="h-4 h-4 text-orange-500" />
           </div>
           <div className="mt-2">
@@ -33,8 +40,8 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ stats }) => {
       <Card className="hover:shadow-md transition-all duration-200 border-none bg-gradient-to-br from-red-50 to-orange-50/50 dark:from-red-950/20 dark:to-orange-950/10">
         <CardContent className="p-4 flex flex-col justify-between h-[110px]">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Temperatur Maksimum</span>
-            <Thermometer className="h-4 h-4 text-red-500 animate-pulse" />
+            <span className="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Suhu Udara Maksimum</span>
+            <ThermometerSun className="h-4 h-4 text-red-500 animate-pulse" />
           </div>
           <div className="mt-2">
             <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-50">
@@ -51,8 +58,8 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ stats }) => {
       <Card className="hover:shadow-md transition-all duration-200 border-none bg-gradient-to-br from-blue-50 to-cyan-50/50 dark:from-blue-950/20 dark:to-cyan-950/10">
         <CardContent className="p-4 flex flex-col justify-between h-[110px]">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Temperatur Minimum</span>
-            <Thermometer className="h-4 h-4 text-blue-500" />
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Suhu Udara Minimum</span>
+            <ThermometerSnowflake className="h-4 h-4 text-blue-500" />
           </div>
           <div className="mt-2">
             <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-50">
@@ -105,7 +112,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ stats }) => {
       <Card className="hover:shadow-md transition-all duration-200 border-none bg-gradient-to-br from-emerald-50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/10">
         <CardContent className="p-4 flex flex-col justify-between h-[110px]">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Kelembapan Rerata</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Kelembapan Relatif Rerata</span>
             <Droplets className="h-4 h-4 text-emerald-500" />
           </div>
           <div className="mt-2">

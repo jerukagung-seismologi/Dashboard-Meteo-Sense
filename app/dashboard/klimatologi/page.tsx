@@ -22,6 +22,7 @@ import { TemperatureCharts } from "@/components/climatology/TemperatureCharts";
 import { RainfallCharts } from "@/components/climatology/RainfallCharts";
 import { HumidityCharts } from "@/components/climatology/HumidityCharts";
 import { PressureCharts } from "@/components/climatology/PressureCharts";
+import { TempDewComparisonCharts } from "@/components/climatology/TempDewComparisonCharts";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -209,10 +210,11 @@ export default function KlimatologiPage() {
 
           {/* Detailed Parameter Analytics Tabs */}
           <Tabs defaultValue="temperature" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-900 border rounded-lg">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto p-1 bg-slate-100 dark:bg-slate-900 border rounded-lg">
               <TabsTrigger value="temperature" className="py-2.5">Suhu Udara</TabsTrigger>
-              <TabsTrigger value="rainfall" className="py-2.5">Curah Hujan</TabsTrigger>
+              <TabsTrigger value="comparison" className="py-2.5">Titik Embun</TabsTrigger>
               <TabsTrigger value="humidity" className="py-2.5">Kelembaban Relatif</TabsTrigger>
+              <TabsTrigger value="rainfall" className="py-2.5">Curah Hujan</TabsTrigger>
               <TabsTrigger value="pressure" className="py-2.5">Tekanan Udara</TabsTrigger>
             </TabsList>
 
@@ -248,6 +250,15 @@ export default function KlimatologiPage() {
             {/* Pressure Tab */}
             <TabsContent value="pressure" className="mt-6">
               <PressureCharts
+                points={data.points}
+                preset={preset}
+                isDarkMode={isDarkMode}
+              />
+            </TabsContent>
+
+            {/* Comparison Tab */}
+            <TabsContent value="comparison" className="mt-6">
+              <TempDewComparisonCharts
                 points={data.points}
                 preset={preset}
                 isDarkMode={isDarkMode}

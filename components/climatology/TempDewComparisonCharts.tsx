@@ -1,7 +1,6 @@
-// components/climatology/TemperatureCharts.tsx
 import React, { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Thermometer } from "lucide-react";
+import { Droplets } from "lucide-react";
 import { AggregatedPoint } from "@/lib/climatology/climatologyTypes";
 import dynamic from "next/dynamic";
 
@@ -9,23 +8,21 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
   loading: () => (
     <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground animate-pulse">
-      Memuat grafik Suhu Udara...
+      Memuat grafik Perbandingan Suhu & Titik Embun...
     </div>
   ),
 });
 
-interface TemperatureChartsProps {
+interface TempDewComparisonChartsProps {
   points: AggregatedPoint[];
   preset: string;
   isDarkMode: boolean;
-  stdDev: number;
 }
 
-export const TemperatureCharts: React.FC<TemperatureChartsProps> = ({
+export const TempDewComparisonCharts: React.FC<TempDewComparisonChartsProps> = ({
   points,
   preset,
   isDarkMode,
-  stdDev,
 }) => {
   const chartTheme = isDarkMode ? "dark" : "light";
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
@@ -69,11 +66,23 @@ export const TemperatureCharts: React.FC<TemperatureChartsProps> = ({
               <span className="font-bold">${item.value.toFixed(1)} °C</span>
             </div>`;
           });
+          
+          // Calculate Dew Point Depression if both values exist
+          const tempValue = params.find((p: any) => p.seriesName === "Suhu Udara (Rata-rata)")?.value;
+          const dewValue = params.find((p: any) => p.seriesName === "Titik Embun (Dew Point)")?.value;
+          if (tempValue !== undefined && dewValue !== undefined) {
+             const depression = tempValue - dewValue;
+             res += `<div className="flex justify-between gap-4 text-xs mt-2 pt-1 border-t border-slate-500/30">
+              <span className="text-slate-500">Dew Point Depression:</span>
+              <span className="font-bold text-orange-400">${depression.toFixed(1)} °C</span>
+            </div>`;
+          }
+
           return res;
         },
       },
       legend: {
-        data: ["Suhu Maksimum", "Suhu Rata-rata", "Suhu Minimum"],
+        data: ["Suhu Udara (Rata-rata)", "Titik Embun (Dew Point)"],
         textStyle: { color: textColor },
         bottom: 0,
       },
@@ -93,18 +102,19 @@ export const TemperatureCharts: React.FC<TemperatureChartsProps> = ({
       },
       series: [
         {
-          name: "Suhu Maksimum",
-          type: "line",
-          data: points.map((p) => p.temperatureMax),
-          itemStyle: { color: "#f87171" },
-          lineStyle: { type: "dashed", width: 1.5 },
-          smooth: true,
-        },
-        {
-          name: "Suhu Rata-rata",
+          name: "Suhu Udara (Rata-rata)",
           type: "line",
           data: points.map((p) => p.temperatureMean),
-          itemStyle: { color: "#14b8a6" },
+          itemStyle: { color: "#ef4444" }, // Red
+          lineStyle: { width: 3 },
+          smooth: true,
+          z: 2
+        },
+        {
+          name: "Titik Embun (Dew Point)",
+          type: "line",
+          data: points.map((p) => p.dewPointMean),
+          itemStyle: { color: "#3b82f6" }, // Blue
           lineStyle: { width: 3 },
           areaStyle: {
             color: {
@@ -114,21 +124,14 @@ export const TemperatureCharts: React.FC<TemperatureChartsProps> = ({
               x2: 0,
               y2: 1,
               colorStops: [
-                { offset: 0, color: "rgba(20, 184, 166, 0.25)" },
-                { offset: 1, color: "rgba(20, 184, 166, 0.0)" },
+                { offset: 0, color: "rgba(59, 130, 246, 0.4)" },
+                { offset: 1, color: "rgba(59, 130, 246, 0.0)" },
               ],
             },
           },
           smooth: true,
-        },
-        {
-          name: "Suhu Minimum",
-          type: "line",
-          data: points.map((p) => p.temperatureMin),
-          itemStyle: { color: "#60a5fa" },
-          lineStyle: { type: "dashed", width: 1.5 },
-          smooth: true,
-        },
+          z: 1
+        }
       ],
     };
   }, [points, preset, textColor, gridColor]);
@@ -137,10 +140,10 @@ export const TemperatureCharts: React.FC<TemperatureChartsProps> = ({
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
       <CardHeader>
         <CardTitle className="text-lg font-bold flex items-center gap-2">
-          <Thermometer className="h-5 w-5 text-orange-500" /> Analisis Tren Suhu Udara
+          <Droplets className="h-5 w-5 text-blue-500" /> Perbandingan Suhu Udara vs Titik Embun
         </CardTitle>
         <CardDescription>
-          Tren fluktuasi Suhu Udara maksimum, rata-rata, dan minimum (Standard Deviasi: ±{stdDev.toFixed(1)}°C)
+          Analisis hubungan antara suhu udara aktual dengan titik embun (Dew Point). Semakin dekat jarak antar garis, semakin tinggi kelembaban relatif (risiko kondensasi/hujan).
         </CardDescription>
       </CardHeader>
       <CardContent className="h-[380px] p-2">

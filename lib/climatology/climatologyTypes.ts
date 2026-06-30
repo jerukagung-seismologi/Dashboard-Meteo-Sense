@@ -18,6 +18,10 @@ export interface AggregatedPoint {
   pressureMax: number;
   pressureMin: number;
 
+  dewPointMean: number;
+  dewPointMax: number;
+  dewPointMin: number;
+
   rainfallAccumulation: number;
 }
 
@@ -37,6 +41,11 @@ export interface ClimatologyStats {
     min: number;
   };
   pressure: {
+    mean: number;
+    max: number;
+    min: number;
+  };
+  dewPoint: {
     mean: number;
     max: number;
     min: number;
