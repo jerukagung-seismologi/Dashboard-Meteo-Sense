@@ -13,6 +13,7 @@ import { Loader2, Settings2, Save, Undo2, AlertCircle } from "lucide-react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { StationCalibrationDocument, StationCalibrationDocumentSchema, DEFAULT_VARIABLE_CALIBRATION, CalibrationMethod } from "@/lib/calibration/calibrationTypes";
+import { getCalibrationDocument, saveCalibrationDocument } from "@/lib/calibration/calibrationCrud";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -97,17 +98,14 @@ export default function CalibrationManagementPage() {
     const loadConfig = async () => {
       setIsLoadingConfig(true);
       try {
-        const res = await fetch(`/api/calibration?stationId=${selectedStation}`);
-        if (res.ok) {
-          const data = await res.json();
+        const data = await getCalibrationDocument(selectedStation);
+        if (data) {
           form.reset({ ...data, stationId: selectedStation });
-        } else if (res.status === 404) {
-          // Initialize empty config
+        } else {
+          // Initialize empty config if not found
           const emptyConfig: any = { stationId: selectedStation, enabled: true };
           VARIABLES.forEach(v => { emptyConfig[v.key] = { ...DEFAULT_VARIABLE_CALIBRATION }; });
           form.reset(emptyConfig);
-        } else {
-          toast({ title: "Error", description: "Gagal memuat kalibrasi", variant: "destructive" });
         }
       } catch (err) {
         console.error(err);
@@ -122,12 +120,7 @@ export default function CalibrationManagementPage() {
   const onSubmit = async (data: StationCalibrationDocument) => {
     setIsSaving(true);
     try {
-      const res = await fetch('/api/calibration', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      if (!res.ok) throw new Error("Gagal menyimpan");
+      await saveCalibrationDocument(selectedStation, data);
       toast({ title: "Sukses", description: "Konfigurasi kalibrasi berhasil disimpan." });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
