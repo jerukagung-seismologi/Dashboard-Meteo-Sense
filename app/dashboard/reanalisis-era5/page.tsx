@@ -339,17 +339,17 @@ export default function ReanalysisPage() {
   );
 
   return (
-    <div className="space-y-6 pb-12 px-4 max-w-7xl mx-auto pt-6">
+    <div className="space-y-6 pb-12">
       {/* 1. Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 dark:border-slate-800">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 flex items-center gap-2">
-              <Compass className="h-8 w-8 text-indigo-500 animate-spin-slow" /> Reanalisis Klimatologi ERA5
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 flex items-center gap-2">
+              <Compass className="h-5 w-5 text-indigo-500 animate-spin-slow" /> Reanalisis Klimatologi ERA5
             </h2>
             <Sparkles className="h-5 w-5 text-indigo-500 animate-pulse hidden sm:inline" />
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-3xl">
+          <p className="text-muted-foreground dark:text-slate-400 mt-1">
             Dataset iklim global ECMWF ERA5 generasi kelima.
           </p>
         </div>

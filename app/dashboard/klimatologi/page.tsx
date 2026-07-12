@@ -23,6 +23,9 @@ import { RainfallCharts } from "@/components/climatology/RainfallCharts";
 import { HumidityCharts } from "@/components/climatology/HumidityCharts";
 import { PressureCharts } from "@/components/climatology/PressureCharts";
 import { TempDewComparisonCharts } from "@/components/climatology/TempDewComparisonCharts";
+import { useCalibrationMode } from "@/hooks/useCalibrationMode";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -49,6 +52,7 @@ export default function KlimatologiPage() {
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getUTCFullYear());
 
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const { isCorrectedMode, toggleMode } = useCalibrationMode();
 
   // Monitor dark mode changes using MutationObserver
   useEffect(() => {
@@ -88,14 +92,14 @@ export default function KlimatologiPage() {
   // Construct API Query String
   const apiPath = useMemo(() => {
     if (!sensorId) return null;
-    let queryParams = `sensorId=${sensorId}&preset=${preset}`;
+    let queryParams = `sensorId=${sensorId}&preset=${preset}&calibration=${isCorrectedMode}`;
     if (preset === "monthly") {
       queryParams += `&month=${selectedMonth}&year=${selectedYear}`;
     } else if (preset === "yearly") {
       queryParams += `&year=${selectedYear}`;
     }
     return `/api/climatology?${queryParams}`;
-  }, [sensorId, preset, selectedMonth, selectedYear]);
+  }, [sensorId, preset, selectedMonth, selectedYear, isCorrectedMode]);
 
   const { data, error, isLoading, mutate } = useSWR(apiPath, fetcher, {
     revalidateOnFocus: false,
@@ -140,7 +144,7 @@ export default function KlimatologiPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-50">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">
               Analisis Klimatologi
             </h2>
             <Sparkles className="h-5 w-5 text-indigo-500 animate-pulse hidden sm:inline" />
@@ -170,6 +174,20 @@ export default function KlimatologiPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          
+          <div className="flex flex-col gap-1 w-full sm:w-auto h-[58px] justify-center px-4 border-l border-slate-200 dark:border-slate-800">
+             <div className="flex items-center space-x-2">
+                <Switch 
+                  id="calibration-mode" 
+                  checked={isCorrectedMode} 
+                  onCheckedChange={toggleMode} 
+                />
+                <Label htmlFor="calibration-mode" className="text-sm cursor-pointer">
+                  {isCorrectedMode ? "Corrected Data" : "Raw Data"}
+                </Label>
+             </div>
+             <span className="text-[10px] text-slate-400">Display Mode</span>
           </div>
 
           {/* Preset, month, year selectors */}

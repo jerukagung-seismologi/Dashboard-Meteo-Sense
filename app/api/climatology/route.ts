@@ -5,6 +5,7 @@ import { buildUTCDateRange } from "@/lib/climatology/dateRangeBuilder";
 import { aggregateHourly } from "@/lib/climatology/aggregateHourly";
 import { aggregateDaily } from "@/lib/climatology/aggregateDaily";
 import { calculateStats } from "@/lib/climatology/calculateStatistics";
+import { withCalibration } from "@/lib/calibration/applyCalibration";
 
 export const revalidate = 60; // Cache for 1 minute
 
@@ -14,6 +15,8 @@ export async function GET(request: Request) {
   const preset = searchParams.get("preset"); // "daily" | "weekly" | "monthly" | "yearly"
   const monthStr = searchParams.get("month");
   const yearStr = searchParams.get("year");
+  const calibrationStr = searchParams.get("calibration");
+  const useCalibration = calibrationStr === "true";
 
   if (!sensorId) {
     return NextResponse.json({ error: "sensorId is required" }, { status: 400 });
@@ -33,7 +36,8 @@ export async function GET(request: Request) {
     console.log(`Climatology Server Query: sensorId=${sensorId}, preset=${preset}, startUTC=${start.toISOString()}, endUTC=${end.toISOString()}`);
 
     // Fetch raw telemetry logs from Realtime Database within UTC boundaries
-    const rawPoints = await fetchSensorDataByDateRange(sensorId, start.getTime(), end.getTime());
+    let rawPoints = await fetchSensorDataByDateRange(sensorId, start.getTime(), end.getTime());
+    rawPoints = await withCalibration(sensorId, rawPoints, useCalibration);
 
     // Aggregate data
     const dailyPoints = aggregateDaily(rawPoints);

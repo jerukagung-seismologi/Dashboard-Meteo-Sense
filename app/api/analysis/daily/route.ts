@@ -7,6 +7,7 @@ import {
   generateDailyHeatmapMatrix
 } from "@/lib/climatology/aggregateAnalysis";
 import { AnalysisStats } from "@/lib/climatology/analysisTypes";
+import { withCalibration } from "@/lib/calibration/applyCalibration";
 
 export const revalidate = 60; // Cache for 1 minute
 
@@ -14,6 +15,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const sensorId = searchParams.get("sensorId");
   const dateStr = searchParams.get("date"); // YYYY-MM-DD
+  const calibrationStr = searchParams.get("calibration");
+  const useCalibration = calibrationStr === "true";
 
   if (!sensorId) {
     return NextResponse.json({ error: "sensorId is required" }, { status: 400 });
@@ -35,7 +38,8 @@ export async function GET(request: Request) {
     const startTimestamp = Date.UTC(yyyy, mm, dd, 0, 0, 0, 0);
     const endTimestamp = Date.UTC(yyyy, mm, dd, 23, 59, 59, 999);
 
-    const rawPoints = await fetchSensorDataByDateRange(sensorId, startTimestamp, endTimestamp);
+    let rawPoints = await fetchSensorDataByDateRange(sensorId, startTimestamp, endTimestamp);
+    rawPoints = await withCalibration(sensorId, rawPoints, useCalibration);
     const points = aggregateHourlyAnalysis(rawPoints);
 
     const stats: AnalysisStats = {
