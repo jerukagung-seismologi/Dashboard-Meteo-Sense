@@ -1,7 +1,8 @@
-import { db } from "@/lib/ConfigFirebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import app from "@/lib/ConfigFirebase";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore/lite";
 import { StationCalibrationDocument, StationCalibrationDocumentSchema } from "./calibrationTypes";
 
+const dbLite = getFirestore(app);
 const COLLECTION_NAME = "sensor_calibration";
 
 /**
@@ -9,7 +10,7 @@ const COLLECTION_NAME = "sensor_calibration";
  */
 export async function getCalibrationDocument(stationId: string): Promise<StationCalibrationDocument | null> {
   try {
-    const docRef = doc(db, COLLECTION_NAME, stationId);
+    const docRef = doc(dbLite, COLLECTION_NAME, stationId);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
@@ -40,7 +41,7 @@ export async function saveCalibrationDocument(
   try {
     // Ensure payload conforms to schema before saving
     const validConfig = StationCalibrationDocumentSchema.parse(config);
-    const docRef = doc(db, COLLECTION_NAME, stationId);
+    const docRef = doc(dbLite, COLLECTION_NAME, stationId);
     
     // We do not use 'merge: true' because we want to explicitly overwrite the variables.
     await setDoc(docRef, validConfig);

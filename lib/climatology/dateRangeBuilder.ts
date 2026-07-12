@@ -8,7 +8,8 @@ export interface UTCDateRange {
 export function buildUTCDateRange(
   preset: string,
   year?: number,
-  month?: number
+  month?: number,
+  dasarian?: number
 ): UTCDateRange {
   const now = new Date();
   
@@ -43,6 +44,22 @@ export function buildUTCDateRange(
       // Calendar year UTC
       start = new Date(Date.UTC(targetYear, 0, 1, 0, 0, 0, 0));
       end = new Date(Date.UTC(targetYear, 11, 31, 23, 59, 59, 999));
+      break;
+    }
+    case "dasarian": {
+      // Dasarian 1: 1-10, Dasarian 2: 11-20, Dasarian 3: 21-End
+      const targetDasarian = dasarian && dasarian >= 1 && dasarian <= 3 ? dasarian : 1;
+      
+      if (targetDasarian === 1) {
+        start = new Date(Date.UTC(targetYear, targetMonth - 1, 1, 0, 0, 0, 0));
+        end = new Date(Date.UTC(targetYear, targetMonth - 1, 10, 23, 59, 59, 999));
+      } else if (targetDasarian === 2) {
+        start = new Date(Date.UTC(targetYear, targetMonth - 1, 11, 0, 0, 0, 0));
+        end = new Date(Date.UTC(targetYear, targetMonth - 1, 20, 23, 59, 59, 999));
+      } else {
+        start = new Date(Date.UTC(targetYear, targetMonth - 1, 21, 0, 0, 0, 0));
+        end = new Date(Date.UTC(targetYear, targetMonth, 0, 23, 59, 59, 999));
+      }
       break;
     }
     default: {

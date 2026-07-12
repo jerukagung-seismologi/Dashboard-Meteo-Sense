@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchDevice, Device } from "@/lib/FetchingDevice";
-import { fetchSensorMetadata, fetchSensorData, SensorDate } from "@/lib/FetchingSensorData";
+import { fetchSensorMetadata, fetchSensorData } from "@/lib/apiClient";
+import type { SensorDate } from "@/lib/FetchingSensorData";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

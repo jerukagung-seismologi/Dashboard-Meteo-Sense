@@ -14,6 +14,7 @@ import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { StationCalibrationDocument, StationCalibrationDocumentSchema, DEFAULT_VARIABLE_CALIBRATION, CalibrationMethod } from "@/lib/calibration/calibrationTypes";
 import { getCalibrationDocument, saveCalibrationDocument } from "@/lib/calibration/calibrationCrud";
+import { CalibrationPreviewChart } from "@/components/calibration/CalibrationPreviewChart";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -47,6 +48,7 @@ export default function CalibrationManagementPage() {
   const [selectedStation, setSelectedStation] = useState<string>("");
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [previewVar, setPreviewVar] = useState<string>("temperature");
 
   const form = useForm<StationCalibrationDocument>({
     resolver: zodResolver(StationCalibrationDocumentSchema),
@@ -289,6 +291,30 @@ export default function CalibrationManagementPage() {
               );
             })}
           </div>
+          
+          {/* Preview Chart */}
+          <Card className="border-slate-200 dark:border-slate-800">
+            <CardHeader className="py-3 px-4 border-b bg-slate-50/50 dark:bg-slate-900/50 flex flex-row items-center justify-between">
+              <div className="font-semibold text-sm">Visualisasi Preview Kalibrasi</div>
+              <Select value={previewVar} onValueChange={setPreviewVar}>
+                <SelectTrigger className="w-[200px] h-8 text-sm">
+                  <SelectValue placeholder="Pilih Variabel" />
+                </SelectTrigger>
+                <SelectContent>
+                  {VARIABLES.map(v => (
+                    <SelectItem key={v.key} value={v.key}>{v.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardHeader>
+            <CardContent className="p-0">
+              <CalibrationPreviewChart 
+                stationId={selectedStation} 
+                config={form.watch() as StationCalibrationDocument}
+                previewVariable={previewVar}
+              />
+            </CardContent>
+          </Card>
           
           <div className="flex justify-end gap-3 pt-6 border-t">
              <Button type="button" variant="outline" onClick={() => form.reset()}>

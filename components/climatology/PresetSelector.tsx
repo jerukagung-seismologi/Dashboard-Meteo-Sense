@@ -18,6 +18,8 @@ interface PresetSelectorProps {
   setSelectedMonth: (val: number) => void;
   selectedYear: number;
   setSelectedYear: (val: number) => void;
+  selectedDasarian?: number;
+  setSelectedDasarian?: (val: number) => void;
   isLoading: boolean;
   onRefresh: () => void;
 }
@@ -44,6 +46,8 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
   setSelectedMonth,
   selectedYear,
   setSelectedYear,
+  selectedDasarian,
+  setSelectedDasarian,
   isLoading,
   onRefresh,
 }) => {
@@ -64,14 +68,15 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
           <SelectContent>
             <SelectItem value="daily">Harian (UTC)</SelectItem>
             <SelectItem value="weekly">Mingguan (7 Hari)</SelectItem>
+            <SelectItem value="dasarian">10 Harian (Dasarian)</SelectItem>
             <SelectItem value="monthly">Bulanan Kalender</SelectItem>
             <SelectItem value="yearly">Tahunan Kalender</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Month Selector (only for monthly preset) */}
-      {preset === "monthly" && (
+      {/* Month Selector (only for monthly and dasarian presets) */}
+      {(preset === "monthly" || preset === "dasarian") && (
         <div className="flex flex-col gap-1 w-full sm:w-[150px]">
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Pilih Bulan</span>
           <Select
@@ -92,8 +97,8 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
         </div>
       )}
 
-      {/* Year Selector (for monthly and yearly presets) */}
-      {(preset === "monthly" || preset === "yearly") && (
+      {/* Year Selector (for monthly, dasarian, and yearly presets) */}
+      {(preset === "monthly" || preset === "dasarian" || preset === "yearly") && (
         <div className="flex flex-col gap-1 w-full sm:w-[130px]">
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Pilih Tahun</span>
           <Select
@@ -109,6 +114,26 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
                   {y}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Dasarian Selector (only for dasarian preset) */}
+      {preset === "dasarian" && selectedDasarian !== undefined && setSelectedDasarian && (
+        <div className="flex flex-col gap-1 w-full sm:w-[150px]">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Dasarian</span>
+          <Select
+            value={String(selectedDasarian)}
+            onValueChange={(val) => setSelectedDasarian(Number(val))}
+          >
+            <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+              <SelectValue placeholder="Pilih Dasarian" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Dasarian I (1-10)</SelectItem>
+              <SelectItem value="2">Dasarian II (11-20)</SelectItem>
+              <SelectItem value="3">Dasarian III (21-Akhir)</SelectItem>
             </SelectContent>
           </Select>
         </div>

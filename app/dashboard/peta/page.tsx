@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchAllDevices } from "@/lib/FetchingDevice";
-import { fetchSensorData } from "@/lib/FetchingSensorData";
+import { fetchSensorData } from "@/lib/apiClient";
 
 export default function PetaPage() {
   const { user } = useAuth();

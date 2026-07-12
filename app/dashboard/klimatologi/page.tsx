@@ -50,6 +50,7 @@ export default function KlimatologiPage() {
   // Filter selection states
   const [selectedMonth, setSelectedMonth] = useState<number>(() => new Date().getUTCMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getUTCFullYear());
+  const [selectedDasarian, setSelectedDasarian] = useState<number>(1);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
   const { isCorrectedMode, toggleMode } = useCalibrationMode();
@@ -95,11 +96,13 @@ export default function KlimatologiPage() {
     let queryParams = `sensorId=${sensorId}&preset=${preset}&calibration=${isCorrectedMode}`;
     if (preset === "monthly") {
       queryParams += `&month=${selectedMonth}&year=${selectedYear}`;
+    } else if (preset === "dasarian") {
+      queryParams += `&month=${selectedMonth}&year=${selectedYear}&dasarian=${selectedDasarian}`;
     } else if (preset === "yearly") {
       queryParams += `&year=${selectedYear}`;
     }
     return `/api/climatology?${queryParams}`;
-  }, [sensorId, preset, selectedMonth, selectedYear, isCorrectedMode]);
+  }, [sensorId, preset, selectedMonth, selectedYear, selectedDasarian, isCorrectedMode]);
 
   const { data, error, isLoading, mutate } = useSWR(apiPath, fetcher, {
     revalidateOnFocus: false,
@@ -190,7 +193,7 @@ export default function KlimatologiPage() {
              <span className="text-[10px] text-slate-400">Display Mode</span>
           </div>
 
-          {/* Preset, month, year selectors */}
+          {/* Preset, month, year, dasarian selectors */}
           <PresetSelector
             preset={preset}
             setPreset={setPreset}
@@ -198,6 +201,8 @@ export default function KlimatologiPage() {
             setSelectedMonth={setSelectedMonth}
             selectedYear={selectedYear}
             setSelectedYear={setSelectedYear}
+            selectedDasarian={selectedDasarian}
+            setSelectedDasarian={setSelectedDasarian}
             isLoading={isLoading}
             onRefresh={() => mutate()}
           />

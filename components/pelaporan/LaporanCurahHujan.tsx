@@ -5,7 +5,7 @@ import { Download, Calendar as CalendarIcon } from "lucide-react"
 import html2canvas from 'html2canvas';
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { fetchSensorDataByDateRange } from "@/lib/FetchingSensorData"
+import { fetchSensorDataByDateRange } from "@/lib/apiClient"
 import { useToast } from "@/hooks/use-toast"
 import { WeatherRecord, aggregateDailyUTC, formatIdDateDash } from "@/lib/weatherUtils"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";

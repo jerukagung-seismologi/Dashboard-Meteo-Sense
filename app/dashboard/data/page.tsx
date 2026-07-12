@@ -44,15 +44,17 @@ import { cn } from "@/lib/utils";
 import Loading from "@/app/loading";
 import { fetchAllDevices, Device } from "@/lib/FetchingDevice";
 import {
-  fetchSensorMetadata,
-  fetchSensorData,
   SensorDate,
-  fetchSensorDataByDateRange,
-  fetchSensorDataByValue,
   deleteSensorData,
   editSensorDataByTimestamp,
   deleteSensorDataByTimestamp,
 } from "@/lib/FetchingSensorData";
+import {
+  fetchSensorMetadata,
+  fetchSensorData,
+  fetchSensorDataByDateRange,
+  fetchSensorDataByValue,
+} from "@/lib/apiClient";
 import { filterByTimeRange, getPlotlyTimeJakarta } from "@/lib/timeUtils";
 import { fetchRecentAlerts, LogEvent } from "@/lib/FetchingLogs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -317,7 +319,7 @@ export default function DataPage() {
     try {
       const rangeMs = selectedPeriod.valueInMinutes * 60000;
       const now = Date.now();
-      const rawData = await fetchSensorDataByDateRange(sensorId, now - rangeMs, now);
+      const rawData = await fetchSensorDataByDateRange(sensorId, now - rangeMs, now, false);
       const data = filterByTimeRange(rawData, rangeMs);
       processAndSetData(data);
     } catch (err: any) {
@@ -341,12 +343,13 @@ export default function DataPage() {
         data = await fetchSensorDataByDateRange(
           sensorId,
           startTimestamp,
-          endTimestamp
+          endTimestamp,
+          false
         );
       } else {
         const rangeMs = selectedPeriod.valueInMinutes * 60000;
         const now = Date.now();
-        const rawData = await fetchSensorDataByDateRange(sensorId, now - rangeMs, now);
+        const rawData = await fetchSensorDataByDateRange(sensorId, now - rangeMs, now, false);
         data = filterByTimeRange(rawData, rangeMs);
       }
       processAndSetData(data);
@@ -377,7 +380,7 @@ export default function DataPage() {
         setLoading(false);
         return;
       }
-      const data = await fetchSensorDataByValue(sensorId, searchField, value);
+      const data = await fetchSensorDataByValue(sensorId, searchField, value, false);
       processTableData(data);
       setActiveTab("table");
     } catch (err: any) {

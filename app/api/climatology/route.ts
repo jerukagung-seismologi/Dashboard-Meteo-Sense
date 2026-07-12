@@ -5,8 +5,6 @@ import { buildUTCDateRange } from "@/lib/climatology/dateRangeBuilder";
 import { aggregateHourly } from "@/lib/climatology/aggregateHourly";
 import { aggregateDaily } from "@/lib/climatology/aggregateDaily";
 import { calculateStats } from "@/lib/climatology/calculateStatistics";
-import { withCalibration } from "@/lib/calibration/applyCalibration";
-
 export const revalidate = 60; // Cache for 1 minute
 
 export async function GET(request: Request) {
@@ -15,6 +13,7 @@ export async function GET(request: Request) {
   const preset = searchParams.get("preset"); // "daily" | "weekly" | "monthly" | "yearly"
   const monthStr = searchParams.get("month");
   const yearStr = searchParams.get("year");
+  const dasarianStr = searchParams.get("dasarian");
   const calibrationStr = searchParams.get("calibration");
   const useCalibration = calibrationStr === "true";
 
@@ -29,15 +28,14 @@ export async function GET(request: Request) {
   try {
     const year = yearStr ? Number(yearStr) : undefined;
     const month = monthStr ? Number(monthStr) : undefined;
+    const dasarian = dasarianStr ? Number(dasarianStr) : undefined;
 
     // Get strict UTC date boundaries
-    const { start, end } = buildUTCDateRange(preset, year, month);
+    const { start, end } = buildUTCDateRange(preset, year, month, dasarian);
 
     console.log(`Climatology Server Query: sensorId=${sensorId}, preset=${preset}, startUTC=${start.toISOString()}, endUTC=${end.toISOString()}`);
 
-    // Fetch raw telemetry logs from Realtime Database within UTC boundaries
-    let rawPoints = await fetchSensorDataByDateRange(sensorId, start.getTime(), end.getTime());
-    rawPoints = await withCalibration(sensorId, rawPoints, useCalibration);
+    const rawPoints = await fetchSensorDataByDateRange(sensorId, start.getTime(), end.getTime(), useCalibration);
 
     // Aggregate data
     const dailyPoints = aggregateDaily(rawPoints);

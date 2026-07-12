@@ -10,7 +10,8 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { fetchSensorDataByDateRange, SensorDate } from "@/lib/FetchingSensorData"
+import { fetchSensorDataByDateRange } from "@/lib/apiClient"
+import type { SensorDate } from "@/lib/FetchingSensorData"
 import { useToast } from "@/hooks/use-toast"
 import {
   WeatherRecord,

@@ -9,8 +9,6 @@ import {
   getWibTimeParts
 } from "@/lib/climatology/aggregateAnalysis";
 import { AnalysisStats } from "@/lib/climatology/analysisTypes";
-import { withCalibration } from "@/lib/calibration/applyCalibration";
-
 export const revalidate = 60; // Cache for 1 minute
 
 export async function GET(request: Request) {
@@ -46,8 +44,7 @@ export async function GET(request: Request) {
 
     console.log(`Weekly Analysis API Request: sensorId=${sensorId}, startUTC=${new Date(startTimestamp).toISOString()}, endUTC=${new Date(endTimestamp).toISOString()}`);
 
-    let rawPoints = await fetchSensorDataByDateRange(sensorId, startTimestamp, endTimestamp);
-    rawPoints = await withCalibration(sensorId, rawPoints, useCalibration);
+    const rawPoints = await fetchSensorDataByDateRange(sensorId, startTimestamp, endTimestamp, useCalibration);
     
     // 1. Weekly Hourly points (168 points max)
     const hourlyWeekly = aggregateHourlyAnalysis(rawPoints);

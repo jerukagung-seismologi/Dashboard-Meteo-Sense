@@ -13,6 +13,7 @@ import {
   orderByChild,
   equalTo,
 } from "firebase/database"; // Tambahkan 'orderByChild' dan 'equalTo'
+import { withCalibration } from "@/lib/calibration/applyCalibration";
 
 export interface SensorValue {
   temperature: number;
@@ -48,7 +49,8 @@ export interface SensorMetaData {
 export async function fetchSensorDataByValue(
   sensorId: string,
   field: string,
-  value: number
+  value: number,
+  applyCalibration: boolean = true
 ): Promise<SensorDate[]> {
   console.log("fetchSensorDataByValue called with:", { sensorId, field, value });
   try {
@@ -106,7 +108,7 @@ export async function fetchSensorDataByValue(
       });
     });
 
-    return results;
+    return await withCalibration(sensorId, results, applyCalibration);
   } catch (error) {
     console.error(`Gagal mengambil data sensor berdasarkan nilai untuk field ${field}:`, error);
     throw error;
@@ -124,7 +126,8 @@ export async function fetchSensorDataByValue(
 export async function fetchSensorDataByDateRange(
   sensorId: string,
   startTimestamp: number,
-  endTimestamp: number
+  endTimestamp: number,
+  applyCalibration: boolean = true
 ): Promise<SensorDate[]> {
   // Log parameter yang diterima
   console.log("fetchSensorDataByTimestampRange called with:", {
@@ -204,7 +207,7 @@ export async function fetchSensorDataByDateRange(
     });
 
     // Data dari query rentang sudah otomatis terurut secara kronologis
-    return results;
+    return await withCalibration(sensorId, results, applyCalibration);
   } catch (error) {
     console.error("Gagal mengambil data sensor dalam rentang waktu:", error);
     throw error;
@@ -287,6 +290,7 @@ export async function fetchSensorMetadata(
 export async function fetchSensorData(
   sensorId: string,
   limit: number,
+  applyCalibration: boolean = true
 ): Promise<SensorDate[]> {
   console.log("fetchSensorData called with:", { sensorId, limit });
   
@@ -358,8 +362,8 @@ export async function fetchSensorData(
     });
 
     // 4. Balik urutan array agar data terbaru berada di indeks pertama
-    const reversedResults = results;
-    return reversedResults;
+    const reversedResults = results.reverse(); // FIX: Array reversed
+    return await withCalibration(sensorId, reversedResults, applyCalibration);
 
   } 
   catch (error) {

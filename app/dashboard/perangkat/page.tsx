@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react"
 import { fetchAllDevices, addDevice, updateDevice, deleteDevice, generateDeviceToken, Device } from "@/lib/FetchingDevice"
 import { fetchDeviceLocation } from "@/lib/FetchingLocation"
-import { fetchSensorMetadata } from "@/lib/FetchingSensorData"
+import { fetchSensorMetadata } from "@/lib/apiClient"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"

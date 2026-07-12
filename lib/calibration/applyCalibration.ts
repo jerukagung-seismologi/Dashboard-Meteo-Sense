@@ -1,4 +1,4 @@
-import { SensorDate, SensorValue } from "@/lib/FetchingSensorData";
+import type { SensorDate, SensorValue } from "@/lib/FetchingSensorData";
 import { getCalibrationDocument } from "./calibrationCrud";
 import { applyCalibrationToSeries } from "./calibrationEngine";
 import { StationCalibrationDocument } from "./calibrationTypes";
