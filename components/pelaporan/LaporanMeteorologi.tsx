@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { FileImage, FileType, Printer, Download, ThermometerSun, Droplets, Wind, Gauge, CalendarIcon } from "lucide-react"
+import { FileImage, FileType, Printer, Download, ThermometerSun, Droplets, Wind, Gauge, CalendarIcon, Loader2 } from "lucide-react"
 import { type DateRange } from "react-day-picker"
 import dynamic from "next/dynamic"
 import { Calendar } from "@/components/ui/calendar"
@@ -45,7 +45,12 @@ const TripleLineChart = ({ data, dataKeyMax, dataKeyMin, dataKeyAvg, name, color
     legend: { data: ['Maksimum', 'Rata-rata', 'Minimum'], top: 0 },
     grid: { left: '3%', right: '3%', bottom: '3%', top: '40px', containLabel: true },
     xAxis: { type: 'category', data: dates, splitLine: { show: false } },
-    yAxis: { type: 'value', name: unit, splitLine: { lineStyle: { color: '#f3f4f6' } } },
+    yAxis: { 
+      type: 'value', 
+      name: unit, 
+      scale: true, // Do not start at 0, adjust dynamically based on data min/max
+      splitLine: { lineStyle: { color: '#f3f4f6' } } 
+    },
     series: [
       { name: 'Maksimum', type: 'line', data: data.map((d: any) => d[dataKeyMax]), itemStyle: { color: colorMax }, smooth: true, lineStyle: { width: 2 } },
       { name: 'Rata-rata', type: 'line', data: data.map((d: any) => d[dataKeyAvg]), itemStyle: { color: colorAvg }, smooth: true, lineStyle: { width: 2.5, type: 'dashed' } },
@@ -299,7 +304,7 @@ export default function LaporanMeteorologi({ sensorId, sensorName, displayName }
                     Kembali ke Minggu Ini
                   </Button>
                 )}
-                {loading && <span className="text-xs text-blue-500 animate-pulse">Memuat...</span>}
+                 {loading && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
               </div>
             )}
 
@@ -355,7 +360,7 @@ export default function LaporanMeteorologi({ sensorId, sensorName, displayName }
                     </span>
                   </div>
                 </div>
-                {loading && <span className="text-xs text-indigo-500 animate-pulse">Memuat...</span>}
+                 {loading && <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />}
               </div>
             )}
 
@@ -387,8 +392,15 @@ export default function LaporanMeteorologi({ sensorId, sensorName, displayName }
                     />
                   </PopoverContent>
                 </Popover>
-                <Button onClick={generateReport} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
-                  {loading ? 'Memproses...' : 'Tampilkan'}
+                 <Button onClick={generateReport} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Memproses...</span>
+                    </>
+                  ) : (
+                    'Proses Laporan'
+                  )}
                 </Button>
               </div>
             )}

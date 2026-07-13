@@ -73,7 +73,12 @@ const TemperatureTrendChart = ({ data }: { data: WeatherRecord[] }) => {
     legend: { data: ['Max', 'Avg', 'Min'], top: 0 },
     grid: { left: '3%', right: '3%', bottom: '3%', top: '40px', containLabel: true },
     xAxis: { type: 'category', data: dates, splitLine: { show: false } },
-    yAxis: { type: 'value', name: '°C', splitLine: { lineStyle: { color: '#f3f4f6' } } },
+    yAxis: { 
+      type: 'value', 
+      name: '°C', 
+      scale: true, // Do not start at 0, adjust dynamically based on min/max
+      splitLine: { lineStyle: { color: '#f3f4f6' } } 
+    },
     series: [
       { name: 'Max', type: 'line', data: data.map(d => d.temperatureMax), itemStyle: { color: '#ef4444' }, smooth: true },
       { name: 'Avg', type: 'line', data: data.map(d => d.temperatureAvg), itemStyle: { color: '#f59e0b' }, lineStyle: { width: 3 }, smooth: true },
@@ -92,7 +97,12 @@ const TemperatureBoxPlot = ({ rawData }: { rawData: SensorDate[] }) => {
     tooltip: { trigger: 'item' },
     grid: { left: '8%', right: '8%', bottom: '15%', top: '10%', containLabel: true },
     xAxis: { type: 'category', data: ['Distribusi Suhu'] },
-    yAxis: { type: 'value', name: '°C', splitLine: { lineStyle: { color: '#f3f4f6' } } },
+    yAxis: { 
+      type: 'value', 
+      name: '°C', 
+      scale: true, // Do not start at 0, adjust dynamically
+      splitLine: { lineStyle: { color: '#f3f4f6' } } 
+    },
     series: [
       {
         name: 'Suhu',
@@ -147,7 +157,12 @@ const MetricTrendChart = ({ data, dataKey, name, color, unit }: { data: WeatherR
     tooltip: { trigger: 'axis' },
     grid: { left: '3%', right: '3%', bottom: '5%', top: '20px', containLabel: true },
     xAxis: { type: 'category', data: dates, splitLine: { show: false } },
-    yAxis: { type: 'value', name: unit, splitLine: { lineStyle: { color: '#f3f4f6' } } },
+    yAxis: { 
+      type: 'value', 
+      name: unit, 
+      scale: unit !== 'mm', // Start at 0 only for rainfall-related metrics
+      splitLine: { lineStyle: { color: '#f3f4f6' } } 
+    },
     series: [
       { name, type: 'line', data: data.map(d => (d[dataKey] as number) ?? 0), itemStyle: { color }, smooth: true }
     ]

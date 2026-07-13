@@ -12,7 +12,8 @@ import {
   Gauge, 
   CloudRain, 
   Clock3, 
-  MapPinned 
+  MapPinned,
+  Loader2
 } from "lucide-react"
 import { format, subDays } from "date-fns"
 import { id } from "date-fns/locale"
@@ -225,8 +226,15 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
                   />
                 </PopoverContent>
               </Popover>
-              <Button onClick={() => generateReport(selectedDate)} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
-                {loading ? 'Memuat...' : 'Tampilkan'}
+              <Button onClick={() => generateReport(selectedDate)} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2">
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Memproses...</span>
+                  </>
+                ) : (
+                  'Proses Laporan'
+                )}
               </Button>
               <Button variant="outline" onClick={() => { const y = getYesterday(); setSelectedDate(y); generateReport(y); }}>
                 Kemarin
@@ -247,6 +255,14 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
           </div>
         </CardContent>
       </Card>
+
+      {/* Loading Pane */}
+      {loading && (
+        <div className="h-[400px] w-full flex flex-col items-center justify-center gap-3 bg-white rounded-[32px] border border-slate-200 shadow-sm text-slate-500">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+          <p className="text-sm font-semibold tracking-wide animate-pulse">Sedang memproses laporan harian...</p>
+        </div>
+      )}
 
       {/* Live Preview Container (Visual Infographic) */}
       {!loading && dayRecord && (
