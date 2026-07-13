@@ -68,6 +68,39 @@ export default function AnalisisDashboardPage() {
     d.setDate(d.getDate() - 6); // Default 7 days period ending today
     return d;
   });
+  const [periodDays, setPeriodDays] = useState<number>(7);
+
+  function selectMingguan() {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Senin
+    const start = new Date(now);
+    start.setDate(diff);
+    start.setHours(0, 0, 0, 0);
+    setWeeklyStartDate(start);
+    setPeriodDays(7);
+  }
+
+  function selectDasarian() {
+    const now = new Date();
+    const date = now.getDate();
+    const start = new Date(now);
+    
+    let days = 10;
+    if (date <= 10) {
+      start.setDate(1);
+    } else if (date <= 20) {
+      start.setDate(11);
+    } else {
+      start.setDate(21);
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + 1, 0); // last day
+      days = end.getDate() - 20; 
+    }
+    start.setHours(0, 0, 0, 0);
+    setWeeklyStartDate(start);
+    setPeriodDays(days);
+  }
 
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -122,8 +155,8 @@ export default function AnalisisDashboardPage() {
 
   const weeklyApiPath = useMemo(() => {
     if (!sensorId) return null;
-    return `/api/analysis/weekly?sensorId=${sensorId}&startDate=${formatYmd(weeklyStartDate)}`;
-  }, [sensorId, weeklyStartDate]);
+    return `/api/analysis/weekly?sensorId=${sensorId}&startDate=${formatYmd(weeklyStartDate)}&days=${periodDays}`;
+  }, [sensorId, weeklyStartDate, periodDays]);
 
   // SWR Hooks
   const {
@@ -214,7 +247,7 @@ export default function AnalisisDashboardPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `analisis_mingguan_${sensorId}_${formatYmd(weeklyStartDate)}.csv`);
+      link.setAttribute("download", `analisis_berkala_${sensorId}_${formatYmd(weeklyStartDate)}.csv`);
       link.click();
       URL.revokeObjectURL(url);
     }
@@ -276,33 +309,44 @@ export default function AnalisisDashboardPage() {
                 </PopoverContent>
               </Popover>
             ) : (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal text-slate-700 dark:text-slate-200"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4 text-blue-500" />
-                    {weeklyStartDate ? (
-                      <>
-                        Mulai: {format(weeklyStartDate, "dd MMM yyyy", { locale: id })}
-                      </>
-                    ) : (
-                      <span>Pilih Mulai Tanggal</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={weeklyStartDate}
-                    onSelect={(date) => date && setWeeklyStartDate(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <div className="flex flex-wrap items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[240px] justify-start text-left font-normal text-slate-700 dark:text-slate-200"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4 text-blue-500" />
+                      {weeklyStartDate ? (
+                        <>
+                          Mulai: {format(weeklyStartDate, "dd MMM yyyy", { locale: id })} ({periodDays} Hari)
+                        </>
+                      ) : (
+                        <span>Pilih Mulai Tanggal</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={weeklyStartDate}
+                      onSelect={(date) => {
+                        if (date) {
+                          setWeeklyStartDate(date);
+                        }
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <div className="flex gap-2 border-l border-slate-200 pl-2 ml-1">
+                  <Button variant="outline" size="sm" onClick={selectMingguan} className="text-sm">Mingguan (Sen-Min)</Button>
+                  <Button variant="outline" size="sm" onClick={selectDasarian} className="text-sm">Dasarian</Button>
+                </div>
+              </div>
             )}
 
             {/* Action buttons */}
@@ -335,7 +379,7 @@ export default function AnalisisDashboardPage() {
             <SummaryCardsAnalysis stats={dailyData.stats} scopeLabel="Harian" />
           )}
           {activeTab === "weekly" && weeklyData?.stats && (
-            <SummaryCardsAnalysis stats={weeklyData.stats} scopeLabel="Mingguan" />
+            <SummaryCardsAnalysis stats={weeklyData.stats} scopeLabel={periodDays === 7 ? "Mingguan" : "Dasarian"} />
           )}
         </>
       )}
@@ -354,7 +398,7 @@ export default function AnalisisDashboardPage() {
               value="weekly"
               className="px-2 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent text-sm font-semibold text-slate-500 dark:text-slate-400 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 transition-all"
             >
-              Analisis Mingguan & Distribusi
+              Analisis Berkala & Distribusi
             </TabsTrigger>
           </TabsList>
         </div>
@@ -422,7 +466,7 @@ export default function AnalisisDashboardPage() {
                 </>
               ) : (
                 <div className="h-[250px] flex items-center justify-center border border-dashed rounded-lg text-slate-400 dark:text-slate-500">
-                  Tidak ada observasi cuaca pada periode mingguan terpilih
+                  Tidak ada observasi cuaca pada periode terpilih
                 </div>
               )}
             </TabsContent>

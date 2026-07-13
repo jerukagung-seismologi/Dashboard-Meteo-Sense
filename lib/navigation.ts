@@ -29,7 +29,7 @@ export const dashboardNavigation: NavigationItem[] = [
   { name: "Perangkat", href: "/dashboard/perangkat", icon: Network, roles: ['Admin'] },
   { name: "Sistem Geografis", href: "/dashboard/peta", icon: Earth, roles: ['Admin'] },
   { name: "Agrometeorologi", href: "/dashboard/agromet", icon: Sprout, roles: ['Admin', 'User'] },
-  { name: "Analisis Prediksi", href: "/dashboard/analisis", icon: ChartNoAxesCombined, roles: ['Admin'] },
+  { name: "Analisis Meteorologi", href: "/dashboard/analisis", icon: ChartNoAxesCombined, roles: ['Admin'] },
   { name: "Analisis Klimatologi", href: "/dashboard/klimatologi", icon: TrendingUp, roles: ['Admin', 'User'] },
   { name: "Reanalisis ERA5", href: "/dashboard/reanalisis-era5", icon: Compass, roles: ['Admin', 'User'] },
   { name: "Basis Data", href: "/dashboard/data", icon: Database, roles: ['Admin'] },

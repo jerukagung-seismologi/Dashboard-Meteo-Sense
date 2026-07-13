@@ -53,7 +53,6 @@ export default function KlimatologiPage() {
   const [selectedDasarian, setSelectedDasarian] = useState<number>(1);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const { isCorrectedMode, toggleMode } = useCalibrationMode();
 
   // Monitor dark mode changes using MutationObserver
   useEffect(() => {
@@ -93,7 +92,7 @@ export default function KlimatologiPage() {
   // Construct API Query String
   const apiPath = useMemo(() => {
     if (!sensorId) return null;
-    let queryParams = `sensorId=${sensorId}&preset=${preset}&calibration=${isCorrectedMode}`;
+    let queryParams = `sensorId=${sensorId}&preset=${preset}&calibration=true`;
     if (preset === "monthly") {
       queryParams += `&month=${selectedMonth}&year=${selectedYear}`;
     } else if (preset === "dasarian") {
@@ -102,7 +101,7 @@ export default function KlimatologiPage() {
       queryParams += `&year=${selectedYear}`;
     }
     return `/api/climatology?${queryParams}`;
-  }, [sensorId, preset, selectedMonth, selectedYear, selectedDasarian, isCorrectedMode]);
+  }, [sensorId, preset, selectedMonth, selectedYear, selectedDasarian]);
 
   const { data, error, isLoading, mutate } = useSWR(apiPath, fetcher, {
     revalidateOnFocus: false,
@@ -177,20 +176,6 @@ export default function KlimatologiPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          
-          <div className="flex flex-col gap-1 w-full sm:w-auto h-[58px] justify-center px-4 border-l border-slate-200 dark:border-slate-800">
-             <div className="flex items-center space-x-2">
-                <Switch 
-                  id="calibration-mode" 
-                  checked={isCorrectedMode} 
-                  onCheckedChange={toggleMode} 
-                />
-                <Label htmlFor="calibration-mode" className="text-sm cursor-pointer">
-                  {isCorrectedMode ? "Corrected Data" : "Raw Data"}
-                </Label>
-             </div>
-             <span className="text-[10px] text-slate-400">Display Mode</span>
           </div>
 
           {/* Preset, month, year, dasarian selectors */}

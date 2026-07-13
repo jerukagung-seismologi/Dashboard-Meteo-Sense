@@ -16,7 +16,9 @@ export async function GET(request: Request) {
   const sensorId = searchParams.get("sensorId");
   const startDateStr = searchParams.get("startDate"); // YYYY-MM-DD
   const calibrationStr = searchParams.get("calibration");
+  const daysStr = searchParams.get("days");
   const useCalibration = calibrationStr === "true";
+  const days = daysStr ? parseInt(daysStr, 10) : 7;
 
   if (!sensorId) {
     return NextResponse.json({ error: "sensorId is required" }, { status: 400 });
@@ -39,8 +41,8 @@ export async function GET(request: Request) {
     const dd = targetDate.getUTCDate();
 
     const startTimestamp = Date.UTC(yyyy, mm, dd, 0, 0, 0, 0);
-    // 7 days = 7 * 24 * 60 * 60 * 1000 ms
-    const endTimestamp = startTimestamp + 7 * 24 * 60 * 60 * 1000 - 1;
+    // Dynamic days = days * 24 * 60 * 60 * 1000 ms
+    const endTimestamp = startTimestamp + days * 24 * 60 * 60 * 1000 - 1;
 
     console.log(`Weekly Analysis API Request: sensorId=${sensorId}, startUTC=${new Date(startTimestamp).toISOString()}, endUTC=${new Date(endTimestamp).toISOString()}`);
 

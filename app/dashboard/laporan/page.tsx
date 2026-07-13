@@ -8,6 +8,9 @@ import { fetchAllDevices } from "@/lib/FetchingDevice"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import LaporanBulanan from "@/components/pelaporan/LaporanBulanan"
 import LaporanCurahHujan from "@/components/pelaporan/LaporanCurahHujan"
+import LaporanMeteorologi from "@/components/pelaporan/LaporanMeteorologi"
+import LaporanKlimatologi from "@/components/pelaporan/LaporanKlimatologi"
+import LaporanHarian from "@/components/pelaporan/LaporanHarian"
 
 // --- MAIN PAGE COMPONENT ---
 export default function PelaporanPage() {
@@ -89,16 +92,28 @@ export default function PelaporanPage() {
         {error && <div className="p-4 text-center text-red-600 bg-red-100 rounded-md">{error}</div>}
 
         {!loading && !error && sensorId && (
-          <Tabs defaultValue="bulanan" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 max-w-md">
-              <TabsTrigger value="bulanan">Laporan Bulanan</TabsTrigger>
+          <Tabs defaultValue="harian" className="w-full">
+            <TabsList className="grid w-full grid-cols-5 max-w-4xl">
+              <TabsTrigger value="harian">Laporan Harian</TabsTrigger>
+              <TabsTrigger value="bulanan">Ringkasan Bulanan</TabsTrigger>
               <TabsTrigger value="hujan">Curah Hujan Harian</TabsTrigger>
+              <TabsTrigger value="meteorologi">Analisis Meteorologi</TabsTrigger>
+              <TabsTrigger value="klimatologi">Analisis Klimatologi</TabsTrigger>
             </TabsList>
+            <TabsContent value="harian" className="pt-4">
+              <LaporanHarian sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />
+            </TabsContent>
             <TabsContent value="bulanan" className="pt-4">
               <LaporanBulanan sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />
             </TabsContent>
             <TabsContent value="hujan" className="pt-4">
               <LaporanCurahHujan sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />
+            </TabsContent>
+            <TabsContent value="meteorologi" className="pt-4">
+              <LaporanMeteorologi sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />
+            </TabsContent>
+            <TabsContent value="klimatologi" className="pt-4">
+              <LaporanKlimatologi sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />
             </TabsContent>
           </Tabs>
         )}

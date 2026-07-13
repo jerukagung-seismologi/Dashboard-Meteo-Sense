@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Calendar as CalendarIcon, Printer, Download, Thermometer, Droplets, Wind, Gauge, Sun } from "lucide-react"
-import { useReactToPrint } from "react-to-print"
+import { FileImage, FileType, Printer, Download, Thermometer, Droplets, Wind, Gauge, CalendarIcon } from "lucide-react"
 import { type DateRange } from "react-day-picker"
 import dynamic from "next/dynamic"
 import { Calendar } from "@/components/ui/calendar"
@@ -27,6 +26,10 @@ import {
   calculateDataQuality,
   exportToCSV,
 } from "@/lib/weatherUtils"
+import { format } from "date-fns"
+import { id } from "date-fns/locale"
+import { PrintLayout } from "./PrintLayout"
+import { generateCanvasFromDOM, exportAsPNG, exportAsJPEG, exportAsPDF, printCanvas } from "@/lib/exportUtils"
 
 // Dynamically import ReactECharts to avoid SSR issues
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
@@ -178,6 +181,8 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: { 
   const [rawData, setRawData] = useState<SensorDate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const reportId = "bulanan-print-area";
 
   useEffect(() => {
     if (!dateRange) {
@@ -225,11 +230,30 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: { 
     }
   }
 
-  const componentRef = useRef<HTMLElement>(null);
-  const handlePrint = useReactToPrint({
-    contentRef: componentRef,
-    documentTitle: `Laporan Cuaca - ${sensorName}`,
-  });
+  const handleExport = async (type: 'pdf' | 'png' | 'jpg' | 'print') => {
+    if (weatherData.length === 0) return;
+    setIsExporting(true);
+    toast({ title: "Memproses Laporan...", description: "Mohon tunggu sebentar, sedang merender." });
+    
+    setTimeout(async () => {
+      const canvas = await generateCanvasFromDOM(reportId);
+      if (!canvas) {
+        toast({ variant: "destructive", title: "Error", description: "Gagal membuat gambar dari laporan." });
+        setIsExporting(false);
+        return;
+      }
+      
+      const filename = `Laporan_Bulanan_${sensorName.replace(/\s+/g, '_')}_${formatYMD(new Date())}`;
+      
+      if (type === 'png') exportAsPNG(canvas, filename);
+      else if (type === 'jpg') exportAsJPEG(canvas, filename);
+      else if (type === 'pdf') exportAsPDF([canvas], filename, 'portrait');
+      else if (type === 'print') printCanvas(canvas, 'portrait');
+      
+      toast({ title: "Berhasil", description: "Laporan siap." });
+      setIsExporting(false);
+    }, 100);
+  };
 
   const handleExportCSV = () => {
     exportToCSV(weatherData, sensorName);
@@ -276,7 +300,7 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: { 
                 <Button variant={"outline"} className={cn("w-[260px] justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {dateRange?.from ? (
-                    dateRange.to ? `${formatIdDateDash(dateRange.from)} - ${formatIdDateDash(dateRange.to)}` : formatIdDateDash(dateRange.from)
+                    dateRange.to ? `${formatIdDateShort(dateRange.from)} - ${formatIdDateShort(dateRange.to)}` : formatIdDateShort(dateRange.from)
                   ) : "Pilih Bulan"}
                 </Button>
               </PopoverTrigger>
@@ -294,39 +318,37 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: { 
             <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={loadData} disabled={loading}>
               {loading ? "Memproses..." : "Buat Laporan"}
             </Button>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleExportCSV} disabled={weatherData.length === 0}>
+            <div className="flex flex-wrap items-center gap-2 mt-4 md:mt-0">
+            <Button variant="outline" onClick={handleExportCSV} disabled={weatherData.length === 0}>
               <Download className="mr-2 h-4 w-4" /> CSV
             </Button>
-            <Button className="bg-slate-800 hover:bg-slate-900 text-white" onClick={handlePrint} disabled={weatherData.length === 0}>
-              <Printer className="mr-2 h-4 w-4" /> Cetak PDF
+            <Button variant="outline" onClick={() => handleExport('png')} disabled={weatherData.length === 0 || isExporting}>
+              <FileImage className="mr-2 h-4 w-4 text-green-600" /> PNG
             </Button>
+            <Button variant="outline" onClick={() => handleExport('pdf')} disabled={weatherData.length === 0 || isExporting}>
+              <FileType className="mr-2 h-4 w-4 text-red-600" /> PDF
+            </Button>
+            <Button className="bg-slate-800 hover:bg-slate-900 text-white" onClick={() => handleExport('print')} disabled={weatherData.length === 0 || isExporting}>
+              <Printer className="mr-2 h-4 w-4" /> Cetak
+            </Button>
+            </div>
           </div>
         </CardHeader>
       </Card>
 
       {error && <div className="text-red-600 p-4 bg-red-50 rounded-md border border-red-200">{error}</div>}
-
-      <main ref={componentRef} className="mx-auto bg-white text-slate-900 print:shadow-none min-h-screen print:text-sm">
-        <style type="text/css" media="print">
-          {`
-            @page { size: A4 portrait; margin: 15mm; }
-          `}
-        </style>
-        {weatherData.length > 0 && (
-          <div className="p-6 print:p-2 space-y-8 print:space-y-4">
-            
-            {/* Header */}
-            <header className="border-b-2 border-slate-800 pb-4 print:pb-2 flex justify-between items-end">
-              <div>
-                <h1 className="text-3xl print:text-xl font-bold uppercase text-slate-800">Laporan Cuaca Komprehensif</h1>
-                <p className="text-slate-600 mt-1 font-medium print:text-xs">Stasiun: {sensorName} | Periode: {dateRange?.from && formatIdDateShort(dateRange.from)} - {dateRange?.to && formatIdDateShort(dateRange.to)}</p>
-              </div>
-              <div className="text-right">
-                <img src="/img/logo.webp" alt="Logo" className="h-14 w-auto object-contain ml-auto mb-2" />
-                <p className="text-xs text-slate-500">Dibuat pada: {formatDateTimeForDisplay(new Date())}</p>
-              </div>
-            </header>
-
+      
+      {/* Printable Area Wrapper (Visually hidden but rendered for canvas) */}
+      <div className={cn("overflow-hidden h-0 w-0 absolute opacity-0 pointer-events-none", weatherData.length > 0 && "block")}>
+        <PrintLayout 
+          id={reportId}
+          title="Laporan Cuaca Bulanan"
+          sensorName={sensorName}
+          generatedBy={displayName}
+          periodLabel={`${dateRange?.from ? formatIdDateShort(dateRange.from) : ''} - ${dateRange?.to ? formatIdDateShort(dateRange.to) : ''}`}
+          orientation="portrait"
+        >
+          <div className="space-y-8 mt-6">
             {/* Section 1: Overview */}
             <section>
               <h2 className="text-xl print:text-lg font-semibold mb-4 print:mb-2 border-l-4 border-blue-600 pl-3">Ringkasan Utama</h2>
@@ -486,8 +508,9 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: { 
             </footer>
 
           </div>
-        )}
-      </main>
+        </PrintLayout>
+      </div>
+
     </div>
   )
 }
