@@ -1,7 +1,7 @@
 // components/climatology/TemperatureCharts.tsx
 import React, { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Thermometer } from "lucide-react";
+import { ThermometerSun } from "lucide-react";
 import { AggregatedPoint } from "@/lib/climatology/climatologyTypes";
 import dynamic from "next/dynamic";
 
@@ -9,7 +9,7 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
   loading: () => (
     <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground animate-pulse">
-      Memuat grafik Suhu Udara...
+      Memuat Grafik Suhu Udara...
     </div>
   ),
 });
@@ -137,10 +137,10 @@ export const TemperatureCharts: React.FC<TemperatureChartsProps> = ({
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
       <CardHeader>
         <CardTitle className="text-lg font-bold flex items-center gap-2">
-          <Thermometer className="h-5 w-5 text-orange-500" /> Analisis Tren Suhu Udara
+          <ThermometerSun className="h-5 w-5 text-orange-500" /> Analisis Tren Suhu Udara
         </CardTitle>
         <CardDescription>
-          Tren fluktuasi Suhu Udara maksimum, rata-rata, dan minimum (Standard Deviasi: ±{stdDev.toFixed(1)}°C)
+          Tren Suhu Udara maksimum, rata-rata, dan minimum (Standard Deviasi: ±{stdDev.toFixed(1)}°C)
         </CardDescription>
       </CardHeader>
       <CardContent className="h-[380px] p-2">

@@ -9,7 +9,7 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
   loading: () => (
     <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground animate-pulse">
-      Memuat grafik kelembapan...
+      Memuat Grafik Kelembapan...
     </div>
   ),
 });
@@ -18,12 +18,14 @@ interface HumidityChartsProps {
   points: AggregatedPoint[];
   preset: string;
   isDarkMode: boolean;
+  stdDev: number;
 }
 
 export const HumidityCharts: React.FC<HumidityChartsProps> = ({
   points,
   preset,
   isDarkMode,
+  stdDev,
 }) => {
   const chartTheme = isDarkMode ? "dark" : "light";
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
@@ -125,7 +127,7 @@ export const HumidityCharts: React.FC<HumidityChartsProps> = ({
           <Droplets className="h-5 w-5 text-emerald-500" /> Kelembapan Udara
         </CardTitle>
         <CardDescription>
-          Analisis variabilitas kelembapan udara relatif (maksimum harian, nilai rata-rata, dan minimum harian)
+          Tren Kelembapan Udara Relatif Maksimum, rata-rata, dan minimum (Standard Deviasi: ±{stdDev.toFixed(1)}%)
         </CardDescription>
       </CardHeader>
       <CardContent className="h-[380px] p-2">
