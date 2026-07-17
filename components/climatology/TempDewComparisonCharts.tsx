@@ -59,22 +59,23 @@ export const TempDewComparisonCharts: React.FC<TempDewComparisonChartsProps> = (
       tooltip: {
         trigger: "axis",
         formatter: (params: any) => {
-          let res = `<div className="font-semibold">${params[0].name}</div>`;
+          let res = `<div class="font-semibold">${params[0].name}</div>`;
           params.forEach((item: any) => {
-            res += `<div className="flex justify-between gap-4 text-xs mt-1">
+            const val = item.value != null ? Number(item.value).toFixed(1) : '–';
+            res += `<div class="flex justify-between gap-4" style="font-size:12px;margin-top:4px">
               <span>${item.marker} ${item.seriesName}:</span>
-              <span className="font-bold">${item.value.toFixed(1)} °C</span>
+              <span style="font-weight:700">${val} °C</span>
             </div>`;
           });
           
           // Calculate Dew Point Depression if both values exist
           const tempValue = params.find((p: any) => p.seriesName === "Suhu Udara (Rata-rata)")?.value;
           const dewValue = params.find((p: any) => p.seriesName === "Titik Embun (Dew Point)")?.value;
-          if (tempValue !== undefined && dewValue !== undefined) {
+          if (tempValue != null && dewValue != null) {
              const depression = tempValue - dewValue;
-             res += `<div className="flex justify-between gap-4 text-xs mt-2 pt-1 border-t border-slate-500/30">
-              <span className="text-slate-500">Dew Point Depression:</span>
-              <span className="font-bold text-orange-400">${depression.toFixed(1)} °C</span>
+             res += `<div style="font-size:12px;margin-top:6px;padding-top:4px;border-top:1px solid rgba(100,116,139,0.3);display:flex;justify-content:space-between;gap:16px">
+              <span style="color:#94a3b8">Dew Point Depression:</span>
+              <span style="font-weight:700;color:#fb923c">${depression.toFixed(1)} °C</span>
             </div>`;
           }
 

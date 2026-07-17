@@ -68,11 +68,12 @@ export const RainfallCharts: React.FC<RainfallChartsProps> = ({
       tooltip: {
         trigger: "axis",
         formatter: (params: any) => {
-          let res = `<div className="font-semibold">${params[0].name}</div>`;
+          let res = `<div class="font-semibold">${params[0].name}</div>`;
           params.forEach((item: any) => {
-            res += `<div className="flex justify-between gap-4 text-xs mt-1">
+            const val = item.value != null ? Number(item.value).toFixed(1) : '–';
+            res += `<div class="flex justify-between gap-4" style="font-size:12px;margin-top:4px">
               <span>${item.marker} ${item.seriesName}:</span>
-              <span className="font-bold">${item.value.toFixed(1)} mm</span>
+              <span style="font-weight:700">${val} mm</span>
             </div>`;
           });
           return res;
