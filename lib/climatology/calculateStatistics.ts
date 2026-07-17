@@ -16,8 +16,8 @@ export function calculateStats(
       periodCount,
       totalRecordsCount: 0,
       temperature: { mean: 0, max: 0, min: 0, stdDev: 0 },
-      humidity: { mean: 0, max: 100, min: 0 },
-      pressure: { mean: 0, max: 0, min: 0 },
+      humidity: { mean: 0, max: 100, min: 0, stdDev: 0 },
+      pressure: { mean: 0, max: 0, min: 0, stdDev: 0 },
       dewPoint: { mean: 0, max: 0, min: 0 },
       rainfall: { total: 0, rainDaysCount: 0, maxDailyRainfall: 0 },
     };
@@ -97,7 +97,31 @@ export function calculateStats(
   }
   const tempStdDev = tempVarCount > 0 ? Math.sqrt(tempVarSum / tempVarCount) : 0;
 
-  // Rainfall Stats
+  // Humidity Standard Deviation
+  const humMean = humCount > 0 ? humSum / humCount : 0;
+  let humVarSum = 0;
+  let humVarCount = 0;
+  for (const r of rawPoints) {
+    const h = Number(r.humidity);
+    if (Number.isFinite(h)) {
+      humVarSum += Math.pow(h - humMean, 2);
+      humVarCount++;
+    }
+  }
+  const humStdDev = humVarCount > 0 ? Math.sqrt(humVarSum / humVarCount) : 0;
+
+  const pressMean = pressCount > 0 ? pressSum / pressCount : 0;
+  let pressVarSum = 0;
+  let pressVarCount = 0;
+  for (const r of rawPoints) {
+    const p = Number(r.pressure);
+    if (Number.isFinite(p)) {
+      pressVarSum += Math.pow(p - pressMean, 2);
+      pressVarCount++;
+    }
+  }
+  const pressStdDev = pressVarCount > 0 ? Math.sqrt(pressVarSum / pressVarCount) : 0;
+
   let totalRain = 0;
   let rainDaysCount = 0;
   let maxDailyRainfall = 0;
@@ -128,11 +152,13 @@ export function calculateStats(
       mean: Math.round((humSum / (humCount || 1)) * 100) / 100,
       max: humMax === -Infinity ? 100 : Math.round(humMax * 100) / 100,
       min: humMin === Infinity ? 0 : Math.round(humMin * 100) / 100,
+      stdDev: Math.round(humStdDev * 100) / 100,
     },
     pressure: {
       mean: Math.round((pressSum / (pressCount || 1)) * 100) / 100,
       max: pressMax === -Infinity ? 0 : Math.round(pressMax * 100) / 100,
       min: pressMin === Infinity ? 0 : Math.round(pressMin * 100) / 100,
+      stdDev: Math.round(pressStdDev * 100) / 100,
     },
     dewPoint: {
       mean: Math.round((dewSum / (dewCount || 1)) * 100) / 100,

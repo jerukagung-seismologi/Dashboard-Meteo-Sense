@@ -25,7 +25,7 @@ export const PressureCharts: React.FC<PressureChartsProps> = ({
   points,
   preset,
   isDarkMode,
-  stdDev,
+  stdDev = 0,
 }) => {
   const chartTheme = isDarkMode ? "dark" : "light";
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";

@@ -39,11 +39,13 @@ export interface ClimatologyStats {
     mean: number;
     max: number;
     min: number;
+    stdDev: number;
   };
   pressure: {
     mean: number;
     max: number;
     min: number;
+    stdDev: number;
   };
   dewPoint: {
     mean: number;
