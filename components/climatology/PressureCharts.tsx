@@ -141,7 +141,7 @@ export const PressureCharts: React.FC<PressureChartsProps> = ({
           <Gauge className="h-5 w-5 text-pink-500" /> Tekanan Atmosfer
         </CardTitle>
         <CardDescription>
-          Tren tekanan udara rata-rata harian/jam, nilai maksimum, dan nilai minimum (hPa)
+          Tren Tekanan Udara maksimum, rata-rata, dan minimum (Standard Deviasi: ±{stdDev.toFixed(1)}hPa)
         </CardDescription>
       </CardHeader>
       <CardContent className="h-[380px] p-2">
