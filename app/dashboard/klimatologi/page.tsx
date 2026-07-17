@@ -23,9 +23,6 @@ import { RainfallCharts } from "@/components/climatology/RainfallCharts";
 import { HumidityCharts } from "@/components/climatology/HumidityCharts";
 import { PressureCharts } from "@/components/climatology/PressureCharts";
 import { TempDewComparisonCharts } from "@/components/climatology/TempDewComparisonCharts";
-import { useCalibrationMode } from "@/hooks/useCalibrationMode";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -152,7 +149,7 @@ export default function KlimatologiPage() {
             <Sparkles className="h-5 w-5 text-indigo-500 animate-pulse hidden sm:inline" />
           </div>
           <p className="text-muted-foreground dark:text-slate-400 mt-1">
-            Kalkulasi klimatologi
+            Eksplorasi Data Iklim
           </p>
         </div>
       </div>
@@ -200,15 +197,15 @@ export default function KlimatologiPage() {
       ) : error ? (
         <Card className="border-red-200 bg-red-50/50 dark:bg-red-950/20">
           <CardContent className="p-6 text-center">
-            <p className="text-red-600 dark:text-red-400 font-semibold">{error.message || "Gagal memuat data klimatologi."}</p>
+            <p className="text-red-600 dark:text-red-400 font-semibold">{error.message || "Gagal memuat data iklim."}</p>
           </CardContent>
         </Card>
       ) : !data || !data.points || data.points.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-16 bg-white dark:bg-slate-900 border rounded-xl shadow-sm text-center">
           <BarChart3 className="h-14 w-14 text-slate-400 dark:text-slate-600 mb-4 animate-bounce" />
-          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Tidak Ada Data Klimatologi</h3>
+          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Tidak Ada Data Iklim</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mt-2">
-            Stasiun cuaca terpilih tidak mencatat weather logs dalam rentang waktu UTC yang ditentukan. Silakan sesuaikan pilihan periode Anda.
+            Stasiun cuaca terpilih tidak mencatat data cuaca selama period waktu UTC yang ditentukan. Silakan sesuaikan pilihan periode Anda.
           </p>
         </div>
       ) : (

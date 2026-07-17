@@ -84,11 +84,10 @@ export const HumidityCharts: React.FC<HumidityChartsProps> = ({
       yAxis: {
         type: "value",
         name: "Kelembapan (%)",
-        max: 100,
-        min: 0,
         nameTextStyle: { color: textColor },
         axisLabel: { color: textColor },
         splitLine: { lineStyle: { color: gridColor } },
+        scale: true,
       },
       series: [
         {
