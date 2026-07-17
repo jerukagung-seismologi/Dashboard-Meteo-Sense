@@ -25,7 +25,7 @@ export const HumidityCharts: React.FC<HumidityChartsProps> = ({
   points,
   preset,
   isDarkMode,
-  stdDev = 0,
+  stdDev
 }) => {
   const chartTheme = isDarkMode ? "dark" : "light";
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";

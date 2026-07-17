@@ -6,7 +6,7 @@ import useSWR from "swr";
 import { Loader2, Sparkles, MapPin, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchAllDevices } from "@/lib/FetchingDevice";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader} from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
