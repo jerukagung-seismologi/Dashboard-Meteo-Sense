@@ -249,6 +249,7 @@ export default function KlimatologiPage() {
                 points={data.points}
                 preset={preset}
                 isDarkMode={isDarkMode}
+                stdDev={data.stats.humidity.stdDev}
               />
             </TabsContent>
 
@@ -258,6 +259,7 @@ export default function KlimatologiPage() {
                 points={data.points}
                 preset={preset}
                 isDarkMode={isDarkMode}
+                stdDev={data.stats.pressure.stdDev}
               />
             </TabsContent>
 
