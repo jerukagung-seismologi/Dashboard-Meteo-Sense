@@ -10,7 +10,6 @@ import { signOutUser } from "@/lib/FetchingAuth"
 import { Sidebar } from "@/components/dashboard/Sidebar"
 import { Topbar } from "@/components/dashboard/Topbar"
 import { dashboardNavigation } from "@/lib/navigation"
-import type { NavigationItem } from "@/lib/navigation"
 import Loading from "@/app/loading"
 const inter = Inter({ subsets: ["latin"] });
 

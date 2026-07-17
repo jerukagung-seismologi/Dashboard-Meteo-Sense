@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -9,23 +8,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  ThermometerIcon,
   CloudRainIcon,
-  WindIcon,
   GaugeIcon,
   RadioIcon,
-  WifiIcon,
-  WifiOffIcon,
   RefreshCwIcon,
-  AlertTriangleIcon,
-  CheckCircleIcon,
   CalendarIcon,
-  ClockIcon,
-  ChevronRight,
-  ExternalLink,
   Download,
   Plus,
   Trash2,
