@@ -2,19 +2,44 @@
 import { SensorDate } from "@/lib/FetchingSensorData";
 import { AggregatedPoint } from "@/lib/climatology/climatologyTypes";
 
+/**
+ * Computes rainfall contribution per reading using rainrate × Δt integration.
+ *
+ * WHY rainrate, not rainfall counter:
+ *  - `rainfall` is a cumulative counter that resets at unpredictable times (not guaranteed at hour
+ *    boundaries), making delta-diff unreliable. A reset mid-hour produces a large spurious spike.
+ *  - `rainrate` (mm/hr) is an instantaneous measurement. Multiplying by the time interval since
+ *    the previous reading gives the actual rainfall accumulated during that interval.
+ *
+ * Formula: contribution_i = rainrate_i × (Δt_i / 3600)
+ * Guards:
+ *  - rainrate capped at 300 mm/hr (physically plausible maximum)
+ *  - interval capped at 1800 s (30 min) — long data gaps should not produce artificial rain
+ */
 export function computeRainDeltas(rawPoints: SensorDate[]): (SensorDate & { rainDelta: number })[] {
   const sorted = [...rawPoints].sort((a, b) => a.timestamp - b.timestamp);
+  const MAX_RAINRATE_MM_HR = 300;   // World-record-level cap
+  const MAX_INTERVAL_SEC   = 1800;  // 30-minute gap cap — ignore large data gaps
+
   return sorted.map((p, index) => {
-    const currentRain = Number.isFinite(Number(p.rainfall)) ? Number(p.rainfall) : 0;
+    const rr = Number(p.rainrate);
+    const validRR = Number.isFinite(rr) && rr >= 0 ? Math.min(rr, MAX_RAINRATE_MM_HR) : 0;
+
     if (index === 0) {
-      return { ...p, rainfall: currentRain, rainDelta: 0 };
+      // First reading: no previous point, contribution = 0
+      return { ...p, rainDelta: 0 };
     }
-    const prevRain = Number.isFinite(Number(sorted[index - 1].rainfall)) ? Number(sorted[index - 1].rainfall) : 0;
-    const diff = currentRain - prevRain;
-    const rainDelta = diff >= 0 ? diff : currentRain;
-    return { ...p, rainfall: currentRain, rainDelta };
+
+    const deltaSeconds = (p.timestamp - sorted[index - 1].timestamp) / 1000;
+    // Only integrate over a reasonable interval; treat long gaps as dry
+    const contribution = (deltaSeconds > 0 && deltaSeconds <= MAX_INTERVAL_SEC)
+      ? validRR * (deltaSeconds / 3600)
+      : 0;
+
+    return { ...p, rainDelta: contribution };
   });
 }
+
 
 export function aggregateHourly(rawPoints: SensorDate[]): AggregatedPoint[] {
   if (rawPoints.length === 0) return [];

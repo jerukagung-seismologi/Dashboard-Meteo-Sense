@@ -88,8 +88,26 @@ export const formatDateTimeForDisplay = (date: Date): string => {
 // --- AGGREGATION LOGIC ---
 
 function aggregateHourly(rows: SensorDate[]): HourlyRecord[] {
-  const byHour = new Map<string, SensorDate[]>();
-  for (const r of rows) {
+  const MAX_RAINRATE_MM_HR = 300;  // Physical upper bound
+  const MAX_INTERVAL_SEC   = 1800; // 30-min gap — ignore long data gaps
+
+  // Sort globally first so delta computation is correct across hour boundaries
+  const sorted = [...rows].sort((a, b) => a.timestamp - b.timestamp);
+
+  // Compute rainrate-based contribution for each reading: rr × Δt
+  const withContrib = sorted.map((p, index) => {
+    const rr = Number(p.rainrate);
+    const validRR = Number.isFinite(rr) && rr >= 0 ? Math.min(rr, MAX_RAINRATE_MM_HR) : 0;
+    if (index === 0) return { ...p, _rainContrib: 0 };
+    const deltaSeconds = (p.timestamp - sorted[index - 1].timestamp) / 1000;
+    const contrib = (deltaSeconds > 0 && deltaSeconds <= MAX_INTERVAL_SEC)
+      ? validRR * (deltaSeconds / 3600)
+      : 0;
+    return { ...p, _rainContrib: contrib };
+  });
+
+  const byHour = new Map<string, typeof withContrib>();
+  for (const r of withContrib) {
     const d = new Date(r.timestamp);
     const dayKey = FMT_YMD.format(d);
     const hour = FMT_HOUR.format(d);
@@ -102,6 +120,7 @@ function aggregateHourly(rows: SensorDate[]): HourlyRecord[] {
   for (const [hourKey, items] of byHour) {
     const n = items.length || 1;
     const sum = (ns: number[]) => ns.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+    const rainfallTot = items.reduce((acc, i) => acc + (Number.isFinite(i._rainContrib) ? i._rainContrib : 0), 0);
 
     hours.push({
       hourKey,
@@ -112,7 +131,7 @@ function aggregateHourly(rows: SensorDate[]): HourlyRecord[] {
       pressureAvg: sum(items.map(i => i.pressure)) / n,
       dewPointAvg: sum(items.map(i => i.dew)) / n,
       luxAvg: sum(items.map(i => i.lux ?? 0)) / n,
-      rainfallTot: Math.max(...items.map(i => i.rainrate).filter(Number.isFinite), 0),
+      rainfallTot: Math.round(rainfallTot * 100) / 100,
     });
   }
   return hours.sort((a, b) => a.hourKey.localeCompare(b.hourKey));
@@ -147,8 +166,8 @@ export function aggregateDaily(rows: SensorDate[]): WeatherRecord[] {
     const press = rawData.map(r => r.pressure).filter(Number.isFinite);
     const luxes = rawData.map(r => r.lux ?? 0).filter(Number.isFinite);
     
-    // Get the last record of the day to get the final rainfall value.
-    const lastRecordOfDay = rawData.length > 0 ? rawData[rawData.length - 1] : null;
+    // Sum hourly rain deltas (already computed via delta logic in aggregateHourly)
+    const rainfallTot = items.reduce((acc, it) => acc + (Number.isFinite(it.rainfallTot) ? it.rainfallTot : 0), 0);
 
     result.push({
       date,
@@ -167,7 +186,7 @@ export function aggregateDaily(rows: SensorDate[]): WeatherRecord[] {
       luxAvg: wsum(i => i.luxAvg) / totalSamples,
       luxMin: luxes.length ? Math.min(...luxes) : 0,
       luxMax: luxes.length ? Math.max(...luxes) : 0,
-      rainfallTot: lastRecordOfDay ? lastRecordOfDay.rainfall : 0,
+      rainfallTot: Math.round(rainfallTot * 100) / 100,
     });
   }
   return result.sort((a, b) => a.date.localeCompare(b.date));
@@ -401,8 +420,26 @@ const FMT_HOUR_UTC = new Intl.DateTimeFormat("id-ID", {
 });
 
 function aggregateHourlyUTC(rows: SensorDate[]): HourlyRecord[] {
-  const byHour = new Map<string, SensorDate[]>();
-  for (const r of rows) {
+  const MAX_RAINRATE_MM_HR = 300;  // Physical upper bound
+  const MAX_INTERVAL_SEC   = 1800; // 30-min gap — ignore long data gaps
+
+  // Sort globally first so delta computation is correct across hour boundaries
+  const sorted = [...rows].sort((a, b) => a.timestamp - b.timestamp);
+
+  // Compute rainrate-based contribution for each reading: rr × Δt
+  const withContrib = sorted.map((p, index) => {
+    const rr = Number(p.rainrate);
+    const validRR = Number.isFinite(rr) && rr >= 0 ? Math.min(rr, MAX_RAINRATE_MM_HR) : 0;
+    if (index === 0) return { ...p, _rainContrib: 0 };
+    const deltaSeconds = (p.timestamp - sorted[index - 1].timestamp) / 1000;
+    const contrib = (deltaSeconds > 0 && deltaSeconds <= MAX_INTERVAL_SEC)
+      ? validRR * (deltaSeconds / 3600)
+      : 0;
+    return { ...p, _rainContrib: contrib };
+  });
+
+  const byHour = new Map<string, typeof withContrib>();
+  for (const r of withContrib) {
     const d = new Date(r.timestamp);
     const dayKey = FMT_YMD_UTC.format(d);
     const hour = FMT_HOUR_UTC.format(d);
@@ -415,6 +452,7 @@ function aggregateHourlyUTC(rows: SensorDate[]): HourlyRecord[] {
   for (const [hourKey, items] of byHour) {
     const n = items.length || 1;
     const sum = (ns: number[]) => ns.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+    const rainfallTot = items.reduce((acc, i) => acc + (Number.isFinite(i._rainContrib) ? i._rainContrib : 0), 0);
 
     hours.push({
       hourKey,
@@ -425,7 +463,7 @@ function aggregateHourlyUTC(rows: SensorDate[]): HourlyRecord[] {
       pressureAvg: sum(items.map(i => i.pressure)) / n,
       dewPointAvg: sum(items.map(i => i.dew)) / n,
       luxAvg: sum(items.map(i => i.lux ?? 0)) / n,
-      rainfallTot: Math.max(...items.map(i => i.rainrate).filter(Number.isFinite), 0),
+      rainfallTot: Math.round(rainfallTot * 100) / 100,
     });
   }
   return hours.sort((a, b) => a.hourKey.localeCompare(b.hourKey));
@@ -460,7 +498,8 @@ export function aggregateDailyUTC(rows: SensorDate[]): WeatherRecord[] {
     const press = rawData.map(r => r.pressure).filter(Number.isFinite);
     const luxes = rawData.map(r => r.lux ?? 0).filter(Number.isFinite);
 
-    const lastRecordOfDay = rawData.length > 0 ? rawData[rawData.length - 1] : null;
+    // Sum hourly rain deltas (already computed via delta logic in aggregateHourlyUTC)
+    const rainfallTot = items.reduce((acc, it) => acc + (Number.isFinite(it.rainfallTot) ? it.rainfallTot : 0), 0);
 
     result.push({
       date,
@@ -479,7 +518,7 @@ export function aggregateDailyUTC(rows: SensorDate[]): WeatherRecord[] {
       luxAvg: wsum(i => i.luxAvg) / totalSamples,
       luxMin: luxes.length ? Math.min(...luxes) : 0,
       luxMax: luxes.length ? Math.max(...luxes) : 0,
-      rainfallTot: lastRecordOfDay ? lastRecordOfDay.rainfall : 0,
+      rainfallTot: Math.round(rainfallTot * 100) / 100,
     });
   }
   return result.sort((a, b) => a.date.localeCompare(b.date));
