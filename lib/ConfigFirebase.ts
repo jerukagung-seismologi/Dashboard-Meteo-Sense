@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app"
-import { getAuth } from "firebase/auth"
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth"
 import { getFirestore } from "firebase/firestore"
 import { getStorage } from "firebase/storage"
 import { getDatabase } from "firebase/database"
@@ -21,6 +21,14 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 
 // Initialize Firebase services
 export const auth = getAuth(app)
+
+// Enforce browser local persistence for user sessions
+if (typeof window !== "undefined") {
+  setPersistence(auth, browserLocalPersistence).catch((err) => {
+    console.warn("Failed to set Firebase Auth persistence:", err)
+  })
+}
+
 export const db = getFirestore(app)
 export const storage = getStorage(app)
 export const rtdb = getDatabase(app)

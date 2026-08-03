@@ -129,7 +129,7 @@ export const signInWithEmail = async (
 
     const idToken = await userCredential.user.getIdToken();
 
-    document.cookie = `firebaseIdToken=${idToken}; path=/; max-age=3600`;
+    document.cookie = `firebaseIdToken=${idToken}; path=/; max-age=2592000; SameSite=Lax`;
 
     // Update last login time
     const userDocRef = doc(db, "users", user.uid)

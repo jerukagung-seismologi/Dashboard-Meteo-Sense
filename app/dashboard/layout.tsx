@@ -18,7 +18,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading, logout } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
@@ -44,8 +44,7 @@ export default function DashboardLayout({
 
   const handleLogout = async () => {
     try {
-      await signOutUser()
-      router.push("/login")
+      await logout()
     } catch (error) {
       console.error("Logout error:", error)
     }
