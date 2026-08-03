@@ -26,6 +26,40 @@ export const OFFICIAL_SOURCES = {
 };
 
 /**
+ * Classifies ENSO intensity into 9 distinct categories:
+ * - El Niño: Sangat Kuat (>= 2.0), Kuat (>= 1.5), Sedang (>= 1.0), Lemah (>= 0.5)
+ * - Netral: (-0.5 < anomaly < 0.5)
+ * - La Niña: Lemah (<= -0.5), Sedang (<= -1.0), Kuat (<= -1.5), Sangat Kuat (<= -2.0)
+ */
+export function getEnsoCategory(anomaly: number): string {
+  if (anomaly >= 2.0) return "El Niño Sangat Kuat";
+  if (anomaly >= 1.5) return "El Niño Kuat";
+  if (anomaly >= 1.0) return "El Niño Sedang";
+  if (anomaly >= 0.5) return "El Niño Lemah";
+  if (anomaly <= -2.0) return "La Niña Sangat Kuat";
+  if (anomaly <= -1.5) return "La Niña Kuat";
+  if (anomaly <= -1.0) return "La Niña Sedang";
+  if (anomaly <= -0.5) return "La Niña Lemah";
+  return "Netral";
+}
+
+/**
+ * Returns representative hex colors for ENSO intensity levels:
+ * Red/Crimson gradient for El Niño, Blue/Navy gradient for La Niña, Emerald for Netral
+ */
+export function getEnsoColor(anomaly: number): string {
+  if (anomaly >= 2.0) return "#7f1d1d"; // Dark Burgundy (El Niño Sangat Kuat)
+  if (anomaly >= 1.5) return "#dc2626"; // Crimson Red (El Niño Kuat)
+  if (anomaly >= 1.0) return "#ef4444"; // Red (El Niño Sedang)
+  if (anomaly >= 0.5) return "#f97316"; // Coral / Orange (El Niño Lemah)
+  if (anomaly <= -2.0) return "#1e3a8a"; // Dark Navy (La Niña Sangat Kuat)
+  if (anomaly <= -1.5) return "#1d4ed8"; // Royal Blue (La Niña Kuat)
+  if (anomaly <= -1.0) return "#2563eb"; // Blue (La Niña Sedang)
+  if (anomaly <= -0.5) return "#0284c7"; // Sky Blue (La Niña Lemah)
+  return "#10b981"; // Emerald Green (Netral)
+}
+
+/**
  * Returns comprehensive ENSO data sourced from NOAA CPC.
  */
 export function getEnsoData(): EnsoData {

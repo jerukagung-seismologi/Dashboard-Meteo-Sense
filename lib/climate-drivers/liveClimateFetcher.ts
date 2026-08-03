@@ -1,6 +1,6 @@
 // lib/climate-drivers/liveClimateFetcher.ts
 import { EnsoData, MjoData, IodData } from "./types";
-import { getEnsoData as getFallbackEnso, getMjoData as getFallbackMjo, getIodData as getFallbackIod } from "./climateData";
+import { getEnsoData as getFallbackEnso, getMjoData as getFallbackMjo, getIodData as getFallbackIod, getEnsoCategory } from "./climateData";
 
 /**
  * Live Fetcher for NOAA CPC Oceanic Niño Index (ONI) and Niño 3.4 SST Anomaly.
@@ -38,7 +38,7 @@ export async function fetchLiveEnsoData(): Promise<EnsoData> {
 
     const latest = parsedHistoricalOni[parsedHistoricalOni.length - 1];
     const latestOni = latest ? latest.oni : fallback.oni;
-    const status = latestOni >= 0.5 ? "El Niño" : latestOni <= -0.5 ? "La Niña" : "Neutral";
+    const status = getEnsoCategory(latestOni) as any;
 
     return {
       ...fallback,

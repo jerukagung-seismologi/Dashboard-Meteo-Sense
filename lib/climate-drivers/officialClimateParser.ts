@@ -1,5 +1,7 @@
 // lib/climate-drivers/officialClimateParser.ts
 
+import { getEnsoCategory } from "./climateData";
+
 /**
  * Official Climate Data Parser Agent
  * Fetches, cleans, sanitizes, and converts raw ASCII/text data from official climate endpoints
@@ -151,13 +153,16 @@ export async function parseEnsoData(): Promise<EnsoParsedOutput> {
       const parts = line.trim().split(/\s+/);
       const year = sanitizeInt(parts[0]) || 2026;
       const month = sanitizeInt(parts[1]) || 1;
-      const sst = sanitizeFloat(parts[7]); // NINO3.4 SST (col index 7)
-      const anomaly = sanitizeFloat(parts[8]); // NINO3.4 Anomaly (col index 8)
+      const sst = sanitizeFloat(parts[8]); // NINO3.4 SST (col index 8)
+      const anomaly = sanitizeFloat(parts[9]); // NINO3.4 Anomaly (col index 9)
       return { year, month, sst, anomaly };
     });
 
     if (timeSeries.length > 0) {
       latestNino34Anomaly = timeSeries[timeSeries.length - 1].anomaly;
+      if (latestNino34Anomaly !== null) {
+        status = getEnsoCategory(latestNino34Anomaly) as any;
+      }
     }
   } catch (err) {
     console.warn("[ClimateParser] NOAA CPC sstoi.indices fetch failed, using fallback:", err);
@@ -176,25 +181,7 @@ export async function parseEnsoData(): Promise<EnsoParsedOutput> {
       { year: 2026, month: 8, sst: 28.0, anomaly: 0.10 },
     ];
     latestNino34Anomaly = 0.10;
-  }
-
-  // Parse ONI for official status determination (El Niño / La Niña / Neutral)
-  try {
-    const rawText = await fetchWithRetry(oniUrl);
-    const lines = rawText.split("\n").filter((l) => l.trim().length > 0 && !l.includes("SEAS"));
-    if (lines.length > 0) {
-      const lastLine = lines[lines.length - 1];
-      const parts = lastLine.trim().split(/\s+/);
-      const oniVal = sanitizeFloat(parts[3]);
-      if (oniVal !== null) {
-        status = oniVal >= 0.5 ? "El Nino" : oniVal <= -0.5 ? "La Nina" : "Neutral";
-      }
-    }
-  } catch (err) {
-    console.warn("[ClimateParser] NOAA CPC ONI fetch failed:", err);
-    if (latestNino34Anomaly !== null) {
-      status = latestNino34Anomaly >= 0.5 ? "El Nino" : latestNino34Anomaly <= -0.5 ? "La Nina" : "Neutral";
-    }
+    status = "Neutral";
   }
 
   return {

@@ -1,6 +1,19 @@
 // lib/climate-drivers/types.ts
 
-export type EnsoStatusType = "El Niño" | "La Niña" | "Neutral";
+export type EnsoStatusType =
+  | "El Niño Sangat Kuat"
+  | "El Niño Kuat"
+  | "El Niño Sedang"
+  | "El Niño Lemah"
+  | "Netral font-bold"
+  | "Netral"
+  | "La Niña Lemah"
+  | "La Niña Sedang"
+  | "La Niña Kuat"
+  | "La Niña Sangat Kuat"
+  | "El Niño"
+  | "La Niña"
+  | "Neutral";
 export type IodStatusType = "Positive" | "Negative" | "Neutral";
 export type MjoStatusType = "Active" | "Inactive";
 export type ConvectionState = "Enhanced" | "Suppressed" | "Neutral";

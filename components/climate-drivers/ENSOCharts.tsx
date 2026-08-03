@@ -7,6 +7,8 @@ import { Waves, TrendingUp, BarChart2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { EnsoData } from "@/lib/climate-drivers/types";
 
+import { getEnsoCategory, getEnsoColor } from "@/lib/climate-drivers/climateData";
+
 const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
   loading: () => (
@@ -36,13 +38,12 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
         formatter: (params: any) => {
           const p = params[0];
           const val = p.value;
-          let statusStr = "🟢 Netral";
-          if (val >= 0.5) statusStr = "🔴 El Niño";
-          if (val <= -0.5) statusStr = "🔵 La Niña";
+          const cat = getEnsoCategory(val);
+          const color = getEnsoColor(val);
 
           return `<div class="font-semibold">${p.name}</div>
             <div class="text-xs mt-1">ONI: <span class="font-bold">${val >= 0 ? "+" : ""}${val.toFixed(1)}°C</span></div>
-            <div class="text-xs mt-0.5">${statusStr}</div>`;
+            <div class="text-xs mt-0.5 font-bold" style="color:${color}">${cat}</div>`;
         },
       },
       grid: { left: "3%", right: "4%", top: "12%", bottom: "10%", containLabel: true },
@@ -65,7 +66,7 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
           data: values.map((val) => ({
             value: val,
             itemStyle: {
-              color: val >= 0.5 ? "#ef4444" : val <= -0.5 ? "#3b82f6" : "#10b981",
+              color: getEnsoColor(val),
             },
           })),
           markLine: {
@@ -73,14 +74,24 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
             symbol: "none",
             data: [
               {
+                yAxis: 1.5,
+                lineStyle: { color: "#dc2626", type: "dashed", width: 1.5 },
+                label: { formatter: "El Niño Kuat (+1.5)", color: "#dc2626", position: "insideEndTop" },
+              },
+              {
                 yAxis: 0.5,
-                lineStyle: { color: "#ef4444", type: "dashed", width: 1.5 },
-                label: { formatter: "El Niño (+0.5)", color: "#ef4444", position: "insideEndTop" },
+                lineStyle: { color: "#f97316", type: "dashed", width: 1.5 },
+                label: { formatter: "El Niño Lemah (+0.5)", color: "#f97316", position: "insideEndTop" },
               },
               {
                 yAxis: -0.5,
-                lineStyle: { color: "#3b82f6", type: "dashed", width: 1.5 },
-                label: { formatter: "La Niña (-0.5)", color: "#3b82f6", position: "insideEndBottom" },
+                lineStyle: { color: "#0284c7", type: "dashed", width: 1.5 },
+                label: { formatter: "La Niña Lemah (-0.5)", color: "#0284c7", position: "insideEndBottom" },
+              },
+              {
+                yAxis: -1.5,
+                lineStyle: { color: "#1d4ed8", type: "dashed", width: 1.5 },
+                label: { formatter: "La Niña Kuat (-1.5)", color: "#1d4ed8", position: "insideEndBottom" },
               },
               {
                 yAxis: 0.0,
@@ -103,8 +114,13 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
         trigger: "axis",
         formatter: (params: any) => {
           const p = params[0];
+          const val = p.value;
+          const cat = getEnsoCategory(val);
+          const color = getEnsoColor(val);
+
           return `<div class="font-semibold">${p.name}</div>
-            <div class="text-xs mt-1">Anomali Niño 3.4: <span class="font-bold">${p.value >= 0 ? "+" : ""}${p.value.toFixed(2)}°C</span></div>`;
+            <div class="text-xs mt-1">Anomali SST Niño 3.4: <span class="font-bold">${val >= 0 ? "+" : ""}${val.toFixed(2)}°C</span></div>
+            <div class="text-xs mt-0.5 font-bold" style="color:${color}">${cat}</div>`;
         },
       },
       grid: { left: "3%", right: "4%", top: "12%", bottom: "10%", containLabel: true },
@@ -115,7 +131,7 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
       },
       yAxis: {
         type: "value",
-        name: "SST Anomaly (°C)",
+        name: "Anomali SST (°C)",
         nameTextStyle: { color: textColor },
         axisLabel: { color: textColor },
         splitLine: { lineStyle: { color: gridColor } },
@@ -123,24 +139,13 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
       series: [
         {
           name: "Niño 3.4 Anomaly",
-          type: "line",
-          data: values,
-          smooth: true,
-          lineStyle: { width: 3, color: "#8b5cf6" },
-          itemStyle: { color: "#8b5cf6" },
-          areaStyle: {
-            color: {
-              type: "linear",
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: "rgba(139, 92, 246, 0.25)" },
-                { offset: 1, color: "rgba(139, 92, 246, 0.0)" },
-              ],
+          type: "bar",
+          data: values.map((val) => ({
+            value: val,
+            itemStyle: {
+              color: getEnsoColor(val),
             },
-          },
+          })),
         },
       ],
     };

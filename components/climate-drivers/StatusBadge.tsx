@@ -20,7 +20,31 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   let icon = "🟢";
 
   if (type === "enso") {
-    if (value.includes("El Niño")) {
+    if (value.includes("El Niño Sangat Kuat")) {
+      badgeStyle = "bg-rose-900 text-rose-100 dark:bg-rose-950 dark:text-rose-200 border-rose-800";
+      icon = "🔥";
+    } else if (value.includes("El Niño Kuat")) {
+      badgeStyle = "bg-red-200 text-red-900 dark:bg-red-950/80 dark:text-red-200 border-red-400 dark:border-red-800";
+      icon = "🔴";
+    } else if (value.includes("El Niño Sedang")) {
+      badgeStyle = "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300 border-red-300 dark:border-red-800";
+      icon = "🔴";
+    } else if (value.includes("El Niño Lemah")) {
+      badgeStyle = "bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300 border-orange-300 dark:border-orange-800";
+      icon = "🟠";
+    } else if (value.includes("La Niña Sangat Kuat")) {
+      badgeStyle = "bg-blue-900 text-blue-100 dark:bg-blue-950 dark:text-blue-200 border-blue-800";
+      icon = "🌊";
+    } else if (value.includes("La Niña Kuat")) {
+      badgeStyle = "bg-blue-200 text-blue-900 dark:bg-blue-950/80 dark:text-blue-200 border-blue-400 dark:border-blue-800";
+      icon = "🔵";
+    } else if (value.includes("La Niña Sedang")) {
+      badgeStyle = "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-300 dark:border-blue-800";
+      icon = "🔵";
+    } else if (value.includes("La Niña Lemah")) {
+      badgeStyle = "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300 border-sky-300 dark:border-sky-800";
+      icon = "💧";
+    } else if (value.includes("El Niño")) {
       badgeStyle = "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300 border-red-300 dark:border-red-800";
       icon = "🔴";
     } else if (value.includes("La Niña")) {
