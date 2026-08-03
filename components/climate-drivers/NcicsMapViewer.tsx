@@ -19,37 +19,66 @@ import {
   Calendar,
   Layers,
   Sparkles,
-  X,
+  BarChart2,
+  TrendingUp,
+  Activity,
   CheckCircle2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-interface NcicsVariable {
+export interface NcicsVariable {
   id: string;
   name: string;
+  category: "konveksi" | "potensi" | "angin" | "shear" | "hovmoller";
   prefix: string;
   unit: string;
+  isHovmoller?: boolean;
   icon: any;
   color: string;
   description: string;
   indonesiaImpact: string;
 }
 
+const NCICS_CATEGORIES = [
+  { id: "all", name: "Semua Variabel" },
+  { id: "konveksi", name: "🌧️ Konveksi & Awan" },
+  { id: "potensi", name: "🌀 Potensi Kecepatan & Divergensi" },
+  { id: "angin", name: "💨 Angin Zonal & Meridional" },
+  { id: "shear", name: "🌪️ Geser Angin Vertikal" },
+  { id: "hovmoller", name: "📈 Diagram Hovmöller (Waktu vs Ekuator)" },
+];
+
 const NCICS_VARIABLES: NcicsVariable[] = [
+  // 1. Konveksi & Awan
   {
     id: "olr",
     name: "OLR Anomaly (Awan Konvektif)",
+    category: "konveksi",
     prefix: "olr",
     unit: "W/m²",
     icon: CloudRain,
     color: "text-blue-500 bg-blue-50 dark:bg-blue-950/60",
-    description: "Anomali Radiasi Gelombang Panjang (Outgoing Longwave Radiation). Nilai negatif (biru/hijau) mengindikasikan tingginya tutupan awan konvektif dan hujan lebat.",
-    indonesiaImpact: "Daerah berpola biru pada wilayah Indonesia menunjukkan pusat konveksi aktif MJO yang memicu cuaca ekstrem dan hujan intensitas tinggi.",
+    description: "Anomali Radiasi Gelombang Panjang (Outgoing Longwave Radiation). Nilai negatif (biru/hijau) mengindikasikan tutupan awan konvektif tebal dan hujan lebat.",
+    indonesiaImpact: "Pola biru di wilayah Indonesia menunjukkan pusat konveksi aktif MJO yang memicu potensi cuaca ekstrem dan hujan intensitas tinggi.",
   },
   {
+    id: "pwat",
+    name: "Precipitable Water Anomaly",
+    category: "konveksi",
+    prefix: "pwat",
+    unit: "mm",
+    icon: Droplets,
+    color: "text-teal-500 bg-teal-50 dark:bg-teal-950/60",
+    description: "Jumlah kandungan air atmosfer terintegrasi dalam kolom udara. Mengukur ketersediaan cadangan uap air di atmosfer.",
+    indonesiaImpact: "Nilai positif (hijau/biru) menandakan atmosfer sangat basah dan berpotensi memicu hujan berdurasi lama.",
+  },
+
+  // 2. Potensi Kecepatan & Divergensi
+  {
     id: "chi200",
-    name: "Velocity Potential 200 hPa",
+    name: "Velocity Potential 200 hPa (Atas)",
+    category: "potensi",
     prefix: "chi200",
     unit: "10⁶ m²/s",
     icon: Zap,
@@ -58,38 +87,66 @@ const NCICS_VARIABLES: NcicsVariable[] = [
     indonesiaImpact: "Anomali negatif (warna hijau/biru) menandakan wilayah divergensi kuat yang sangat kondusif bagi pertumbuhan badai cumulonimbus.",
   },
   {
-    id: "pwat",
-    name: "Precipitable Water Anomaly",
-    prefix: "pwat",
-    unit: "mm",
-    icon: Droplets,
-    color: "text-teal-500 bg-teal-50 dark:bg-teal-950/60",
-    description: "Jumlah kandungan air atmosfer terintegrasi dalam kolom udara. Mengukur seberapa banyak cadangan uap air yang siap menjadi hujan.",
-    indonesiaImpact: "Nilai positif (hijau/biru) menandakan atmosfer sangat basah dan berpotensi memicu hujan lebat berdurasi lama.",
+    id: "chi850",
+    name: "Velocity Potential 850 hPa (Bawah)",
+    category: "potensi",
+    prefix: "chi850",
+    unit: "10⁶ m²/s",
+    icon: Zap,
+    color: "text-sky-500 bg-sky-50 dark:bg-sky-950/60",
+    description: "Potensi Kecepatan Angin Lapisan Bawah (850 hPa). Mengukur daerah konvergensi massa udara permukaan.",
+    indonesiaImpact: "Konvergensi lapisan bawah berpasangan dengan divergensi atas menciptakan sel sirkulasi vertikal yang sangat kuat.",
   },
+  {
+    id: "psi850",
+    name: "Stream Function 850 hPa",
+    category: "potensi",
+    prefix: "psi850",
+    unit: "10⁶ m²/s",
+    icon: Activity,
+    color: "text-cyan-500 bg-cyan-50 dark:bg-cyan-950/60",
+    description: "Fungsi Arus Lapisan Bawah (850 hPa). Mengidentifikasi pusat-pusat sirkulasi siklonik dan antisiklonik di sekitar ekuator.",
+    indonesiaImpact: "Sirkulasi siklonik ekuatorial ganda menandakan pembentukan pusaran angin yang sering memicu pertumbuhan depresi tropis.",
+  },
+  {
+    id: "psi200",
+    name: "Stream Function 200 hPa",
+    category: "potensi",
+    prefix: "psi200",
+    unit: "10⁶ m²/s",
+    icon: Activity,
+    color: "text-violet-500 bg-violet-50 dark:bg-violet-950/60",
+    description: "Fungsi Arus Lapisan Atas (200 hPa). Memantau sirkulasi gelombang antartropis dan gelombang Rossby ekuatorial.",
+    indonesiaImpact: "Menggambarkan respons sirkulasi gelombang atmosfer global terhadap pemanasan konvektif di Benua Maritim Indonesia.",
+  },
+
+  // 3. Angin Zonal & Meridional
   {
     id: "uwnd850",
     name: "Zonal Wind 850 hPa (Bawah)",
+    category: "angin",
     prefix: "uwnd850",
     unit: "m/s",
     icon: Wind,
     color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/60",
-    description: "Anomali komponen angin Barat-Timur pada lapisan bawah (850 hPa, ~1.5 km dari permukaan laut). Mengukur dorongan Monsun Barat.",
-    indonesiaImpact: "Anomali positif (merah/kuning) menunjukkan tiupan angin barat yang kuat membawa uap air melimpah dari Samudra Hindia ke Indonesia.",
+    description: "Anomali komponen angin Barat-Timur pada lapisan bawah (850 hPa, ~1.5 km). Mengukur dorongan Monsun Barat.",
+    indonesiaImpact: "Anomali positif (merah/kuning) menunjukkan tiupan angin barat kuat yang membawa uap air melimpah dari Samudra Hindia.",
   },
   {
     id: "uwnd200",
     name: "Zonal Wind 200 hPa (Atas)",
+    category: "angin",
     prefix: "uwnd200",
     unit: "m/s",
     icon: Wind,
     color: "text-purple-500 bg-purple-50 dark:bg-purple-950/60",
-    description: "Anomali komponen angin Barat-Timur pada troposfer atas (200 hPa, ~12 km). Mengukur sirkulasi Walker dan Jet Stream tropis.",
-    indonesiaImpact: "Menggambarkan pembalikan arah angin troposfer atas yang menjadi indikator siklus aktif MJO dan konveksi dalam.",
+    description: "Anomali komponen angin Barat-Timur pada troposfer atas (200 hPa, ~12 km). Mengukur sirkulasi Walker dan Jet Stream.",
+    indonesiaImpact: "Pembalikan arah angin troposfer atas menandakan fase aktif MJO dan intensitas sirkulasi konvektif.",
   },
   {
     id: "vwnd850",
-    name: "Meridional Wind 850 hPa",
+    name: "Meridional Wind 850 hPa (Bawah)",
+    category: "angin",
     prefix: "vwnd850",
     unit: "m/s",
     icon: Compass,
@@ -98,14 +155,89 @@ const NCICS_VARIABLES: NcicsVariable[] = [
     indonesiaImpact: "Memantau dorongan massa udara dingin (Cold Surge) dari belahan bumi utara/selatan menuju kawasan Nusantara.",
   },
   {
+    id: "vwnd200",
+    name: "Meridional Wind 200 hPa (Atas)",
+    category: "angin",
+    prefix: "vwnd200",
+    unit: "m/s",
+    icon: Compass,
+    color: "text-orange-500 bg-orange-50 dark:bg-orange-950/60",
+    description: "Anomali komponen angin Utara-Selatan pada troposfer atas (200 hPa). Memantau aliran keluar ekuatorial.",
+    indonesiaImpact: "Mengindikasikan divergensi meridian atas yang mengangkut massa udara hangat menuju lintang menengah.",
+  },
+
+  // 4. Geser Angin Vertikal
+  {
     id: "shear",
-    name: "Vertical Wind Shear",
+    name: "Vertical Wind Shear (Total)",
+    category: "shear",
     prefix: "shear",
     unit: "m/s",
     icon: Layers,
     color: "text-rose-500 bg-rose-50 dark:bg-rose-950/60",
-    description: "Perbedaan kecepatan dan arah angin antara lapisan 200 hPa dan 850 hPa. Mengukur stabilitas struktur vertikal atmosfer.",
-    indonesiaImpact: "Geser angin vertikal yang moderat hingga kuat memengaruhi organisasi sistem konvektif mesoskala dan potensi siklon tropis.",
+    description: "Perbedaan kecepatan dan arah angin antara lapisan 200 hPa dan 850 hPa. Mengukur stabilitas vertikal atmosfer.",
+    indonesiaImpact: "Geser angin vertikal memengaruhi pengorganisasian sistem konvektif mesoskala dan potensi pembentukan siklon tropis.",
+  },
+  {
+    id: "uShear",
+    name: "Zonal Wind Shear",
+    category: "shear",
+    prefix: "uShear",
+    unit: "m/s",
+    icon: Layers,
+    color: "text-pink-500 bg-pink-50 dark:bg-pink-950/60",
+    description: "Geser angin komponen zonal (Barat-Timur) antara lapisan troposfer atas dan bawah.",
+    indonesiaImpact: "Penting untuk menganalisis penyebaran vertikal energi gelombang Kelvin dan MJO sepanjang garis ekuator.",
+  },
+
+  // 5. Diagram Hovmöller Ekuatorial (Waktu vs Bujur)
+  {
+    id: "hov_olr",
+    name: "Diagram Hovmöller OLR Ekuatorial",
+    category: "hovmoller",
+    prefix: "olr.cfs.eqtr",
+    unit: "W/m²",
+    isHovmoller: true,
+    icon: TrendingUp,
+    color: "text-blue-600 bg-blue-100 dark:bg-blue-950",
+    description: "Diagram Waktu vs Bujur ($0^\circ-360^\circ\text{E}$) Anomali OLR Ekuatorial. Memvisualisasikan perambatan tutupan awan hujan MJO dari waktu ke waktu.",
+    indonesiaImpact: "Menunjukkan dengan jelas kapan gelombang konveksi MJO bergerak melintasi bujur Indonesia ($90^\circ\text{E}-150^\circ\text{E}$) menuju Pasifik.",
+  },
+  {
+    id: "hov_chi200",
+    name: "Diagram Hovmöller Chi200 Ekuatorial",
+    category: "hovmoller",
+    prefix: "chi200.cfs.eqtr",
+    unit: "10⁶ m²/s",
+    isHovmoller: true,
+    icon: BarChart2,
+    color: "text-indigo-600 bg-indigo-100 dark:bg-indigo-950",
+    description: "Diagram Waktu vs Bujur Velocity Potential 200 hPa Ekuatorial. Memantau sinyal divergensi atas MJO skala global.",
+    indonesiaImpact: "Sinyal paling bersih untuk melacak pergerakan fase basah MJO mengelilingi ekuator bumi.",
+  },
+  {
+    id: "hov_uwnd850",
+    name: "Diagram Hovmöller U850 Ekuatorial",
+    category: "hovmoller",
+    prefix: "uwnd850.cfs.eqtr",
+    unit: "m/s",
+    isHovmoller: true,
+    icon: Wind,
+    color: "text-emerald-600 bg-emerald-100 dark:bg-emerald-950",
+    description: "Diagram Waktu vs Bujur Anomali Angin Zonal 850 hPa. Memantau dorongan angin barat ekuatorial.",
+    indonesiaImpact: "Melacak penjalaran tiupan angin barat (westerly wind bursts) yang mendorong uap air ke benua maritim.",
+  },
+  {
+    id: "hov_pwat",
+    name: "Diagram Hovmöller PWAT Ekuatorial",
+    category: "hovmoller",
+    prefix: "pwat.cfs.eqtr",
+    unit: "mm",
+    isHovmoller: true,
+    icon: Droplets,
+    color: "text-teal-600 bg-teal-100 dark:bg-teal-950",
+    description: "Diagram Waktu vs Bujur Anomali Precipitable Water. Memantau kandungan uap air sepanjang garis ekuator.",
+    indonesiaImpact: "Menunjukkan penyebaran massa udara basah di sepanjang Samudra Hindia hingga Pasifik Barat.",
   },
 ];
 
@@ -119,6 +251,7 @@ const LEAD_TIMES = [
 ];
 
 export const NcicsMapViewer: React.FC = () => {
+  const [activeCategory, setActiveCategory] = useState<string>("all");
   const [selectedVarId, setSelectedVarId] = useState<string>("olr");
   const [selectedLeadTime, setSelectedLeadTime] = useState<string>("1");
   const [imageLoading, setImageLoading] = useState<boolean>(true);
@@ -128,7 +261,13 @@ export const NcicsMapViewer: React.FC = () => {
   const currentVar = NCICS_VARIABLES.find((v) => v.id === selectedVarId) || NCICS_VARIABLES[0];
 
   // Construct direct NCICS image URL
-  const imageUrl = `https://ncics.org/pub/mjo/v2/map/${currentVar.prefix}.cfs.all.indonesia.${selectedLeadTime}.png`;
+  const imageUrl = currentVar.isHovmoller
+    ? `https://ncics.org/pub/mjo/v2/hov/${currentVar.prefix}.png`
+    : `https://ncics.org/pub/mjo/v2/map/${currentVar.prefix}.cfs.all.indonesia.${selectedLeadTime}.png`;
+
+  const filteredVariables = activeCategory === "all"
+    ? NCICS_VARIABLES
+    : NCICS_VARIABLES.filter((v) => v.category === activeCategory);
 
   const handleRefresh = () => {
     setImageLoading(true);
@@ -139,7 +278,9 @@ export const NcicsMapViewer: React.FC = () => {
     const a = document.createElement("a");
     a.href = imageUrl;
     a.target = "_blank";
-    a.download = `NCICS_${currentVar.prefix}_Indonesia_Week${selectedLeadTime}.png`;
+    a.download = currentVar.isHovmoller
+      ? `NCICS_${currentVar.prefix}.png`
+      : `NCICS_${currentVar.prefix}_Indonesia_Week${selectedLeadTime}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -157,23 +298,48 @@ export const NcicsMapViewer: React.FC = () => {
                 <Sparkles className="h-5 w-5 text-indigo-500" /> Peta Diagnostik Satelit & Model NCICS / NOAA
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Visualisasi pemetaan atmosfer real-time kawasan Indonesia (90°E - 150°E) bersumber dari <strong>North Carolina Institute for Climate Studies (NCICS) / NOAA</strong>
+                Visualisasi pemetaan atmosfer real-time kawasan Indonesia (90°E - 150°E) & Diagram Hovmöller Ekuatorial bersumber dari <strong>North Carolina Institute for Climate Studies (NCICS) / NOAA</strong>
               </CardDescription>
             </div>
-            <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 text-xs py-1 px-3">
-              🔴 Live Direct Stream
+            <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 text-xs py-1 px-3 shrink-0">
+              🔴 16 Variabel Real-Time
             </Badge>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-5">
-          {/* Variable Selector Tabs */}
+          {/* Category Filter Tabs */}
           <div>
             <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-2 uppercase tracking-wider">
-              1. Pilih Variabel Atmosfer:
+              1. Pilih Kategori Variabel Atmosfer:
+            </label>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              {NCICS_CATEGORIES.map((cat) => (
+                <Button
+                  key={cat.id}
+                  variant={activeCategory === cat.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={cn(
+                    "text-xs font-semibold rounded-lg shrink-0",
+                    activeCategory === cat.id
+                      ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                      : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800"
+                  )}
+                >
+                  {cat.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Variable Selector Grid */}
+          <div>
+            <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-2 uppercase tracking-wider">
+              2. Pilih Variabel ({filteredVariables.length} Tersedia):
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-              {NCICS_VARIABLES.map((v) => {
+              {filteredVariables.map((v) => {
                 const Icon = v.icon;
                 const isSelected = v.id === selectedVarId;
 
@@ -211,39 +377,41 @@ export const NcicsMapViewer: React.FC = () => {
             </div>
           </div>
 
-          {/* Lead Time Selector Tabs */}
-          <div>
-            <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-2 uppercase tracking-wider">
-              2. Pilih Waktu Prakiraan (Lead Time):
-            </label>
+          {/* Lead Time Selector (Only for regional maps, hidden for Hovmoller) */}
+          {!currentVar.isHovmoller && (
+            <div>
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-2 uppercase tracking-wider">
+                3. Pilih Waktu Prakiraan (Lead Time):
+              </label>
 
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              {LEAD_TIMES.map((lt) => {
-                const isSelected = lt.id === selectedLeadTime;
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {LEAD_TIMES.map((lt) => {
+                  const isSelected = lt.id === selectedLeadTime;
 
-                return (
-                  <Button
-                    key={lt.id}
-                    variant={isSelected ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setSelectedLeadTime(lt.id);
-                      handleRefresh();
-                    }}
-                    className={cn(
-                      "text-xs font-semibold rounded-lg shrink-0 gap-1.5",
-                      isSelected
-                        ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
-                        : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800"
-                    )}
-                  >
-                    <Calendar className="h-3.5 w-3.5" />
-                    {lt.label}
-                  </Button>
-                );
-              })}
+                  return (
+                    <Button
+                      key={lt.id}
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setSelectedLeadTime(lt.id);
+                        handleRefresh();
+                      }}
+                      className={cn(
+                        "text-xs font-semibold rounded-lg shrink-0 gap-1.5",
+                        isSelected
+                          ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                          : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800"
+                      )}
+                    >
+                      <Calendar className="h-3.5 w-3.5" />
+                      {lt.label}
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -256,11 +424,13 @@ export const NcicsMapViewer: React.FC = () => {
                 Peta {currentVar.name}
               </span>
               <Badge variant="outline" className="text-xs font-mono">
-                {currentVar.prefix}.cfs.all.indonesia.{selectedLeadTime}.png
+                {currentVar.isHovmoller ? `${currentVar.prefix}.png` : `${currentVar.prefix}.cfs.all.indonesia.${selectedLeadTime}.png`}
               </Badge>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Cakupan Wilayah: Indonesia (90°E - 150°E, 20°N - 20°S)
+              {currentVar.isHovmoller
+                ? "Diagram Hovmöller Ekuatorial Waktu vs Bujur (0° - 360°E)"
+                : `Cakupan Wilayah: Indonesia (90°E - 150°E, 20°N - 20°S) • Minggu ${selectedLeadTime}`}
             </p>
           </div>
 
@@ -320,7 +490,6 @@ export const NcicsMapViewer: React.FC = () => {
             </div>
           ) : (
             <div className="relative max-w-full overflow-hidden rounded-xl shadow-lg border dark:border-slate-800 group bg-white">
-              {/* Image element */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imageUrl}
@@ -331,7 +500,7 @@ export const NcicsMapViewer: React.FC = () => {
                   setImageError(true);
                 }}
                 className={cn(
-                  "w-full h-auto max-h-[600px] object-contain transition-all duration-300",
+                  "w-full h-auto max-h-[650px] object-contain transition-all duration-300",
                   imageLoading ? "opacity-30 blur-xs" : "opacity-100"
                 )}
               />
@@ -385,7 +554,7 @@ export const NcicsMapViewer: React.FC = () => {
         <DialogContent className="max-w-5xl w-[95vw] p-4 bg-slate-950 text-white border-slate-800">
           <DialogHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-3">
             <DialogTitle className="text-base font-bold flex items-center gap-2 text-white">
-              Peta Diagnostik NCICS - {currentVar.name} (Minggu {selectedLeadTime})
+              Peta Diagnostik NCICS - {currentVar.name} {!currentVar.isHovmoller && `(Minggu ${selectedLeadTime})`}
             </DialogTitle>
           </DialogHeader>
 
