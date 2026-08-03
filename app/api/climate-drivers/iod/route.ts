@@ -1,12 +1,12 @@
 // app/api/climate-drivers/iod/route.ts
 import { NextResponse } from "next/server";
-import { getIodData } from "@/lib/climate-drivers/climateData";
+import { fetchLiveIodData } from "@/lib/climate-drivers/liveClimateFetcher";
 
-export const revalidate = 300; // Cache for 5 minutes
+export const revalidate = 3600; // Cache for 1 hour
 
 export async function GET() {
   try {
-    const data = getIodData();
+    const data = await fetchLiveIodData();
     return NextResponse.json(data);
   } catch (error: any) {
     console.error("Error in GET /api/climate-drivers/iod:", error);

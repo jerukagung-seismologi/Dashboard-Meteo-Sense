@@ -1,12 +1,12 @@
 // app/api/climate-drivers/enso/route.ts
 import { NextResponse } from "next/server";
-import { getEnsoData } from "@/lib/climate-drivers/climateData";
+import { fetchLiveEnsoData } from "@/lib/climate-drivers/liveClimateFetcher";
 
-export const revalidate = 300; // Cache for 5 minutes
+export const revalidate = 3600; // Cache for 1 hour
 
 export async function GET() {
   try {
-    const data = getEnsoData();
+    const data = await fetchLiveEnsoData();
     return NextResponse.json(data);
   } catch (error: any) {
     console.error("Error in GET /api/climate-drivers/enso:", error);
