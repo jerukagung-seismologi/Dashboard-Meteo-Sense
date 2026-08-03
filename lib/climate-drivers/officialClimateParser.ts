@@ -1,11 +1,10 @@
 // lib/climate-drivers/officialClimateParser.ts
-
 import { getEnsoCategory } from "./climateData";
 
 /**
  * Official Climate Data Parser Agent
- * Fetches, cleans, sanitizes, and converts raw ASCII/text data from official climate endpoints
- * (NOAA CPC & Australian Bureau of Meteorology BOM) into a standardized unified JSON structure.
+ * Fetches, cleans, sanitizes, and converts raw text/CSV data from official BOM Australia & NOAA CPC endpoints
+ * into a standardized unified JSON structure.
  */
 
 export interface Nino34Point {
@@ -17,7 +16,7 @@ export interface Nino34Point {
 
 export interface EnsoParsedOutput {
   latest_nino34_anomaly: number | null;
-  status: "El Nino" | "La Nina" | "Neutral";
+  status: string;
   time_series: Nino34Point[];
 }
 
@@ -82,7 +81,7 @@ async function fetchWithRetry(url: string, retries = 3, delayMs = 1000): Promise
   for (let i = 0; i < retries; i++) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       const res = await fetch(url, {
         signal: controller.signal,
@@ -101,7 +100,7 @@ async function fetchWithRetry(url: string, retries = 3, delayMs = 1000): Promise
     } catch (err: any) {
       lastError = err;
       if (i < retries - 1) {
-        await new Promise((r) => setTimeout(r, delayMs * Math.pow(2, i))); // Exponential backoff
+        await new Promise((r) => setTimeout(r, delayMs * Math.pow(2, i)));
       }
     }
   }
@@ -110,7 +109,7 @@ async function fetchWithRetry(url: string, retries = 3, delayMs = 1000): Promise
 }
 
 /**
- * Helper function: Sanitize float value (replace -999.9, 999, 1.E36, NaN with null)
+ * Helper function: Sanitize float value (replace invalid values with null)
  */
 function sanitizeFloat(valStr: string): number | null {
   if (!valStr || valStr.trim() === "") return null;
@@ -130,58 +129,62 @@ function sanitizeInt(valStr: string): number | null {
   return num;
 }
 
-// --- 1. ENSO PARSER (Niño 3.4 & ONI) ---
+// --- 1. ENSO PARSER (BOM Australia Niño 3.4 SST Anomaly: IDCK000072/rnino_3.4.txt) ---
 export async function parseEnsoData(): Promise<EnsoParsedOutput> {
-  const nino34Url = "https://www.cpc.ncep.noaa.gov/data/indices/sstoi.indices";
-  const oniUrl = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt";
+  const bomNino34Url = "http://www.bom.gov.au/clim_data/IDCK000072/rnino_3.4.txt";
+  const noaaNino34Url = "https://www.cpc.ncep.noaa.gov/data/indices/sstoi.indices";
 
   let timeSeries: Nino34Point[] = [];
   let latestNino34Anomaly: number | null = 0.1;
-  let status: "El Nino" | "La Nina" | "Neutral" = "Neutral";
+  let status: string = "Netral";
 
-  // Parse Niño 3.4 SST & Anomaly
   try {
-    const rawText = await fetchWithRetry(nino34Url);
-    const lines = rawText.split("\n").filter((l) => l.trim().length > 0);
+    const rawText = await fetchWithRetry(bomNino34Url);
+    const lines = rawText.split("\n").filter((l) => l.trim().length > 0 && l.includes(","));
 
-    // Filter data rows (skip header row starting with YR)
-    const dataRows = lines.filter((l) => !l.startsWith("YR") && !l.startsWith(" YR"));
-
-    // Take last 12 months
-    const recentRows = dataRows.slice(-12);
+    // Take last 12 records
+    const recentRows = lines.slice(-12);
     timeSeries = recentRows.map((line) => {
-      const parts = line.trim().split(/\s+/);
-      const year = sanitizeInt(parts[0]) || 2026;
-      const month = sanitizeInt(parts[1]) || 1;
-      const sst = sanitizeFloat(parts[8]); // NINO3.4 SST (col index 8)
-      const anomaly = sanitizeFloat(parts[9]); // NINO3.4 Anomaly (col index 9)
+      const parts = line.trim().split(",");
+      const startDateStr = parts[0]; // e.g. 20260720
+      const year = parseInt(startDateStr.substring(0, 4), 10) || 2026;
+      const month = parseInt(startDateStr.substring(4, 6), 10) || 1;
+      const anomaly = sanitizeFloat(parts[2]);
+      const sst = anomaly !== null ? Math.round((27.5 + anomaly) * 100) / 100 : null;
       return { year, month, sst, anomaly };
     });
 
     if (timeSeries.length > 0) {
       latestNino34Anomaly = timeSeries[timeSeries.length - 1].anomaly;
       if (latestNino34Anomaly !== null) {
-        status = getEnsoCategory(latestNino34Anomaly) as any;
+        status = getEnsoCategory(latestNino34Anomaly);
       }
     }
   } catch (err) {
-    console.warn("[ClimateParser] NOAA CPC sstoi.indices fetch failed, using fallback:", err);
-    timeSeries = [
-      { year: 2025, month: 9, sst: 26.8, anomaly: 0.05 },
-      { year: 2025, month: 10, sst: 26.5, anomaly: -0.12 },
-      { year: 2025, month: 11, sst: 26.3, anomaly: -0.28 },
-      { year: 2025, month: 12, sst: 26.2, anomaly: -0.35 },
-      { year: 2026, month: 1, sst: 26.4, anomaly: -0.22 },
-      { year: 2026, month: 2, sst: 26.6, anomaly: -0.08 },
-      { year: 2026, month: 3, sst: 27.2, anomaly: 0.04 },
-      { year: 2026, month: 4, sst: 27.8, anomaly: 0.12 },
-      { year: 2026, month: 5, sst: 28.3, anomaly: 0.18 },
-      { year: 2026, month: 6, sst: 28.4, anomaly: 0.21 },
-      { year: 2026, month: 7, sst: 28.2, anomaly: 0.14 },
-      { year: 2026, month: 8, sst: 28.0, anomaly: 0.10 },
-    ];
-    latestNino34Anomaly = 0.10;
-    status = "Neutral";
+    console.warn("[ClimateParser] BOM Australia rnino_3.4.txt fetch failed, trying NOAA CPC mirror:", err);
+    try {
+      const rawText = await fetchWithRetry(noaaNino34Url);
+      const lines = rawText.split("\n").filter((l) => l.trim().length > 0 && !l.startsWith("YR") && !l.startsWith(" YR"));
+      const recentRows = lines.slice(-12);
+      timeSeries = recentRows.map((line) => {
+        const parts = line.trim().split(/\s+/);
+        const year = sanitizeInt(parts[0]) || 2026;
+        const month = sanitizeInt(parts[1]) || 1;
+        const sst = sanitizeFloat(parts[8]);
+        const anomaly = sanitizeFloat(parts[9]);
+        return { year, month, sst, anomaly };
+      });
+      if (timeSeries.length > 0) {
+        latestNino34Anomaly = timeSeries[timeSeries.length - 1].anomaly;
+        if (latestNino34Anomaly !== null) {
+          status = getEnsoCategory(latestNino34Anomaly);
+        }
+      }
+    } catch (e2) {
+      console.warn("[ClimateParser] NOAA fallback also failed, using baseline:", e2);
+      latestNino34Anomaly = 0.10;
+      status = "Netral";
+    }
   }
 
   return {
@@ -191,7 +194,7 @@ export async function parseEnsoData(): Promise<EnsoParsedOutput> {
   };
 }
 
-// --- 2. MJO PARSER (Wheeler-Hendon RMM Index) ---
+// --- 2. MJO PARSER (BOM Australia RMM Index: rmm.74toRealtime.txt) ---
 export async function parseMjoData(): Promise<MjoParsedOutput> {
   const mjoUrl = "http://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt";
   const mjoMirrorUrl = "https://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt";
@@ -207,10 +210,8 @@ export async function parseMjoData(): Promise<MjoParsedOutput> {
     }
 
     const lines = rawText.split("\n").filter((l) => l.trim().length > 0);
-    // Header takes 2 lines, filter numerical rows
     const dataRows = lines.filter((l) => /^\s*\d{4}\s+/.test(l));
 
-    // Take last 30 days
     const recent30 = dataRows.slice(-30);
     phaseDiagramData = recent30.map((line) => {
       const parts = line.trim().split(/\s+/);
@@ -223,7 +224,6 @@ export async function parseMjoData(): Promise<MjoParsedOutput> {
       const phase = sanitizeInt(parts[5]);
       let amplitude = sanitizeFloat(parts[6]);
 
-      // Calculate amplitude if missing: sqrt(RMM1^2 + RMM2^2)
       if (amplitude === null && rmm1 !== null && rmm2 !== null) {
         amplitude = Math.round(Math.sqrt(rmm1 * rmm1 + rmm2 * rmm2) * 1000) / 1000;
       }
@@ -232,16 +232,6 @@ export async function parseMjoData(): Promise<MjoParsedOutput> {
     });
   } catch (err) {
     console.warn("[ClimateParser] BOM MJO RMM fetch failed, using fallback:", err);
-    phaseDiagramData = [
-      { date: "2026-07-15", rmm1: 1.25, rmm2: -0.50, phase: 4, amplitude: 1.35 },
-      { date: "2026-07-18", rmm1: 1.48, rmm2: 0.45, phase: 4, amplitude: 1.54 },
-      { date: "2026-07-21", rmm1: 1.22, rmm2: 1.05, phase: 5, amplitude: 1.61 },
-      { date: "2026-07-24", rmm1: 0.65, rmm2: 1.32, phase: 5, amplitude: 1.47 },
-      { date: "2026-07-27", rmm1: -0.15, rmm2: 1.41, phase: 6, amplitude: 1.41 },
-      { date: "2026-07-30", rmm1: -0.92, rmm2: 0.85, phase: 7, amplitude: 1.25 },
-      { date: "2026-08-01", rmm1: -1.28, rmm2: -0.15, phase: 8, amplitude: 1.29 },
-      { date: "2026-08-03", rmm1: 1.15, rmm2: -0.98, phase: 4, amplitude: 1.60 },
-    ];
   }
 
   const latest = phaseDiagramData.length > 0 ? phaseDiagramData[phaseDiagramData.length - 1] : null;
@@ -253,46 +243,33 @@ export async function parseMjoData(): Promise<MjoParsedOutput> {
   };
 }
 
-// --- 3. IOD PARSER (Dipole Mode Index / DMI) ---
+// --- 3. IOD PARSER (BOM Australia IOD Index: IDCK000072/iod_1.txt) ---
 export async function parseIodData(): Promise<IodParsedOutput> {
-  const iodUrl = "https://psl.noaa.gov/gcos_wgsp/Timeseries/Data/dmi.hadisot.data";
-  const bomIodUrl = "http://www.bom.gov.au/climate/ocean/dmi-monthly.txt";
+  const bomIodUrl = "http://www.bom.gov.au/clim_data/IDCK000072/iod_1.txt";
 
   let timeSeries: IodDmiPoint[] = [];
-  let latestDmi: number | null = 0.54;
+  let latestDmi: number | null = 0.44;
 
   try {
-    let rawText = "";
-    try {
-      rawText = await fetchWithRetry(bomIodUrl, 2, 1000);
-    } catch {
-      rawText = await fetchWithRetry(iodUrl, 2, 1000);
-    }
+    const rawText = await fetchWithRetry(bomIodUrl);
+    const lines = rawText.split("\n").filter((l) => l.trim().length > 0 && l.includes(","));
 
-    const lines = rawText.split("\n").filter((l) => l.trim().length > 0);
-    const dataRows = lines.filter((l) => /^\s*\d{4}\s+/.test(l));
+    // Take last 12 records
+    const recentRows = lines.slice(-12);
+    timeSeries = recentRows.map((line) => {
+      const parts = line.trim().split(",");
+      const startDateStr = parts[0]; // e.g. 20260720
+      const year = parseInt(startDateStr.substring(0, 4), 10) || 2026;
+      const month = parseInt(startDateStr.substring(4, 6), 10) || 1;
+      const dmi = sanitizeFloat(parts[2]);
+      return { year, month, dmi };
+    });
 
-    // Parse tabular month data (Year, Month 1-12)
-    for (const row of dataRows) {
-      const parts = row.trim().split(/\s+/);
-      const year = sanitizeInt(parts[0]);
-      if (!year) continue;
-
-      for (let m = 1; m <= 12; m++) {
-        const dmi = sanitizeFloat(parts[m]);
-        if (dmi !== null) {
-          timeSeries.push({ year, month: m, dmi });
-        }
-      }
-    }
-
-    // Filter last 12 months
-    timeSeries = timeSeries.slice(-12);
     if (timeSeries.length > 0) {
       latestDmi = timeSeries[timeSeries.length - 1].dmi;
     }
   } catch (err) {
-    console.warn("[ClimateParser] IOD DMI fetch failed, using fallback:", err);
+    console.warn("[ClimateParser] BOM Australia iod_1.txt fetch failed, using baseline:", err);
     timeSeries = [
       { year: 2025, month: 9, dmi: 0.25 },
       { year: 2025, month: 10, dmi: 0.48 },
@@ -305,9 +282,9 @@ export async function parseIodData(): Promise<IodParsedOutput> {
       { year: 2026, month: 5, dmi: 0.32 },
       { year: 2026, month: 6, dmi: 0.45 },
       { year: 2026, month: 7, dmi: 0.51 },
-      { year: 2026, month: 8, dmi: 0.54 },
+      { year: 2026, month: 8, dmi: 0.44 },
     ];
-    latestDmi = 0.54;
+    latestDmi = 0.44;
   }
 
   const status: "Positive" | "Negative" | "Neutral" =
@@ -326,7 +303,6 @@ export async function parseIodData(): Promise<IodParsedOutput> {
 
 /**
  * Master Function: Returns Unified Climate Data JSON adhering to the exact schema.
- * Implements in-memory TTL caching (24h for ENSO/IOD, 6h for MJO).
  */
 export async function getUnifiedClimateData(forceRefresh = false): Promise<UnifiedClimateData> {
   const now = Date.now();
@@ -338,8 +314,6 @@ export async function getUnifiedClimateData(forceRefresh = false): Promise<Unifi
   if (!forceRefresh && cache.data && !isEnsoExpired && !isMjoExpired && !isIodExpired) {
     return cache.data;
   }
-
-  console.log("[ClimateParser] Parsing official climate endpoints (NOAA CPC & BOM)...");
 
   const [enso, mjo, iod] = await Promise.all([
     parseEnsoData(),
