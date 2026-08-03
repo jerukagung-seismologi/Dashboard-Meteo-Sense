@@ -11,6 +11,7 @@ import { getClimateDriversSummary, getEnsoData, getMjoData, getIodData } from "@
 import { ENSOCharts } from "@/components/climate-drivers/ENSOCharts";
 import { MJOCharts } from "@/components/climate-drivers/MJOCharts";
 import { IODCharts } from "@/components/climate-drivers/IODCharts";
+import { NcicsMapViewer } from "@/components/climate-drivers/NcicsMapViewer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -74,7 +75,7 @@ export default function ClimateDriversPage() {
                 Memahami Latar Belakang Iklim di Balik Cuaca Harian Indonesia
               </h2>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                Cuaca di Indonesia tidak hanya dipengaruhi oleh kondisi cuaca lokal, melainkan sangat ditentukan oleh tiga driver iklim utama: <strong>ENSO (Pasifik)</strong>, <strong>MJO (Gelombang Intraseasonal Tropis)</strong>, dan <strong>IOD (Samudra Hindia)</strong>. Halaman ini menyajikan status indikator real-time beserta grafik dan penjelasan ilmiah.
+                Cuaca di Indonesia tidak hanya dipengaruhi oleh kondisi cuaca lokal, melainkan sangat ditentukan oleh tiga driver iklim utama: <strong>ENSO (Pasifik)</strong>, <strong>MJO (Gelombang Intraseasonal Tropis)</strong>, dan <strong>IOD (Samudra Hindia)</strong>. Halaman ini menyajikan status indikator real-time beserta grafik dan peta pemantauan atmosfer NCICS.
               </p>
             </div>
             <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 text-center shrink-0 self-stretch md:self-auto flex flex-col justify-center">
@@ -95,12 +96,12 @@ export default function ClimateDriversPage() {
             <Globe className="h-5 w-5 text-indigo-500" /> Pratinjau Visualisasi & Grafik Terintegrasi
           </CardTitle>
           <CardDescription>
-            Beralih antar tab di bawah untuk melihat grafik deret waktu ENSO, MJO, dan IOD secara langsung
+            Beralih antar tab di bawah untuk melihat grafik deret waktu ENSO, MJO, IOD, serta peta diagnostik satelit NCICS
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-2">
           <Tabs defaultValue="enso" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
               <TabsTrigger value="enso" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
                 <Waves className="h-4 w-4 text-blue-500" /> ENSO
               </TabsTrigger>
@@ -109,6 +110,9 @@ export default function ClimateDriversPage() {
               </TabsTrigger>
               <TabsTrigger value="iod" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
                 <Compass className="h-4 w-4 text-amber-500" /> IOD
+              </TabsTrigger>
+              <TabsTrigger value="ncics" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
+                <Globe className="h-4 w-4 text-indigo-500" /> Peta NCICS
               </TabsTrigger>
             </TabsList>
 
@@ -122,6 +126,10 @@ export default function ClimateDriversPage() {
 
             <TabsContent value="iod" className="mt-0">
               <IODCharts data={iodData} isDarkMode={isDarkMode} />
+            </TabsContent>
+
+            <TabsContent value="ncics" className="mt-0">
+              <NcicsMapViewer />
             </TabsContent>
           </Tabs>
         </CardContent>

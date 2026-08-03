@@ -9,6 +9,7 @@ import { SubpageHeader } from "@/components/climate-drivers/SubpageHeader";
 import { StatusBadge } from "@/components/climate-drivers/StatusBadge";
 import { MJOCharts } from "@/components/climate-drivers/MJOCharts";
 import { EducationalPanel } from "@/components/climate-drivers/EducationalPanel";
+import { NcicsMapViewer } from "@/components/climate-drivers/NcicsMapViewer";
 import { getMjoData } from "@/lib/climate-drivers/climateData";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -133,6 +134,11 @@ export default function MjoSubpage() {
 
       {/* Interactive Visualizations */}
       <MJOCharts data={data} isDarkMode={isDarkMode} />
+
+      {/* NCICS Satellite & Wave Diagnostics Map Section */}
+      <div className="pt-2">
+        <NcicsMapViewer />
+      </div>
 
       {/* Educational & Scientific Explanation */}
       <EducationalPanel
