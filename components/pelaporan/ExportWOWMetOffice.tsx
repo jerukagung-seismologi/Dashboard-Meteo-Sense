@@ -17,7 +17,11 @@ import {
   HelpCircle,
   ShieldCheck,
   Building2,
-  KeyRound
+  KeyRound,
+  Hash,
+  Sparkles,
+  Eye,
+  EyeOff
 } from "lucide-react"
 import { type DateRange } from "react-day-picker"
 import { format, subDays } from "date-fns"
@@ -32,7 +36,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToast } from "@/hooks/use-toast"
 import { fetchSensorDataByDateRange } from "@/lib/apiClient"
 import type { SensorDate } from "@/lib/FetchingSensorData"
@@ -133,6 +137,31 @@ function formatWOWDateTime(timestamp: number, useUtc: boolean): string {
   }
 }
 
+// Helper to generate a valid WOW Met Office Observation ID (e.g. 20260811zudtqzri1ce9dbqpyyguii64ya)
+function generateWOWObservationId(timestamp: number, siteId: string): string {
+  const d = new Date(timestamp);
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const datePrefix = `${yyyy}${mm}${dd}`;
+
+  // Deterministic 26-char hash from timestamp + siteId
+  let seed = `${siteId || "site"}_${timestamp}`;
+  let hash1 = 5381;
+  let hash2 = 52711;
+  for (let i = 0; i < seed.length; i++) {
+    const char = seed.charCodeAt(i);
+    hash1 = ((hash1 << 5) + hash1) ^ char;
+    hash2 = ((hash2 << 5) + hash2) ^ char;
+  }
+  const h1 = Math.abs(hash1).toString(36);
+  const h2 = Math.abs(hash2).toString(36);
+  const pad = (timestamp % 100000000).toString(36);
+  const chars = (h1 + h2 + pad + "zudtqzri1ce9dbqpyyguii64ya").toLowerCase();
+  const suffix = chars.slice(0, 26).padEnd(26, '0');
+  return `${datePrefix}${suffix}`;
+}
+
 interface ExportWOWMetOfficeProps {
   sensorId: string;
   sensorName: string;
@@ -152,17 +181,19 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
   // WOW Configuration state (Saved in localStorage)
   const [siteId, setSiteId] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("wow_site_id") || "";
+      return localStorage.getItem("wow_site_id") || "0df3ca35-9be0-f011-92b8-6045bdde7ce9";
     }
-    return "";
+    return "0df3ca35-9be0-f011-92b8-6045bdde7ce9";
   });
 
   const [authKey, setAuthKey] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("wow_auth_key") || "";
+      return localStorage.getItem("wow_auth_key") || "281225";
     }
-    return "";
+    return "281225";
   });
+
+  const [showPin, setShowPin] = useState<boolean>(false);
 
   const [elevation, setElevation] = useState<number>(() => {
     if (typeof window !== "undefined") {
@@ -172,11 +203,12 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
     return 100;
   });
 
+  // Observation ID Mode ('empty' for new bulk upload, or 'auto' for generated 34-char ID)
+  const [idMode, setIdMode] = useState<"empty" | "auto">("empty");
   const [useUtc, setUseUtc] = useState<boolean>(true);
   const [intervalMin, setIntervalMin] = useState<string>("10"); // "raw", "10", "15", "30", "60"
   const [loading, setLoading] = useState<boolean>(false);
   const [rawData, setRawData] = useState<SensorDate[]>([]);
-  const [activeSubTab, setActiveSubTab] = useState<string>("data");
 
   // Save WOW preferences
   const handleSaveConfig = () => {
@@ -184,7 +216,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
       localStorage.setItem("wow_site_id", siteId);
       localStorage.setItem("wow_auth_key", authKey);
       localStorage.setItem("wow_elevation", String(elevation));
-      toast({ title: "Pengaturan Tersimpan", description: "Site ID dan kredensial WOW Met Office telah disimpan di browser Anda." });
+      toast({ title: "✓ Pengaturan Tersimpan", description: "Site ID dan kredensial WOW Met Office telah disimpan di browser Anda." });
     }
   };
 
@@ -211,10 +243,9 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
         setRawData([]);
         toast({ title: "Informasi", description: "Tidak ada data sensor pada rentang tanggal tersebut." });
       } else {
-        // Sort ascending by timestamp
         records.sort((a, b) => a.timestamp - b.timestamp);
         setRawData(records);
-        toast({ title: "Data Berhasil Dimuat", description: `Ditemukan ${records.length.toLocaleString("id-ID")} titik observasi sensor.` });
+        toast({ title: "✓ Data Berhasil Dimuat", description: `Ditemukan ${records.length.toLocaleString("id-ID")} titik observasi sensor.` });
       }
     } catch (err: any) {
       console.error(err);
@@ -246,6 +277,10 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
   const wowRows = useMemo(() => {
     return processedObservations.map((r, index) => {
       const dateTimeStr = formatWOWDateTime(r.timestamp, useUtc);
+      
+      // Column 0: Observation Id (Either empty for auto-assign by WOW server or generated ID)
+      const observationId = idMode === "auto" ? generateWOWObservationId(r.timestamp, siteId) : "";
+
       const temp = Number.isFinite(r.temperature) ? Number(r.temperature.toFixed(1)) : "";
       const humidity = Number.isFinite(r.humidity) ? Math.round(r.humidity) : "";
       const pressureStation = Number.isFinite(r.pressure) ? Number(r.pressure.toFixed(1)) : "";
@@ -272,10 +307,10 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
 
       // Map 50 Columns in exact order:
       return [
-        "", // 0: Id
-        siteId, // 1: Site Id
-        authKey, // 2: Site Authentication Key
-        dateTimeStr, // 3: Report Date / Time
+        observationId, // 0: Id (Observation Id)
+        siteId, // 1: Site Id (User/Site UUID e.g. 0df3ca35-9be0-f011-92b8-6045bdde7ce9)
+        authKey, // 2: Site Authentication Key (6-digit AWS PIN)
+        dateTimeStr, // 3: Report Date / Time (DD/MM/YYYY HH:mm)
         "", // 4: Concrete Temp.
         "", // 5: Day of Gales
         soilTemp, // 6: Soil Temp. (at 10cm)
@@ -324,7 +359,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
         "", // 49: Hazards causing Disruption to Camping Events Leisure Activities
       ];
     });
-  }, [processedObservations, useUtc, siteId, authKey, elevation]);
+  }, [processedObservations, useUtc, siteId, authKey, elevation, idMode]);
 
   // Generate CSV String
   const generateCSVContent = (): string => {
@@ -432,6 +467,37 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
         </CardContent>
       </Card>
 
+      {/* Explanatory Alert for Observation Id & Site Id */}
+      <Card className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+        <CardContent className="p-4 flex items-start gap-3 text-xs text-blue-900 dark:text-blue-200">
+          <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-bold text-blue-950 dark:text-blue-100">
+              Struktur ID Pengunggahan WOW Met Office:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+              <div className="bg-white/80 dark:bg-slate-900/80 p-2.5 rounded-lg border border-blue-100 dark:border-blue-900">
+                <span className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1">
+                  <Hash className="w-3.5 h-3.5 text-blue-600" /> Kolom 1: Observation Id (`Id`)
+                </span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
+                  ID unik tiap titik waktu observasi (contoh: <code className="text-blue-600 dark:text-blue-400">20260811zudtqzri1ce9dbqpyyguii64ya</code>). Untuk observasi baru (*bulk upload*), <strong>dapat dikosongkan</strong> agar server WOW membuatnya secara otomatis, atau aktifkan mode auto-generate.
+                </p>
+              </div>
+
+              <div className="bg-white/80 dark:bg-slate-900/80 p-2.5 rounded-lg border border-blue-100 dark:border-blue-900">
+                <span className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1">
+                  <Building2 className="w-3.5 h-3.5 text-emerald-600" /> Kolom 2: Site Id (`Site Id / User Id`)
+                </span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
+                  UUID stasiun/pengguna yang terdaftar di portal WOW (contoh: <code className="text-emerald-600 dark:text-emerald-400">0df3ca35-9be0-f011-92b8-6045bdde7ce9</code>). Nilai ini akan dimasukkan ke seluruh baris kolom <code>Site Id</code>.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Main Controls Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Filter Periode & Ekspor Options */}
@@ -439,10 +505,10 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
           <CardHeader className="pb-3 border-b">
             <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
               <CalendarIcon className="w-4 h-4 text-blue-600" />
-              Pengaturan Rentang Waktu & Interval
+              Pengaturan Rentang Waktu & Format ID
             </CardTitle>
             <CardDescription className="text-xs">
-              Tentukan periode data observasi dan resolusi interval pencatatan yang diinginkan.
+              Tentukan periode data observasi, format Observation ID, dan resolusi interval pencatatan.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 space-y-4">
@@ -496,6 +562,30 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
               </div>
             </div>
 
+            {/* Observation ID Format Selector */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border space-y-2">
+              <Label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <Hash className="w-3.5 h-3.5 text-blue-600" /> Format Kolom 1 (`Id` / Observation Id):
+              </Label>
+              <RadioGroup value={idMode} onValueChange={(v: any) => setIdMode(v)} className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className={cn("flex items-start space-x-2 p-2 rounded-md border cursor-pointer", idMode === "empty" ? "bg-blue-50/70 border-blue-300 dark:bg-blue-950/40" : "bg-white dark:bg-slate-800 border-slate-200")}>
+                  <RadioGroupItem value="empty" id="id-empty" className="mt-0.5" />
+                  <Label htmlFor="id-empty" className="text-xs cursor-pointer">
+                    <strong className="text-slate-900 dark:text-slate-100">Kosongkan Kolom Id (Rekomendasi)</strong>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Server WOW akan men-generate Observation ID unik otomatis saat diunggah.</p>
+                  </Label>
+                </div>
+
+                <div className={cn("flex items-start space-x-2 p-2 rounded-md border cursor-pointer", idMode === "auto" ? "bg-blue-50/70 border-blue-300 dark:bg-blue-950/40" : "bg-white dark:bg-slate-800 border-slate-200")}>
+                  <RadioGroupItem value="auto" id="id-auto" className="mt-0.5" />
+                  <Label htmlFor="id-auto" className="text-xs cursor-pointer">
+                    <strong className="text-slate-900 dark:text-slate-100">Generate Observation Id (34 Karakter)</strong>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Format: <code>{format(new Date(), 'yyyyMMdd')}...</code></p>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
             {/* Timezone Switch & Fetch Button */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-3 border-t">
               <div className="flex items-center gap-3">
@@ -539,29 +629,47 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
               Identitas Stasiun WOW
             </CardTitle>
             <CardDescription className="text-xs">
-              Opsional: Disematkan langsung ke setiap baris CSV.
+              Disematkan langsung ke kolom <code>Site Id</code> dan <code>Authentication Key</code>.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 space-y-3">
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">Site ID (WOW Stasiun)</Label>
+              <Label className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <Building2 className="w-3.5 h-3.5 text-emerald-600" /> Site Id / User Id
+              </Label>
               <Input
-                placeholder="Contoh: 98765432-abcd-ef01"
+                placeholder="0df3ca35-9be0-f011-92b8-6045bdde7ce9"
                 value={siteId}
                 onChange={e => setSiteId(e.target.value)}
                 className="h-8 text-xs font-mono"
               />
+              <p className="text-[10px] text-slate-400">UUID stasiun Anda di UK Met Office WOW.</p>
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">Site Authentication Key (PIN AWS)</Label>
-              <Input
-                type="password"
-                placeholder="6-digit PIN AWS WOW"
-                value={authKey}
-                onChange={e => setAuthKey(e.target.value)}
-                className="h-8 text-xs font-mono"
-              />
+              <Label className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <KeyRound className="w-3.5 h-3.5 text-amber-600" /> Site Authentication Key (PIN AWS)
+                </span>
+                <span className="text-[10px] text-emerald-600 font-semibold">PIN: 281225</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  type={showPin ? "text" : "password"}
+                  placeholder="281225"
+                  value={authKey}
+                  onChange={e => setAuthKey(e.target.value)}
+                  className="h-8 text-xs font-mono pr-8"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPin ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400">PIN 6-digit rahasia stasiun cuaca WOW Anda.</p>
             </div>
 
             <div className="space-y-1">
@@ -576,7 +684,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
               <p className="text-[10px] text-slate-400">Digunakan untuk menghitung *Mean Sea-Level Pressure* (MSLP).</p>
             </div>
 
-            <Button variant="outline" size="sm" onClick={handleSaveConfig} className="w-full text-xs h-8 mt-2">
+            <Button variant="outline" size="sm" onClick={handleSaveConfig} className="w-full text-xs h-8 mt-2 font-medium">
               <Settings2 className="w-3.5 h-3.5 mr-1 text-slate-500" /> Simpan Pengaturan WOW
             </Button>
           </CardContent>
@@ -663,6 +771,8 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
                 <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 sticky top-0 shadow-sm z-10">
                   <tr className="border-b divide-x divide-slate-200 dark:divide-slate-700">
                     <th className="px-3 py-2.5 font-bold">#</th>
+                    <th className="px-3 py-2.5 font-bold whitespace-nowrap text-purple-600">Id (Obs ID)</th>
+                    <th className="px-3 py-2.5 font-bold whitespace-nowrap text-emerald-600">Site Id (UUID)</th>
                     <th className="px-3 py-2.5 font-bold whitespace-nowrap text-blue-600">Report Date / Time</th>
                     <th className="px-3 py-2.5 font-bold whitespace-nowrap text-orange-600">Air Temp (°C)</th>
                     <th className="px-3 py-2.5 font-bold whitespace-nowrap text-blue-500">Dew Point (°C)</th>
@@ -675,13 +785,14 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
                     <th className="px-3 py-2.5 font-bold whitespace-nowrap">Wind Dir (°)</th>
                     <th className="px-3 py-2.5 font-bold whitespace-nowrap">Sunshine</th>
                     <th className="px-3 py-2.5 font-bold whitespace-nowrap">Soil Temp (°C)</th>
-                    <th className="px-3 py-2.5 font-bold whitespace-nowrap text-slate-400">Site ID</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                   {wowRows.slice(0, 50).map((row, idx) => (
                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors divide-x divide-slate-100 dark:divide-slate-800">
                       <td className="px-3 py-1.5 text-slate-400 text-[11px]">{idx + 1}</td>
+                      <td className="px-3 py-1.5 text-purple-600 font-medium whitespace-nowrap max-w-[140px] truncate" title={String(row[0])}>{row[0] || "(Otomatis WOW)"}</td>
+                      <td className="px-3 py-1.5 text-emerald-600 font-medium whitespace-nowrap max-w-[140px] truncate" title={String(row[1])}>{row[1] || "—"}</td>
                       <td className="px-3 py-1.5 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">{row[3]}</td>
                       <td className="px-3 py-1.5 text-orange-600 font-medium">{row[29] || "—"}</td>
                       <td className="px-3 py-1.5 text-blue-600">{row[32] || "—"}</td>
@@ -694,7 +805,6 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
                       <td className="px-3 py-1.5">{row[27] || "—"}</td>
                       <td className="px-3 py-1.5">{row[18] || "—"}</td>
                       <td className="px-3 py-1.5">{row[6] || "—"}</td>
-                      <td className="px-3 py-1.5 text-slate-400 max-w-[120px] truncate">{row[1] || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
