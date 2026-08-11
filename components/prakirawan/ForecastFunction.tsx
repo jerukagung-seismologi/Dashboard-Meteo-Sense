@@ -582,7 +582,7 @@ export default function ForecastForm() {
     }
   };
 
-  // --- FETCH FORECAST: MULTI-MODEL VOTING CONSENSUS (ECMWF, GFS, ICON, GEM, JMA) ---
+  // --- FETCH FORECAST VIA EDGE ROUTE HANDLER (/api/weather/consensus) ---
   const fetchForecast = async () => {
     if (!currentLocationName || currentLocationName.trim() === "") {
       toast({ title: "Lokasi kosong", description: "Masukkan nama lokasi terlebih dahulu.", variant: "destructive" })
@@ -593,15 +593,15 @@ export default function ForecastForm() {
   
     try {
       toast({ 
-        title: "Mengambil Data Multi-Model & AI...", 
-        description: "Menghubungi Open-Meteo untuk NWP Global + Google WeatherNext 2 (DeepMind) & ECMWF AIFS..." 
+        title: "Menghubungi Edge Server...", 
+        description: "Mengambil konsensus 7 model global (ECMWF, GFS, ICON, GEM, JMA, Google WeatherNext 2, AIFS)..." 
       })
 
       let lat = KEBUMEN_LAT
       let lon = KEBUMEN_LON
       let locationName = "Kebumen"
 
-      // 1) Geocoding (Open-Meteo) - hanya jika currentLocationName bukan Kebumen
+      // 1) Geocoding jika bukan Kebumen
       let locQuery = currentLocationName
       if (locQuery.toLowerCase() !== "kebumen") {
         try {
@@ -626,152 +626,30 @@ export default function ForecastForm() {
           }
         } catch (geoErr) {
           console.error("Geocoding error:", geoErr)
-          toast({ 
-            title: "Error geocoding", 
-            description: "Gagal mencari lokasi. Menggunakan Kebumen default.", 
-            variant: "destructive" 
-          })
         }
       }
 
-      // 2) Calculate tomorrow's date
-      const tomorrow = new Date()
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      const tomorrowDateStr = tomorrow.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })
+      // 2) Panggil Edge Route Handler terpusat
+      const edgeUrl = `/api/weather/consensus?lat=${lat}&lon=${lon}&location=${encodeURIComponent(locationName)}`
+      console.log("Fetching consensus from Edge API:", edgeUrl)
 
-      // 3) Fetch Multi-Model Forecast dari Open-Meteo API
-      const modelIds = GLOBAL_NWP_MODELS.map((m) => m.id).join(",")
-      const params = new URLSearchParams({
-        latitude: lat.toString(),
-        longitude: lon.toString(),
-        hourly: "temperature_2m,relative_humidity_2m,weather_code,precipitation_probability,precipitation",
-        models: modelIds,
-        timezone: "Asia/Bangkok",
-        forecast_days: "2", // Ambil 2 hari untuk memastikan data esok hari lengkap
-      })
-
-      const forecastUrl = `https://api.open-meteo.com/v1/forecast?${params.toString()}`
-      console.log("Fetching Multi-Model Ensemble from:", forecastUrl)
-
-      const response = await fetch(forecastUrl)
-
+      const response = await fetch(edgeUrl)
       if (!response.ok) {
-        throw new Error(`API Response: ${response.status} ${response.statusText}`)
+        const errJson = await response.json().catch(() => ({}))
+        throw new Error(errJson.error || `HTTP ${response.status}: ${response.statusText}`)
       }
 
-      const fcJson = await response.json()
-      if (!fcJson?.hourly?.time) {
-        throw new Error("Struktur data prakiraan tidak valid")
+      const data = await response.json()
+      if (!data?.rows || !Array.isArray(data.rows)) {
+        throw new Error("Format respon konsensus Edge tidak valid.")
       }
 
-      const times: string[] = fcJson.hourly.time || []
-      console.log(`✓ Data Multi-Model diterima: ${times.length} data per jam untuk esok (${tomorrowDateStr})`)
+      console.log(`✓ Data Konsensus Edge Diterima untuk ${data.location} (${data.forecastDate}):`, data)
 
-      // 4) Helper: Find index untuk waktu spesifik
-      const findIndexFor = (targetTime: string): number => {
-        const suffixTomorrow = `${tomorrowDateStr}T${targetTime}:00`
-        
-        // Exact match
-        let idx = times.findIndex((t) => t === suffixTomorrow)
-        if (idx !== -1) return idx
-
-        // Fallback match
-        const targetDateTime = new Date(`${tomorrowDateStr}T${targetTime}:00`)
-        let bestIdx = -1
-        let bestDiff = Infinity
-
-        for (let i = 0; i < times.length; i++) {
-          const forecastDateTime = new Date(times[i])
-          const forecastDate = times[i].split("T")[0]
-          const diff = Math.abs(forecastDateTime.getTime() - targetDateTime.getTime())
-
-          if (diff < bestDiff && forecastDate === tomorrowDateStr) {
-            bestDiff = diff
-            bestIdx = i
-          }
-        }
-
-        return bestIdx
-      }
-
-      // 5) Process voting konsensus untuk setiap jam
-      const fetchedRows: Partial<ForecastRow>[] = initialTimes.map((targetTime) => {
-        const idx = findIndexFor(targetTime)
-
-        if (idx === -1) {
-          return { 
-            time: targetTime, 
-            conditionMain: "", 
-            temperature: "", 
-            humidity: "",
-            probMain: "0",
-          }
-        }
-
-        // Kumpulkan prediksi dari masing-masing model
-        const predictions: SingleModelPrediction[] = GLOBAL_NWP_MODELS.map((m) => {
-          const rawTemp = fcJson.hourly[`temperature_2m_${m.id}`]?.[idx] ?? fcJson.hourly.temperature_2m?.[idx]
-          const rawHum = fcJson.hourly[`relative_humidity_2m_${m.id}`]?.[idx] ?? fcJson.hourly.relative_humidity_2m?.[idx]
-          const rawCode = fcJson.hourly[`weather_code_${m.id}`]?.[idx] ?? fcJson.hourly.weather_code?.[idx] ?? 0
-          const rawPrecip = fcJson.hourly[`precipitation_${m.id}`]?.[idx] ?? fcJson.hourly.precipitation?.[idx] ?? 0
-          const rawRainProb = fcJson.hourly[`precipitation_probability_${m.id}`]?.[idx] ?? null
-
-          const temp = typeof rawTemp === "number" ? rawTemp : null
-          const hum = typeof rawHum === "number" ? rawHum : null
-          const code = typeof rawCode === "number" ? rawCode : 0
-          const precip = typeof rawPrecip === "number" ? rawPrecip : 0
-          const rainProb = typeof rawRainProb === "number" ? rawRainProb : null
-
-          const condition = translateModelToCondition(code, precip, rainProb)
-
-          return {
-            modelId: m.id,
-            modelName: `${m.name} (${m.country})`,
-            condition,
-            temperature: temp,
-            humidity: hum,
-            precipitation: precip,
-            rainProb,
-          }
-        })
-
-        // Hitung Konsensus Voting
-        const consensus = calculateMultiModelConsensus(predictions)
-
-        console.group(`[Konsensus Cuaca Jam ${targetTime}]`)
-        console.log(`Kondisi Utama: ${consensus.probMain}% ${consensus.conditionMain}`)
-        if (consensus.conditionSub) {
-          console.log(`Kondisi Sekunder: ${consensus.probSub}% ${consensus.conditionSub}`)
-        }
-        console.log(`Suhu: ${consensus.temperature}°C ±${consensus.temperatureError} | Kelembapan: ${consensus.humidity}% ±${consensus.humidityError}`)
-        console.table(predictions.map((p) => ({
-          Model: p.modelName,
-          Kondisi: p.condition,
-          Suhu: p.temperature != null ? `${p.temperature}°C` : "-",
-          Kelembapan: p.humidity != null ? `${p.humidity}%` : "-",
-          Hujan: `${p.precipitation} mm`,
-        })))
-        console.groupEnd()
-
-        return {
-          time: targetTime,
-          conditionMain: consensus.conditionMain,
-          probMain: consensus.probMain,
-          conditionSub: consensus.conditionSub,
-          probSub: consensus.probSub,
-          temperature: consensus.temperature,
-          temperatureError: consensus.temperatureError,
-          humidity: consensus.humidity,
-          humidityError: consensus.humidityError,
-          heatIndex: consensus.heatIndex,
-          heatIndexError: consensus.heatIndexError,
-        }
-      })
-
-      // 6) Merge dengan existing rows
+      // 3) Update rows form dengan data konsensus yang sudah matang dari Edge
       setRows((prev) =>
         prev.map((r, i) => {
-          const f = fetchedRows[i] || {}
+          const f = data.rows[i] || {}
           return {
             ...r,
             time: f.time ?? r.time,
@@ -792,11 +670,9 @@ export default function ForecastForm() {
       setForecastSource("Multi-Model Consensus")
 
       toast({ 
-        title: "✓ Konsensus Multi-Model & AI Selesai", 
-        description: `Probabilitas dan parameter cuaca untuk ${tomorrowStr} berhasil dihitung dari 7 model (ECMWF, GFS, ICON, GEM, JMA, Google WeatherNext 2, dan AIFS).` 
+        title: "✓ Konsensus Multi-Model Selesai", 
+        description: `Probabilitas dan parameter cuaca untuk ${tomorrowStr} berhasil dihitung via Edge Route Handler (7 model global).` 
       })
-
-      console.log("✓ Multi-Model & Google WeatherNext forecast fetch completed successfully")
 
     } catch (err) {
       console.error("❌ fetchForecast error:", err)
