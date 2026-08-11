@@ -428,7 +428,7 @@ export default function LaporanMeteorologi({ sensorId, sensorName, displayName }
       <div className={cn("overflow-hidden h-0 w-0 absolute opacity-0 pointer-events-none", weatherData.length > 0 && "block")}>
         <PrintLayout
           id={reportId}
-          title="Laporan Meteorologi (Min/Max)"
+          title="Laporan Meteorologi"
           sensorName={sensorName}
           generatedBy={displayName}
           periodLabel={`${dateRange?.from ? formatIdDateShort(dateRange.from) : ''} - ${dateRange?.to ? formatIdDateShort(dateRange.to) : ''}`}
