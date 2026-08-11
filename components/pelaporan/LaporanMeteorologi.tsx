@@ -862,14 +862,52 @@ export default function LaporanMeteorologi({ sensorId, sensorName, displayName }
                 periodLabel={`${dateRange?.from ? formatIdDateShort(dateRange.from) : ''} - ${dateRange?.to ? formatIdDateShort(dateRange.to) : ''}`}
                 orientation="portrait"
               >
-                <section className="space-y-6 mt-6">
-                  <h2 className="text-xl print:text-lg font-semibold mb-4 print:mb-2 border-l-4 border-slate-800 pl-3">Visualisasi Fluktuasi Harian</h2>
-                  <div className="grid grid-cols-1 gap-6 print:gap-4 break-inside-avoid">
+                <section className="space-y-4 mt-6 break-inside-avoid">
+                  {/* 2 Kolom Ringkasan Rata-rata Suhu & Kelembapan Kiri - Kanan */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Kolom Kiri: Suhu Udara */}
+                    <div className="p-3 bg-orange-50/70 border border-orange-200 rounded-lg flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-orange-800 flex items-center gap-1.5">
+                          <ThermometerSun className="w-4 h-4 text-orange-600" />
+                          Rata-rata Suhu Udara
+                        </div>
+                        <div className="text-2xl font-black text-orange-950 mt-0.5">
+                          {summaryStats?.avgTemp ?? "-"} <span className="text-sm font-normal text-orange-700">°C</span>
+                        </div>
+                      </div>
+                      <div className="text-right text-xs text-orange-700 font-medium">
+                        <div>Maks: <strong className="text-red-600">{summaryStats?.highestTemp ?? "-"}°C</strong></div>
+                        <div>Min: <strong className="text-blue-600">{summaryStats?.lowestTemp ?? "-"}°C</strong></div>
+                      </div>
+                    </div>
+
+                    {/* Kolom Kanan: Kelembapan Udara */}
+                    <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-blue-800 flex items-center gap-1.5">
+                          <Droplets className="w-4 h-4 text-blue-600" />
+                          Rata-rata Kelembapan Udara
+                        </div>
+                        <div className="text-2xl font-black text-blue-950 mt-0.5">
+                          {summaryStats?.avgHum ?? "-"} <span className="text-sm font-normal text-blue-700">%</span>
+                        </div>
+                      </div>
+                      <div className="text-right text-xs text-blue-700 font-medium">
+                        <div>Maks: <strong className="text-emerald-700">{summaryStats?.highestHum ?? "-"}%</strong></div>
+                        <div>Min: <strong className="text-amber-700">{summaryStats?.lowestHum ?? "-"}%</strong></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2 Kolom Grafik Berdampingan: Suhu (Kiri) & Kelembapan (Kanan) */}
+                  <div className="grid grid-cols-2 gap-4 break-inside-avoid">
+                    {/* Grafik Kiri: Suhu Udara */}
                     <Card className="border border-slate-200 shadow-sm print:shadow-none">
-                      <CardHeader className="py-3 print:py-2 bg-orange-50 print:bg-transparent border-b">
-                        <CardTitle className="text-sm font-semibold flex items-center text-orange-800">
-                          <ThermometerSun className="w-4 h-4 mr-2" />
-                          Suhu Udara Harian (Min, Rata-rata & Max)
+                      <CardHeader className="py-2.5 px-3 bg-orange-50/60 print:bg-transparent border-b">
+                        <CardTitle className="text-xs font-bold flex items-center text-orange-800">
+                          <ThermometerSun className="w-3.5 h-3.5 mr-1.5 text-orange-600" />
+                          Fluktuasi Suhu Udara (°C)
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-0">
@@ -882,15 +920,17 @@ export default function LaporanMeteorologi({ sensorId, sensorName, displayName }
                           colorAvg="#f97316"
                           colorMin="#2563eb"
                           unit="°C"
+                          height="230px"
                         />
                       </CardContent>
                     </Card>
 
-                    <Card className="border border-slate-200 shadow-sm print:shadow-none break-inside-avoid">
-                      <CardHeader className="py-3 print:py-2 bg-blue-50 print:bg-transparent border-b">
-                        <CardTitle className="text-sm font-semibold flex items-center text-blue-800">
-                          <Droplets className="w-4 h-4 mr-2" />
-                          Kelembaban Udara Harian (Min, Rata-rata & Max)
+                    {/* Grafik Kanan: Kelembapan Udara */}
+                    <Card className="border border-slate-200 shadow-sm print:shadow-none">
+                      <CardHeader className="py-2.5 px-3 bg-blue-50/60 print:bg-transparent border-b">
+                        <CardTitle className="text-xs font-bold flex items-center text-blue-800">
+                          <Droplets className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+                          Fluktuasi Kelembapan Udara (%)
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-0">
@@ -903,27 +943,7 @@ export default function LaporanMeteorologi({ sensorId, sensorName, displayName }
                           colorAvg="#0ea5e9"
                           colorMin="#0284c7"
                           unit="%"
-                        />
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border border-slate-200 shadow-sm print:shadow-none break-inside-avoid">
-                      <CardHeader className="py-3 print:py-2 bg-violet-50 print:bg-transparent border-b">
-                        <CardTitle className="text-sm font-semibold flex items-center text-violet-800">
-                          <Gauge className="w-4 h-4 mr-2" />
-                          Tekanan Udara Harian (Min, Rata-rata & Max)
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-0">
-                        <TripleLineChart
-                          data={weatherData}
-                          dataKeyMax="pressureMax"
-                          dataKeyAvg="pressureAvg"
-                          dataKeyMin="pressureMin"
-                          colorMax="#7c3aed"
-                          colorAvg="#a855f7"
-                          colorMin="#c084fc"
-                          unit="hPa"
+                          height="230px"
                         />
                       </CardContent>
                     </Card>
@@ -991,14 +1011,52 @@ export default function LaporanMeteorologi({ sensorId, sensorName, displayName }
           periodLabel={`${dateRange?.from ? formatIdDateShort(dateRange.from) : ''} - ${dateRange?.to ? formatIdDateShort(dateRange.to) : ''}`}
           orientation="portrait"
         >
-          <section className="space-y-6 mt-6">
-            <h2 className="text-xl print:text-lg font-semibold mb-4 print:mb-2 border-l-4 border-slate-800 pl-3">Visualisasi Fluktuasi Harian</h2>
-            <div className="grid grid-cols-1 gap-6 print:gap-4 break-inside-avoid">
+          <section className="space-y-4 mt-6 break-inside-avoid">
+            {/* 2 Kolom Ringkasan Rata-rata Suhu & Kelembapan Kiri - Kanan */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Kolom Kiri: Suhu Udara */}
+              <div className="p-3 bg-orange-50/70 border border-orange-200 rounded-lg flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-orange-800 flex items-center gap-1.5">
+                    <ThermometerSun className="w-4 h-4 text-orange-600" />
+                    Rata-rata Suhu Udara
+                  </div>
+                  <div className="text-2xl font-black text-orange-950 mt-0.5">
+                    {summaryStats?.avgTemp ?? "-"} <span className="text-sm font-normal text-orange-700">°C</span>
+                  </div>
+                </div>
+                <div className="text-right text-xs text-orange-700 font-medium">
+                  <div>Maks: <strong className="text-red-600">{summaryStats?.highestTemp ?? "-"}°C</strong></div>
+                  <div>Min: <strong className="text-blue-600">{summaryStats?.lowestTemp ?? "-"}°C</strong></div>
+                </div>
+              </div>
+
+              {/* Kolom Kanan: Kelembapan Udara */}
+              <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-blue-800 flex items-center gap-1.5">
+                    <Droplets className="w-4 h-4 text-blue-600" />
+                    Rata-rata Kelembapan Udara
+                  </div>
+                  <div className="text-2xl font-black text-blue-950 mt-0.5">
+                    {summaryStats?.avgHum ?? "-"} <span className="text-sm font-normal text-blue-700">%</span>
+                  </div>
+                </div>
+                <div className="text-right text-xs text-blue-700 font-medium">
+                  <div>Maks: <strong className="text-emerald-700">{summaryStats?.highestHum ?? "-"}%</strong></div>
+                  <div>Min: <strong className="text-amber-700">{summaryStats?.lowestHum ?? "-"}%</strong></div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2 Kolom Grafik Berdampingan: Suhu (Kiri) & Kelembapan (Kanan) */}
+            <div className="grid grid-cols-2 gap-4 break-inside-avoid">
+              {/* Grafik Kiri: Suhu Udara */}
               <Card className="border border-slate-200 shadow-sm print:shadow-none">
-                <CardHeader className="py-3 print:py-2 bg-orange-50 print:bg-transparent border-b">
-                  <CardTitle className="text-sm font-semibold flex items-center text-orange-800">
-                    <ThermometerSun className="w-4 h-4 mr-2" />
-                    Suhu Udara Harian (Min, Rata-rata & Max)
+                <CardHeader className="py-2.5 px-3 bg-orange-50/60 print:bg-transparent border-b">
+                  <CardTitle className="text-xs font-bold flex items-center text-orange-800">
+                    <ThermometerSun className="w-3.5 h-3.5 mr-1.5 text-orange-600" />
+                    Fluktuasi Suhu Udara (°C)
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -1011,15 +1069,17 @@ export default function LaporanMeteorologi({ sensorId, sensorName, displayName }
                     colorAvg="#f97316"
                     colorMin="#2563eb"
                     unit="°C"
+                    height="230px"
                   />
                 </CardContent>
               </Card>
 
-              <Card className="border border-slate-200 shadow-sm print:shadow-none break-inside-avoid">
-                <CardHeader className="py-3 print:py-2 bg-blue-50 print:bg-transparent border-b">
-                  <CardTitle className="text-sm font-semibold flex items-center text-blue-800">
-                    <Droplets className="w-4 h-4 mr-2" />
-                    Kelembaban Udara Harian (Min, Rata-rata & Max)
+              {/* Grafik Kanan: Kelembapan Udara */}
+              <Card className="border border-slate-200 shadow-sm print:shadow-none">
+                <CardHeader className="py-2.5 px-3 bg-blue-50/60 print:bg-transparent border-b">
+                  <CardTitle className="text-xs font-bold flex items-center text-blue-800">
+                    <Droplets className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+                    Fluktuasi Kelembapan Udara (%)
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -1032,27 +1092,7 @@ export default function LaporanMeteorologi({ sensorId, sensorName, displayName }
                     colorAvg="#0ea5e9"
                     colorMin="#0284c7"
                     unit="%"
-                  />
-                </CardContent>
-              </Card>
-
-              <Card className="border border-slate-200 shadow-sm print:shadow-none break-inside-avoid">
-                <CardHeader className="py-3 print:py-2 bg-violet-50 print:bg-transparent border-b">
-                  <CardTitle className="text-sm font-semibold flex items-center text-violet-800">
-                    <Gauge className="w-4 h-4 mr-2" />
-                    Tekanan Udara Harian (Min, Rata-rata & Max)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <TripleLineChart
-                    data={weatherData}
-                    dataKeyMax="pressureMax"
-                    dataKeyAvg="pressureAvg"
-                    dataKeyMin="pressureMin"
-                    colorMax="#7c3aed"
-                    colorAvg="#a855f7"
-                    colorMin="#c084fc"
-                    unit="hPa"
+                    height="230px"
                   />
                 </CardContent>
               </Card>

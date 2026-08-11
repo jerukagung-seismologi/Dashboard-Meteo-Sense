@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useMemo } from "react"
 import { 
   FileImage, 
   FileType, 
@@ -11,21 +11,26 @@ import {
   Droplets, 
   Gauge, 
   CloudRain, 
-  Clock3, 
   MapPinned,
-  Loader2
+  Loader2,
+  LayoutDashboard,
+  Eye,
+  CheckCircle2
 } from "lucide-react"
 import { format, subDays } from "date-fns"
 import { id } from "date-fns/locale"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-import { formatYMD, formatIdDateDash } from "@/lib/weatherUtils"
+import { formatYMD, formatIdDateDash, WeatherRecord, aggregateDaily } from "@/lib/weatherUtils"
 import { generateCanvasFromDOM, exportAsPNG, exportAsPDF, printCanvas } from "@/lib/exportUtils"
+import { fetchSensorDataByDateRange } from "@/lib/apiClient"
+import { ERA5CorrectionPanel } from "./ERA5CorrectionPanel"
+import { CorrectionOffsets, applyCorrectionToDailyRecords } from "@/lib/reanalysis/era5Correction"
 
 interface LaporanHarianProps {
   sensorId: string;
@@ -102,14 +107,32 @@ const WeatherStatRow = ({
 export default function LaporanHarian({ sensorId, sensorName, displayName }: LaporanHarianProps) {
   const { toast } = useToast()
   const [selectedDate, setSelectedDate] = useState<Date>(() => getYesterday());
+  const [viewMode, setViewMode] = useState<'web' | 'print'>('web');
   const [loading, setLoading] = useState(false)
-  const [dayRecord, setDayRecord] = useState<any>(null)
+  const [rawRecords, setRawRecords] = useState<WeatherRecord[]>([])
   const [isExporting, setIsExporting] = useState(false)
   const reportId = "harian-print-area";
+
+  // --- ERA5 Calibration & Correction State ---
+  const [offsets, setOffsets] = useState<CorrectionOffsets>({
+    tempOffset: 0,
+    humOffset: 0,
+    pressOffset: 0,
+    enabled: false,
+  });
 
   // Responsiveness scale
   const [scale, setScale] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Effective Corrected Records
+  const correctedRecords = useMemo(() => {
+    return applyCorrectionToDailyRecords(rawRecords, offsets);
+  }, [rawRecords, offsets]);
+
+  const dayRecord = useMemo(() => {
+    return correctedRecords.length > 0 ? correctedRecords[0] : null;
+  }, [correctedRecords]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -133,11 +156,11 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
   const handleExport = async (type: 'pdf' | 'png' | 'print') => {
     if (!dayRecord) return;
     setIsExporting(true);
-    toast({ title: "Memproses Laporan...", description: "Mohon tunggu sebentar." });
+    toast({ title: "Memproses Laporan...", description: "Mohon tunggu sebentar, sedang merender kanvas dokumen." });
     setTimeout(async () => {
       const canvas = await generateCanvasFromDOM(reportId);
       if (!canvas) {
-        toast({ variant: "destructive", title: "Error", description: "Gagal membuat gambar." });
+        toast({ variant: "destructive", title: "Error", description: "Gagal membuat gambar dari laporan." });
         setIsExporting(false);
         return;
       }
@@ -145,7 +168,7 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
       if (type === 'png') exportAsPNG(canvas, filename);
       else if (type === 'pdf') exportAsPDF([canvas], filename, 'portrait');
       else if (type === 'print') printCanvas(canvas, 'portrait');
-      toast({ title: "Berhasil", description: "Laporan siap." });
+      toast({ title: "✓ Berhasil", description: "Laporan siap diunduh/dicetak." });
       setIsExporting(false);
     }, 150);
   };
@@ -156,23 +179,23 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
       return
     }
     setLoading(true);
-    setDayRecord(null);
+    setRawRecords([]);
     try {
-      const dateStr = formatYMD(date);
-      const url = `/api/weather/daily-report?sensorId=${sensorId}&date=${dateStr}`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error("Gagal mengambil data dari server.");
-      }
-      const data = await res.json();
-      
-      if (!data.dayRecord) {
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
+
+      const raw = await fetchSensorDataByDateRange(sensorId, start.getTime(), end.getTime());
+
+      if (!raw || raw.length === 0) {
         toast({ title: "Informasi", description: "Tidak ada data untuk tanggal tersebut" });
         setLoading(false);
         return;
       }
 
-      setDayRecord(data.dayRecord);
+      const records = aggregateDaily(raw);
+      setRawRecords(records);
     } catch (err) {
       console.error(err);
       toast({ title: "Error", description: "Gagal memuat laporan harian", variant: "destructive" });
@@ -193,21 +216,47 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
   const nowWib = new Date(Date.now() + 7 * 3600_000);
   const isAfter7am = nowWib.getUTCHours() >= 7;
   const isYesterdaySelected = formatYMD(selectedDate) === formatYMD(getYesterday());
+  const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
 
   return (
     <div className="space-y-6">
-      {/* Control Panel */}
-      <Card className="no-print">
-        <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-start justify-between">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Tanggal Pengamatan</label>
-              {isYesterdaySelected && isAfter7am && (
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-400 gap-1 bg-amber-500/5">
-                  <Clock className="h-3 w-3" /> Siap cetak (≥ 07:00 WIB)
-                </Badge>
-              )}
+      {/* --- CONTROL TOOLBAR --- */}
+      <Card className="no-print shadow-sm border-slate-200 dark:border-slate-800">
+        <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+          <div className="flex flex-col gap-2 flex-grow">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200">Tanggal Pengamatan</label>
+                {isYesterdaySelected && isAfter7am && (
+                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-400 gap-1 bg-amber-500/5">
+                    <Clock className="h-3 w-3" /> Siap cetak (≥ 07:00 WIB)
+                  </Badge>
+                )}
+              </div>
+
+              {/* View Mode Toggle */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border">
+                <Button
+                  variant={viewMode === 'web' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('web')}
+                  className={cn("h-7 text-xs px-3 font-medium", viewMode === 'web' && "bg-white dark:bg-slate-900 text-blue-600 shadow-sm")}
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5 mr-1.5" />
+                  Dashboard Web
+                </Button>
+                <Button
+                  variant={viewMode === 'print' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('print')}
+                  className={cn("h-7 text-xs px-3 font-medium", viewMode === 'print' && "bg-white dark:bg-slate-900 text-indigo-600 shadow-sm")}
+                >
+                  <Eye className="w-3.5 h-3.5 mr-1.5" />
+                  Pratinjau Infografis
+                </Button>
+              </div>
             </div>
+
             <div className="flex items-center gap-2 flex-wrap">
               <Popover>
                 <PopoverTrigger asChild>
@@ -221,7 +270,12 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
                     initialFocus
                     mode="single"
                     selected={selectedDate}
-                    onSelect={d => d && setSelectedDate(d)}
+                    onSelect={d => {
+                      if (d) {
+                        setSelectedDate(d);
+                        generateReport(d);
+                      }
+                    }}
                     disabled={d => d > new Date()}
                   />
                 </PopoverContent>
@@ -242,31 +296,125 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => handleExport('png')} disabled={!dayRecord || isExporting} className="font-medium">
-              <FileImage className="mr-2 h-4 w-4 text-green-600" /> PNG
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <Button variant="outline" onClick={() => handleExport('png')} disabled={!dayRecord || isExporting} className="font-medium h-9">
+              <FileImage className="mr-1.5 h-4 w-4 text-green-600" /> PNG
             </Button>
-            <Button variant="outline" onClick={() => handleExport('pdf')} disabled={!dayRecord || isExporting} className="font-medium">
-              <FileType className="mr-2 h-4 w-4 text-red-600" /> PDF
+            <Button variant="outline" onClick={() => handleExport('pdf')} disabled={!dayRecord || isExporting} className="font-medium h-9">
+              <FileType className="mr-1.5 h-4 w-4 text-red-600" /> PDF
             </Button>
-            <Button className="bg-slate-800 hover:bg-slate-900 text-white font-semibold" onClick={() => handleExport('print')} disabled={!dayRecord || isExporting}>
-              <Printer className="mr-2 h-4 w-4" /> Cetak
+            <Button className="bg-slate-800 hover:bg-slate-900 text-white h-9 font-medium" onClick={() => handleExport('print')} disabled={!dayRecord || isExporting}>
+              <Printer className="mr-1.5 h-4 w-4" /> Cetak
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Loading Pane */}
+      {/* --- PANEL VALIDASI & KOREKSI ERA5 --- */}
+      <ERA5CorrectionPanel
+        sensorId={sensorId}
+        sensorName={sensorName}
+        startDate={selectedDateStr}
+        endDate={selectedDateStr}
+        rawAwsData={rawRecords}
+        offsets={offsets}
+        onOffsetsChange={setOffsets}
+      />
+
       {loading && (
-        <div className="h-[400px] w-full flex flex-col items-center justify-center gap-3 bg-white rounded-[32px] border border-slate-200 shadow-sm text-slate-500">
-          <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+        <div className="h-[300px] w-full flex flex-col items-center justify-center gap-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 text-slate-500 shadow-sm">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           <p className="text-sm font-semibold tracking-wide animate-pulse">Sedang memproses laporan harian...</p>
         </div>
       )}
 
-      {/* Live Preview Container (Visual Infographic) */}
-      {!loading && dayRecord && (
-        <div className="w-full flex flex-col items-center overflow-x-auto p-6 bg-slate-100 rounded-[32px] border border-slate-200/85">
+      {/* --- VIEW MODE 1: DASHBOARD WEB INTERAKTIF --- */}
+      {viewMode === 'web' && !loading && dayRecord && (
+        <div className="space-y-6">
+          {offsets.enabled && (
+            <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs text-emerald-800 dark:text-emerald-200">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                <strong>Mode Kalibrasi Aktif:</strong> Laporan harian telah disesuaikan dengan offset koreksi ERA5 (Suhu: {offsets.tempOffset > 0 ? "+" : ""}{offsets.tempOffset}°C, Kelembapan: {offsets.humOffset > 0 ? "+" : ""}{offsets.humOffset}%, Tekanan: {offsets.pressOffset > 0 ? "+" : ""}{offsets.pressOffset} hPa).
+              </span>
+            </div>
+          )}
+
+          {/* Hero Grid 4 Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Suhu */}
+            <Card className="border-orange-100 bg-gradient-to-br from-orange-50/50 via-white to-white dark:from-slate-900 dark:to-slate-800">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex justify-between items-center text-xs font-semibold text-orange-700">
+                  <span className="flex items-center gap-1.5"><Thermometer className="w-4 h-4 text-orange-500" /> Suhu Udara</span>
+                  <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-700">24 Jam</Badge>
+                </div>
+                <div className="text-3xl font-black text-slate-900 dark:text-slate-100">
+                  {dayRecord.temperatureAvg?.toFixed(1) ?? "-"} <span className="text-sm font-normal text-slate-500">°C</span>
+                </div>
+                <div className="flex justify-between text-xs text-slate-500 pt-1 border-t">
+                  <span>Maks: <strong className="text-red-600">{dayRecord.temperatureMax?.toFixed(1) ?? "-"}°C</strong></span>
+                  <span>Min: <strong className="text-blue-600">{dayRecord.temperatureMin?.toFixed(1) ?? "-"}°C</strong></span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Kelembapan */}
+            <Card className="border-blue-100 bg-gradient-to-br from-blue-50/50 via-white to-white dark:from-slate-900 dark:to-slate-800">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex justify-between items-center text-xs font-semibold text-blue-700">
+                  <span className="flex items-center gap-1.5"><Droplets className="w-4 h-4 text-blue-500" /> Kelembapan</span>
+                  <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700">24 Jam</Badge>
+                </div>
+                <div className="text-3xl font-black text-slate-900 dark:text-slate-100">
+                  {dayRecord.humidityAvg?.toFixed(0) ?? "-"} <span className="text-sm font-normal text-slate-500">%</span>
+                </div>
+                <div className="flex justify-between text-xs text-slate-500 pt-1 border-t">
+                  <span>Maks: <strong className="text-emerald-600">{dayRecord.humidityMax?.toFixed(0) ?? "-"}%</strong></span>
+                  <span>Min: <strong className="text-amber-600">{dayRecord.humidityMin?.toFixed(0) ?? "-"}%</strong></span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tekanan */}
+            <Card className="border-violet-100 bg-gradient-to-br from-violet-50/50 via-white to-white dark:from-slate-900 dark:to-slate-800">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex justify-between items-center text-xs font-semibold text-violet-700">
+                  <span className="flex items-center gap-1.5"><Gauge className="w-4 h-4 text-violet-500" /> Tekanan Barometrik</span>
+                  <Badge variant="outline" className="text-[10px] bg-violet-50 text-violet-700">24 Jam</Badge>
+                </div>
+                <div className="text-3xl font-black text-slate-900 dark:text-slate-100">
+                  {dayRecord.pressureAvg?.toFixed(1) ?? "-"} <span className="text-sm font-normal text-slate-500">hPa</span>
+                </div>
+                <div className="flex justify-between text-xs text-slate-500 pt-1 border-t">
+                  <span>Maks: <strong className="text-violet-600">{dayRecord.pressureMax?.toFixed(1) ?? "-"} hPa</strong></span>
+                  <span>Min: <strong className="text-violet-400">{dayRecord.pressureMin?.toFixed(1) ?? "-"} hPa</strong></span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Curah Hujan */}
+            <Card className="border-sky-100 bg-gradient-to-br from-sky-50/50 via-white to-white dark:from-slate-900 dark:to-slate-800">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex justify-between items-center text-xs font-semibold text-sky-700">
+                  <span className="flex items-center gap-1.5"><CloudRain className="w-4 h-4 text-sky-500" /> Curah Hujan</span>
+                  <Badge variant="outline" className="text-[10px] bg-sky-50 text-sky-700">Akumulasi</Badge>
+                </div>
+                <div className="text-3xl font-black text-sky-600">
+                  {dayRecord.rainfallTot?.toFixed(1) ?? "0.0"} <span className="text-sm font-normal text-slate-500">mm</span>
+                </div>
+                <div className="text-xs text-slate-500 pt-1 border-t">
+                  Kategori: <strong className="text-slate-700 dark:text-slate-300">{getDailyRainfallCategory(dayRecord.rainfallTot || 0)}</strong>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* --- VIEW MODE 2: PRATINJAU POSTER INFOGRAFIS LENGKAP --- */}
+      {viewMode === 'print' && !loading && dayRecord && (
+        <div className="w-full flex flex-col items-center overflow-x-auto p-6 bg-slate-100 dark:bg-slate-950 rounded-[32px] border border-slate-200/85 shadow-inner">
           <div ref={containerRef} className="w-full max-w-[1080px] flex justify-center items-center overflow-hidden">
             <div 
               id={reportId}
@@ -300,7 +448,7 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
                 </p>
               </div>
 
-              {/* 2. Main Content Stack (Vertical Summary Cards) */}
+              {/* 2. Main Content Stack */}
               <div className="flex flex-col gap-6 w-full my-auto">
                 {/* Temperature Section */}
                 <div className="w-full bg-gradient-to-r from-orange-50/80 via-amber-50/40 to-rose-50/70 border border-orange-100 rounded-3xl p-6 shadow-sm relative overflow-hidden">
@@ -323,10 +471,10 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
                   />
                 </div>
 
-                {/* Relative Humidity Section */}
-                <div className="w-full bg-gradient-to-r from-blue-50/80 via-sky-50/40 to-cyan-50/70 border border-blue-100 rounded-3xl p-6 shadow-sm relative overflow-hidden">
-                  <div className="flex items-center gap-2.5 text-blue-700 mb-1">
-                    <Droplets className="h-6 w-6 text-blue-500" />
+                {/* Humidity Section */}
+                <div className="w-full bg-gradient-to-r from-sky-50/80 via-blue-50/40 to-indigo-50/70 border border-blue-100 rounded-3xl p-6 shadow-sm relative overflow-hidden">
+                  <div className="flex items-center gap-2.5 text-sky-700 mb-1">
+                    <Droplets className="h-6 w-6 text-sky-500" />
                     <span className="text-xs font-black uppercase tracking-widest">Relative Humidity</span>
                   </div>
                   <WeatherStatRow 
@@ -334,18 +482,18 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
                     avg={dayRecord.humidityAvg} 
                     max={dayRecord.humidityMax} 
                     unit="%" 
-                    labelColor="text-blue-600/70"
-                    valColorMin="text-sky-600"
-                    valColorAvg="text-blue-900"
-                    valColorMax="text-indigo-600"
+                    labelColor="text-sky-600/70"
+                    valColorMin="text-amber-600"
+                    valColorAvg="text-sky-900"
+                    valColorMax="text-emerald-600"
                     valSizeMin="text-3xl"
                     valSizeAvg="text-5xl"
                     valSizeMax="text-3xl"
                   />
                 </div>
 
-                {/* Atmospheric Pressure Section */}
-                <div className="w-full bg-gradient-to-r from-purple-50/80 via-fuchsia-50/40 to-pink-50/70 border border-purple-100 rounded-3xl p-6 shadow-sm relative overflow-hidden">
+                {/* Pressure Section */}
+                <div className="w-full bg-gradient-to-r from-slate-50/80 via-purple-50/40 to-violet-50/70 border border-purple-100 rounded-3xl p-6 shadow-sm relative overflow-hidden">
                   <div className="flex items-center gap-2.5 text-purple-700 mb-1">
                     <Gauge className="h-6 w-6 text-purple-500" />
                     <span className="text-xs font-black uppercase tracking-widest">Atmospheric Pressure</span>
@@ -356,65 +504,171 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
                     max={dayRecord.pressureMax} 
                     unit="hPa" 
                     labelColor="text-purple-600/70"
-                    valColorMin="text-indigo-600"
+                    valColorMin="text-slate-600"
                     valColorAvg="text-purple-900"
-                    valColorMax="text-pink-600"
+                    valColorMax="text-indigo-600"
                     valSizeMin="text-2xl"
                     valSizeAvg="text-4xl"
                     valSizeMax="text-2xl"
                   />
                 </div>
 
-                {/* Highlighted Rainfall Section */}
-                <div className="w-full bg-gradient-to-r from-teal-50 via-emerald-50/40 to-teal-50/75 border border-teal-200 rounded-3xl p-6 flex items-center justify-between shadow-sm relative overflow-hidden">
-                  <div className="flex flex-col gap-1.5 pl-2">
-                    <div className="flex items-center gap-3 text-teal-700">
-                      <CloudRain className="h-7 w-7 text-teal-600" />
-                      <span className="text-xs font-black uppercase tracking-widest">Total Rainfall</span>
+                {/* Rain Bottom Card */}
+                <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-700 text-white rounded-3xl p-6 shadow-md">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white/10 rounded-2xl border border-white/20">
+                      <CloudRain className="h-8 w-8 text-sky-200" />
                     </div>
-                    <p className="text-teal-600/70 text-sm mt-1 font-medium tracking-wide">
-                      Category: <span className="text-teal-900 font-extrabold">{getDailyRainfallCategory(dayRecord.rainfallTot ?? 0)}</span>
-                    </p>
+                    <div>
+                      <span className="text-xs font-bold uppercase tracking-widest text-sky-200/80">Daily Total Rainfall</span>
+                      <p className="text-sm font-semibold text-white/90 mt-0.5">
+                        {getDailyRainfallCategory(dayRecord.rainfallTot || 0)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="bg-white/80 py-4 px-6 rounded-2xl border border-white shadow-sm flex items-center justify-center">
-                    <span className="text-4xl font-black text-teal-600 tracking-tight">
-                      {(dayRecord.rainfallTot ?? 0).toFixed(1)}
-                    </span>
-                    <span className="text-lg font-bold text-teal-500 ml-1">mm</span>
+                  <div className="text-right">
+                    <span className="text-5xl font-black tracking-tight">{dayRecord.rainfallTot != null ? dayRecord.rainfallTot.toFixed(1) : "0.0"}</span>
+                    <span className="text-lg font-bold text-sky-200 ml-1.5">mm</span>
                   </div>
                 </div>
               </div>
 
-              {/* 3. Footer Section */}
-              <div className="flex flex-col items-center text-center mt-4">
-                <div className="w-full border-t border-slate-200/80 mb-6" />
-                
-                <div className="flex items-center justify-between w-full text-slate-400 px-2 text-xs font-semibold tracking-wider uppercase">
-                  <div className="flex items-center gap-1.5">
-                    <Clock3 className="h-4 w-4 text-slate-400" />
-                    <span>Observation Period: 00:00 UTC – 23:59 UTC</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <MapPinned className="h-4 w-4 text-slate-400" />
-                    <span>Jerukagung AWS</span>
-                  </div>
+              {/* 3. Footer Meta Info */}
+              <div className="flex items-end justify-between border-t border-slate-100 pt-6 text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-slate-500">
+                  <MapPinned className="h-4 w-4 text-slate-400" />
+                  <span>Stasiun: {sensorName}</span>
                 </div>
-
-                <p className="text-[10px] text-slate-400 mt-6 tracking-[0.2em] uppercase font-bold">
-                  Powered by Jerukagung Automatic Weather Station
-                </p>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Clock className="h-4 w-4" />
+                  <span>Meteo Sense 4.0.0</span>
+                </div>
               </div>
-
             </div>
           </div>
         </div>
       )}
 
-      {!loading && !dayRecord && (
-        <div className="h-[250px] flex items-center justify-center border border-dashed rounded-[24px] text-slate-400 border-slate-800">
-          Pilih tanggal pengamatan, lalu klik Tampilkan untuk memuat infografis harian
+      {/* Hidden print area for canvas if in web view */}
+      {viewMode === 'web' && dayRecord && (
+        <div className="overflow-hidden h-0 w-0 absolute opacity-0 pointer-events-none">
+          <div 
+            id={reportId}
+            className="w-[1080px] h-[1350px] bg-white text-slate-800 flex flex-col justify-between p-20 relative rounded-[40px] shadow-2xl origin-top shrink-0 border border-slate-200"
+          >
+            {/* Header */}
+            <div className="flex flex-col items-center text-center mt-4">
+              <div className="flex items-center gap-5">
+                <img src="/img/logo.webp" alt="Logo" className="h-16 w-16 object-contain" />
+                <div className="text-left">
+                  <h1 className="text-4xl font-black tracking-[0.15em] text-slate-800 uppercase leading-none">
+                    Jerukagung Meteorologi
+                  </h1>
+                  <p className="text-sm font-semibold tracking-[0.25em] text-slate-500 uppercase mt-1.5">
+                    Automatic Weather Station
+                  </p>
+                </div>
+              </div>
+
+              <div className="w-24 h-1 bg-gradient-to-r from-orange-400 via-sky-400 to-blue-500 my-8 rounded-full" />
+
+              <h2 className="text-2xl font-bold tracking-[0.2em] text-slate-400 uppercase">
+                Daily Weather Report
+              </h2>
+              <p className="text-6xl font-black text-sky-600 mt-3 tracking-wide">
+                {selectedDate ? format(selectedDate, "dd MMMM yyyy") : ""}
+              </p>
+            </div>
+
+            {/* Main Content */}
+            <div className="flex flex-col gap-6 w-full my-auto">
+              <div className="w-full bg-gradient-to-r from-orange-50/80 via-amber-50/40 to-rose-50/70 border border-orange-100 rounded-3xl p-6 shadow-sm relative overflow-hidden">
+                <div className="flex items-center gap-2.5 text-orange-700 mb-1">
+                  <Thermometer className="h-6 w-6 text-orange-500" />
+                  <span className="text-xs font-black uppercase tracking-widest">Temperature</span>
+                </div>
+                <WeatherStatRow 
+                  min={dayRecord.temperatureMin} 
+                  avg={dayRecord.temperatureAvg} 
+                  max={dayRecord.temperatureMax} 
+                  unit="°C" 
+                  labelColor="text-orange-600/70"
+                  valColorMin="text-blue-600"
+                  valColorAvg="text-orange-900"
+                  valColorMax="text-red-600"
+                />
+              </div>
+
+              <div className="w-full bg-gradient-to-r from-sky-50/80 via-blue-50/40 to-indigo-50/70 border border-blue-100 rounded-3xl p-6 shadow-sm relative overflow-hidden">
+                <div className="flex items-center gap-2.5 text-sky-700 mb-1">
+                  <Droplets className="h-6 w-6 text-sky-500" />
+                  <span className="text-xs font-black uppercase tracking-widest">Relative Humidity</span>
+                </div>
+                <WeatherStatRow 
+                  min={dayRecord.humidityMin} 
+                  avg={dayRecord.humidityAvg} 
+                  max={dayRecord.humidityMax} 
+                  unit="%" 
+                  labelColor="text-sky-600/70"
+                  valColorMin="text-amber-600"
+                  valColorAvg="text-sky-900"
+                  valColorMax="text-emerald-600"
+                />
+              </div>
+
+              <div className="w-full bg-gradient-to-r from-slate-50/80 via-purple-50/40 to-violet-50/70 border border-purple-100 rounded-3xl p-6 shadow-sm relative overflow-hidden">
+                <div className="flex items-center gap-2.5 text-purple-700 mb-1">
+                  <Gauge className="h-6 w-6 text-purple-500" />
+                  <span className="text-xs font-black uppercase tracking-widest">Atmospheric Pressure</span>
+                </div>
+                <WeatherStatRow 
+                  min={dayRecord.pressureMin} 
+                  avg={dayRecord.pressureAvg} 
+                  max={dayRecord.pressureMax} 
+                  unit="hPa" 
+                  labelColor="text-purple-600/70"
+                  valColorMin="text-slate-600"
+                  valColorAvg="text-purple-900"
+                  valColorMax="text-indigo-600"
+                  valSizeMin="text-2xl"
+                  valSizeAvg="text-4xl"
+                  valSizeMax="text-2xl"
+                />
+              </div>
+
+              <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-700 text-white rounded-3xl p-6 shadow-md">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white/10 rounded-2xl border border-white/20">
+                    <CloudRain className="h-8 w-8 text-sky-200" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-widest text-sky-200/80">Daily Total Rainfall</span>
+                    <p className="text-sm font-semibold text-white/90 mt-0.5">
+                      {getDailyRainfallCategory(dayRecord.rainfallTot || 0)}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-5xl font-black tracking-tight">{dayRecord.rainfallTot != null ? dayRecord.rainfallTot.toFixed(1) : "0.0"}</span>
+                  <span className="text-lg font-bold text-sky-200 ml-1.5">mm</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-end justify-between border-t border-slate-100 pt-6 text-xs text-slate-400 font-semibold uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-slate-500">
+                <MapPinned className="h-4 w-4 text-slate-400" />
+                <span>Stasiun: {sensorName}</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-400">
+                <Clock className="h-4 w-4" />
+                <span>Meteo Sense 4.0.0</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
-  )
+  );
 }
