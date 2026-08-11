@@ -11,6 +11,7 @@ import LaporanCurahHujan from "@/components/pelaporan/LaporanCurahHujan"
 import LaporanMeteorologi from "@/components/pelaporan/LaporanMeteorologi"
 import LaporanKlimatologi from "@/components/pelaporan/LaporanKlimatologi"
 import LaporanHarian from "@/components/pelaporan/LaporanHarian"
+import ExportWOWMetOffice from "@/components/pelaporan/ExportWOWMetOffice"
 
 // --- MAIN PAGE COMPONENT ---
 export default function PelaporanPage() {
@@ -70,7 +71,7 @@ export default function PelaporanPage() {
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <div>
             <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Pelaporan</h2>
-            <p className="text-muted-foreground dark:text-gray-50">Buat dan cetak laporan data sensor.</p>
+            <p className="text-muted-foreground dark:text-gray-50">Buat dan cetak laporan data sensor serta ekspor observasi global.</p>
           </div>
           <div className="flex flex-col gap-1.5 w-full sm:w-auto">
             <label className="text-sm font-medium">Pilih Sensor</label>
@@ -93,13 +94,16 @@ export default function PelaporanPage() {
 
         {!loading && !error && sensorId && (
           <Tabs defaultValue="harian" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 max-w-4xl">
-              <TabsTrigger value="harian">Laporan Harian</TabsTrigger>
-              <TabsTrigger value="bulanan">Ringkasan Bulanan</TabsTrigger>
-              <TabsTrigger value="hujan">Curah Hujan Harian</TabsTrigger>
-              <TabsTrigger value="meteorologi">Analisis Meteorologi</TabsTrigger>
-              <TabsTrigger value="klimatologi">Analisis Klimatologi</TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto pb-1">
+              <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-6 max-w-5xl">
+                <TabsTrigger value="harian" className="text-xs">Laporan Harian</TabsTrigger>
+                <TabsTrigger value="bulanan" className="text-xs">Ringkasan Bulanan</TabsTrigger>
+                <TabsTrigger value="hujan" className="text-xs">Curah Hujan Harian</TabsTrigger>
+                <TabsTrigger value="meteorologi" className="text-xs">Analisis Meteorologi</TabsTrigger>
+                <TabsTrigger value="klimatologi" className="text-xs">Analisis Klimatologi</TabsTrigger>
+                <TabsTrigger value="wow" className="text-xs font-semibold text-blue-600 dark:text-blue-400">WOW Met Office</TabsTrigger>
+              </TabsList>
+            </div>
             <TabsContent value="harian" className="pt-4">
               <LaporanHarian sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />
             </TabsContent>
@@ -114,6 +118,9 @@ export default function PelaporanPage() {
             </TabsContent>
             <TabsContent value="klimatologi" className="pt-4">
               <LaporanKlimatologi sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />
+            </TabsContent>
+            <TabsContent value="wow" className="pt-4">
+              <ExportWOWMetOffice sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />
             </TabsContent>
           </Tabs>
         )}
