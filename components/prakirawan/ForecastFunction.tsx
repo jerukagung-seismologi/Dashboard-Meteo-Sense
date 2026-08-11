@@ -93,13 +93,15 @@ const probabilities = ["100", "90", "80", "70", "60", "50", "40", "30", "20", "1
 const KEBUMEN_LAT = -7.7366
 const KEBUMEN_LON = 109.6458
 
-// --- GLOBAL NWP MODELS FOR CONSENSUS VOTING ---
+// --- GLOBAL NWP & AI ENSEMBLE MODELS FOR CONSENSUS VOTING ---
 export const GLOBAL_NWP_MODELS = [
-  { id: "ecmwf_ifs", name: "ECMWF IFS", country: "Eropa" },
-  { id: "gfs_seamless", name: "GFS Seamless", country: "Amerika Serikat" },
-  { id: "icon_seamless", name: "ICON Seamless", country: "Jerman" },
-  { id: "gem_seamless", name: "GEM Seamless", country: "Kanada" },
-  { id: "jma_seamless", name: "JMA Seamless", country: "Jepang" },
+  { id: "ecmwf_ifs", name: "ECMWF IFS", country: "Eropa", category: "Physics NWP" },
+  { id: "gfs_seamless", name: "GFS Seamless", country: "Amerika Serikat", category: "Physics NWP" },
+  { id: "icon_seamless", name: "ICON Seamless", country: "Jerman", category: "Physics NWP" },
+  { id: "gem_seamless", name: "GEM Seamless", country: "Kanada", category: "Physics NWP" },
+  { id: "jma_seamless", name: "JMA Seamless", country: "Jepang", category: "Physics NWP" },
+  { id: "gfs_graphcast025", name: "Google WeatherNext 2 / GraphCast", country: "Google DeepMind", category: "AI Ensemble" },
+  { id: "ecmwf_aifs025", name: "ECMWF AIFS", country: "Eropa (AI)", category: "AI Model" },
 ] as const
 
 // --- HELPER: WMO CODE & PRECIPITATION TRANSLATOR ---
@@ -590,7 +592,10 @@ export default function ForecastForm() {
     setLoadingFetch(true)
   
     try {
-      toast({ title: "Mengambil data Multi-Model...", description: "Menghubungi Open-Meteo untuk 5 model global (ECMWF, GFS, ICON, GEM, JMA)..." })
+      toast({ 
+        title: "Mengambil Data Multi-Model & AI...", 
+        description: "Menghubungi Open-Meteo untuk NWP Global + Google WeatherNext 2 (DeepMind) & ECMWF AIFS..." 
+      })
 
       let lat = KEBUMEN_LAT
       let lon = KEBUMEN_LON
@@ -787,11 +792,11 @@ export default function ForecastForm() {
       setForecastSource("Multi-Model Consensus")
 
       toast({ 
-        title: "✓ Konsensus Multi-Model Selesai", 
-        description: `Probabilitas dan parameter cuaca untuk ${tomorrowStr} berhasil dihitung dari 5 model global (ECMWF, GFS, ICON, GEM, JMA).` 
+        title: "✓ Konsensus Multi-Model & AI Selesai", 
+        description: `Probabilitas dan parameter cuaca untuk ${tomorrowStr} berhasil dihitung dari 7 model (ECMWF, GFS, ICON, GEM, JMA, Google WeatherNext 2, dan AIFS).` 
       })
 
-      console.log("✓ Multi-Model forecast fetch completed successfully")
+      console.log("✓ Multi-Model & Google WeatherNext forecast fetch completed successfully")
 
     } catch (err) {
       console.error("❌ fetchForecast error:", err)
@@ -940,14 +945,15 @@ export default function ForecastForm() {
                       <SelectValue placeholder="Pilih Sumber" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Multi-Model Consensus">Multi-Model Consensus (ECMWF, GFS, ICON, GEM, JMA)</SelectItem>
+                      <SelectItem value="Multi-Model Consensus">Multi-Model + Google WeatherNext Consensus</SelectItem>
+                      <SelectItem value="Google WeatherNext 2">Google WeatherNext 2 (DeepMind AI)</SelectItem>
+                      <SelectItem value="ECMWF AIFS">ECMWF AIFS (AI Model)</SelectItem>
+                      <SelectItem value="ECMWF">ECMWF IFS (Eropa)</SelectItem>
+                      <SelectItem value="GFS">NOAA GFS (AS)</SelectItem>
+                      <SelectItem value="ICON">DWD ICON (Jerman)</SelectItem>
                       <SelectItem value="Manual Analysis">Manual Analysis</SelectItem>
                       <SelectItem value="Open-Meteo">Open-Meteo (Single Model)</SelectItem>
-                      <SelectItem value="ECMWF">ECMWF IFS</SelectItem>
-                      <SelectItem value="GFS">NOAA GFS</SelectItem>
-                      <SelectItem value="ICON">DWD ICON</SelectItem>
                       <SelectItem value="Hybrid">Hybrid / Ensemble</SelectItem>
-                      <SelectItem value="AI Prediction">AI Prediction (AIFS/GraphCast)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
