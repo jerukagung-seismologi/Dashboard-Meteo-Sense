@@ -93,69 +93,197 @@ const probabilities = ["100", "90", "80", "70", "60", "50", "40", "30", "20", "1
 const KEBUMEN_LAT = -7.7366
 const KEBUMEN_LON = 109.6458
 
-// --- HELPER 3: WEATHER CODE MAPPING ---
-const mapWeatherCodeToCondition = (code: number): WeatherCondition => {
-  if (code === 0) return "Cerah"
-  if (code === 1 || code === 2) return "Cerah Berawan"
-  if (code === 3) return "Berawan"
-  if (code === 45 || code === 48) return "Kabut"
-  if ((code >= 51 && code <= 57) || (code >= 80 && code <= 82)) return "Hujan Ringan"
-  if ((code >= 61 && code <= 65)) return "Hujan Sedang"
-  if ((code >= 66 && code <= 69) || (code >= 95 && code <= 99)) return "Badai Petir"
-  if (code === 77 || code === 85 || code === 86) return "Hujan Lebat"
-  return "Berawan"
-}
+// --- GLOBAL NWP MODELS FOR CONSENSUS VOTING ---
+export const GLOBAL_NWP_MODELS = [
+  { id: "ecmwf_ifs", name: "ECMWF IFS", country: "Eropa" },
+  { id: "gfs_seamless", name: "GFS Seamless", country: "Amerika Serikat" },
+  { id: "icon_seamless", name: "ICON Seamless", country: "Jerman" },
+  { id: "gem_seamless", name: "GEM Seamless", country: "Kanada" },
+  { id: "jma_seamless", name: "JMA Seamless", country: "Jepang" },
+] as const
 
-// --- HELPER 4: CHECK IF CONDITION IS RAIN-RELATED ---
-const isRainCondition = (condition: WeatherCondition): boolean => {
-  return [
-    "Hujan Ringan",
-    "Hujan Sedang",
-    "Hujan Lebat",
-    "Badai Petir"
-  ].includes(condition)
-}
-
-// --- HELPER 6: WMO WEATHER CODE TRANSLATOR (COMPREHENSIVE) ---
-const translateWMOCode = (code: number): WeatherCondition => {
-  // WMO Weather Interpretation Codes (WW)
-  if (code === 0) return "Cerah"
-  if (code === 1 || code === 2) return "Cerah Berawan"
-  if (code === 3) return "Berawan"
-  if (code === 45 || code === 48) return "Kabut"
-  if (code >= 51 && code <= 57) return "Hujan Ringan" // Drizzle
-  if (code >= 61 && code <= 65) return "Hujan Sedang" // Rain
-  if (code >= 66 && code <= 67) return "Hujan Lebat" // Freezing rain
-  if (code >= 71 && code <= 77) return "Hujan Lebat" // Snow
-  if (code >= 80 && code <= 82) return "Hujan Ringan" // Rain showers
-  if (code >= 85 && code <= 86) return "Hujan Lebat" // Snow showers
-  if (code >= 95 && code <= 99) return "Badai Petir" // Thunderstorm
-  return "Berawan"
-}
-
-// --- HELPER 7: DETERMINE CONDITION WITH RAIN PROBABILITY (NO WIND CHECK) ---
-const determineConditionWithRainProb = (
-  rainProbability: number,
-  weatherCode: number
+// --- HELPER: WMO CODE & PRECIPITATION TRANSLATOR ---
+const translateModelToCondition = (
+  code: number,
+  precip: number = 0,
+  rainProb: number | null = null
 ): WeatherCondition => {
-  // If rain probability > 50%, prioritize rain condition
-  if (rainProbability > 50) {
-    const codeCondition = translateWMOCode(weatherCode)
-    // If WMO code suggests rain, use it
-    if (isRainCondition(codeCondition)) {
-      return codeCondition
-    }
-    // Otherwise, default to Hujan Sedang for high rain probability
+  // Badai Petir
+  if ((code >= 95 && code <= 99) || (code >= 66 && code <= 69)) {
+    return "Badai Petir"
+  }
+  // Hujan Lebat
+  if (code === 77 || code === 85 || code === 86 || precip >= 5.0) {
+    return "Hujan Lebat"
+  }
+  // Hujan Sedang
+  if ((code >= 61 && code <= 65) || (precip >= 1.0 && precip < 5.0)) {
     return "Hujan Sedang"
   }
-  
-  // If rain probability <= 50%, use non-rain condition from WMO code
-  const condition = translateWMOCode(weatherCode)
-  // If WMO suggests rain but probability is low, override to non-rain
-  if (isRainCondition(condition)) {
-    return "Berawan" // Fallback to cloudy for low rain probability
+  // Hujan Ringan (Drizzle / Showers / Low precip / Rain probability >= 50%)
+  if (
+    (code >= 51 && code <= 57) ||
+    (code >= 80 && code <= 82) ||
+    (precip > 0.05 && precip < 1.0) ||
+    (rainProb !== null && rainProb >= 50)
+  ) {
+    return "Hujan Ringan"
   }
-  return condition
+  // Kabut
+  if (code === 45 || code === 48) {
+    return "Kabut"
+  }
+  // Cerah
+  if (code === 0) {
+    return "Cerah"
+  }
+  // Cerah Berawan
+  if (code === 1 || code === 2) {
+    return "Cerah Berawan"
+  }
+  // Berawan
+  if (code === 3) {
+    return "Berawan"
+  }
+
+  return "Berawan"
+}
+
+// --- HELPER: MULTI-MODEL ENSEMBLE CONSENSUS ENGINE ---
+export interface SingleModelPrediction {
+  modelId: string
+  modelName: string
+  condition: WeatherCondition
+  temperature: number | null
+  humidity: number | null
+  precipitation: number
+  rainProb: number | null
+}
+
+export interface ModelConsensusResult {
+  conditionMain: WeatherCondition
+  probMain: string
+  conditionSub: WeatherCondition | ""
+  probSub: string
+  temperature: number | ""
+  temperatureError: number | ""
+  humidity: number | ""
+  humidityError: number | ""
+  heatIndex: number | ""
+  heatIndexError: number | ""
+  breakdown: {
+    condition: WeatherCondition
+    count: number
+    percentage: number
+    models: string[]
+  }[]
+}
+
+const calculateMultiModelConsensus = (
+  predictions: SingleModelPrediction[]
+): ModelConsensusResult => {
+  const valid = predictions.filter((p) => p.condition)
+  const total = valid.length
+
+  if (total === 0) {
+    return {
+      conditionMain: "Berawan",
+      probMain: "80",
+      conditionSub: "",
+      probSub: "",
+      temperature: "",
+      temperatureError: 2,
+      humidity: "",
+      humidityError: 5,
+      heatIndex: "",
+      heatIndexError: 2,
+      breakdown: [],
+    }
+  }
+
+  // 1. Frekuensi Kondisi Cuaca Tiap Model
+  const freqMap: Record<string, { count: number; models: string[] }> = {}
+  for (const pred of valid) {
+    if (!freqMap[pred.condition]) {
+      freqMap[pred.condition] = { count: 0, models: [] }
+    }
+    freqMap[pred.condition].count += 1
+    freqMap[pred.condition].models.push(pred.modelName)
+  }
+
+  const sortedVotes = Object.entries(freqMap)
+    .map(([condition, data]) => ({
+      condition: condition as WeatherCondition,
+      count: data.count,
+      percentage: Math.round((data.count / total) * 100),
+      models: data.models,
+    }))
+    .sort((a, b) => b.count - a.count)
+
+  const mainVote = sortedVotes[0]
+  const conditionMain = mainVote.condition
+  const probMain = mainVote.percentage.toString()
+
+  let conditionSub: WeatherCondition | "" = ""
+  let probSub = ""
+
+  if (sortedVotes.length > 1 && sortedVotes[1].count > 0) {
+    conditionSub = sortedVotes[1].condition
+    probSub = sortedVotes[1].percentage.toString()
+  }
+
+  // 2. Mean Suhu & Margin Error Dinamis
+  const temps = valid
+    .map((p) => p.temperature)
+    .filter((t): t is number => typeof t === "number" && !isNaN(t))
+
+  let avgTemp: number | "" = ""
+  let tempError: number | "" = 2
+
+  if (temps.length > 0) {
+    const mean = temps.reduce((a, b) => a + b, 0) / temps.length
+    avgTemp = Math.round(mean)
+    const maxDiff = Math.max(...temps) - Math.min(...temps)
+    tempError = Math.min(5, Math.max(1, Math.round(maxDiff / 2)))
+  }
+
+  // 3. Mean Kelembapan & Margin Error Dinamis
+  const hums = valid
+    .map((p) => p.humidity)
+    .filter((h): h is number => typeof h === "number" && !isNaN(h))
+
+  let avgHum: number | "" = ""
+  let humError: number | "" = 5
+
+  if (hums.length > 0) {
+    const mean = hums.reduce((a, b) => a + b, 0) / hums.length
+    avgHum = Math.round(mean)
+    const maxDiff = Math.max(...hums) - Math.min(...hums)
+    humError = Math.min(15, Math.max(2, Math.round(maxDiff / 2)))
+  }
+
+  // 4. Indeks Panas & Error
+  let hi: number | "" = ""
+  let hiError: number | "" = 2
+
+  if (typeof avgTemp === "number" && typeof avgHum === "number") {
+    hi = calculateHeatIndexCelsius(avgTemp, avgHum)
+    hiError = Math.round((typeof tempError === "number" ? tempError : 2) * 1.2)
+  }
+
+  return {
+    conditionMain,
+    probMain,
+    conditionSub,
+    probSub,
+    temperature: avgTemp,
+    temperatureError: tempError,
+    humidity: avgHum,
+    humidityError: humError,
+    heatIndex: hi,
+    heatIndexError: hiError,
+    breakdown: sortedVotes,
+  }
 }
 
 // --- HELPER 1: PALET WARNA (FULL PASTEL BG + COLORED TEXT) ---
@@ -452,7 +580,7 @@ export default function ForecastForm() {
     }
   };
 
-  // --- FETCH FORECAST: REFACTORED WITH OPENMETEO ECMWF ---
+  // --- FETCH FORECAST: MULTI-MODEL VOTING CONSENSUS (ECMWF, GFS, ICON, GEM, JMA) ---
   const fetchForecast = async () => {
     if (!currentLocationName || currentLocationName.trim() === "") {
       toast({ title: "Lokasi kosong", description: "Masukkan nama lokasi terlebih dahulu.", variant: "destructive" })
@@ -462,14 +590,14 @@ export default function ForecastForm() {
     setLoadingFetch(true)
   
     try {
-      toast({ title: "Mengambil data...", description: "Sedang menghubungi API lokasi dan forecast" })
+      toast({ title: "Mengambil data Multi-Model...", description: "Menghubungi Open-Meteo untuk 5 model global (ECMWF, GFS, ICON, GEM, JMA)..." })
 
       let lat = KEBUMEN_LAT
       let lon = KEBUMEN_LON
       let locationName = "Kebumen"
 
       // 1) Geocoding (Open-Meteo) - hanya jika currentLocationName bukan Kebumen
-      let locQuery = currentLocationName;
+      let locQuery = currentLocationName
       if (locQuery.toLowerCase() !== "kebumen") {
         try {
           const geoRes = await fetch(
@@ -506,18 +634,19 @@ export default function ForecastForm() {
       tomorrow.setDate(tomorrow.getDate() + 1)
       const tomorrowDateStr = tomorrow.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })
 
-      // 3) Fetch Forecast dari Open-Meteo ECMWF API
+      // 3) Fetch Multi-Model Forecast dari Open-Meteo API
+      const modelIds = GLOBAL_NWP_MODELS.map((m) => m.id).join(",")
       const params = new URLSearchParams({
         latitude: lat.toString(),
         longitude: lon.toString(),
-        hourly: "temperature_2m,weather_code,surface_pressure,precipitation_probability,rain,relative_humidity_2m,wind_speed_10m",
-        models: "ecmwf_ifs",
+        hourly: "temperature_2m,relative_humidity_2m,weather_code,precipitation_probability,precipitation",
+        models: modelIds,
         timezone: "Asia/Bangkok",
-        forecast_days: "2" // Ambil 2 hari untuk memastikan data besok ada
+        forecast_days: "2", // Ambil 2 hari untuk memastikan data esok hari lengkap
       })
 
       const forecastUrl = `https://api.open-meteo.com/v1/forecast?${params.toString()}`
-      console.log("Fetching from:", forecastUrl)
+      console.log("Fetching Multi-Model Ensemble from:", forecastUrl)
 
       const response = await fetch(forecastUrl)
 
@@ -527,58 +656,40 @@ export default function ForecastForm() {
 
       const fcJson = await response.json()
       if (!fcJson?.hourly?.time) {
-        throw new Error("Invalid forecast data structure")
+        throw new Error("Struktur data prakiraan tidak valid")
       }
 
       const times: string[] = fcJson.hourly.time || []
-      const temps: number[] = fcJson.hourly.temperature_2m || []
-      const hums: number[] = fcJson.hourly.relative_humidity_2m || []
-      const codes: number[] = fcJson.hourly.weather_code || []
-      const winds: number[] = fcJson.hourly.wind_speed_10m || []
-      const rainProbs: number[] = fcJson.hourly.precipitation_probability || []
-
-      console.log(`✓ Forecast data received: ${times.length} hourly records`)
-      console.log(`  Tomorrow date filter: ${tomorrowDateStr}`)
+      console.log(`✓ Data Multi-Model diterima: ${times.length} data per jam untuk esok (${tomorrowDateStr})`)
 
       // 4) Helper: Find index untuk waktu spesifik
       const findIndexFor = (targetTime: string): number => {
         const suffixTomorrow = `${tomorrowDateStr}T${targetTime}:00`
         
         // Exact match
-        let idx = times.findIndex(t => t === suffixTomorrow)
-        if (idx !== -1) {
-          console.log(`  ✓ Exact match found for ${targetTime}: index ${idx}`)
-          return idx
-        }
+        let idx = times.findIndex((t) => t === suffixTomorrow)
+        if (idx !== -1) return idx
 
-        // Fallback: cari yang paling dekat untuk esok hari
+        // Fallback match
         const targetDateTime = new Date(`${tomorrowDateStr}T${targetTime}:00`)
         let bestIdx = -1
         let bestDiff = Infinity
 
         for (let i = 0; i < times.length; i++) {
           const forecastDateTime = new Date(times[i])
-          const forecastDate = times[i].split('T')[0]
+          const forecastDate = times[i].split("T")[0]
           const diff = Math.abs(forecastDateTime.getTime() - targetDateTime.getTime())
 
-          // Hanya pertimbangkan data dari esok hari
           if (diff < bestDiff && forecastDate === tomorrowDateStr) {
             bestDiff = diff
             bestIdx = i
           }
         }
 
-        if (bestIdx !== -1) {
-          const closestTime = times[bestIdx]
-          console.log(`  ⚠ Closest match for ${targetTime}: ${closestTime}`)
-        } else {
-          console.warn(`  ✗ No data found for ${targetTime} on ${tomorrowDateStr}`)
-        }
-
         return bestIdx
       }
 
-      // 5) Process rows untuk setiap jam
+      // 5) Process voting konsensus untuk setiap jam
       const fetchedRows: Partial<ForecastRow>[] = initialTimes.map((targetTime) => {
         const idx = findIndexFor(targetTime)
 
@@ -588,86 +699,106 @@ export default function ForecastForm() {
             conditionMain: "", 
             temperature: "", 
             humidity: "",
-            probMain: "0"
+            probMain: "0",
           }
         }
 
-        // Extract values with safety checks
-        const temp = typeof temps[idx] === "number" ? Math.round(temps[idx]) : ""
-        const hum = typeof hums[idx] === "number" ? Math.round(hums[idx]) : ""
-        const code = typeof codes[idx] === "number" ? Math.round(codes[idx]) : 0
-        const ws = typeof winds[idx] === "number" ? winds[idx] : 0
-        const rainProb = typeof rainProbs[idx] === "number" ? Math.round(rainProbs[idx]) : 0
+        // Kumpulkan prediksi dari masing-masing model
+        const predictions: SingleModelPrediction[] = GLOBAL_NWP_MODELS.map((m) => {
+          const rawTemp = fcJson.hourly[`temperature_2m_${m.id}`]?.[idx] ?? fcJson.hourly.temperature_2m?.[idx]
+          const rawHum = fcJson.hourly[`relative_humidity_2m_${m.id}`]?.[idx] ?? fcJson.hourly.relative_humidity_2m?.[idx]
+          const rawCode = fcJson.hourly[`weather_code_${m.id}`]?.[idx] ?? fcJson.hourly.weather_code?.[idx] ?? 0
+          const rawPrecip = fcJson.hourly[`precipitation_${m.id}`]?.[idx] ?? fcJson.hourly.precipitation?.[idx] ?? 0
+          const rawRainProb = fcJson.hourly[`precipitation_probability_${m.id}`]?.[idx] ?? null
 
-        // Determine condition using rain probability logic (NO wind speed check)
-        const condition = determineConditionWithRainProb(rainProb, code)
+          const temp = typeof rawTemp === "number" ? rawTemp : null
+          const hum = typeof rawHum === "number" ? rawHum : null
+          const code = typeof rawCode === "number" ? rawCode : 0
+          const precip = typeof rawPrecip === "number" ? rawPrecip : 0
+          const rainProb = typeof rawRainProb === "number" ? rawRainProb : null
 
-        // Use rain_probability sebagai probability utama
-        const probMain = rainProb.toString()
+          const condition = translateModelToCondition(code, precip, rainProb)
 
-        console.log(
-          `[${targetTime}] Code: ${code} | RainProb: ${rainProb}% | Temp: ${temp}° | Humidity: ${hum}% | Condition: ${condition}`
-        )
+          return {
+            modelId: m.id,
+            modelName: `${m.name} (${m.country})`,
+            condition,
+            temperature: temp,
+            humidity: hum,
+            precipitation: precip,
+            rainProb,
+          }
+        })
+
+        // Hitung Konsensus Voting
+        const consensus = calculateMultiModelConsensus(predictions)
+
+        console.group(`[Konsensus Cuaca Jam ${targetTime}]`)
+        console.log(`Kondisi Utama: ${consensus.probMain}% ${consensus.conditionMain}`)
+        if (consensus.conditionSub) {
+          console.log(`Kondisi Sekunder: ${consensus.probSub}% ${consensus.conditionSub}`)
+        }
+        console.log(`Suhu: ${consensus.temperature}°C ±${consensus.temperatureError} | Kelembapan: ${consensus.humidity}% ±${consensus.humidityError}`)
+        console.table(predictions.map((p) => ({
+          Model: p.modelName,
+          Kondisi: p.condition,
+          Suhu: p.temperature != null ? `${p.temperature}°C` : "-",
+          Kelembapan: p.humidity != null ? `${p.humidity}%` : "-",
+          Hujan: `${p.precipitation} mm`,
+        })))
+        console.groupEnd()
 
         return {
           time: targetTime,
-          conditionMain: condition,
-          probMain,
-          temperature: temp,
-          humidity: hum,
-          heatIndex:
-            typeof temp === "number" && typeof hum === "number"
-              ? calculateHeatIndexCelsius(temp, hum)
-              : "",
+          conditionMain: consensus.conditionMain,
+          probMain: consensus.probMain,
+          conditionSub: consensus.conditionSub,
+          probSub: consensus.probSub,
+          temperature: consensus.temperature,
+          temperatureError: consensus.temperatureError,
+          humidity: consensus.humidity,
+          humidityError: consensus.humidityError,
+          heatIndex: consensus.heatIndex,
+          heatIndexError: consensus.heatIndexError,
         }
       })
 
-      // 6) Merge dengan existing rows (preserve sub conditions & extra fields)
+      // 6) Merge dengan existing rows
       setRows((prev) =>
         prev.map((r, i) => {
           const f = fetchedRows[i] || {}
           return {
             ...r,
             time: f.time ?? r.time,
-            conditionMain:
-              f.conditionMain
-                ? (f.conditionMain as WeatherCondition)
-                : r.conditionMain,
-            temperature:
-              f.temperature !== undefined && f.temperature !== ""
-                ? (f.temperature as number)
-                : r.temperature,
-            humidity:
-              f.humidity !== undefined && f.humidity !== ""
-                ? (f.humidity as number)
-                : r.humidity,
-            heatIndex:
-              f.heatIndex !== undefined && f.heatIndex !== ""
-                ? (f.heatIndex as number)
-                : r.heatIndex,
-            temperatureError: r.temperatureError === "" ? 10 : r.temperatureError,
-            humidityError: r.humidityError === "" ? 10 : r.humidityError,
-            heatIndexError: r.heatIndexError === "" ? 12 : r.heatIndexError,
+            conditionMain: f.conditionMain ? (f.conditionMain as WeatherCondition) : r.conditionMain,
             probMain: f.probMain ?? r.probMain,
-            probSub: r.probSub, // Preserve manual sub condition
-            conditionSub: r.conditionSub,
+            conditionSub: f.conditionSub !== undefined ? (f.conditionSub as WeatherCondition | "") : r.conditionSub,
+            probSub: f.probSub !== undefined ? f.probSub : r.probSub,
+            temperature: f.temperature !== undefined && f.temperature !== "" ? (f.temperature as number) : r.temperature,
+            temperatureError: f.temperatureError !== undefined && f.temperatureError !== "" ? (f.temperatureError as number) : r.temperatureError,
+            humidity: f.humidity !== undefined && f.humidity !== "" ? (f.humidity as number) : r.humidity,
+            humidityError: f.humidityError !== undefined && f.humidityError !== "" ? (f.humidityError as number) : r.humidityError,
+            heatIndex: f.heatIndex !== undefined && f.heatIndex !== "" ? (f.heatIndex as number) : r.heatIndex,
+            heatIndexError: f.heatIndexError !== undefined && f.heatIndexError !== "" ? (f.heatIndexError as number) : r.heatIndexError,
           } as ForecastRow
         })
       )
 
+      setForecastSource("Multi-Model Consensus")
+
       toast({ 
-        title: "✓ Selesai", 
-        description: `Data prakiraan ECMWF untuk ${tomorrowStr} berhasil diambil dari OpenMeteo.` 
+        title: "✓ Konsensus Multi-Model Selesai", 
+        description: `Probabilitas dan parameter cuaca untuk ${tomorrowStr} berhasil dihitung dari 5 model global (ECMWF, GFS, ICON, GEM, JMA).` 
       })
 
-      console.log("✓ Forecast fetch completed successfully")
+      console.log("✓ Multi-Model forecast fetch completed successfully")
 
     } catch (err) {
       console.error("❌ fetchForecast error:", err)
-      const errorMsg = err instanceof Error ? err.message : "Unknown error"
+      const errorMsg = err instanceof Error ? err.message : "Terjadi kesalahan"
       toast({ 
         title: "Gagal mengambil data", 
-        description: `${errorMsg} Periksa console untuk detail.`, 
+        description: `${errorMsg}. Periksa konsol untuk detail.`, 
         variant: "destructive" 
       })
     } finally {
@@ -809,12 +940,14 @@ export default function ForecastForm() {
                       <SelectValue placeholder="Pilih Sumber" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="Multi-Model Consensus">Multi-Model Consensus (ECMWF, GFS, ICON, GEM, JMA)</SelectItem>
                       <SelectItem value="Manual Analysis">Manual Analysis</SelectItem>
-                      <SelectItem value="Open-Meteo">Open-Meteo</SelectItem>
-                      <SelectItem value="ECMWF">ECMWF</SelectItem>
-                      <SelectItem value="GFS">GFS</SelectItem>
-                      <SelectItem value="Hybrid">Hybrid</SelectItem>
-                      <SelectItem value="AI Prediction">AI Prediction</SelectItem>
+                      <SelectItem value="Open-Meteo">Open-Meteo (Single Model)</SelectItem>
+                      <SelectItem value="ECMWF">ECMWF IFS</SelectItem>
+                      <SelectItem value="GFS">NOAA GFS</SelectItem>
+                      <SelectItem value="ICON">DWD ICON</SelectItem>
+                      <SelectItem value="Hybrid">Hybrid / Ensemble</SelectItem>
+                      <SelectItem value="AI Prediction">AI Prediction (AIFS/GraphCast)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
