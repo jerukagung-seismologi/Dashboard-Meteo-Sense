@@ -769,7 +769,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
           <CardContent className="p-4 space-y-3">
             <div className="space-y-1">
               <Label className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                <Building2 className="w-3.5 h-3.5 text-emerald-600" /> Site Id / User Id
+                <Building2 className="w-3.5 h-3.5 text-emerald-600" /> Site ID (Stasiun Cuaca)
               </Label>
               <Input
                 placeholder="0df3ca35-9be0-f011-92b8-6045bdde7ce9"
@@ -777,7 +777,9 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
                 onChange={e => setSiteId(e.target.value)}
                 className="h-8 text-xs font-mono"
               />
-              <p className="text-[10px] text-slate-400">UUID stasiun Anda di UK Met Office WOW.</p>
+              <p className="text-[10px] text-slate-400">
+                Angka atau UUID dalam tanda kurung di bawah nama stasiun Anda di halaman <em>Site Information</em> (contoh: <code>(6a571450-df53-e611-9401-0003ff5987fd)</code> atau <code>(956916003)</code>).
+              </p>
             </div>
 
             <div className="space-y-1">
