@@ -21,7 +21,12 @@ import {
   Hash,
   Sparkles,
   Eye,
-  EyeOff
+  EyeOff,
+  Send,
+  Radio,
+  Terminal,
+  AlertCircle,
+  RefreshCw
 } from "lucide-react"
 import { type DateRange } from "react-day-picker"
 import { format, subDays } from "date-fns"
@@ -37,6 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { fetchSensorDataByDateRange } from "@/lib/apiClient"
 import type { SensorDate } from "@/lib/FetchingSensorData"
@@ -210,6 +216,12 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
   const [loading, setLoading] = useState<boolean>(false);
   const [rawData, setRawData] = useState<SensorDate[]>([]);
 
+  // Live Sync API State
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [syncProgress, setSyncProgress] = useState<{ current: number; total: number; percent: number }>({ current: 0, total: 0, percent: 0 });
+  const [syncLogs, setSyncLogs] = useState<string[]>([]);
+  const [lastSyncStatus, setLastSyncStatus] = useState<"idle" | "success" | "error">("idle");
+
   // Save WOW preferences
   const handleSaveConfig = () => {
     if (typeof window !== "undefined") {
@@ -275,10 +287,8 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
 
   // Convert observations to WOW Bulk Upload Rows
   const wowRows = useMemo(() => {
-    return processedObservations.map((r, index) => {
+    return processedObservations.map((r) => {
       const dateTimeStr = formatWOWDateTime(r.timestamp, useUtc);
-      
-      // Column 0: Observation Id (Either empty for auto-assign by WOW server or generated ID)
       const observationId = idMode === "auto" ? generateWOWObservationId(r.timestamp, siteId) : "";
 
       const temp = Number.isFinite(r.temperature) ? Number(r.temperature.toFixed(1)) : "";
@@ -293,11 +303,8 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
       const rainAccum = Number.isFinite(r.rainfall) ? Number(r.rainfall.toFixed(1)) : "";
       const rainRate = Number.isFinite(r.rainrate) ? Number(r.rainrate.toFixed(1)) : "";
       const soilTemp = Number.isFinite(r.soil_temp) ? Number(r.soil_temp.toFixed(1)) : "";
-
-      // Estimate sunshine (1 if solar radiation / lux indicates clear daylight > 20000 lux)
       const sunshine = Number.isFinite(r.lux) ? (r.lux >= 20000 ? "1" : "0") : "";
 
-      // Any wind data if present
       const anyR = r as any;
       const windSpeed = anyR.wind_speed != null && Number.isFinite(Number(anyR.wind_speed)) ? Number(anyR.wind_speed).toFixed(1) : "";
       const windDir = anyR.wind_dir != null && Number.isFinite(Number(anyR.wind_dir)) ? Math.round(anyR.wind_dir) : "";
@@ -305,12 +312,11 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
       const windGustDir = anyR.wind_gust_dir != null && Number.isFinite(Number(anyR.wind_gust_dir)) ? Math.round(anyR.wind_gust_dir) : "";
       const soilMoisture = anyR.soil_moisture != null && Number.isFinite(Number(anyR.soil_moisture)) ? Math.round(anyR.soil_moisture) : "";
 
-      // Map 50 Columns in exact order:
       return [
-        observationId, // 0: Id (Observation Id)
-        siteId, // 1: Site Id (User/Site UUID e.g. 0df3ca35-9be0-f011-92b8-6045bdde7ce9)
-        authKey, // 2: Site Authentication Key (6-digit AWS PIN)
-        dateTimeStr, // 3: Report Date / Time (DD/MM/YYYY HH:mm)
+        observationId, // 0: Id
+        siteId, // 1: Site Id
+        authKey, // 2: Site Authentication Key
+        dateTimeStr, // 3: Report Date / Time
         "", // 4: Concrete Temp.
         "", // 5: Day of Gales
         soilTemp, // 6: Soil Temp. (at 10cm)
@@ -412,6 +418,72 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
     toast({ title: "Tersalin ke Clipboard", description: "Format CSV WOW Met Office berhasil disalin." });
   };
 
+  // Live Sync to WOW Met Office via Route Handler API
+  const handleLivePush = async (mode: "latest" | "batch") => {
+    if (!siteId || !authKey) {
+      toast({ title: "Peringatan", description: "Site ID dan Authentication Key (PIN) wajib diisi.", variant: "destructive" });
+      return;
+    }
+
+    const targetPoints = mode === "latest" 
+      ? (processedObservations.length > 0 ? [processedObservations[processedObservations.length - 1]] : [])
+      : processedObservations.slice(0, 50); // Batch up to 50 points
+
+    if (targetPoints.length === 0) {
+      toast({ title: "Peringatan", description: "Tidak ada titik observasi untuk dikirim. Muat data terlebih dahulu.", variant: "destructive" });
+      return;
+    }
+
+    setIsSyncing(true);
+    setSyncLogs([]);
+    setSyncProgress({ current: 0, total: targetPoints.length, percent: 0 });
+    setLastSyncStatus("idle");
+
+    toast({
+      title: "Memulai Pengiriman Live ke WOW...",
+      description: `Mengirim ${targetPoints.length} titik observasi ke https://wow.metoffice.gov.uk/automaticreading...`
+    });
+
+    try {
+      const res = await fetch("/api/wow/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          siteId,
+          siteAuthenticationKey: authKey,
+          elevationMeters: elevation,
+          observations: targetPoints,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setLastSyncStatus("error");
+        setSyncLogs(result.logs || [result.error || "Gagal sinkronisasi"]);
+        toast({
+          title: "Sinkronisasi Gagal",
+          description: result.error || "Terjadi kesalahan saat mengirim ke server WOW.",
+          variant: "destructive"
+        });
+      } else {
+        setLastSyncStatus("success");
+        setSyncLogs(result.logs || []);
+        setSyncProgress({ current: result.succeeded, total: result.total, percent: 100 });
+        toast({
+          title: "✓ Sukses Terkirim ke UK Met Office WOW!",
+          description: `${result.succeeded} titik observasi berhasil diterima oleh server Met Office WOW.`
+        });
+      }
+    } catch (err: any) {
+      setLastSyncStatus("error");
+      setSyncLogs([`Error: ${err.message || "Gagal menghubungi API route /api/wow/sync"}`]);
+      toast({ title: "Error Jaringan", description: err.message, variant: "destructive" });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Initial load
   useEffect(() => {
     if (sensorId) {
@@ -432,16 +504,16 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
                 <Badge className="bg-blue-600/80 hover:bg-blue-600 text-white text-xs border-none uppercase tracking-wider font-semibold">
                   UK Met Office Integration
                 </Badge>
-                <Badge variant="outline" className="text-xs text-blue-200 border-blue-400/40">
-                  Template WOW Bulk Upload
+                <Badge variant="outline" className="text-xs text-blue-200 border-blue-400/40 flex items-center gap-1">
+                  <Radio className="w-3 h-3 text-emerald-400 animate-pulse" /> Live Push API Ready
                 </Badge>
               </div>
               <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
                 <Globe className="w-6 h-6 text-blue-400" />
-                Ekspor Observasi WOW Met Office
+                Integrasi & Ekspor WOW Met Office
               </h1>
               <p className="text-sm text-slate-300 max-w-2xl">
-                Konversi dan ekspor riwayat observasi stasiun cuaca ke format CSV resmi <strong>Weather Observations Website (WOW) - UK Met Office</strong> untuk pengunggahan massal (*Bulk Upload*).
+                Kirim data observasi stasiun cuaca langsung ke <strong>UK Met Office Weather Observations Website (WOW)</strong> secara otomatis via <strong>Automatic Reading API</strong> atau ekspor CSV <strong>Bulk Upload</strong>.
               </p>
             </div>
 
@@ -460,12 +532,70 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
                 disabled={wowRows.length === 0 || loading}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md h-9"
               >
-                <Download className="mr-1.5 h-4 w-4" /> Unduh CSV WOW ({wowRows.length.toLocaleString("id-ID")} Baris)
+                <Download className="mr-1.5 h-4 w-4" /> Unduh CSV WOW
+              </Button>
+              <Button
+                onClick={() => handleLivePush("batch")}
+                disabled={isSyncing || processedObservations.length === 0}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md h-9 flex items-center gap-1.5"
+              >
+                {isSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                Kirim Otomatis ke API WOW
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* LIVE SYNC STATUS TERMINAL & PROGRESS (If sync is active or has logs) */}
+      {(isSyncing || syncLogs.length > 0) && (
+        <Card className="border-blue-200 dark:border-blue-900 bg-slate-900 text-slate-100 shadow-md">
+          <CardHeader className="py-3 px-4 border-b border-slate-800 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Terminal className="w-4 h-4 text-emerald-400" />
+              <CardTitle className="text-xs font-bold font-mono text-emerald-400">
+                UK Met Office Automatic Reading API Output Terminal
+              </CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              {lastSyncStatus === "success" && (
+                <Badge className="bg-emerald-600 text-white text-[10px] gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Berhasil Terkirim (200 OK)
+                </Badge>
+              )}
+              {lastSyncStatus === "error" && (
+                <Badge variant="destructive" className="text-[10px] gap-1">
+                  <AlertCircle className="w-3 h-3" /> Gagal Terkirim
+                </Badge>
+              )}
+              {isSyncing && (
+                <Badge className="bg-blue-600 text-white text-[10px] gap-1 animate-pulse">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Mengirim...
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 space-y-3 font-mono text-xs">
+            {isSyncing && (
+              <div className="space-y-1">
+                <div className="flex justify-between text-[11px] text-slate-400">
+                  <span>Progres Pengiriman Batch API:</span>
+                  <span>{syncProgress.percent}%</span>
+                </div>
+                <Progress value={syncProgress.percent} className="h-1.5 bg-slate-800" />
+              </div>
+            )}
+
+            <div className="bg-black/60 rounded-lg p-3 max-h-40 overflow-y-auto space-y-1 text-[11px] border border-slate-800">
+              {syncLogs.map((log, idx) => (
+                <div key={idx} className={cn(log.includes("OK") ? "text-emerald-400" : log.includes("FAIL") || log.includes("ERR") ? "text-red-400" : "text-slate-300")}>
+                  {log}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Explanatory Alert for Observation Id & Site Id */}
       <Card className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
@@ -586,7 +716,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
               </RadioGroup>
             </div>
 
-            {/* Timezone Switch & Fetch Button */}
+            {/* Timezone Switch & Action Buttons */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-3 border-t">
               <div className="flex items-center gap-3">
                 <div className="flex items-center space-x-2">
@@ -600,21 +730,25 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
                 </Badge>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button 
                   size="sm" 
                   onClick={fetchData} 
                   disabled={loading} 
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs h-9 px-4"
+                  variant="outline"
+                  className="text-xs h-9"
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                      Memproses Data...
-                    </>
-                  ) : (
-                    "Muat Ulang Observasi"
-                  )}
+                  <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", loading && "animate-spin")} />
+                  Muat Ulang
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={() => handleLivePush("latest")} 
+                  disabled={isSyncing || processedObservations.length === 0} 
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-9 font-medium"
+                >
+                  <Radio className="w-3.5 h-3.5 mr-1.5 text-indigo-200" />
+                  Test Ping 1 Data Terakhir
                 </Button>
               </div>
             </div>
@@ -629,7 +763,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
               Identitas Stasiun WOW
             </CardTitle>
             <CardDescription className="text-xs">
-              Disematkan langsung ke kolom <code>Site Id</code> dan <code>Authentication Key</code>.
+              Disematkan ke kolom <code>Site Id</code> dan <code>Authentication Key</code>.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 space-y-3">
@@ -698,7 +832,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
           <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">
             {wowRows.length.toLocaleString("id-ID")} <span className="text-xs font-normal text-slate-500">baris</span>
           </div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Siap diunggah ke Met Office</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Siap dikirim / diekspor</div>
         </Card>
 
         <Card className="p-4 bg-slate-50 dark:bg-slate-900 border">
@@ -718,12 +852,12 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
         </Card>
 
         <Card className="p-4 bg-slate-50 dark:bg-slate-900 border">
-          <div className="text-xs text-slate-500 font-semibold uppercase">Kelengkapan Header</div>
+          <div className="text-xs text-slate-500 font-semibold uppercase">Metode Integrasi</div>
           <div className="text-2xl font-black text-indigo-600 mt-1">
-            50 <span className="text-xs font-normal text-slate-500">Kolom</span>
+            API & CSV
           </div>
           <div className="text-[10px] text-emerald-600 font-medium mt-0.5 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> 100% WOW Spec Match
+            <CheckCircle2 className="w-3 h-3" /> Live Sync & Bulk Upload
           </div>
         </Card>
       </div>
@@ -738,7 +872,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
                 Pratinjau Data CSV WOW Met Office
               </CardTitle>
               <CardDescription className="text-xs">
-                Memverifikasi struktur kolom dan nilai observasi sebelum mengunduh file CSV.
+                Memverifikasi struktur kolom dan nilai observasi sebelum mengunduh file CSV atau mengirim via API.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -763,7 +897,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
           ) : wowRows.length === 0 ? (
             <div className="h-[220px] flex flex-col items-center justify-center gap-2 text-slate-400">
               <FileSpreadsheet className="w-8 h-8 text-slate-300" />
-              <span className="text-xs">Tidak ada data untuk ditampilkan. Silakan pilih rentang tanggal dan klik "Muat Ulang Observasi".</span>
+              <span className="text-xs">Tidak ada data untuk ditampilkan. Silakan pilih rentang tanggal dan klik "Muat Ulang".</span>
             </div>
           ) : (
             <div className="overflow-x-auto max-h-[420px]">
@@ -819,19 +953,27 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
         </CardContent>
       </Card>
 
-      {/* Guide Card for UK Met Office WOW Upload */}
+      {/* Guide Card for UK Met Office WOW Upload & API */}
       <Card className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
         <CardContent className="p-4 text-xs text-slate-600 dark:text-slate-300 space-y-2">
           <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
             <Info className="w-4 h-4 text-blue-600 shrink-0" />
-            Panduan Mengunggah CSV ke Portal WOW Met Office:
+            Panduan Integrasi UK Met Office WOW:
           </div>
-          <ol className="list-decimal pl-5 space-y-1 leading-relaxed">
-            <li>Buka portal resmi <strong>UK Met Office Weather Observations Website</strong> di <a href="https://wow.metoffice.gov.uk" target="_blank" rel="noreferrer" className="text-blue-600 underline font-medium inline-flex items-center gap-0.5">wow.metoffice.gov.uk <ExternalLink className="w-3 h-3" /></a>.</li>
-            <li>Masuk (*Log In*) ke akun WOW Anda, lalu buka menu <strong>"Enter Data" &gt; "Bulk Upload"</strong>.</li>
-            <li>Pilih file CSV yang baru saja Anda unduh dari halaman ini.</li>
-            <li>Klik tombol <strong>"Upload Observations"</strong>. Sistem WOW Met Office akan memvalidasi 50 header kolom dan mengimpor seluruh data observasi ke jaringan cuaca global.</li>
-          </ol>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            <div className="space-y-1">
+              <span className="font-semibold text-slate-900 dark:text-slate-100">1. Pengiriman Otomatis via API (Rekomendasi):</span>
+              <p className="leading-relaxed text-slate-500 dark:text-slate-400">
+                Klik tombol <strong>"Kirim Otomatis ke API WOW"</strong> di atas. Dashboard akan otomatis mengonversi data sensor ke satuan Imperial (°F, inHg, inches) dan mengirimnya langsung ke endpoint <code>https://wow.metoffice.gov.uk/automaticreading</code> tanpa perlu download file.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <span className="font-semibold text-slate-900 dark:text-slate-100">2. Pengunggahan Massal via CSV (Bulk Upload):</span>
+              <p className="leading-relaxed text-slate-500 dark:text-slate-400">
+                Klik <strong>"Unduh CSV WOW"</strong>, lalu buka portal <a href="https://wow.metoffice.gov.uk" target="_blank" rel="noreferrer" className="text-blue-600 underline font-medium inline-flex items-center gap-0.5">wow.metoffice.gov.uk <ExternalLink className="w-3 h-3" /></a>, masuk ke menu <strong>"Enter Data" &gt; "Bulk Upload"</strong>, dan unggah berkas CSV Anda.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
