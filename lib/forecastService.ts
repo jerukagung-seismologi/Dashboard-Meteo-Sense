@@ -113,6 +113,22 @@ export async function getForecastById(id: string): Promise<Forecast | null> {
   }
 }
 
+export async function updateForecast(id: string, data: Partial<Forecast>): Promise<void> {
+  const docRef = doc(db, FORECASTS_COLLECTION, id);
+  await updateDoc(docRef, {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updateForecastStatus(id: string, status: ForecastStatus): Promise<void> {
+  const docRef = doc(db, FORECASTS_COLLECTION, id);
+  await updateDoc(docRef, {
+    status,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function deleteForecast(id: string): Promise<void> {
   const docRef = doc(db, FORECASTS_COLLECTION, id);
   await deleteDoc(docRef);

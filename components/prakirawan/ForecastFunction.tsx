@@ -402,12 +402,67 @@ export default function ForecastForm() {
   const [notes, setNotes] = React.useState<string>("")
   const [selectedForecast, setSelectedForecast] = React.useState<Forecast | null>(null)
   const [saving, setSaving] = React.useState(false)
+  const [activeTab, setActiveTab] = React.useState<string>("input")
 
   const { user, profile } = useAuth()
   
   const [loadingFetch, setLoadingFetch] = React.useState<boolean>(false)
 
   const printRef = React.useRef<HTMLDivElement>(null)
+
+  // Handler CRUD: Edit / Muat Data Riwayat ke Form
+  const handleEditFromHistory = (forecast: Forecast) => {
+    if (forecast.deviceName) setLocation(forecast.deviceName)
+    if (forecast.forecastSource) setForecastSource(forecast.forecastSource)
+    if (forecast.notes !== undefined) setNotes(forecast.notes || "")
+    if (forecast.hourlyData && Array.isArray(forecast.hourlyData)) {
+      setRows(
+        forecast.hourlyData.map((h) => ({
+          time: h.time,
+          conditionMain: (h.conditionMain as WeatherCondition) || "",
+          probMain: h.probMain || "80",
+          conditionSub: (h.conditionSub as WeatherCondition) || "",
+          probSub: h.probSub || "",
+          temperature: h.temperature ?? "",
+          temperatureError: h.temperatureError ?? 2,
+          humidity: h.humidity ?? "",
+          humidityError: h.humidityError ?? 5,
+          heatIndex: h.heatIndex ?? "",
+          heatIndexError: h.heatIndexError ?? 2,
+        }))
+      )
+    }
+    setActiveTab("input")
+    toast({
+      title: "Prakiraan dimuat ke Editor",
+      description: `Data untuk ${forecast.deviceName} (${forecast.forecastDate}) berhasil dimuat ke form input.`,
+    })
+  }
+
+  // Handler CRUD: Buat Baru (Reset Form)
+  const handleCreateNew = () => {
+    setRows(
+      initialTimes.map((t) => ({
+        time: t,
+        conditionMain: "",
+        probMain: "80",
+        conditionSub: "",
+        probSub: "",
+        temperature: "",
+        temperatureError: 2,
+        humidity: "",
+        humidityError: 5,
+        heatIndex: "",
+        heatIndexError: 2,
+      }))
+    )
+    setNotes("")
+    setActiveTab("input")
+    toast({
+      title: "Form Baru",
+      description: "Form input prakiraan telah direset untuk pembuatan data baru.",
+    })
+  }
   
   const tomorrowStr = React.useMemo(() => {
     const d = new Date()
@@ -790,7 +845,7 @@ export default function ForecastForm() {
         </div>
       </div>
 
-      <Tabs defaultValue="input" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="input">Input Prakiraan</TabsTrigger>
           <TabsTrigger value="history">Riwayat Prakiraan</TabsTrigger>
@@ -862,11 +917,19 @@ export default function ForecastForm() {
         </TabsContent>
 
         <TabsContent value="history">
-          <ForecastHistoryList onViewDetail={setSelectedForecast} />
+          <ForecastHistoryList 
+            onViewDetail={setSelectedForecast}
+            onEditForecast={handleEditFromHistory}
+            onCreateNew={handleCreateNew}
+          />
         </TabsContent>
       </Tabs>
       
-      <ForecastDetailModal forecast={selectedForecast} onClose={() => setSelectedForecast(null)} />
+      <ForecastDetailModal 
+        forecast={selectedForecast} 
+        onClose={() => setSelectedForecast(null)}
+        onEdit={handleEditFromHistory}
+      />
 
       {/* --- FORM INPUT TABEL --- */}
       <div className="rounded-md border overflow-x-auto">
@@ -1309,7 +1372,7 @@ export default function ForecastForm() {
               <span style={{ fontStyle: "italic" }}>Prediksi Ini Bersifat Eksperimental</span>
             </div>
             <div>
-              <span style={{ opacity: 0.7 }}>Powered by</span> <strong style={{ color: "#1E3A8A" }}>Meteo Sense 3.1.5</strong>
+              <span style={{ opacity: 0.7 }}>Powered by</span> <strong style={{ color: "#1E3A8A" }}>Meteo Sense 4.0.0</strong>
             </div>
             <div>
               <span style={{ opacity: 0.7 }}>Waktu Kirim:</span> <strong style={{ color: "#1E3A8A" }}>{currentTimeStr}</strong>
