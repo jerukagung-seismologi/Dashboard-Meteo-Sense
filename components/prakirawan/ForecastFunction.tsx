@@ -27,6 +27,10 @@ import {
   Download, 
   Calendar,
   Clock,
+  Copy,
+  Sparkles,
+  MessageSquare,
+  Check,
 
   Thermometer,
   ThermometerSun,
@@ -502,6 +506,71 @@ export default function ForecastForm() {
   }, [selectedDateObj])
 
   const tomorrowStr = forecastDisplayDateStr
+
+  // Generator Narasi Prospek Cuaca Alami & Santai (Siap Sebar Medsos / WhatsApp)
+  const autoNarrative = React.useMemo(() => {
+    const loc = currentLocationName.trim() || "Kebumen"
+    
+    // Extract temperatures
+    const temps = rows
+      .map(r => r.temperature)
+      .filter((t): t is number => typeof t === "number" && !isNaN(t))
+    const minTemp = temps.length > 0 ? Math.min(...temps) : 22
+    const maxTemp = temps.length > 0 ? Math.max(...temps) : 30
+
+    // Extract humidities
+    const hums = rows
+      .map(r => r.humidity)
+      .filter((h): h is number => typeof h === "number" && !isNaN(h))
+    const minHum = hums.length > 0 ? Math.min(...hums) : 60
+    const maxHum = hums.length > 0 ? Math.max(...hums) : 88
+
+    // Count weather conditions
+    const conditions = rows.map(r => r.conditionMain).filter(Boolean)
+    const freq: Record<string, number> = {}
+    for (const c of conditions) {
+      freq[c] = (freq[c] || 0) + 1
+    }
+
+    const sortedConds = Object.entries(freq).sort((a, b) => b[1] - a[1])
+    const dominantCond = sortedConds.length > 0 ? sortedConds[0][0] : "Cerah Berawan"
+
+    // Check for rain or thunder events
+    const rainRows = rows.filter(r => 
+      (r.conditionMain && (r.conditionMain.includes("Hujan") || r.conditionMain.includes("Petir"))) ||
+      (r.conditionSub && (r.conditionSub.includes("Hujan") || r.conditionSub.includes("Petir")))
+    )
+
+    let rainNote = "tidak ada peluang curah hujan"
+    if (rainRows.length > 0) {
+      const rainTimes = Array.from(new Set(rainRows.map(r => r.time))).filter(Boolean).join(", ")
+      const rainTypes = Array.from(new Set(rainRows.map(r => r.conditionMain || r.conditionSub).filter(Boolean))).join("/")
+      rainNote = `waspadai potensi ${rainTypes.toLowerCase()} di sekitar jam ${rainTimes} WIB`
+    }
+
+    const cleanLocTag = loc.replace(/\s+/g, "")
+    return `Prospek Cuaca ${loc} ${forecastDisplayDateStr}, cuaca diprediksi dominan ${dominantCond} dengan suhu kisaran ${minTemp}-${maxTemp}°C dan kelembapan ${minHum}-${maxHum}%, ${rainNote}. #WeatherOutlook #${cleanLocTag}`
+  }, [currentLocationName, forecastDisplayDateStr, rows])
+
+  const [copiedNarrative, setCopiedNarrative] = React.useState<boolean>(false)
+
+  const handleCopyNarrative = () => {
+    navigator.clipboard.writeText(autoNarrative)
+    setCopiedNarrative(true)
+    setTimeout(() => setCopiedNarrative(false), 2000)
+    toast({
+      title: "✓ Caption Tersalin!",
+      description: "Teks prospek cuaca siap dipaste ke WhatsApp, Instagram, atau Twitter.",
+    })
+  }
+
+  const handleApplyNarrativeToNotes = () => {
+    setNotes(autoNarrative)
+    toast({
+      title: "✓ Diterapkan ke Catatan",
+      description: "Narasi prospek cuaca disalin ke Catatan Prakirawan.",
+    })
+  }
 
   const currentTimeStr = React.useMemo(() => {
     const now = new Date()
@@ -982,6 +1051,39 @@ export default function ForecastForm() {
                     placeholder="Tuliskan analisis cuaca di sini..." 
                     className="h-10 resize-none"
                   />
+                </div>
+
+                {/* AUTO-GENERATED NATURAL NARRATIVE & SOCIAL MEDIA CAPTION */}
+                <div className="space-y-1.5 lg:col-span-4 bg-gradient-to-r from-blue-50/80 to-indigo-50/60 dark:from-blue-950/40 dark:to-indigo-950/30 p-3 rounded-lg border border-blue-200/80 dark:border-blue-900/60">
+                  <div className="flex flex-wrap justify-between items-center gap-2">
+                    <label className="text-xs font-bold text-blue-950 dark:text-blue-200 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      Narasi Ringkasan Cuaca (Siap Sebar Medsos / WhatsApp)
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleApplyNarrativeToNotes}
+                        className="h-7 px-2 text-[11px] text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                      >
+                        <MessageSquare className="w-3 h-3 mr-1" /> Salin ke Catatan
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleCopyNarrative}
+                        className="h-7 px-2.5 text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm"
+                      >
+                        {copiedNarrative ? <Check className="w-3 h-3 mr-1 text-emerald-300" /> : <Copy className="w-3 h-3 mr-1" />}
+                        {copiedNarrative ? "Tersalin!" : "Salin Caption"}
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-slate-900/80 p-2.5 rounded border border-blue-100 dark:border-blue-900/50 font-sans leading-relaxed select-all">
+                    {autoNarrative}
+                  </p>
                 </div>
               </div>
             </div>
