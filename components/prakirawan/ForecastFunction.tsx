@@ -25,6 +25,8 @@ import {
   Trash2, 
   Save, 
   Download, 
+  Calendar,
+  Clock,
 
   Thermometer,
   ThermometerSun,
@@ -57,7 +59,7 @@ import {
   WiStrongWind, 
   WiNa
 } from "react-icons/wi";
-import { he } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 
 // --- TIPE DATA ---
 
@@ -464,16 +466,42 @@ export default function ForecastForm() {
     })
   }
   
-  const tomorrowStr = React.useMemo(() => {
+  // Target Tanggal Prakiraan: 'today' | 'tomorrow' | 'dayAfter' | 'custom'
+  const [targetDateMode, setTargetDateMode] = React.useState<"today" | "tomorrow" | "dayAfter" | "custom">("tomorrow")
+  const [customTargetDate, setCustomTargetDate] = React.useState<string>("")
+  
+  const selectedDateObj = React.useMemo(() => {
     const d = new Date()
+    if (targetDateMode === "today") {
+      return d
+    } else if (targetDateMode === "tomorrow") {
+      d.setDate(d.getDate() + 1)
+      return d
+    } else if (targetDateMode === "dayAfter") {
+      d.setDate(d.getDate() + 2)
+      return d
+    } else if (targetDateMode === "custom" && customTargetDate) {
+      const parsed = new Date(customTargetDate)
+      return isNaN(parsed.getTime()) ? d : parsed
+    }
     d.setDate(d.getDate() + 1)
-    return d.toLocaleDateString("id-ID", {
+    return d
+  }, [targetDateMode, customTargetDate])
+
+  const targetDateIsoStr = React.useMemo(() => {
+    return selectedDateObj.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })
+  }, [selectedDateObj])
+
+  const forecastDisplayDateStr = React.useMemo(() => {
+    return selectedDateObj.toLocaleDateString("id-ID", {
       weekday: "long", 
       day: "numeric", 
       month: "long", 
       year: "numeric"
     })
-  }, [])
+  }, [selectedDateObj])
+
+  const tomorrowStr = forecastDisplayDateStr
 
   const currentTimeStr = React.useMemo(() => {
     const now = new Date()
@@ -569,7 +597,7 @@ export default function ForecastForm() {
         deviceName: currentLocationName,
         latitude: KEBUMEN_LAT, // Or get from device
         longitude: KEBUMEN_LON, // Or get from device
-        forecastDate: new Date().toISOString().split('T')[0], // For today/tomorrow based on your logic, defaulting to today for demo
+        forecastDate: targetDateIsoStr, // Automatically uses selected target date (today, tomorrow, or custom)
         forecasterId: user?.uid || "anonymous",
         forecasterName: profile?.displayName || user?.email || "Unknown Forecaster",
         forecastSource: forecastSource,
@@ -591,7 +619,7 @@ export default function ForecastForm() {
       }
 
       await saveForecast(forecastData)
-      toast({ title: "Berhasil", description: "Prakiraan cuaca berhasil disimpan ke database." })
+      toast({ title: "Berhasil", description: `Prakiraan cuaca untuk ${forecastDisplayDateStr} berhasil disimpan ke database.` })
     } catch (error) {
       console.error("Failed to save forecast", error)
       toast({ title: "Gagal", description: "Gagal menyimpan prakiraan cuaca.", variant: "destructive" })
@@ -623,7 +651,7 @@ export default function ForecastForm() {
 
       const image = canvas.toDataURL("image/png");
       const link = document.createElement("a");
-      const fileName = `Outlook_${currentLocationName || "Kota"}_${new Date().toISOString().split('T')[0]}.png`;
+      const fileName = `Outlook_${currentLocationName || "Kota"}_${targetDateIsoStr}.png`;
       
       link.href = image;
       link.download = fileName;
@@ -649,7 +677,7 @@ export default function ForecastForm() {
     try {
       toast({ 
         title: "Menghubungi Edge Server...", 
-        description: "Mengambil konsensus 7 model global (ECMWF, GFS, ICON, GEM, JMA, Google WeatherNext 2, AIFS)..." 
+        description: `Mengambil konsensus 7 model global untuk ${forecastDisplayDateStr}...` 
       })
 
       let lat = KEBUMEN_LAT
@@ -684,8 +712,8 @@ export default function ForecastForm() {
         }
       }
 
-      // 2) Panggil Edge Route Handler terpusat
-      const edgeUrl = `/api/weather/consensus?lat=${lat}&lon=${lon}&location=${encodeURIComponent(locationName)}`
+      // 2) Panggil Edge Route Handler terpusat dengan tanggal target spesifik
+      const edgeUrl = `/api/weather/consensus?lat=${lat}&lon=${lon}&location=${encodeURIComponent(locationName)}&date=${targetDateIsoStr}`
       console.log("Fetching consensus from Edge API:", edgeUrl)
 
       const response = await fetch(edgeUrl)
@@ -726,7 +754,7 @@ export default function ForecastForm() {
 
       toast({ 
         title: "✓ Konsensus Multi-Model Selesai", 
-        description: `Probabilitas dan parameter cuaca untuk ${tomorrowStr} berhasil dihitung via Edge Route Handler (7 model global).` 
+        description: `Probabilitas dan parameter cuaca untuk ${forecastDisplayDateStr} berhasil dihitung via Edge Route Handler (7 model global).` 
       })
 
     } catch (err) {
@@ -859,7 +887,7 @@ export default function ForecastForm() {
                 <p className="text-muted-foreground">Isi data di bawah untuk menghasilkan tabel outlook grafis.</p>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-lg border">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border">
                 <div className="space-y-1">
                   <label className="text-sm font-semibold">Lokasi / Kota</label>
                   <Input 
@@ -889,7 +917,59 @@ export default function ForecastForm() {
                   </Select>
                 </div>
 
-                <div className="space-y-1 lg:col-span-2">
+                {/* TARGET TANGGAL PRAKIRAAN (HARI INI / BESOK / LUSA / KUSTOM) */}
+                <div className="space-y-1.5 lg:col-span-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-semibold flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                      <Calendar className="w-4 h-4 text-blue-600" /> Target Tanggal Prakiraan
+                    </label>
+                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                      {forecastDisplayDateStr}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={targetDateMode === "today" ? "default" : "outline"}
+                      onClick={() => setTargetDateMode("today")}
+                      className={cn("h-8 text-xs font-medium", targetDateMode === "today" ? "bg-blue-600 text-white" : "")}
+                    >
+                      Hari Ini
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={targetDateMode === "tomorrow" ? "default" : "outline"}
+                      onClick={() => setTargetDateMode("tomorrow")}
+                      className={cn("h-8 text-xs font-medium", targetDateMode === "tomorrow" ? "bg-blue-600 text-white" : "")}
+                    >
+                      Besok
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={targetDateMode === "dayAfter" ? "default" : "outline"}
+                      onClick={() => setTargetDateMode("dayAfter")}
+                      className={cn("h-8 text-xs font-medium", targetDateMode === "dayAfter" ? "bg-blue-600 text-white" : "")}
+                    >
+                      Lusa
+                    </Button>
+                    <div className="flex items-center gap-1 flex-1 min-w-[140px]">
+                      <Input
+                        type="date"
+                        value={customTargetDate || targetDateIsoStr}
+                        onChange={(e) => {
+                          setCustomTargetDate(e.target.value)
+                          setTargetDateMode("custom")
+                        }}
+                        className={cn("h-8 text-xs font-mono", targetDateMode === "custom" ? "border-blue-500 ring-1 ring-blue-500" : "")}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1 lg:col-span-4">
                   <label className="text-sm font-semibold">Catatan / Diskusi Prakirawan</label>
                   <Textarea 
                     value={notes} 

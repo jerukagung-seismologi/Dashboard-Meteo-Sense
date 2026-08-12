@@ -226,12 +226,17 @@ export async function GET(request: Request) {
   }
 
   try {
-    // 1. Tentukan tanggal esok hari (WIB / GMT+7)
-    let tomorrowDateStr = targetDateInput
-    if (!tomorrowDateStr) {
+    // 1. Tentukan tanggal target (WIB / GMT+7)
+    let targetDateStr = targetDateInput
+    const nowWib = new Date()
+    const todayWibStr = nowWib.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })
+
+    if (!targetDateStr || targetDateStr === "tomorrow") {
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
-      tomorrowDateStr = tomorrow.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })
+      targetDateStr = tomorrow.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })
+    } else if (targetDateStr === "today") {
+      targetDateStr = todayWibStr
     }
 
     // 2. Fetch Multi-Model Forecast dari Open-Meteo
@@ -242,7 +247,8 @@ export async function GET(request: Request) {
       hourly: "temperature_2m,relative_humidity_2m,weather_code,precipitation_probability,precipitation",
       models: modelIds,
       timezone: "Asia/Bangkok",
-      forecast_days: "2",
+      past_days: "1",
+      forecast_days: "3",
     })
 
     const forecastUrl = `https://api.open-meteo.com/v1/forecast?${params.toString()}`
@@ -262,13 +268,13 @@ export async function GET(request: Request) {
 
     const times: string[] = fcJson.hourly.time || []
 
-    // 3. Helper Index Matcher
+    // 3. Helper Index Matcher (Robust for both exact and prefix match)
     const findIndexFor = (targetTime: string): number => {
-      const suffixTomorrow = `${tomorrowDateStr}T${targetTime}:00`
-      const exactIdx = times.findIndex((t) => t === suffixTomorrow)
+      const targetPrefix = `${targetDateStr}T${targetTime}`
+      const exactIdx = times.findIndex((t) => t === targetPrefix || t.startsWith(targetPrefix))
       if (exactIdx !== -1) return exactIdx
 
-      const targetDateTime = new Date(`${tomorrowDateStr}T${targetTime}:00`)
+      const targetDateTime = new Date(`${targetDateStr}T${targetTime}:00`)
       let bestIdx = -1
       let bestDiff = Infinity
 
@@ -277,7 +283,7 @@ export async function GET(request: Request) {
         const forecastDate = times[i].split("T")[0]
         const diff = Math.abs(forecastDateTime.getTime() - targetDateTime.getTime())
 
-        if (diff < bestDiff && forecastDate === tomorrowDateStr) {
+        if (diff < bestDiff && forecastDate === targetDateStr) {
           bestDiff = diff
           bestIdx = i
         }
@@ -357,7 +363,7 @@ export async function GET(request: Request) {
       success: true,
       location: locationName,
       coordinates: { latitude: lat, longitude: lon },
-      forecastDate: tomorrowDateStr,
+      forecastDate: targetDateStr,
       generatedAt: new Date().toISOString(),
       modelsUsed: GLOBAL_NWP_MODELS,
       rows: hourlyResults,
