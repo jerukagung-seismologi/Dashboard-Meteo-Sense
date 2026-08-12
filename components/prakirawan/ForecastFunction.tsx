@@ -770,22 +770,27 @@ export default function ForecastForm() {
     }
   }
 
-  // Helper render dropdown untuk probability dengan kelipatan 10
-  const ProbabilitySelectItems = () => (
-    <>
-      <SelectItem value="0">0%</SelectItem>
-      <SelectItem value="10">10%</SelectItem>
-      <SelectItem value="20">20%</SelectItem>
-      <SelectItem value="30">30%</SelectItem>
-      <SelectItem value="40">40%</SelectItem>
-      <SelectItem value="50">50%</SelectItem>
-      <SelectItem value="60">60%</SelectItem>
-      <SelectItem value="70">70%</SelectItem>
-      <SelectItem value="80">80%</SelectItem>
-      <SelectItem value="90">90%</SelectItem>
-      <SelectItem value="100">100%</SelectItem>
-    </>
-  )
+  // Helper render dropdown untuk probability dengan kelipatan 10 + custom
+  const ProbabilitySelectItems = ({ currentVal }: { currentVal?: string }) => {
+    const STANDARD_PROBS = ["0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"]
+    const hasCustom = currentVal && currentVal !== "" && currentVal !== "__empty__" && !STANDARD_PROBS.includes(currentVal)
+    
+    return (
+      <>
+        <SelectItem value="__empty__">-</SelectItem>
+        {STANDARD_PROBS.map((p) => (
+          <SelectItem key={p} value={p}>
+            {p}%
+          </SelectItem>
+        ))}
+        {hasCustom && (
+          <SelectItem value={currentVal}>
+            {currentVal}%
+          </SelectItem>
+        )}
+      </>
+    )
+  }
 
   // Helper render dropdown untuk weather dengan ikon
   const WeatherSelectItems = () => (
@@ -1076,14 +1081,14 @@ export default function ForecastForm() {
                 {/* PROB UTAMA */}
                 <TableCell>
                   <Select
-                    value={row.probMain}
-                    onValueChange={(value) => updateRow(idx, { probMain: value })}
+                    value={row.probMain || "__empty__"}
+                    onValueChange={(value) => updateRow(idx, { probMain: value === "__empty__" ? "" : value })}
                   >
-                    <SelectTrigger className="h-8 text-center">
-                      <SelectValue />
+                    <SelectTrigger className="h-8 text-center font-medium">
+                      <SelectValue placeholder="-" />
                     </SelectTrigger>
                     <SelectContent>
-                      <ProbabilitySelectItems />
+                      <ProbabilitySelectItems currentVal={row.probMain} />
                     </SelectContent>
                   </Select>
                 </TableCell>
@@ -1125,14 +1130,14 @@ export default function ForecastForm() {
                 {/* PROB TAMBAHAN */}
                 <TableCell>
                   <Select
-                    value={row.probSub}
-                    onValueChange={(value) => updateRow(idx, { probSub: value })}
+                    value={row.probSub || "__empty__"}
+                    onValueChange={(value) => updateRow(idx, { probSub: value === "__empty__" ? "" : value })}
                   >
-                    <SelectTrigger className="h-8 text-center">
-                      <SelectValue />
+                    <SelectTrigger className="h-8 text-center font-medium">
+                      <SelectValue placeholder="-" />
                     </SelectTrigger>
                     <SelectContent>
-                      <ProbabilitySelectItems />
+                      <ProbabilitySelectItems currentVal={row.probSub} />
                     </SelectContent>
                   </Select>
                 </TableCell>

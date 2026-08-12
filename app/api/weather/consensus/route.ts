@@ -133,6 +133,14 @@ function calculateMultiModelConsensus(predictions: SingleModelPrediction[]) {
     freqMap[pred.condition].models.push(pred.modelName)
   }
 
+  // Helper prob rounding ke kelipatan 10 standar (10, 20, 30, ..., 100)
+  const toStandardProb = (count: number, totalModels: number): string => {
+    if (count <= 0 || totalModels <= 0) return ""
+    const exact = (count / totalModels) * 100
+    const rounded = Math.min(100, Math.max(10, Math.round(exact / 10) * 10))
+    return rounded.toString()
+  }
+
   const sortedVotes = Object.entries(freqMap)
     .map(([condition, data]) => ({
       condition: condition as WeatherCondition,
@@ -142,16 +150,18 @@ function calculateMultiModelConsensus(predictions: SingleModelPrediction[]) {
     }))
     .sort((a, b) => b.count - a.count)
 
+  // Kondisi Utama (Peringkat 1 dari Ensemble)
   const mainVote = sortedVotes[0]
   const conditionMain = mainVote.condition
-  const probMain = mainVote.percentage.toString()
+  const probMain = toStandardProb(mainVote.count, total)
 
+  // Kondisi Kedua / Tambahan (Peringkat 2 dari Ensemble jika ada suara alternatif)
   let conditionSub: WeatherCondition | "" = ""
   let probSub = ""
 
   if (sortedVotes.length > 1 && sortedVotes[1].count > 0) {
     conditionSub = sortedVotes[1].condition
-    probSub = sortedVotes[1].percentage.toString()
+    probSub = toStandardProb(sortedVotes[1].count, total)
   }
 
   // 2. Mean Suhu & Margin Error Dinamis
