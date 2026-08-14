@@ -71,7 +71,7 @@ export default function LaporanKlimatologi({ sensorId, sensorName, displayName }
       else if (type === 'pdf') exportAsPDF([canvas], filename, 'landscape');
       else if (type === 'print') printCanvas(canvas, 'landscape');
       
-      toast({ title: "✓ Berhasil", description: "Dokumen laporan siap diunduh/dicetak." });
+      toast({ title: "Berhasil", description: "Dokumen laporan siap diunduh/dicetak." });
       setIsExporting(false);
     }, 100);
   };

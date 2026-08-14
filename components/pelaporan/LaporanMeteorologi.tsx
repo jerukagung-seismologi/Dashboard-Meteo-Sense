@@ -294,7 +294,7 @@ export default function LaporanMeteorologi({ sensorId, sensorName, displayName }
       else if (type === 'pdf') exportAsPDF([canvas], filename, 'portrait');
       else if (type === 'print') printCanvas(canvas);
 
-      toast({ title: "✓ Berhasil", description: "Dokumen laporan siap diunduh/dicetak." });
+      toast({ title: "Berhasil", description: "Dokumen laporan siap diunduh/dicetak." });
       setIsExporting(false);
     }, 100);
   };

@@ -14,7 +14,8 @@ import {
   LayoutDashboard,
   Eye,
   CheckCircle2,
-  CloudRain
+  CloudRain,
+  Activity
 } from "lucide-react"
 import { type DateRange } from "react-day-picker"
 import dynamic from "next/dynamic"
@@ -240,6 +241,47 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: La
   const daysCount = dateRange?.from && dateRange?.to ? Math.max(1, Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 3600 * 24))) : 30;
   const quality = useMemo(() => calculateDataQuality(rawSensorData, daysCount), [rawSensorData, daysCount]);
 
+  const advancedStats = useMemo(() => {
+    if (weatherData.length === 0) return null;
+    const temps = weatherData.map(d => d.temperatureAvg).filter((v): v is number => v != null && !isNaN(v));
+    const hums = weatherData.map(d => d.humidityAvg).filter((v): v is number => v != null && !isNaN(v));
+    const presses = weatherData.map(d => d.pressureAvg).filter((v): v is number => v != null && !isNaN(v));
+    const rains = weatherData.map(d => d.rainfallTot || 0);
+
+    const calcStd = (arr: number[]) => {
+      if (arr.length <= 1) return 0;
+      const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+      const variance = arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (arr.length - 1);
+      return Math.sqrt(variance);
+    };
+
+    const diurnalRanges = weatherData
+      .map(d => (d.temperatureMax != null && d.temperatureMin != null ? d.temperatureMax - d.temperatureMin : null))
+      .filter((v): v is number => v != null);
+
+    const avgDiurnalRange = diurnalRanges.length > 0 ? diurnalRanges.reduce((a, b) => a + b, 0) / diurnalRanges.length : 0;
+    const maxDiurnalRange = diurnalRanges.length > 0 ? Math.max(...diurnalRanges) : 0;
+
+    const dryDays = rains.filter(r => r < 1.0).length;
+    const lightRainDays = rains.filter(r => r >= 1.0 && r <= 20.0).length;
+    const moderateRainDays = rains.filter(r => r > 20.0 && r <= 50.0).length;
+    const heavyRainDays = rains.filter(r => r > 50.0).length;
+    const maxDailyRain = rains.length > 0 ? Math.max(...rains) : 0;
+
+    return {
+      stdTemp: Number(calcStd(temps).toFixed(2)),
+      stdHum: Number(calcStd(hums).toFixed(2)),
+      stdPress: Number(calcStd(presses).toFixed(2)),
+      avgDiurnalRange: Number(avgDiurnalRange.toFixed(1)),
+      maxDiurnalRange: Number(maxDiurnalRange.toFixed(1)),
+      dryDays,
+      lightRainDays,
+      moderateRainDays,
+      heavyRainDays,
+      maxDailyRain: Number(maxDailyRain.toFixed(1)),
+    };
+  }, [weatherData]);
+
   const handleExport = async (type: 'pdf' | 'png' | 'jpg' | 'print') => {
     if (weatherData.length === 0) return;
     setIsExporting(true);
@@ -260,7 +302,7 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: La
       else if (type === 'pdf') exportAsPDF([canvas], filename, 'portrait');
       else if (type === 'print') printCanvas(canvas);
 
-      toast({ title: "✓ Berhasil", description: "Laporan siap diunduh/dicetak." });
+      toast({ title: "Berhasil", description: "Laporan siap diunduh/dicetak." });
       setIsExporting(false);
     }, 100);
   };
@@ -498,6 +540,76 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: La
               </CardContent>
             </Card>
           </div>
+
+          {/* Advanced Meteorological Statistics Summary Table */}
+          {advancedStats && (
+            <Card className="border-slate-200 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900">
+              <CardHeader className="py-3 px-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                <CardTitle className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-indigo-600" />
+                  Statistik Parameter Meteorologi Periode Pengamatan
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                  {/* Kolom Termodinamika */}
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-2 border border-slate-200/60 dark:border-slate-700/60">
+                    <span className="font-bold text-orange-600 dark:text-orange-400 block border-b pb-1">Termodinamika Suhu</span>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Deviasi Standar (σ):</span>
+                      <strong className="font-mono">{advancedStats.stdTemp} °C</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Rata-rata Variabilitas Diurnal:</span>
+                      <strong className="font-mono">{advancedStats.avgDiurnalRange} °C</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Rentang Diurnal Maksimal:</span>
+                      <strong className="font-mono">{advancedStats.maxDiurnalRange} °C</strong>
+                    </div>
+                  </div>
+
+                  {/* Kolom Kelembapan & Tekanan */}
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-2 border border-slate-200/60 dark:border-slate-700/60">
+                    <span className="font-bold text-blue-600 dark:text-blue-400 block border-b pb-1">Kelembapan & Tekanan</span>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Deviasi Kelembapan (σ):</span>
+                      <strong className="font-mono">{advancedStats.stdHum} %</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Deviasi Tekanan (σ):</span>
+                      <strong className="font-mono">{advancedStats.stdPress} hPa</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Ketersediaan Data:</span>
+                      <strong className="font-mono">{quality.availabilityPercent.toFixed(1)}% ({quality.actualTotal} obs)</strong>
+                    </div>
+                  </div>
+
+                  {/* Kolom Distribusi Hujan */}
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-2 border border-slate-200/60 dark:border-slate-700/60">
+                    <span className="font-bold text-teal-600 dark:text-teal-400 block border-b pb-1">Distribusi Hari Hujan</span>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Hari Kering (&lt; 1 mm):</span>
+                      <strong className="font-mono">{advancedStats.dryDays} Hari</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Hujan Ringan (1–20 mm):</span>
+                      <strong className="font-mono">{advancedStats.lightRainDays} Hari</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Hujan Sedang / Lebat (&gt;20 mm):</span>
+                      <strong className="font-mono">{advancedStats.moderateRainDays + advancedStats.heavyRainDays} Hari</strong>
+                    </div>
+                    <div className="flex justify-between pt-0.5 border-t">
+                      <span className="text-slate-500">Hujan Harian Terbesar:</span>
+                      <strong className="font-mono text-sky-600">{advancedStats.maxDailyRain} mm</strong>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Interactive Web Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

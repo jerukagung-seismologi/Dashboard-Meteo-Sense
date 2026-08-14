@@ -168,7 +168,7 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
       if (type === 'png') exportAsPNG(canvas, filename);
       else if (type === 'pdf') exportAsPDF([canvas], filename, 'portrait');
       else if (type === 'print') printCanvas(canvas, 'portrait');
-      toast({ title: "✓ Berhasil", description: "Laporan siap diunduh/dicetak." });
+      toast({ title: "Berhasil", description: "Laporan siap diunduh/dicetak." });
       setIsExporting(false);
     }, 150);
   };

@@ -47,6 +47,9 @@ import { useToast } from "@/hooks/use-toast"
 import { fetchSensorDataByDateRange } from "@/lib/apiClient"
 import type { SensorDate } from "@/lib/FetchingSensorData"
 import { cn } from "@/lib/utils"
+import { getCalibrationDocument } from "@/lib/calibration/calibrationCrud"
+import { applyCalibrationToSeries } from "@/lib/calibration/calibrationEngine"
+import type { StationCalibrationDocument } from "@/lib/calibration/calibrationTypes"
 
 // Exact UK Met Office WOW Bulk Upload Header (50 Columns)
 const WOW_HEADER_COLUMNS = [
@@ -215,6 +218,17 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
   const [intervalMin, setIntervalMin] = useState<string>("10"); // "raw", "10", "15", "30", "60"
   const [loading, setLoading] = useState<boolean>(false);
   const [rawData, setRawData] = useState<SensorDate[]>([]);
+  const [calConfig, setCalConfig] = useState<StationCalibrationDocument | null>(null);
+  const [applyCal, setApplyCal] = useState<boolean>(true);
+
+  // Load calibration doc on sensorId
+  useEffect(() => {
+    if (sensorId) {
+      getCalibrationDocument(sensorId).then((config) => {
+        setCalConfig(config);
+      });
+    }
+  }, [sensorId]);
 
   // Live Sync API State
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -228,7 +242,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
       localStorage.setItem("wow_site_id", siteId);
       localStorage.setItem("wow_auth_key", authKey);
       localStorage.setItem("wow_elevation", String(elevation));
-      toast({ title: "✓ Pengaturan Tersimpan", description: "Site ID dan kredensial WOW Met Office telah disimpan di browser Anda." });
+      toast({ title: "Pengaturan Tersimpan", description: "Site ID dan kredensial WOW Met Office telah disimpan di browser Anda." });
     }
   };
 
@@ -257,7 +271,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
       } else {
         records.sort((a, b) => a.timestamp - b.timestamp);
         setRawData(records);
-        toast({ title: "✓ Data Berhasil Dimuat", description: `Ditemukan ${records.length.toLocaleString("id-ID")} titik observasi sensor.` });
+        toast({ title: "Data Berhasil Dimuat", description: `Ditemukan ${records.length.toLocaleString("id-ID")} titik observasi sensor.` });
       }
     } catch (err: any) {
       console.error(err);
@@ -267,15 +281,22 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
     }
   };
 
-  // Filter & downsample data according to selected interval
+  // Filter, calibrate, & downsample data according to selected interval
   const processedObservations = useMemo(() => {
     if (!rawData || rawData.length === 0) return [];
-    if (intervalMin === "raw") return rawData;
+    
+    // Apply calibration if active
+    let effectiveData = rawData;
+    if (applyCal && calConfig && calConfig.enabled) {
+      effectiveData = applyCalibrationToSeries(rawData, calConfig);
+    }
+
+    if (intervalMin === "raw") return effectiveData;
 
     const intervalMs = Number(intervalMin) * 60 * 1000;
     const buckets = new Map<number, SensorDate>();
 
-    for (const record of rawData) {
+    for (const record of effectiveData) {
       const bucketKey = Math.floor(record.timestamp / intervalMs) * intervalMs;
       if (!buckets.has(bucketKey)) {
         buckets.set(bucketKey, record);
@@ -283,7 +304,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
     }
 
     return Array.from(buckets.values()).sort((a, b) => a.timestamp - b.timestamp);
-  }, [rawData, intervalMin]);
+  }, [rawData, intervalMin, applyCal, calConfig]);
 
   // Convert observations to WOW Bulk Upload Rows
   const wowRows = useMemo(() => {
@@ -405,7 +426,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
     URL.revokeObjectURL(url);
 
     toast({ 
-      title: "✓ File CSV WOW Siap!", 
+      title: "File CSV WOW Siap", 
       description: `File "${filename}" (${wowRows.length.toLocaleString("id-ID")} baris observasi) berhasil diunduh.` 
     });
   };
@@ -471,7 +492,7 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
         setSyncLogs(result.logs || []);
         setSyncProgress({ current: result.succeeded, total: result.total, percent: 100 });
         toast({
-          title: "✓ Sukses Terkirim ke UK Met Office WOW!",
+          title: "Sukses Terkirim ke UK Met Office WOW",
           description: `${result.succeeded} titik observasi berhasil diterima oleh server Met Office WOW.`
         });
       }
@@ -716,18 +737,23 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
               </RadioGroup>
             </div>
 
-            {/* Timezone Switch & Action Buttons */}
+            {/* Timezone & Calibration Switch & Action Buttons */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-3 border-t">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center space-x-2">
                   <Switch id="use-utc" checked={useUtc} onCheckedChange={setUseUtc} />
                   <Label htmlFor="use-utc" className="text-xs font-medium cursor-pointer">
-                    Format Waktu Standar <strong>UTC (Zulu / GMT)</strong>
+                    Format Waktu <strong>UTC (Zulu)</strong>
                   </Label>
                 </div>
-                <Badge variant="outline" className={cn("text-[10px]", useUtc ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-amber-50 text-amber-700 border-amber-200")}>
-                  {useUtc ? "Direkomendasikan Met Office" : "Waktu Lokal (WIB)"}
-                </Badge>
+
+                <div className="flex items-center space-x-2 border-l pl-3 border-slate-200 dark:border-slate-700">
+                  <Switch id="apply-cal" checked={applyCal} onCheckedChange={setApplyCal} />
+                  <Label htmlFor="apply-cal" className="text-xs font-medium cursor-pointer flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    Terapkan Kalibrasi Sensor
+                  </Label>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">

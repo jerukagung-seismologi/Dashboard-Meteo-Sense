@@ -2,9 +2,21 @@
 import { WeatherRecord } from "@/lib/weatherUtils";
 
 export interface BiasMetric {
-  mbe: number;        // Mean Bias Error (AWS - ERA5)
-  rmse: number;       // Root Mean Square Error
-  pearsonR: number;   // Pearson Correlation Coefficient
+  mbe: number;             // Mean Bias Error (AWS - ERA5/IFS)
+  mae: number;             // Mean Absolute Error
+  rmse: number;            // Root Mean Square Error
+  pearsonR: number;        // Pearson Correlation Coefficient (r)
+  rSquared: number;        // Coefficient of Determination (R²)
+  stdDevResidual: number;  // Standard Deviation of Residuals (σ)
+  awsMean: number;
+  awsMin: number;
+  awsMax: number;
+  era5Mean: number;
+  era5Min: number;
+  era5Max: number;
+  p10: number;             // 10th Percentile
+  p50: number;             // 50th Percentile (Median)
+  p90: number;             // 90th Percentile
   count: number;
   suggestedOffset: number; // Recommended offset = -MBE
   outliers: { date: string; awsVal: number; era5Val: number; diff: number }[];
@@ -26,7 +38,7 @@ export interface Era5DailyComparisonPoint {
   awsHumAvg?: number | null;
   awsPressAvg?: number | null;
   awsRainTot?: number | null;
-  // ERA5 Reanalysis
+  // ERA5 / ECMWF IFS Reanalysis
   era5TempAvg?: number | null;
   era5TempMin?: number | null;
   era5TempMax?: number | null;
@@ -47,7 +59,7 @@ export interface CorrectionOffsets {
 }
 
 /**
- * Calculate statistical bias metrics between AWS observed and ERA5 reanalysis
+ * Calculate statistical bias metrics between AWS observed and ERA5/IFS model
  */
 export function calculateVariableBias(
   pairs: { date: string; aws: number; era5: number }[],
@@ -64,8 +76,20 @@ export function calculateVariableBias(
   if (valid.length === 0) {
     return {
       mbe: 0,
+      mae: 0,
       rmse: 0,
       pearsonR: 1,
+      rSquared: 1,
+      stdDevResidual: 0,
+      awsMean: 0,
+      awsMin: 0,
+      awsMax: 0,
+      era5Mean: 0,
+      era5Min: 0,
+      era5Max: 0,
+      p10: 0,
+      p50: 0,
+      p90: 0,
       count: 0,
       suggestedOffset: 0,
       outliers: [],
@@ -74,24 +98,33 @@ export function calculateVariableBias(
 
   const n = valid.length;
   let sumDiff = 0;
+  let sumAbsDiff = 0;
   let sumSqDiff = 0;
   let sumAws = 0;
   let sumEra5 = 0;
   let sumAwsEra5 = 0;
   let sumAwsSq = 0;
   let sumEra5Sq = 0;
+  const awsValues: number[] = [];
+  const era5Values: number[] = [];
+  const diffValues: number[] = [];
   const outliers: { date: string; awsVal: number; era5Val: number; diff: number }[] = [];
 
   valid.forEach((p) => {
     const diff = p.aws - p.era5;
     sumDiff += diff;
+    sumAbsDiff += Math.abs(diff);
     sumSqDiff += diff * diff;
+    diffValues.push(diff);
 
     sumAws += p.aws;
     sumEra5 += p.era5;
     sumAwsEra5 += p.aws * p.era5;
     sumAwsSq += p.aws * p.aws;
     sumEra5Sq += p.era5 * p.era5;
+
+    awsValues.push(p.aws);
+    era5Values.push(p.era5);
 
     if (Math.abs(diff) >= outlierThreshold) {
       outliers.push({
@@ -104,22 +137,62 @@ export function calculateVariableBias(
   });
 
   const mbe = sumDiff / n;
+  const mae = sumAbsDiff / n;
   const rmse = Math.sqrt(sumSqDiff / n);
 
-  // Pearson Correlation Coefficient
+  // Standard Deviation of Residuals
+  const varianceRes = diffValues.reduce((acc, d) => acc + Math.pow(d - mbe, 2), 0) / (n > 1 ? n - 1 : 1);
+  const stdDevResidual = Math.sqrt(varianceRes);
+
+  // Pearson Correlation Coefficient & R²
   const numerator = n * sumAwsEra5 - sumAws * sumEra5;
   const denominator = Math.sqrt(
     (n * sumAwsSq - sumAws * sumAws) * (n * sumEra5Sq - sumEra5 * sumEra5)
   );
   const pearsonR = denominator !== 0 ? Math.max(-1, Math.min(1, numerator / denominator)) : 1;
+  const rSquared = Math.max(0, Math.min(1, Math.pow(pearsonR, 2)));
+
+  // Percentiles for AWS Values
+  awsValues.sort((a, b) => a - b);
+  const getPercentile = (arr: number[], p: number) => {
+    const idx = (p / 100) * (arr.length - 1);
+    const low = Math.floor(idx);
+    const high = Math.ceil(idx);
+    const weight = idx - low;
+    return Number((arr[low] * (1 - weight) + arr[high] * weight).toFixed(2));
+  };
+
+  const p10 = getPercentile(awsValues, 10);
+  const p50 = getPercentile(awsValues, 50);
+  const p90 = getPercentile(awsValues, 90);
+
+  const awsMin = Math.min(...awsValues);
+  const awsMax = Math.max(...awsValues);
+  const awsMean = sumAws / n;
+
+  const era5Min = Math.min(...era5Values);
+  const era5Max = Math.max(...era5Values);
+  const era5Mean = sumEra5 / n;
 
   // Suggested offset cancels the MBE
   const suggestedOffset = Number((-mbe).toFixed(2));
 
   return {
     mbe: Number(mbe.toFixed(2)),
+    mae: Number(mae.toFixed(2)),
     rmse: Number(rmse.toFixed(2)),
     pearsonR: Number(pearsonR.toFixed(3)),
+    rSquared: Number(rSquared.toFixed(3)),
+    stdDevResidual: Number(stdDevResidual.toFixed(2)),
+    awsMean: Number(awsMean.toFixed(2)),
+    awsMin: Number(awsMin.toFixed(2)),
+    awsMax: Number(awsMax.toFixed(2)),
+    era5Mean: Number(era5Mean.toFixed(2)),
+    era5Min: Number(era5Min.toFixed(2)),
+    era5Max: Number(era5Max.toFixed(2)),
+    p10,
+    p50,
+    p90,
     count: n,
     suggestedOffset,
     outliers,
