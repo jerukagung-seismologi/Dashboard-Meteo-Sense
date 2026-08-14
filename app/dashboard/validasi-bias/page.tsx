@@ -549,7 +549,7 @@ export default function ValidasiBiasPage() {
         variable={selectedVariable}
         method={selectedMethod}
         unit={activeVarConfig.unit}
-        fitParameters={evaluationResult.fittedParameters}
+        fitParameters={evaluationResult?.provenance?.fitParameters || {}}
         sampleCount={correctedPairs.length}
       />
 

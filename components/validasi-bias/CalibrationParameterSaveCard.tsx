@@ -73,38 +73,39 @@ export const CalibrationParameterSaveCard: React.FC<CalibrationParameterSaveCard
     multiplier?: number;
     description: string;
   }>(() => {
+    const params = fitParameters || {};
+
     if (method === "mean_bias") {
-      const bias = fitParameters.bias ?? 0;
+      const bias = params.bias ?? 0;
       return {
         method: "offset",
         offset: Number(bias.toFixed(3)),
         description: `Offset penyesuaian bias: ${bias >= 0 ? "+" : ""}${bias.toFixed(2)} ${unit}`,
       };
     } else if (method === "diurnal_mbe") {
-      const mbe = fitParameters.overallMBE ?? 0;
+      const mbe = params.overallMBE ?? 0;
       return {
         method: "offset",
         offset: Number(mbe.toFixed(3)),
         description: `Offset rata-rata diurnal (MBE): ${mbe >= 0 ? "+" : ""}${mbe.toFixed(2)} ${unit}`,
       };
     } else if (method === "linear_regression") {
-      const slope = fitParameters.slope ?? 1;
-      const intercept = fitParameters.intercept ?? 0;
+      const slope = params.slope ?? 1;
+      const intercept = params.intercept ?? 0;
       return {
         method: "scale_offset",
         scale: Number(Math.max(0.1, slope).toFixed(3)),
         offset: Number(intercept.toFixed(3)),
-        description: `Skala & Offset OLS: Skala ${slope.toFixed(3)}×, Offset ${intercept >= 0 ? "+" : ""}${intercept.toFixed(2)} ${unit} (R² = ${fitParameters.rSquared ?? 0})`,
+        description: `Skala & Offset OLS: Skala ${slope.toFixed(3)}×, Offset ${intercept >= 0 ? "+" : ""}${intercept.toFixed(2)} ${unit} (R² = ${params.rSquared ?? 0})`,
       };
     } else if (method === "zero_aware_rain") {
-      const p0 = fitParameters.dryThresholdP0 ?? 0;
       return {
         method: "multiplier",
         multiplier: 1.0,
-        description: `Zero-Aware Rain: Threshold Presipitasi Wet-Day ${fitParameters.wetDayThresholdMm ?? 0.1} mm`,
+        description: `Zero-Aware Rain: Threshold Presipitasi Wet-Day ${params.wetDayThresholdMm ?? 0.1} mm`,
       };
     } else if (method === "quantile_mapping") {
-      const offset = fitParameters.lowerOffset ?? 0;
+      const offset = params.lowerOffset ?? params.medianOffset ?? 0;
       return {
         method: "offset",
         offset: Number(offset.toFixed(3)),
