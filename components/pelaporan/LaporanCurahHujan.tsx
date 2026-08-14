@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import { Download, Calendar as CalendarIcon, CloudRain, Clock, Activity, CheckCircle2, ShieldCheck } from "lucide-react"
 import html2canvas from 'html2canvas';
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import { WeatherRecord, aggregateDailyUTC, formatIdDateDash } from "@/lib/weatherUtils";
 import { getCalibrationDocument } from "@/lib/calibration/calibrationCrud";
 import { applyCalibrationToSeries } from "@/lib/calibration/calibrationEngine";
 import type { StationCalibrationDocument } from "@/lib/calibration/calibrationTypes";
