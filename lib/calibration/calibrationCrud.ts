@@ -31,6 +31,22 @@ export async function getCalibrationDocument(stationId: string): Promise<Station
   }
 }
 
+// Recursively removes all undefined fields from an object so Firestore setDoc does not throw
+function stripUndefined(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(stripUndefined);
+  } else if (obj !== null && typeof obj === "object") {
+    const result: Record<string, any> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        result[key] = stripUndefined(value);
+      }
+    }
+    return result;
+  }
+  return obj;
+}
+
 /**
  * Saves or updates a calibration document for a station.
  */
@@ -41,10 +57,11 @@ export async function saveCalibrationDocument(
   try {
     // Ensure payload conforms to schema before saving
     const validConfig = StationCalibrationDocumentSchema.parse(config);
+    const cleanPayload = stripUndefined(validConfig);
     const docRef = doc(dbLite, COLLECTION_NAME, stationId);
     
     // We do not use 'merge: true' because we want to explicitly overwrite the variables.
-    await setDoc(docRef, validConfig);
+    await setDoc(docRef, cleanPayload);
   } catch (error) {
     console.error(`Error saving calibration for station ${stationId}:`, error);
     throw error;

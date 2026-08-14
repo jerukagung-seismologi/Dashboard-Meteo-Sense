@@ -18,6 +18,7 @@ import {
 import {
   StationCalibrationDocument,
   SensorVariableCalibration,
+  DEFAULT_VARIABLE_CALIBRATION,
 } from "@/lib/calibration/calibrationTypes";
 
 interface CalibrationParameterSaveCardProps {
@@ -131,8 +132,26 @@ export const CalibrationParameterSaveCard: React.FC<CalibrationParameterSaveCard
 
     setIsSaving(true);
     try {
-      // Build updated calibration document
-      const baseDoc: StationCalibrationDocument = currentConfig || {
+      // Build complete standard document identical to calibration settings page (11 exact variables)
+      const defaultFullDoc: StationCalibrationDocument = {
+        stationId,
+        enabled: true,
+        temperature: { ...DEFAULT_VARIABLE_CALIBRATION },
+        humidity: { ...DEFAULT_VARIABLE_CALIBRATION },
+        pressure: { ...DEFAULT_VARIABLE_CALIBRATION },
+        dew: { ...DEFAULT_VARIABLE_CALIBRATION },
+        rainfall: { ...DEFAULT_VARIABLE_CALIBRATION },
+        rainrate: { ...DEFAULT_VARIABLE_CALIBRATION },
+        windSpeed: { ...DEFAULT_VARIABLE_CALIBRATION },
+        windDirection: { ...DEFAULT_VARIABLE_CALIBRATION },
+        soil_temp: { ...DEFAULT_VARIABLE_CALIBRATION },
+        lux: { ...DEFAULT_VARIABLE_CALIBRATION },
+        volt: { ...DEFAULT_VARIABLE_CALIBRATION },
+      };
+
+      const baseDoc: StationCalibrationDocument = {
+        ...defaultFullDoc,
+        ...(currentConfig || {}),
         stationId,
         enabled: true,
       };
@@ -140,14 +159,14 @@ export const CalibrationParameterSaveCard: React.FC<CalibrationParameterSaveCard
       const updatedVarConfig: SensorVariableCalibration = {
         enabled: true,
         method: derivedCalibration.method as any,
-        offset: derivedCalibration.offset,
-        scale: derivedCalibration.scale,
-        multiplier: derivedCalibration.multiplier,
       };
+
+      if (derivedCalibration.offset !== undefined) updatedVarConfig.offset = derivedCalibration.offset;
+      if (derivedCalibration.scale !== undefined) updatedVarConfig.scale = derivedCalibration.scale;
+      if (derivedCalibration.multiplier !== undefined) updatedVarConfig.multiplier = derivedCalibration.multiplier;
 
       const updatedDoc: StationCalibrationDocument = {
         ...baseDoc,
-        enabled: true,
         [sensorKey]: updatedVarConfig,
       };
 
@@ -156,8 +175,8 @@ export const CalibrationParameterSaveCard: React.FC<CalibrationParameterSaveCard
       setIsSaved(true);
 
       toast({
-        title: "Kalibrasi Berhasil Disimpan! 🎉",
-        description: `Parameter kalibrasi (${derivedCalibration.description}) telah aktif untuk stasiun ${stationName}.`,
+        title: "Kalibrasi Berhasil Disimpan & Tersinkronisasi! 🎉",
+        description: `Konfigurasi lengkap seluruh parameter sensor telah diperbarui untuk stasiun ${stationName}.`,
       });
 
       setTimeout(() => setIsSaved(false), 3500);
