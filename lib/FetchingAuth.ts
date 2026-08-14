@@ -5,6 +5,7 @@ import {
   updateProfile,
   updatePassword,
   deleteUser,
+  sendPasswordResetEmail,
   type User,
   type AuthError,
   reauthenticateWithCredential,
@@ -262,6 +263,16 @@ export const deleteUserAccount = async (password: string): Promise<void> => {
     if (authError.code === "auth/requires-recent-login") {
       throw new Error("Operasi ini sensitif dan memerlukan otentikasi terbaru. Silakan keluar dan masuk kembali sebelum mencoba lagi.")
     }
+    throw new Error(getAuthErrorMessage(authError.code))
+  }
+}
+
+// Send password reset email
+export const sendPasswordReset = async (email: string): Promise<void> => {
+  try {
+    await sendPasswordResetEmail(auth, email.trim())
+  } catch (error) {
+    const authError = error as AuthError
     throw new Error(getAuthErrorMessage(authError.code))
   }
 }

@@ -25,8 +25,13 @@ import {
   Mail,
   Lock,
   Loader2,
+  ArrowLeft,
+  KeyRound,
+  RotateCcw,
 } from "lucide-react";
-import { signInWithEmail, signUpWithEmail } from "@/lib/FetchingAuth";
+import { signInWithEmail, signUpWithEmail, sendPasswordReset } from "@/lib/FetchingAuth";
+
+type AuthMode = "signin" | "signup" | "forgot_password";
 
 interface FormData {
   name: string;
@@ -50,10 +55,11 @@ interface PasswordStrength {
 }
 
 export default function AuthPage() {
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const router = useRouter();
 
   const [formData, setFormData] = useState<FormData>({
@@ -65,6 +71,9 @@ export default function AuthPage() {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const isSignUp = authMode === "signup";
+  const isForgotPassword = authMode === "forgot_password";
 
   // Email validation
   const validateEmail = (email: string): boolean => {
@@ -118,6 +127,17 @@ export default function AuthPage() {
   // Form validation
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
+
+    // For forgot password, only validate email
+    if (isForgotPassword) {
+      if (!formData.email.trim()) {
+        newErrors.email = "Email wajib diisi";
+      } else if (!validateEmail(formData.email)) {
+        newErrors.email = "Mohon masukkan alamat email yang valid";
+      }
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0;
+    }
 
     // Name validation (only for sign up)
     if (isSignUp && !formData.name.trim()) {
@@ -196,9 +216,9 @@ export default function AuthPage() {
     setErrors((prev) => ({ ...prev, ...newErrors }));
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.SubmitEvent) => {
-    e.preventDefault();
+  // Handle form submission (Login & Register)
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
 
     if (!validateForm()) {
       return;
@@ -234,20 +254,58 @@ export default function AuthPage() {
     }
   };
 
-  // Toggle between sign in and sign up
-  const toggleMode = () => {
-    setIsSignUp(!isSignUp);
-    setFormData({ name: "", email: "", password: "", confirmPassword: "" });
+  // Handle forgot password submission
+  const handleForgotPasswordSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+    setErrors({});
+
+    try {
+      await sendPasswordReset(formData.email);
+      setResetSent(true);
+    } catch (error) {
+      setErrors({
+        general:
+          error instanceof Error
+            ? error.message
+            : "Gagal mengirim email reset kata sandi. Silakan coba lagi.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Switch modes
+  const switchToSignIn = () => {
+    setAuthMode("signin");
     setErrors({});
     setTouched({});
-    setShowPassword(false);
-    setShowConfirmPassword(false);
+    setResetSent(false);
+  };
+
+  const switchToSignUp = () => {
+    setAuthMode("signup");
+    setErrors({});
+    setTouched({});
+    setResetSent(false);
+  };
+
+  const switchToForgotPassword = () => {
+    setAuthMode("forgot_password");
+    setErrors({});
+    setTouched({});
+    setResetSent(false);
   };
 
   const passwordStrength = getPasswordStrength(formData.password);
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden  bg-white dark:bg-slate-900">
+    <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden bg-white dark:bg-slate-900">
       <Card className="relative z-10 w-full max-w-md shadow-2xl border-0 bg-white/95 dark:bg-slate-800/95 dark:text-gray-100 backdrop-blur-sm">
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center items-center mb-4">
@@ -260,310 +318,441 @@ export default function AuthPage() {
             />
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Meteo Sense
+            {isForgotPassword ? "Reset Kata Sandi" : "Meteo Sense"}
           </CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-300">
-            {isSignUp
+            {isForgotPassword
+              ? "Masukkan email yang terdaftar untuk menerima tautan pemulihan kata sandi"
+              : isSignUp
               ? "Buat akun Anda untuk menggunakan dashboard"
               : "Masuk dengan akun Anda untuk mengakses dashboard"}
           </CardDescription>
         </CardHeader>
 
-        {/* Toggle Buttons */}
-        <div className="px-6 pb-4">
-          <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(true)}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
-                isSignUp
-                  ? "bg-white dark:bg-slate-600 text-emerald-600 dark:text-emerald-400 shadow-sm"
-                  : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
-              }`}
-            >
-              Daftar
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsSignUp(false)}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
-                !isSignUp
-                  ? "bg-white dark:bg-slate-600 text-emerald-600 dark:text-emerald-400 shadow-sm"
-                  : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
-              }`}
-            >
-              Masuk
-            </button>
+        {/* Toggle Buttons (Only on Sign In & Sign Up) */}
+        {!isForgotPassword && (
+          <div className="px-6 pb-4">
+            <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
+              <button
+                type="button"
+                onClick={switchToSignUp}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
+                  isSignUp
+                    ? "bg-white dark:bg-slate-600 text-emerald-600 dark:text-emerald-400 shadow-sm"
+                    : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+                }`}
+              >
+                Daftar
+              </button>
+              <button
+                type="button"
+                onClick={switchToSignIn}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
+                  !isSignUp
+                    ? "bg-white dark:bg-slate-600 text-emerald-600 dark:text-emerald-400 shadow-sm"
+                    : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+                }`}
+              >
+                Masuk
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         <CardContent className="pt-0">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* General Error */}
-            {errors.general && (
-              <Alert variant="destructive">
-                <XCircle className="h-5 w-5" />
-                <AlertDescription>{errors.general}</AlertDescription>
-              </Alert>
-            )}
+          {/* ================= FORGOT PASSWORD VIEW ================= */}
+          {isForgotPassword ? (
+            <div className="space-y-4">
+              {/* General Error */}
+              {errors.general && (
+                <Alert variant="destructive">
+                  <XCircle className="h-5 w-5" />
+                  <AlertDescription>{errors.general}</AlertDescription>
+                </Alert>
+              )}
 
-            {/* Name Field (Sign Up Only) */}
-            {isSignUp && (
+              {resetSent ? (
+                /* Success State */
+                <div className="space-y-4 py-2">
+                  <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 space-y-2">
+                    <div className="flex items-center gap-2 font-semibold text-emerald-900 dark:text-emerald-100">
+                      <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>Email Terkirim!</span>
+                    </div>
+                    <p className="text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">
+                      Tautan reset kata sandi telah dikirim ke{" "}
+                      <span className="font-semibold underline">{formData.email}</span>.
+                      Silakan periksa kotak masuk atau folder spam email Anda untuk mengatur ulang kata sandi.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-2 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleForgotPasswordSubmit}
+                      disabled={loading}
+                      className="w-full text-xs font-medium border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50"
+                    >
+                      {loading ? (
+                        <Loader2 className="animate-spin h-3.5 w-3.5 mr-1.5" />
+                      ) : (
+                        <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      Kirim Ulang Tautan
+                    </Button>
+
+                    <Button
+                      type="button"
+                      onClick={switchToSignIn}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 transition-all duration-200 shadow-md"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-1.5" /> Kembali ke Halaman Masuk
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                /* Form Input State */
+                <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="reset-email"
+                      className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      Alamat Email Terdaftar
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="nama@email.com"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange("email", e.target.value)}
+                        onBlur={() => handleInputBlur("email")}
+                        className={`pl-10 ${
+                          errors.email
+                            ? "border-red-500 focus:border-red-500"
+                            : "border-gray-300 dark:border-gray-600 focus:border-blue-500"
+                        }`}
+                        required
+                        autoFocus
+                      />
+                      {formData.email && validateEmail(formData.email) && (
+                        <CheckCircle className="absolute right-3 top-3 h-4 w-4 text-green-500" />
+                      )}
+                    </div>
+                    {errors.email && (
+                      <p className="text-sm text-red-600 flex items-center">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        {errors.email}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Submit Button */}
+                  <Button
+                    type="submit"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 transition-all duration-200 shadow-lg hover:shadow-xl"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <div className="flex items-center justify-center">
+                        <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                        Mengirim Tautan...
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center">
+                        <KeyRound className="h-4 w-4 mr-2" />
+                        Kirim Tautan Reset Kata Sandi
+                      </div>
+                    )}
+                  </Button>
+
+                  {/* Back to Sign In Link */}
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={switchToSignIn}
+                      className="inline-flex items-center text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium hover:underline transition-colors"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-1" /> Kembali ke Halaman Masuk
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          ) : (
+            /* ================= SIGN IN & SIGN UP VIEW ================= */
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* General Error */}
+              {errors.general && (
+                <Alert variant="destructive">
+                  <XCircle className="h-5 w-5" />
+                  <AlertDescription>{errors.general}</AlertDescription>
+                </Alert>
+              )}
+
+              {/* Name Field (Sign Up Only) */}
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="name"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Nama Lengkap
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Masukan Nama Anda"
+                      value={formData.name}
+                      onChange={(e) => handleInputChange("name", e.target.value)}
+                      onBlur={() => handleInputBlur("name")}
+                      className={`pl-10 ${
+                        errors.name
+                          ? "border-red-500 focus:border-red-500"
+                          : "border-gray-300 dark:border-gray-600 focus:border-blue-500"
+                      }`}
+                      required={isSignUp}
+                    />
+                  </div>
+                  {errors.name && (
+                    <p className="text-sm text-red-600 flex items-center">
+                      <XCircle className="h-3 w-3 mr-1" />
+                      {errors.name}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Email Field */}
               <div className="space-y-2">
                 <Label
-                  htmlFor="name"
+                  htmlFor="email"
                   className="text-sm font-medium text-gray-700 dark:text-gray-300"
                 >
-                  Nama Lengkap
+                  Email
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                   <Input
-                    id="name"
-                    type="text"
-                    placeholder="Masukan Nama Anda"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    onBlur={() => handleInputBlur("name")}
+                    id="email"
+                    type="email"
+                    placeholder="Masukkan email Anda"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    onBlur={() => handleInputBlur("email")}
                     className={`pl-10 ${
-                      errors.name
+                      errors.email
                         ? "border-red-500 focus:border-red-500"
                         : "border-gray-300 dark:border-gray-600 focus:border-blue-500"
                     }`}
-                    required={isSignUp}
+                    required
                   />
+                  {formData.email && validateEmail(formData.email) && (
+                    <CheckCircle className="absolute right-3 top-3 h-4 w-4 text-green-500" />
+                  )}
                 </div>
-                {errors.name && (
+                {errors.email && (
                   <p className="text-sm text-red-600 flex items-center">
                     <XCircle className="h-3 w-3 mr-1" />
-                    {errors.name}
+                    {errors.email}
                   </p>
                 )}
               </div>
-            )}
 
-            {/* Email Field */}
-            <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                Email
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Masukkan email Anda"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  onBlur={() => handleInputBlur("email")}
-                  className={`pl-10 ${
-                    errors.email
-                      ? "border-red-500 focus:border-red-500"
-                      : "border-gray-300 dark:border-gray-600 focus:border-blue-500"
-                  }`}
-                  required
-                />
-                {formData.email && validateEmail(formData.email) && (
-                  <CheckCircle className="absolute right-3 top-3 h-4 w-4 text-green-500" />
-                )}
-              </div>
-              {errors.email && (
-                <p className="text-sm text-red-600 flex items-center">
-                  <XCircle className="h-3 w-3 mr-1" />
-                  {errors.email}
-                </p>
-              )}
-            </div>
-
-            {/* Password Field */}
-            <div className="space-y-2">
-              <Label
-                htmlFor="password"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                Kata Sandi
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Masukkan kata sandi Anda"
-                  value={formData.password}
-                  onChange={(e) => handleInputChange("password", e.target.value)}
-                  onBlur={() => handleInputBlur("password")}
-                  className={`pl-10 pr-10 ${
-                    errors.password
-                      ? "border-red-500 focus:border-red-500"
-                      : "border-gray-300 dark:border-gray-600 focus:border-blue-500"
-                  }`}
-                  required
-                />
-                <button
-                  type="button"
-                  aria-label="Toggle Password Visibility"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-
-              {/* Password Strength Indicator (Sign Up Only) */}
-              {isSignUp && formData.password && (
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          passwordStrength.score >= 4
-                            ? "bg-green-500"
-                            : passwordStrength.score >= 3
-                            ? "bg-yellow-500"
-                            : passwordStrength.score >= 2
-                            ? "bg-orange-500"
-                            : "bg-red-500"
-                        }`}
-                        style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
-                      />
-                    </div>
-                    <span className={`text-xs font-medium ${passwordStrength.color}`}>
-                      {passwordStrength.score >= 4
-                        ? "Kuat"
-                        : passwordStrength.score >= 3
-                        ? "Baik"
-                        : passwordStrength.score >= 2
-                        ? "Cukup"
-                        : "Lemah"}
-                    </span>
-                  </div>
-                  {passwordStrength.feedback.length > 0 && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400">
-                      <p>Kata sandi membutuhkan:</p>
-                      <ul className="list-disc list-inside space-y-1">
-                        {passwordStrength.feedback.map((item, index) => (
-                          <li key={index}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
+              {/* Password Field */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label
+                    htmlFor="password"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Kata Sandi
+                  </Label>
+                  {!isSignUp && (
+                    <button
+                      type="button"
+                      onClick={switchToForgotPassword}
+                      className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline transition-colors font-medium"
+                    >
+                      Lupa Kata Sandi?
+                    </button>
                   )}
                 </div>
-              )}
-
-              {errors.password && (
-                <p className="text-sm text-red-600 flex items-center">
-                  <XCircle className="h-3 w-3 mr-1" />
-                  {errors.password}
-                </p>
-              )}
-            </div>
-
-            {/* Confirm Password Field (Sign Up Only) */}
-            {isSignUp && (
-              <div className="space-y-2">
-                <Label
-                  htmlFor="confirmPassword"
-                  className="text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  Konfirmasi Kata Sandi
-                </Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                   <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Konfirmasi kata sandi yang telah Anda buat"
-                    value={formData.confirmPassword}
-                    onChange={(e) =>
-                      handleInputChange("confirmPassword", e.target.value)
-                    }
-                    onBlur={() => handleInputBlur("confirmPassword")}
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Masukkan kata sandi Anda"
+                    value={formData.password}
+                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    onBlur={() => handleInputBlur("password")}
                     className={`pl-10 pr-10 ${
-                      errors.confirmPassword
+                      errors.password
                         ? "border-red-500 focus:border-red-500"
                         : "border-gray-300 dark:border-gray-600 focus:border-blue-500"
                     }`}
-                    required={isSignUp}
+                    required
                   />
                   <button
                     type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label="Toggle Password Visibility"
+                    onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                   >
-                    {showConfirmPassword ? (
+                    {showPassword ? (
                       <EyeOff className="h-5 w-5" />
                     ) : (
                       <Eye className="h-5 w-5" />
                     )}
                   </button>
-                  {formData.confirmPassword &&
-                    formData.password === formData.confirmPassword && (
-                      <CheckCircle className="absolute right-10 top-3 h-5 w-5 text-green-500" />
-                    )}
                 </div>
-                {errors.confirmPassword && (
+
+                {/* Password Strength Indicator (Sign Up Only) */}
+                {isSignUp && formData.password && (
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all duration-300 ${
+                            passwordStrength.score >= 4
+                              ? "bg-green-500"
+                              : passwordStrength.score >= 3
+                              ? "bg-yellow-500"
+                              : passwordStrength.score >= 2
+                              ? "bg-orange-500"
+                              : "bg-red-500"
+                          }`}
+                          style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
+                        />
+                      </div>
+                      <span className={`text-xs font-medium ${passwordStrength.color}`}>
+                        {passwordStrength.score >= 4
+                          ? "Kuat"
+                          : passwordStrength.score >= 3
+                          ? "Baik"
+                          : passwordStrength.score >= 2
+                          ? "Cukup"
+                          : "Lemah"}
+                      </span>
+                    </div>
+                    {passwordStrength.feedback.length > 0 && (
+                      <div className="text-xs text-gray-600 dark:text-gray-400">
+                        <p>Kata sandi membutuhkan:</p>
+                        <ul className="list-disc list-inside space-y-1">
+                          {passwordStrength.feedback.map((item, index) => (
+                            <li key={index}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {errors.password && (
                   <p className="text-sm text-red-600 flex items-center">
                     <XCircle className="h-3 w-3 mr-1" />
-                    {errors.confirmPassword}
+                    {errors.password}
                   </p>
                 )}
               </div>
-            )}
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 transition-all duration-200 shadow-lg hover:shadow-xl"
-              disabled={loading}
-            >
-              {loading ? (
-                <div className="flex items-center justify-center">
-                  <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                  {isSignUp ? "Membuat Akun..." : "Masuk..."}
+              {/* Confirm Password Field (Sign Up Only) */}
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="confirmPassword"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Konfirmasi Kata Sandi
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Konfirmasi kata sandi yang telah Anda buat"
+                      value={formData.confirmPassword}
+                      onChange={(e) =>
+                        handleInputChange("confirmPassword", e.target.value)
+                      }
+                      onBlur={() => handleInputBlur("confirmPassword")}
+                      className={`pl-10 pr-10 ${
+                        errors.confirmPassword
+                          ? "border-red-500 focus:border-red-500"
+                          : "border-gray-300 dark:border-gray-600 focus:border-blue-500"
+                      }`}
+                      required={isSignUp}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
+                    {formData.confirmPassword &&
+                      formData.password === formData.confirmPassword && (
+                        <CheckCircle className="absolute right-10 top-3 h-5 w-5 text-green-500" />
+                      )}
+                  </div>
+                  {errors.confirmPassword && (
+                    <p className="text-sm text-red-600 flex items-center">
+                      <XCircle className="h-3 w-3 mr-1" />
+                      {errors.confirmPassword}
+                    </p>
+                  )}
                 </div>
-              ) : isSignUp ? (
-                "Buat Akun"
-              ) : (
-                "Masuk"
               )}
-            </Button>
-          </form>
 
-          {/* Additional Options */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {isSignUp ? "Sudah punya akun?" : "Belum punya akun?"}{" "}
-              <button
-                type="button"
-                onClick={toggleMode}
-                className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium hover:underline transition-colors"
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 transition-all duration-200 shadow-lg hover:shadow-xl"
+                disabled={loading}
               >
-                {isSignUp ? "Masuk di sini" : "Daftar di sini"}
-              </button>
-            </p>
-          </div>
+                {loading ? (
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                    {isSignUp ? "Membuat Akun..." : "Masuk..."}
+                  </div>
+                ) : isSignUp ? (
+                  "Buat Akun"
+                ) : (
+                  "Masuk"
+                )}
+              </Button>
 
-          {!isSignUp && (
-            <div className="mt-4 text-center">
-              <button
-                type="button"
-                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:underline transition-colors"
-              >
-                Lupa Kata Sandi?
-              </button>
-            </div>
+              {/* Additional Options */}
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {isSignUp ? "Sudah punya akun?" : "Belum punya akun?"}{" "}
+                  <button
+                    type="button"
+                    onClick={isSignUp ? switchToSignIn : switchToSignUp}
+                    className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium hover:underline transition-colors"
+                  >
+                    {isSignUp ? "Masuk di sini" : "Daftar di sini"}
+                  </button>
+                </p>
+              </div>
+            </form>
           )}
+
           {/* Theme Switch */}
           <div className="mt-4 flex justify-center">
             <ThemeSwitch />
           </div>
+
           {/* Tombol kembali ke halaman awal */}
           <div className="mt-6 text-center">
             <button
