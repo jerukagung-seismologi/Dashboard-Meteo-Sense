@@ -16,6 +16,7 @@ interface BiasEvaluationTableProps {
 
 const METHOD_LABELS: Record<CorrectionMethod, string> = {
   mean_bias: "Mean Bias Correction (Additive)",
+  diurnal_mbe: "Diurnal Hourly MBE (Profil 24-Jam)",
   linear_regression: "Linear Regression (OLS)",
   quantile_mapping: "Empirical Quantile Mapping (EQM)",
   zero_aware_rain: "Zero-Aware Precipitation Correction",
