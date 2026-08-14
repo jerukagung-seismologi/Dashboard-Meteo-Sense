@@ -13,6 +13,7 @@ import {
   Compass,
   Settings2,
   Globe,
+  GitCompare,
   LucideIcon
 } from "lucide-react"
 
@@ -34,6 +35,7 @@ export const dashboardNavigation: NavigationItem[] = [
   { name: "Analisis Klimatologi", href: "/dashboard/klimatologi", icon: TrendingUp, roles: ['Admin', 'User'] },
   { name: "Dinamika Iklim", href: "/dashboard/climate-drivers", icon: Globe, roles: ['Admin', 'User'] },
   { name: "Reanalisis ERA5", href: "/dashboard/reanalisis-era5", icon: Compass, roles: ['Admin', 'User'] },
+  { name: "Validasi Bias ERA5", href: "/dashboard/validasi-bias", icon: GitCompare, roles: ['Admin', 'User'] },
   { name: "Basis Data", href: "/dashboard/data", icon: Database, roles: ['Admin'] },
   { name: "Laporan Cuaca", href: "/dashboard/laporan", icon: FileText, badge: "Warga", roles: ['Admin'] },
   { name: "Prakirawan Cuaca", href: "/dashboard/prakirawan", icon: CloudRain, roles: ['Admin'] },
