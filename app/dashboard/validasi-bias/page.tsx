@@ -46,15 +46,18 @@ import { matchAWSEra5Series } from "@/lib/bias-correction/matching/temporalMatch
 import { resolveNearestGridCell } from "@/lib/bias-correction/matching/spatialMatch";
 import { BiasCorrectionEngine } from "@/lib/bias-correction/correction/CorrectionEngine";
 
-// Sub-components
 import { StationMetadataCard } from "@/components/validasi-bias/StationMetadataCard";
 import { QCSummaryCard } from "@/components/validasi-bias/QCSummaryCard";
 import { BiasEvaluationTable } from "@/components/validasi-bias/BiasEvaluationTable";
+import { CalibrationParameterSaveCard } from "@/components/validasi-bias/CalibrationParameterSaveCard";
 import { TimeSeriesComparisonPlot } from "@/components/validasi-bias/TimeSeriesComparisonPlot";
 import { ScatterComparisonPlot } from "@/components/validasi-bias/ScatterComparisonPlot";
 import { DistributionComparisonPlot } from "@/components/validasi-bias/DistributionComparisonPlot";
 import { BiasResidualPlot } from "@/components/validasi-bias/BiasResidualPlot";
+import { DiurnalMBEPlot } from "@/components/validasi-bias/DiurnalMBEPlot";
 import { ExportModal } from "@/components/validasi-bias/ExportModal";
+import { imputeTimeSeries } from "@/lib/bias-correction/imputation/imputationEngine";
+import { fitDiurnalMBE } from "@/lib/bias-correction/correction/diurnalMBE";
 
 const VARIABLES_CONFIG: {
   id: MeteorologicalVariable;
@@ -487,7 +490,8 @@ export default function ValidasiBiasPage() {
                 <SelectValue placeholder="Pilih Metode" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="mean_bias" className="text-xs">Mean Bias Correction (Additive)</SelectItem>
+                <SelectItem value="mean_bias" className="text-xs">Mean Bias Error / MBE (Global Additive)</SelectItem>
+                <SelectItem value="diurnal_mbe" className="text-xs">Diurnal Hourly MBE (Profil 24-Jam)</SelectItem>
                 <SelectItem value="linear_regression" className="text-xs">Linear Regression (OLS)</SelectItem>
                 <SelectItem value="quantile_mapping" className="text-xs">Empirical Quantile Mapping (EQM)</SelectItem>
                 {selectedVariable === "precipitation" && (
@@ -538,10 +542,22 @@ export default function ValidasiBiasPage() {
         unit={activeVarConfig.unit}
       />
 
-      {/* Analytical Visualizations (Time Series, Scatter, ECDF, Residuals) */}
+      {/* Save Fitted Bias / Calibration Parameters to Sensor Configuration */}
+      <CalibrationParameterSaveCard
+        stationId={selectedStationId || "station_01"}
+        stationName={stationName}
+        variable={selectedVariable}
+        method={selectedMethod}
+        unit={activeVarConfig.unit}
+        fitParameters={evaluationResult.fittedParameters}
+        sampleCount={correctedPairs.length}
+      />
+
+      {/* Analytical Visualizations (Time Series, Scatter, ECDF, Residuals, Diurnal MBE) */}
       <Tabs defaultValue="timeseries" className="w-full">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-4 max-w-2xl">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-5 max-w-3xl">
           <TabsTrigger value="timeseries" className="text-xs">Deret Waktu</TabsTrigger>
+          <TabsTrigger value="diurnal" className="text-xs">Siklus Diurnal MBE</TabsTrigger>
           <TabsTrigger value="scatter" className="text-xs">Scatter 1:1</TabsTrigger>
           <TabsTrigger value="distribution" className="text-xs">Distribusi / ECDF</TabsTrigger>
           <TabsTrigger value="residual" className="text-xs">Residual Error</TabsTrigger>
@@ -553,6 +569,15 @@ export default function ValidasiBiasPage() {
             variableName={activeVarConfig.label}
             unit={activeVarConfig.unit}
             calibrationCutoffDate={splitCutoffDate}
+            isDarkMode={isDarkMode}
+          />
+        </TabsContent>
+
+        <TabsContent value="diurnal" className="pt-3">
+          <DiurnalMBEPlot
+            pairs={correctedPairs}
+            variableName={activeVarConfig.label}
+            unit={activeVarConfig.unit}
             isDarkMode={isDarkMode}
           />
         </TabsContent>

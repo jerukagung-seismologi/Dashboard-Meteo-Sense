@@ -10,6 +10,7 @@ import {
 } from "../types";
 import { calculateEvaluationMetrics } from "../statistics/metrics";
 import { fitMeanBias, transformMeanBias } from "./meanBias";
+import { fitDiurnalMBE, transformDiurnalMBE } from "./diurnalMBE";
 import { fitLinearRegression, transformLinearRegression } from "./linearRegression";
 import { fitQuantileMapping, transformQuantileMapping } from "./quantileMapping";
 import { fitZeroAwarePrecipitation, transformZeroAwarePrecipitation } from "./precipitationCorrection";
@@ -50,6 +51,15 @@ export class BiasCorrectionEngine implements ICorrectionEngine {
       case "mean_bias":
         this.fittedParams = fitMeanBias(calibrationPairs);
         break;
+      case "diurnal_mbe":
+        this.fittedParams = fitDiurnalMBE(
+          calibrationPairs.map((p: any, idx) => ({
+            timestamp: p.timestamp || Date.now() + idx * 3600000,
+            aws: p.aws,
+            era5: p.era5,
+          }))
+        );
+        break;
       case "linear_regression":
         this.fittedParams = fitLinearRegression(calibrationPairs);
         break;
@@ -72,7 +82,7 @@ export class BiasCorrectionEngine implements ICorrectionEngine {
     return this.fittedParams;
   }
 
-  transform(era5Values: (number | null | undefined)[], params?: any): (number | null)[] {
+  transform(era5Values: (number | null | undefined)[], params?: any, timestamps?: number[]): (number | null)[] {
     const activeParams = params || this.fittedParams;
     if (!activeParams) {
       return era5Values.map(v => (v !== undefined ? v : null));
@@ -81,6 +91,14 @@ export class BiasCorrectionEngine implements ICorrectionEngine {
     switch (this.method) {
       case "mean_bias":
         return transformMeanBias(era5Values, activeParams);
+      case "diurnal_mbe":
+        return transformDiurnalMBE(
+          era5Values.map((v, idx) => ({
+            timestamp: (timestamps && timestamps[idx]) ? timestamps[idx] : Date.now() + idx * 3600000,
+            value: v,
+          })),
+          activeParams
+        );
       case "linear_regression":
         return transformLinearRegression(era5Values, activeParams);
       case "quantile_mapping":

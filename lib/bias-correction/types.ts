@@ -3,7 +3,7 @@
 /**
  * Quality Control Flag based on WMO and international meteorological standards.
  */
-export type QCFlag = "GOOD" | "SUSPECT" | "INVALID" | "MISSING" | "NOT_SIGNIFICANT";
+export type QCFlag = "GOOD" | "SUSPECT" | "INVALID" | "MISSING" | "NOT_SIGNIFICANT" | "IMPUTED";
 
 /**
  * Standard meteorological variables supported by the AWS–ERA5 validation system.
@@ -186,6 +186,7 @@ export const DEFAULT_QC_CONFIG: QCConfig = {
  */
 export type CorrectionMethod =
   | "mean_bias"
+  | "diurnal_mbe"
   | "linear_regression"
   | "quantile_mapping"
   | "zero_aware_rain"
