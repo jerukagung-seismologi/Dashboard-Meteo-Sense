@@ -139,9 +139,40 @@ export function processERA5Hourly(rawJson: any): ClimatologySummary {
   const rawHourly = rawJson.hourly || {};
   const times: string[] = rawHourly.time || [];
   
-  // Extract lists (with fallback array of same length)
+  // Extract lists with priority on ERA5-Land (9km high resolution)
   const len = times.length;
-  const getArray = (key: string): number[] => rawHourly[key] || Array(len).fill(0);
+  const getArray = (key: string): number[] => {
+    const direct = rawHourly[key];
+    const land = rawHourly[`${key}_era5_land`];
+    const standard = rawHourly[`${key}_era5`];
+
+    // For precipitation/rain, also check precipitation variable
+    const altKey = key === "rain" ? "precipitation" : key === "precipitation" ? "rain" : null;
+    const directAlt = altKey ? rawHourly[altKey] : null;
+    const landAlt = altKey ? rawHourly[`${altKey}_era5_land`] : null;
+    const standardAlt = altKey ? rawHourly[`${altKey}_era5`] : null;
+
+    const result: number[] = [];
+    for (let i = 0; i < len; i++) {
+      // 1. Prioritize ERA5-Land
+      if (land && land[i] != null && !isNaN(land[i])) {
+        result.push(land[i]);
+      } else if (landAlt && landAlt[i] != null && !isNaN(landAlt[i])) {
+        result.push(landAlt[i]);
+      } else if (direct && direct[i] != null && !isNaN(direct[i])) {
+        result.push(direct[i]);
+      } else if (directAlt && directAlt[i] != null && !isNaN(directAlt[i])) {
+        result.push(directAlt[i]);
+      } else if (standard && standard[i] != null && !isNaN(standard[i])) {
+        result.push(standard[i]);
+      } else if (standardAlt && standardAlt[i] != null && !isNaN(standardAlt[i])) {
+        result.push(standardAlt[i]);
+      } else {
+        result.push(0);
+      }
+    }
+    return result;
+  };
 
   const rawTemp = getArray("temperature_2m");
   const rawHum = getArray("relative_humidity_2m");
@@ -159,7 +190,7 @@ export function processERA5Hourly(rawJson: any): ClimatologySummary {
   const rawLongwave = Array(len).fill(0);
   const rawSoilTemp = getArray("soil_temperature_0_to_7cm");
   const rawSoilMoist = getArray("soil_moisture_0_to_7cm");
-  const rawCape = rawHourly.cape || Array(len).fill(0); // Optional convective potential
+  const rawCape = rawHourly.cape || rawHourly.cape_era5 || Array(len).fill(0); // Optional convective potential
 
   // 1. Map to structured timeline array
   const points: ReanalysisDataPoint[] = [];

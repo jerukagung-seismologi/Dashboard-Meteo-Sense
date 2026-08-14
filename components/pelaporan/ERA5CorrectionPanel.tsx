@@ -67,22 +67,22 @@ export function ERA5CorrectionPanel({
     if (!startDate || !endDate) return
     setLoading(true)
     try {
-      const url = `/api/reanalysis/data?latitude=${lat}&longitude=${lon}&startDate=${startDate}&endDate=${endDate}`
-      console.log("Fetching ERA5 Reanalysis from:", url)
+      const url = `/api/reanalysis/data?latitude=${lat}&longitude=${lon}&startDate=${startDate}&endDate=${endDate}&model=era5_land,era5`
+      console.log("Fetching ERA5-Land Reanalysis from:", url)
       const res = await fetch(url)
       if (!res.ok) {
-        throw new Error(`ERA5 API error: ${res.statusText}`)
+        throw new Error(`ERA5-Land API error: ${res.statusText}`)
       }
       const json = await res.json()
       setEra5Data(json)
       toast({
-        title: "✓ Data ERA5 Berhasil Dimuat",
-        description: `Reanalisis ECMWF ERA5 (${startDate} s/d ${endDate}) siap digunakan untuk evaluasi bias.`,
+        title: "✓ Data ERA5-Land Berhasil Dimuat",
+        description: `Reanalisis ECMWF ERA5-Land resolusi tinggi 9 km (${startDate} s/d ${endDate}) siap digunakan untuk evaluasi bias.`,
       })
     } catch (err: any) {
-      console.error("Failed to fetch ERA5 data", err)
+      console.error("Failed to fetch ERA5-Land data", err)
       toast({
-        title: "Gagal Mengambil Data ERA5",
+        title: "Gagal Mengambil Data ERA5-Land",
         description: err.message || "Pastikan koneksi internet aktif.",
         variant: "destructive",
       })
@@ -310,7 +310,7 @@ export function ERA5CorrectionPanel({
 
     if (era5Data) {
       series.push({
-        name: "ECMWF ERA5 (Reanalisis)",
+        name: "ECMWF ERA5-Land (9 km)",
         type: "line",
         data: era5LineData,
         itemStyle: { color: "#F97316" },
@@ -378,10 +378,10 @@ export function ERA5CorrectionPanel({
           <div>
             <CardTitle className="text-base font-bold flex items-center gap-2 text-indigo-950 dark:text-indigo-200">
               <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              Validasi & Koreksi Bias ERA5 (ECMWF Reanalysis)
+              Validasi & Koreksi Bias ERA5-Land (ECMWF 9 km)
             </CardTitle>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Gunakan data global ERA5 sebagai acuan baseline kendali mutu (*QA/QC*) dan kalibrasi sensor otomatis/manual.
+              Gunakan data reanalisis daratan resolusi tinggi ECMWF ERA5-Land (9 km) sebagai acuan baseline kendali mutu (*QA/QC*) dan kalibrasi sensor.
             </p>
           </div>
 
@@ -397,19 +397,19 @@ export function ERA5CorrectionPanel({
                 {loading ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    Mengambil Data ERA5...
+                    Mengambil Data ERA5-Land...
                   </>
                 ) : (
                   <>
                     <Zap className="w-3.5 h-3.5 mr-1.5 text-amber-300" />
-                    Ambil & Evaluasi ERA5
+                    Ambil & Evaluasi ERA5-Land
                   </>
                 )}
               </Button>
             ) : (
               <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 gap-1 text-xs">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                ERA5 Terhubung ({startDate} – {endDate})
+                ERA5-Land Terhubung ({startDate} – {endDate})
               </Badge>
             )}
           </div>

@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Construct Open-Meteo ERA5 URL
+    // Construct Open-Meteo ERA5-Land URL (9km resolution high-precision land reanalysis)
     const variables = [
       "temperature_2m",
       "relative_humidity_2m",
@@ -34,6 +34,7 @@ export async function GET(request: Request) {
       "surface_pressure",
       "pressure_msl",
       "rain",
+      "precipitation",
       "wind_speed_10m",
       "wind_gusts_10m",
       "wind_direction_10m",
@@ -43,9 +44,10 @@ export async function GET(request: Request) {
       "soil_moisture_0_to_7cm"
     ];
 
-    const apiUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=${variables.join(",")}&wind_speed_unit=ms&timezone=auto`;
+    const modelParam = searchParams.get("model") || "era5_land,era5";
+    const apiUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=${variables.join(",")}&models=${modelParam}&wind_speed_unit=ms&timezone=auto`;
 
-    console.log("Fetching ERA5 Reanalysis data from Open-Meteo:", apiUrl);
+    console.log("Fetching ERA5-Land Reanalysis data from Open-Meteo:", apiUrl);
 
     const response = await fetch(apiUrl);
     if (!response.ok) {
