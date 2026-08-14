@@ -45,6 +45,7 @@ import {
   applyCorrectionToDailyRecords 
 } from "@/lib/reanalysis/era5Correction"
 import { ERA5CorrectionPanel } from "./ERA5CorrectionPanel"
+import { ReportPublicationCard } from "./ReportPublicationCard"
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -273,6 +274,31 @@ export default function LaporanMeteorologi({ sensorId, sensorName, displayName }
       rainyDays,
     };
   }, [weatherData]);
+
+  const publicationCaption = useMemo(() => {
+    if (weatherData.length === 0 || !summaryStats) return "";
+
+    let headerTitle = "LAPORAN METEOROLOGI";
+
+    if (mode === "dasarian") {
+      headerTitle = `LAPORAN METEOROLOGI ${dasarianRangeData.label.toUpperCase()} ${MONTHS_ID[dasarianMonth - 1].toUpperCase()} (${format(dasarianRangeData.from, 'dd')} - ${format(dasarianRangeData.to, 'dd MMMM', { locale: id }).toUpperCase()})`;
+    } else if (dateRange?.from && dateRange?.to) {
+      headerTitle = `LAPORAN METEOROLOGI PERIODIK (${format(dateRange.from, 'dd LLL', { locale: id }).toUpperCase()} - ${format(dateRange.to, 'dd LLL yyyy', { locale: id }).toUpperCase()})`;
+    }
+
+    const rainTot = summaryStats.totalRain.toFixed(1);
+    const rainDesc = summaryStats.totalRain === 0 ? "Tidak ada hujan" : `${summaryStats.rainyDays} hari hujan`;
+
+    const pressList = weatherData.map(d => d.pressureAvg).filter((v): v is number => v != null);
+    const minPress = pressList.length > 0 ? Math.min(...pressList).toFixed(1) : summaryStats.avgPress.toFixed(1);
+    const maxPress = pressList.length > 0 ? Math.max(...pressList).toFixed(1) : summaryStats.avgPress.toFixed(1);
+
+    return `${headerTitle}
+Curah Hujan: ${rainTot} mm (${rainDesc})
+Suhu Udara Rata-Rata: ${summaryStats.avgTemp}°C (Min: ${summaryStats.lowestTemp}°C, Maks: ${summaryStats.highestTemp}°C)
+Kelembapan Udara Rata-Rata: ${summaryStats.avgHum}% (Min: ${summaryStats.lowestHum}%, Maks: ${summaryStats.highestHum}%)
+Tekanan Udara Rata-Rata: ${minPress} - ${maxPress} hPa`;
+  }, [weatherData, summaryStats, mode, dasarianRangeData, dasarianMonth, dateRange]);
 
   const handleExport = async (type: 'pdf' | 'png' | 'jpg' | 'print') => {
     if (weatherData.length === 0) return;
@@ -605,6 +631,13 @@ export default function LaporanMeteorologi({ sensorId, sensorName, displayName }
               </span>
             </div>
           )}
+
+          {/* Social Media / Publication Summary Caption */}
+          <ReportPublicationCard 
+            title="Ringkasan Teks Publikasi Media Sosial"
+            subtitle="Salin ringkasan laporan meteorologi periodik / dasarian untuk publikasi media sosial."
+            text={publicationCaption} 
+          />
 
           {/* Hero Summary Cards */}
           {summaryStats && (

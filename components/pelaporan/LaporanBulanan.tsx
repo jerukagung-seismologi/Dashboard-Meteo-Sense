@@ -47,6 +47,7 @@ import { PrintLayout } from "./PrintLayout"
 import { generateCanvasFromDOM, exportAsPNG, exportAsJPEG, exportAsPDF, printCanvas } from "@/lib/exportUtils"
 import { ERA5CorrectionPanel } from "./ERA5CorrectionPanel"
 import { CorrectionOffsets, applyCorrectionToDailyRecords } from "@/lib/reanalysis/era5Correction"
+import { ReportPublicationCard } from "./ReportPublicationCard"
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -282,6 +283,39 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: La
     };
   }, [weatherData]);
 
+  const publicationCaption = useMemo(() => {
+    if (weatherData.length === 0 || !dateRange?.from || !dateRange?.to) return "";
+    const startFormatted = format(dateRange.from, "dd MMMM", { locale: id }).toUpperCase();
+    const endFormatted = format(dateRange.to, "dd MMMM yyyy", { locale: id }).toUpperCase();
+
+    const diffDays = Math.max(1, Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 3600 * 24)));
+    let headerTitle = `LAPORAN CUACA BULANAN (${startFormatted} - ${endFormatted})`;
+    if (diffDays <= 11) {
+      headerTitle = `LAPORAN METEOROLOGI PERIODIK (${startFormatted} - ${endFormatted})`;
+    }
+
+    const rainTot = (stats.rainfall.total || 0).toFixed(1);
+    const rainDays = stats.rainfall.rainDays || 0;
+    const rainDesc = stats.rainfall.total === 0 ? "Tidak ada hujan" : `${rainDays} hari hujan`;
+
+    const tempAvg = stats.temp.avg != null ? `${stats.temp.avg.toFixed(1)}°C` : "—";
+    const tempMax = extremes.temperature.max.value != null ? `${extremes.temperature.max.value.toFixed(1)}°C` : "—";
+    const tempMin = extremes.temperature.min.value != null ? `${extremes.temperature.min.value.toFixed(1)}°C` : "—";
+
+    const humAvg = stats.humidity.avg != null ? `${Math.round(stats.humidity.avg)}%` : "—";
+    const humMin = extremes.humidity.min.value != null ? `${Math.round(extremes.humidity.min.value)}%` : "—";
+    const humMax = extremes.humidity.max.value != null ? `${Math.round(extremes.humidity.max.value)}%` : "—";
+
+    const pressMin = extremes.pressure.min.value != null ? extremes.pressure.min.value.toFixed(1) : "—";
+    const pressMax = extremes.pressure.max.value != null ? extremes.pressure.max.value.toFixed(1) : "—";
+
+    return `${headerTitle}
+Curah Hujan: ${rainTot} mm (${rainDesc})
+Suhu Udara Rata-Rata: ${tempAvg} (Min: ${tempMin}, Maks: ${tempMax})
+Kelembapan Udara Rata-Rata: ${humAvg} (Min: ${humMin}, Maks: ${humMax})
+Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
+  }, [weatherData, dateRange, stats, extremes]);
+
   const handleExport = async (type: 'pdf' | 'png' | 'jpg' | 'print') => {
     if (weatherData.length === 0) return;
     setIsExporting(true);
@@ -474,6 +508,13 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: La
               </span>
             </div>
           )}
+
+          {/* Social Media / Publication Summary Caption */}
+          <ReportPublicationCard 
+            title="Ringkasan Teks Publikasi Media Sosial"
+            subtitle="Salin ringkasan laporan cuaca bulanan / periodik dengan satu klik."
+            text={publicationCaption} 
+          />
 
           {/* Hero Grid Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

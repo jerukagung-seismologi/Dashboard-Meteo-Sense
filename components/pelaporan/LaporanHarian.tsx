@@ -31,6 +31,7 @@ import { generateCanvasFromDOM, exportAsPNG, exportAsPDF, printCanvas } from "@/
 import { fetchSensorDataByDateRange } from "@/lib/apiClient"
 import { ERA5CorrectionPanel } from "./ERA5CorrectionPanel"
 import { CorrectionOffsets, applyCorrectionToDailyRecords } from "@/lib/reanalysis/era5Correction"
+import { ReportPublicationCard } from "./ReportPublicationCard"
 
 interface LaporanHarianProps {
   sensorId: string;
@@ -133,6 +134,27 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
   const dayRecord = useMemo(() => {
     return correctedRecords.length > 0 ? correctedRecords[0] : null;
   }, [correctedRecords]);
+
+  const publicationCaption = useMemo(() => {
+    if (!dayRecord || !selectedDate) return ""
+    const dateFormatted = format(selectedDate, "dd MMMM yyyy", { locale: id }).toUpperCase()
+    const rainCat = getDailyRainfallCategory(dayRecord.rainfallTot || 0)
+    const rainText = `${(dayRecord.rainfallTot || 0).toFixed(1)} mm (${dayRecord.rainfallTot === 0 ? "Tidak ada hujan" : rainCat})`
+    const tempAvg = dayRecord.temperatureAvg != null ? `${dayRecord.temperatureAvg.toFixed(1)}°C` : "—"
+    const tempMax = dayRecord.temperatureMax != null ? `${dayRecord.temperatureMax.toFixed(1)}°C` : "—"
+    const tempMin = dayRecord.temperatureMin != null ? `${dayRecord.temperatureMin.toFixed(1)}°C` : "—"
+    const humAvg = dayRecord.humidityAvg != null ? `${Math.round(dayRecord.humidityAvg)}%` : "—"
+    const humMin = dayRecord.humidityMin != null ? `${Math.round(dayRecord.humidityMin)}%` : "—"
+    const humMax = dayRecord.humidityMax != null ? `${Math.round(dayRecord.humidityMax)}%` : "—"
+    const pressMin = dayRecord.pressureMin != null ? dayRecord.pressureMin.toFixed(1) : "—"
+    const pressMax = dayRecord.pressureMax != null ? dayRecord.pressureMax.toFixed(1) : "—"
+
+    return `LAPORAN CUACA HARIAN (${dateFormatted})
+Curah Hujan: ${rainText}
+Suhu Udara Rata-Rata: ${tempAvg} (Min: ${tempMin}, Maks: ${tempMax})
+Kelembapan Udara Rata-Rata: ${humAvg} (Min: ${humMin}, Maks: ${humMax})
+Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`
+  }, [dayRecord, selectedDate]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -339,6 +361,13 @@ export default function LaporanHarian({ sensorId, sensorName, displayName }: Lap
               </span>
             </div>
           )}
+
+          {/* Social Media / Publication Summary Caption */}
+          <ReportPublicationCard 
+            title="Ringkasan Teks Publikasi Media Sosial"
+            subtitle="Salin ringkasan laporan cuaca harian 24 jam dengan satu klik."
+            text={publicationCaption} 
+          />
 
           {/* Hero Grid 4 Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

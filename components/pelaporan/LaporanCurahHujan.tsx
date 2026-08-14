@@ -9,12 +9,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { fetchSensorDataByDateRange } from "@/lib/apiClient"
 import { useToast } from "@/hooks/use-toast"
-import { WeatherRecord, aggregateDailyUTC, formatIdDateDash } from "@/lib/weatherUtils"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 import { getCalibrationDocument } from "@/lib/calibration/calibrationCrud";
 import { applyCalibrationToSeries } from "@/lib/calibration/calibrationEngine";
 import type { StationCalibrationDocument } from "@/lib/calibration/calibrationTypes";
+import { ReportPublicationCard } from "./ReportPublicationCard";
 
 // --- Helper UI: Rain Measuring Cup ---
 const RainMeasuringCup = ({ value, maxValue = 100, unit = "mm" }: { value: number, maxValue?: number, unit?: string }) => {
@@ -222,6 +224,18 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
   const category = getDailyRainfallCategory(rainfall);
   const isRainCalibrated = calConfig && calConfig.enabled && calConfig.rainfall && calConfig.rainfall.enabled;
 
+  const publicationCaption = useMemo(() => {
+    if (!reportData || !selectedDate) return "";
+    const dateFormatted = format(selectedDate, "dd MMMM yyyy", { locale: id }).toUpperCase();
+    const rainTot = (reportData.rainfallTot || 0).toFixed(1);
+    const rainDesc = reportData.rainfallTot === 0 ? "Tidak ada hujan" : category;
+
+    return `LAPORAN CURAH HUJAN HARIAN (${dateFormatted})
+Curah Hujan: ${rainTot} mm (${rainDesc})
+Intensitas Puncak: ${rainStats.maxRainRate.toFixed(1)} mm/jam
+Durasi Hujan: ${rainStats.rainDurationHours} Jam`;
+  }, [reportData, selectedDate, category, rainStats]);
+
   return (
     <div className="space-y-6">
       {/* Top Filter Bar */}
@@ -275,6 +289,13 @@ export default function LaporanCurahHujan({ sensorId, sensorName, displayName }:
       )}
 
       {error && <div className="no-print mx-auto mb-3 max-w-xl text-red-700 text-center p-4 bg-red-50 rounded-md text-xs">{error}</div>}
+
+      {/* Social Media / Publication Summary Caption */}
+      <ReportPublicationCard 
+        title="Ringkasan Teks Publikasi Curah Hujan"
+        subtitle="Salin ringkasan presipitasi 24 jam dengan klasifikasi BMKG untuk media sosial."
+        text={publicationCaption} 
+      />
 
       {/* Meteorological Statistics Summary Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

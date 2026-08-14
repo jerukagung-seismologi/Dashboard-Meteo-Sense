@@ -28,6 +28,7 @@ import { exportToCSV, formatIdDateShort, formatYMD } from "@/lib/weatherUtils"
 import { PrintLayout } from "./PrintLayout"
 import { generateCanvasFromDOM, exportAsPNG, exportAsJPEG, exportAsPDF, printCanvas } from "@/lib/exportUtils"
 import { cn } from "@/lib/utils"
+import { ReportPublicationCard } from "./ReportPublicationCard"
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -206,6 +207,42 @@ export default function LaporanKlimatologi({ sensorId, sensorName, displayName }
     };
   }, [data]);
 
+  const publicationCaption = useMemo(() => {
+    if (!data?.stats) return "";
+    const st = data.stats;
+
+    let periodLabel = "";
+    if (preset === "monthly") {
+      const monthName = new Date(selectedYear, selectedMonth - 1, 1).toLocaleString("id-ID", { month: "long" }).toUpperCase();
+      periodLabel = `${monthName} ${selectedYear}`;
+    } else if (preset === "dasarian") {
+      const monthName = new Date(selectedYear, selectedMonth - 1, 1).toLocaleString("id-ID", { month: "long" }).toUpperCase();
+      const dasarianRoman = selectedDasarian === 1 ? "I" : selectedDasarian === 2 ? "II" : "III";
+      periodLabel = `DASARIAN ${dasarianRoman} ${monthName} ${selectedYear}`;
+    } else if (preset === "yearly") {
+      periodLabel = `TAHUN ${selectedYear}`;
+    }
+
+    const rainTot = st.rainfall?.total != null ? `${st.rainfall.total.toFixed(1)} mm` : "0.0 mm";
+    const rainDesc = st.rainfall?.total === 0 ? "Tidak ada hujan" : `${st.rainfall?.rainyDays || 0} hari hujan`;
+    const tempAvg = st.temperature?.mean != null ? `${st.temperature.mean.toFixed(1)}°C` : "—";
+    const tempMax = st.temperature?.max != null ? `${st.temperature.max.toFixed(1)}°C` : "—";
+    const tempMin = st.temperature?.min != null ? `${st.temperature.min.toFixed(1)}°C` : "—";
+    const humAvg = st.humidity?.mean != null ? `${Math.round(st.humidity.mean)}%` : "—";
+    const humMin = st.humidity?.min != null ? `${Math.round(st.humidity.min)}%` : "—";
+    const humMax = st.humidity?.max != null ? `${Math.round(st.humidity.max)}%` : "—";
+
+    const pressList = data.points ? data.points.map((p: any) => p.pressureMean).filter((v: any) => v != null && !isNaN(v)) : [];
+    const minPress = pressList.length > 0 ? Math.min(...pressList).toFixed(1) : (st.pressure?.mean != null ? st.pressure.mean.toFixed(1) : "—");
+    const maxPress = pressList.length > 0 ? Math.max(...pressList).toFixed(1) : (st.pressure?.mean != null ? st.pressure.mean.toFixed(1) : "—");
+
+    return `LAPORAN KLIMATOLOGI (${periodLabel})
+Curah Hujan: ${rainTot} (${rainDesc})
+Suhu Udara Rata-Rata: ${tempAvg} (Min: ${tempMin}, Maks: ${tempMax})
+Kelembapan Udara Rata-Rata: ${humAvg} (Min: ${humMin}, Maks: ${humMax})
+Tekanan Udara Rata-Rata: ${minPress} - ${maxPress} hPa`;
+  }, [data, preset, selectedMonth, selectedYear, selectedDasarian]);
+
   return (
     <div className="space-y-6">
       {/* Control Toolbar */}
@@ -275,6 +312,15 @@ export default function LaporanKlimatologi({ sensorId, sensorName, displayName }
       {/* --- VIEW MODE 1: DASHBOARD WEB INTERAKTIF --- */}
       {viewMode === 'web' && (
         <div className="space-y-6">
+          {/* Social Media / Publication Summary Caption */}
+          {publicationCaption && (
+            <ReportPublicationCard 
+              title="Ringkasan Teks Publikasi Media Sosial"
+              subtitle="Salin ringkasan laporan klimatologi periodik / bulanan untuk media sosial."
+              text={publicationCaption} 
+            />
+          )}
+
           {/* Summary Stat Cards */}
           {data?.stats && (
             <SummaryCards stats={data.stats} />
