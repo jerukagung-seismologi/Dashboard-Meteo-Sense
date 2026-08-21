@@ -40,6 +40,37 @@ export interface IodDmiPoint {
   dmi: number | null;
 }
 
+export interface EnsoHistoryPoint {
+  dateStr: string;
+  year: number;
+  month: number;
+  day: number;
+  sst: number | null;
+  anomaly: number | null;
+  status: string;
+}
+
+export interface IodHistoryPoint {
+  dateStr: string;
+  year: number;
+  month: number;
+  day: number;
+  dmi: number | null;
+  status: string;
+}
+
+export interface MjoHistoryPoint {
+  date: string;
+  year: number;
+  month: number;
+  day: number;
+  rmm1: number | null;
+  rmm2: number | null;
+  phase: number | null;
+  amplitude: number | null;
+  status: string;
+}
+
 export interface IodParsedOutput {
   latest_dmi: number | null;
   status: "Positive" | "Negative" | "Neutral";
@@ -336,4 +367,170 @@ export async function getUnifiedClimateData(forceRefresh = false): Promise<Unifi
   cache.lastFetchedIod = now;
 
   return unified;
+}
+
+/**
+ * 4. ENSO History Parser (Supports 5-year chunking & pagination)
+ * 5 years ≈ 5 * 52 = 260 weekly records
+ */
+export async function parseEnsoHistory(limitYears: number = 5): Promise<{
+  data: EnsoHistoryPoint[];
+  yearsLoaded: number;
+  totalRecords: number;
+  hasMore: boolean;
+}> {
+  const bomNino34Url = "http://www.bom.gov.au/clim_data/IDCK000072/rnino_3.4.txt";
+  const recordsNeeded = limitYears * 52;
+
+  let allRows: EnsoHistoryPoint[] = [];
+
+  try {
+    const rawText = await fetchWithRetry(bomNino34Url);
+    const lines = rawText.split("\n").filter((l) => l.trim().length > 0 && l.includes(","));
+
+    allRows = lines.map((line) => {
+      const parts = line.trim().split(",");
+      const startDateStr = parts[0]; // e.g. 20260720
+      const year = parseInt(startDateStr.substring(0, 4), 10) || 2026;
+      const month = parseInt(startDateStr.substring(4, 6), 10) || 1;
+      const day = parseInt(startDateStr.substring(6, 8), 10) || 1;
+      const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const anomaly = sanitizeFloat(parts[2]);
+      const sst = anomaly !== null ? Math.round((27.5 + anomaly) * 100) / 100 : null;
+      const status = anomaly !== null ? getEnsoCategory(anomaly) : "Netral";
+      return { dateStr, year, month, day, sst, anomaly, status };
+    });
+  } catch (err) {
+    console.warn("[ClimateParser] BOM ENSO history fetch failed:", err);
+  }
+
+  const reversed = [...allRows].reverse();
+  const sliced = reversed.slice(0, recordsNeeded);
+
+  return {
+    data: sliced,
+    yearsLoaded: limitYears,
+    totalRecords: allRows.length,
+    hasMore: recordsNeeded < allRows.length,
+  };
+}
+
+/**
+ * 5. IOD History Parser (Supports 5-year chunking & pagination)
+ * 5 years ≈ 5 * 52 = 260 weekly records
+ */
+export async function parseIodHistory(limitYears: number = 5): Promise<{
+  data: IodHistoryPoint[];
+  yearsLoaded: number;
+  totalRecords: number;
+  hasMore: boolean;
+}> {
+  const bomIodUrl = "http://www.bom.gov.au/clim_data/IDCK000072/iod_1.txt";
+  const recordsNeeded = limitYears * 52;
+
+  let allRows: IodHistoryPoint[] = [];
+
+  try {
+    const rawText = await fetchWithRetry(bomIodUrl);
+    const lines = rawText.split("\n").filter((l) => l.trim().length > 0 && l.includes(","));
+
+    allRows = lines.map((line) => {
+      const parts = line.trim().split(",");
+      const startDateStr = parts[0]; // e.g. 20260720
+      const year = parseInt(startDateStr.substring(0, 4), 10) || 2026;
+      const month = parseInt(startDateStr.substring(4, 6), 10) || 1;
+      const day = parseInt(startDateStr.substring(6, 8), 10) || 1;
+      const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const dmi = sanitizeFloat(parts[2]);
+      const status =
+        dmi !== null && dmi >= 0.4
+          ? "IOD Positif"
+          : dmi !== null && dmi <= -0.4
+          ? "IOD Negatif"
+          : "IOD Netral";
+
+      return { dateStr, year, month, day, dmi, status };
+    });
+  } catch (err) {
+    console.warn("[ClimateParser] BOM IOD history fetch failed:", err);
+  }
+
+  const reversed = [...allRows].reverse();
+  const sliced = reversed.slice(0, recordsNeeded);
+
+  return {
+    data: sliced,
+    yearsLoaded: limitYears,
+    totalRecords: allRows.length,
+    hasMore: recordsNeeded < allRows.length,
+  };
+}
+
+/**
+ * 6. MJO History Parser (Supports 5-year chunking & pagination)
+ * 5 years = 5 * 365 = 1825 daily records
+ */
+export async function parseMjoHistory(limitDays: number = 1825): Promise<{
+  data: MjoHistoryPoint[];
+  daysLoaded: number;
+  totalRecords: number;
+  hasMore: boolean;
+}> {
+  const mjoUrl = "http://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt";
+  const mjoMirrorUrl = "https://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt";
+
+  let allRows: MjoHistoryPoint[] = [];
+
+  try {
+    let rawText = "";
+    try {
+      rawText = await fetchWithRetry(mjoUrl, 2, 1000);
+    } catch {
+      rawText = await fetchWithRetry(mjoMirrorUrl, 2, 1000);
+    }
+
+    const lines = rawText.split("\n").filter((l) => l.trim().length > 0);
+    const dataRows = lines.filter((l) => /^\s*\d{4}\s+/.test(l));
+
+    allRows = dataRows.map((line) => {
+      const parts = line.trim().split(/\s+/);
+      const year = parseInt(parts[0], 10) || 2026;
+      const month = parseInt(parts[1], 10) || 1;
+      const day = parseInt(parts[2], 10) || 1;
+      const date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const rmm1 = sanitizeFloat(parts[3]);
+      const rmm2 = sanitizeFloat(parts[4]);
+      const phase = sanitizeInt(parts[5]);
+      let amplitude = sanitizeFloat(parts[6]);
+
+      if (amplitude === null && rmm1 !== null && rmm2 !== null) {
+        amplitude = Math.round(Math.sqrt(rmm1 * rmm1 + rmm2 * rmm2) * 1000) / 1000;
+      }
+
+      let status = "MJO Netral / Lemah";
+      if (amplitude !== null && amplitude >= 1.0 && phase !== null) {
+        if (phase === 4 || phase === 5) {
+          status = `Aktif di Indonesia (Fase ${phase})`;
+        } else if (phase === 3 || phase === 6) {
+          status = `Transisi ke Indonesia (Fase ${phase})`;
+        } else {
+          status = `Aktif di Luar Indonesia (Fase ${phase})`;
+        }
+      }
+
+      return { date, year, month, day, rmm1, rmm2, phase, amplitude, status };
+    });
+  } catch (err) {
+    console.warn("[ClimateParser] BOM MJO history fetch failed:", err);
+  }
+
+  const reversed = [...allRows].reverse();
+  const sliced = reversed.slice(0, limitDays);
+
+  return {
+    data: sliced,
+    daysLoaded: limitDays,
+    totalRecords: allRows.length,
+    hasMore: limitDays < allRows.length,
+  };
 }

@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/climate-drivers/StatusBadge";
 import { MJOCharts } from "@/components/climate-drivers/MJOCharts";
 import { EducationalPanel } from "@/components/climate-drivers/EducationalPanel";
 import { NcicsMapViewer } from "@/components/climate-drivers/NcicsMapViewer";
+import { HistoryTable } from "@/components/climate-drivers/HistoryTable";
 import { getMjoData } from "@/lib/climate-drivers/climateData";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -19,6 +20,26 @@ export default function MjoSubpage() {
     revalidateOnFocus: false,
     dedupingInterval: 60000,
   });
+
+  const [mjoYears, setMjoYears] = useState(5);
+  const [loadingMoreMjo, setLoadingMoreMjo] = useState(false);
+
+  const { data: mjoHistoryData } = useSWR(
+    `/api/climate-drivers/mjo/history?years=${mjoYears}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  );
+
+  const handleLoadMoreMjo = () => {
+    setLoadingMoreMjo(true);
+    setMjoYears((prev) => prev + 5);
+  };
+
+  useEffect(() => {
+    if (mjoHistoryData) {
+      setLoadingMoreMjo(false);
+    }
+  }, [mjoHistoryData]);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -134,6 +155,18 @@ export default function MjoSubpage() {
 
       {/* Interactive Visualizations */}
       <MJOCharts data={data} isDarkMode={isDarkMode} />
+
+      {/* 5-Year Server Historical Data Table with Load More */}
+      <HistoryTable
+        type="mjo"
+        title="Riwayat Historis MJO (Wheeler-Hendon RMM Index)"
+        description="Data histori harian RMM1, RMM2, Fase MJO, Amplitudo, dan dampak terhadap konveksi Indonesia"
+        data={mjoHistoryData?.data || []}
+        yearsLoaded={mjoHistoryData?.daysLoaded ? Math.round(mjoHistoryData.daysLoaded / 365) : mjoYears}
+        hasMore={mjoHistoryData?.hasMore ?? true}
+        onLoadMore={handleLoadMoreMjo}
+        isLoadingMore={loadingMoreMjo}
+      />
 
       {/* NCICS Satellite & Wave Diagnostics Map Section */}
       <div className="pt-2">

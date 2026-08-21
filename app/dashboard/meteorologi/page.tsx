@@ -14,6 +14,9 @@ import {
   TrendingUp,
   BarChart3,
   Map,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -101,6 +104,70 @@ export default function AnalisisDashboardPage() {
     setWeeklyStartDate(start);
     setPeriodDays(days);
   }
+
+  function selectBulanan() {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1); // Tanggal 1 bulan ini
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Hari terakhir bulan ini
+    const days = end.getDate();
+    setWeeklyStartDate(start);
+    setPeriodDays(days);
+  }
+
+  const periodScopeLabel = useMemo(() => {
+    if (periodDays === 7) return "Mingguan";
+    if (periodDays >= 28 && periodDays <= 31) return "Bulanan";
+    if (periodDays >= 8 && periodDays <= 11) return "Dasarian";
+    return `${periodDays} Hari`;
+  }, [periodDays]);
+
+  // Daily Date Navigation Handlers (Maju - Mundur Tanggal Harian)
+  const handlePrevDay = useCallback(() => {
+    setDailyDate((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() - 1);
+      return d;
+    });
+  }, []);
+
+  const handleNextDay = useCallback(() => {
+    setDailyDate((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + 1);
+      return d;
+    });
+  }, []);
+
+  const handleToday = useCallback(() => {
+    setDailyDate(new Date());
+  }, []);
+
+  const isDailyToday = useMemo(() => {
+    const today = new Date();
+    return (
+      dailyDate.getFullYear() === today.getFullYear() &&
+      dailyDate.getMonth() === today.getMonth() &&
+      dailyDate.getDate() === today.getDate()
+    );
+  }, [dailyDate]);
+
+  // Weekly / Period Navigation Handlers (Maju - Mundur Periode)
+  const handlePrevPeriod = useCallback(() => {
+    setWeeklyStartDate((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() - periodDays);
+      return d;
+    });
+  }, [periodDays]);
+
+  const handleNextPeriod = useCallback(() => {
+    setWeeklyStartDate((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + periodDays);
+      return d;
+    });
+  }, [periodDays]);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -285,40 +352,91 @@ export default function AnalisisDashboardPage() {
               </SelectContent>
             </Select>
 
-            {/* Date Pickers based on active tab */}
+            {/* Date Pickers & Navigation Stepper based on active tab */}
             {activeTab === "daily" ? (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-[200px] justify-start text-left font-normal text-slate-700 dark:text-slate-200"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4 text-orange-500" />
-                    {dailyDate ? format(dailyDate, "dd MMMM yyyy", { locale: id }) : <span>Pilih Tanggal</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dailyDate}
-                    onSelect={(date) => date && setDailyDate(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {/* Tombol Mundur 1 Hari (<) */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handlePrevDay}
+                  title="Hari Sebelumnya (-1 Hari)"
+                  className="h-9 w-9 text-slate-700 dark:text-slate-200 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-slate-800 dark:hover:text-orange-400"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                {/* Popover Date Picker */}
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-[240px] justify-start text-left font-normal text-slate-700 dark:text-slate-200"
+                        "h-9 min-w-[190px] justify-center text-center font-semibold text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800"
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4 text-blue-500" />
+                      <CalendarIcon className="mr-2 h-4 w-4 text-orange-500 shrink-0" />
+                      {dailyDate ? format(dailyDate, "dd MMMM yyyy", { locale: id }) : <span>Pilih Tanggal</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dailyDate}
+                      onSelect={(date) => date && setDailyDate(date)}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                {/* Tombol Maju 1 Hari (>) */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleNextDay}
+                  disabled={isDailyToday}
+                  title="Hari Selanjutnya (+1 Hari)"
+                  className="h-9 w-9 text-slate-700 dark:text-slate-200 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-slate-800 dark:hover:text-orange-400 disabled:opacity-40"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+
+                {/* Tombol Pintas 'Hari Ini' */}
+                {!isDailyToday && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleToday}
+                    className="h-9 px-2.5 text-xs font-semibold text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/30 hover:bg-orange-100 dark:hover:bg-orange-900/50"
+                  >
+                    Hari Ini
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {/* Tombol Mundur Periode (<) */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handlePrevPeriod}
+                  title={`Mundur ${periodDays} Hari`}
+                  className="h-9 w-9 text-slate-700 dark:text-slate-200 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-800 dark:hover:text-blue-400"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                {/* Popover Date Picker */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "h-9 min-w-[220px] justify-center text-center font-semibold text-slate-800 dark:text-slate-100"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4 text-blue-500 shrink-0" />
                       {weeklyStartDate ? (
                         <>
                           Mulai: {format(weeklyStartDate, "dd MMM yyyy", { locale: id })} ({periodDays} Hari)
@@ -342,9 +460,21 @@ export default function AnalisisDashboardPage() {
                   </PopoverContent>
                 </Popover>
 
-                <div className="flex gap-2 border-l border-slate-200 pl-2 ml-1">
-                  <Button variant="outline" size="sm" onClick={selectMingguan} className="text-sm">Mingguan (Sen-Min)</Button>
-                  <Button variant="outline" size="sm" onClick={selectDasarian} className="text-sm">Dasarian</Button>
+                {/* Tombol Maju Periode (>) */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleNextPeriod}
+                  title={`Maju ${periodDays} Hari`}
+                  className="h-9 w-9 text-slate-700 dark:text-slate-200 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-800 dark:hover:text-blue-400"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+
+                <div className="flex gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-2 ml-1">
+                  <Button variant="outline" size="sm" onClick={selectMingguan} className={cn("h-9 text-xs font-medium", periodDays === 7 && "bg-blue-50 text-blue-600 border-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:border-blue-900 font-bold")}>Mingguan (Sen-Min)</Button>
+                  <Button variant="outline" size="sm" onClick={selectDasarian} className={cn("h-9 text-xs font-medium", periodDays >= 8 && periodDays <= 11 && "bg-blue-50 text-blue-600 border-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:border-blue-900 font-bold")}>Dasarian</Button>
+                  <Button variant="outline" size="sm" onClick={selectBulanan} className={cn("h-9 text-xs font-medium", periodDays >= 28 && periodDays <= 31 && "bg-blue-50 text-blue-600 border-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:border-blue-900 font-bold")}>Bulanan</Button>
                 </div>
               </div>
             )}
@@ -379,7 +509,7 @@ export default function AnalisisDashboardPage() {
             <SummaryCardsAnalysis stats={dailyData.stats} scopeLabel="Harian" />
           )}
           {activeTab === "weekly" && weeklyData?.stats && (
-            <SummaryCardsAnalysis stats={weeklyData.stats} scopeLabel={periodDays === 7 ? "Mingguan" : "Dasarian"} />
+            <SummaryCardsAnalysis stats={weeklyData.stats} scopeLabel={periodScopeLabel} />
           )}
         </>
       )}
@@ -425,6 +555,11 @@ export default function AnalisisDashboardPage() {
                   points={dailyData.points}
                   heatmaps={dailyData.heatmaps}
                   isDarkMode={isDarkMode}
+                  selectedDate={dailyDate}
+                  onPrevDay={handlePrevDay}
+                  onNextDay={handleNextDay}
+                  onToday={handleToday}
+                  isToday={isDailyToday}
                 />
               ) : (
                 <div className="h-[250px] flex items-center justify-center border border-dashed rounded-lg text-slate-400 dark:text-slate-500">

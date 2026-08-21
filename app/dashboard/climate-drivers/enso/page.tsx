@@ -9,6 +9,7 @@ import { SubpageHeader } from "@/components/climate-drivers/SubpageHeader";
 import { StatusBadge } from "@/components/climate-drivers/StatusBadge";
 import { ENSOCharts } from "@/components/climate-drivers/ENSOCharts";
 import { EducationalPanel } from "@/components/climate-drivers/EducationalPanel";
+import { HistoryTable } from "@/components/climate-drivers/HistoryTable";
 import { getEnsoData } from "@/lib/climate-drivers/climateData";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -18,6 +19,26 @@ export default function EnsoSubpage() {
     revalidateOnFocus: false,
     dedupingInterval: 60000,
   });
+
+  const [ensoYears, setEnsoYears] = useState(5);
+  const [loadingMoreEnso, setLoadingMoreEnso] = useState(false);
+
+  const { data: ensoHistoryData } = useSWR(
+    `/api/climate-drivers/enso/history?years=${ensoYears}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  );
+
+  const handleLoadMoreEnso = () => {
+    setLoadingMoreEnso(true);
+    setEnsoYears((prev) => prev + 5);
+  };
+
+  useEffect(() => {
+    if (ensoHistoryData) {
+      setLoadingMoreEnso(false);
+    }
+  }, [ensoHistoryData]);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -131,6 +152,18 @@ export default function EnsoSubpage() {
 
       {/* Interactive Visualizations */}
       <ENSOCharts data={data} isDarkMode={isDarkMode} />
+
+      {/* 5-Year Server Historical Data Table with Load More */}
+      <HistoryTable
+        type="enso"
+        title="Riwayat Historis ENSO (El Niño / La Niña)"
+        description="Data histori mingguan Anomali SST Niño 3.4 dan klasifikasi status resmi NOAA/BOM"
+        data={ensoHistoryData?.data || []}
+        yearsLoaded={ensoHistoryData?.yearsLoaded || ensoYears}
+        hasMore={ensoHistoryData?.hasMore ?? true}
+        onLoadMore={handleLoadMoreEnso}
+        isLoadingMore={loadingMoreEnso}
+      />
 
       {/* Educational & Scientific Explanation */}
       <EducationalPanel

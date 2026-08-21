@@ -9,6 +9,7 @@ import { SubpageHeader } from "@/components/climate-drivers/SubpageHeader";
 import { StatusBadge } from "@/components/climate-drivers/StatusBadge";
 import { IODCharts } from "@/components/climate-drivers/IODCharts";
 import { EducationalPanel } from "@/components/climate-drivers/EducationalPanel";
+import { HistoryTable } from "@/components/climate-drivers/HistoryTable";
 import { getIodData } from "@/lib/climate-drivers/climateData";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -18,6 +19,26 @@ export default function IodSubpage() {
     revalidateOnFocus: false,
     dedupingInterval: 60000,
   });
+
+  const [iodYears, setIodYears] = useState(5);
+  const [loadingMoreIod, setLoadingMoreIod] = useState(false);
+
+  const { data: iodHistoryData } = useSWR(
+    `/api/climate-drivers/iod/history?years=${iodYears}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  );
+
+  const handleLoadMoreIod = () => {
+    setLoadingMoreIod(true);
+    setIodYears((prev) => prev + 5);
+  };
+
+  useEffect(() => {
+    if (iodHistoryData) {
+      setLoadingMoreIod(false);
+    }
+  }, [iodHistoryData]);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -131,6 +152,18 @@ export default function IodSubpage() {
 
       {/* Interactive Visualizations */}
       <IODCharts data={data} isDarkMode={isDarkMode} />
+
+      {/* 5-Year Server Historical Data Table with Load More */}
+      <HistoryTable
+        type="iod"
+        title="Riwayat Historis IOD (Indian Ocean Dipole)"
+        description="Data histori mingguan Dipole Mode Index (DMI) dan klasifikasi status resmi BOM Australia"
+        data={iodHistoryData?.data || []}
+        yearsLoaded={iodHistoryData?.yearsLoaded || iodYears}
+        hasMore={iodHistoryData?.hasMore ?? true}
+        onLoadMore={handleLoadMoreIod}
+        isLoadingMore={loadingMoreIod}
+      />
 
       {/* Educational & Scientific Explanation */}
       <EducationalPanel

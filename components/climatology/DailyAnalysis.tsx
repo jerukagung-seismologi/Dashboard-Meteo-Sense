@@ -1,7 +1,9 @@
-// components/climatology/DailyAnalysis.tsx
 import React, { useMemo, useState } from "react";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Thermometer, Droplets, Gauge, Grid } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Thermometer, Droplets, Gauge, Grid, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { AnalysisPoint, DailyHeatmapData } from "@/lib/climatology/analysisTypes";
 import dynamic from "next/dynamic";
 
@@ -22,12 +24,22 @@ interface DailyAnalysisProps {
     pressure: DailyHeatmapData;
   };
   isDarkMode: boolean;
+  selectedDate?: Date;
+  onPrevDay?: () => void;
+  onNextDay?: () => void;
+  onToday?: () => void;
+  isToday?: boolean;
 }
 
 export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
   points,
   heatmaps,
   isDarkMode,
+  selectedDate,
+  onPrevDay,
+  onNextDay,
+  onToday,
+  isToday,
 }) => {
   const [activeParam, setActiveParam] = useState<"temperature" | "humidity" | "pressure">("temperature");
 
@@ -256,6 +268,58 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Date Navigation Sub-Header Banner */}
+      {onPrevDay && onNextDay && selectedDate && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-slate-50 dark:bg-slate-900/80 border dark:border-slate-800 rounded-xl shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 rounded-lg">
+              <CalendarIcon className="h-4 w-4" />
+            </div>
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block uppercase tracking-wider">
+                Tanggal Observasi Harian
+              </span>
+              <span className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100">
+                {format(selectedDate, "EEEE, dd MMMM yyyy", { locale: id })}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 self-end sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onPrevDay}
+              title="Mundur 1 Hari"
+              className="h-8 text-xs font-semibold text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-slate-800 dark:hover:text-orange-400"
+            >
+              <ChevronLeft className="h-3.5 w-3.5 mr-1 text-orange-500" /> Hari Sebelumnya
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onNextDay}
+              disabled={isToday}
+              title="Maju 1 Hari"
+              className="h-8 text-xs font-semibold text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-slate-800 dark:hover:text-orange-400 disabled:opacity-40"
+            >
+              Hari Selanjutnya <ChevronRight className="h-3.5 w-3.5 ml-1 text-orange-500" />
+            </Button>
+
+            {!isToday && onToday && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onToday}
+                className="h-8 px-2.5 text-xs font-semibold text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/30 hover:bg-orange-100 dark:hover:bg-orange-900/50"
+              >
+                Hari Ini
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
       {/* 1. Suhu Chart */}
       <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
         <CardHeader className="pb-2">
