@@ -60,20 +60,30 @@ export async function fetchLiveEnsoData(): Promise<EnsoData> {
 export async function fetchLiveMjoData(): Promise<MjoData> {
   const fallback = getFallbackMjo();
   try {
-    const res = await fetch("https://www.cpc.ncep.noaa.gov/products/precip/CWlink/MJO/proj_series.txt", {
-      next: { revalidate: 3600 },
-      headers: { "User-Agent": "MeteoSense-Dashboard/2.1" },
-    });
+    let text = "";
+    try {
+      const res = await fetch("http://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt", {
+        next: { revalidate: 3600 },
+        headers: { "User-Agent": "MeteoSense-Dashboard/2.1", "Accept": "text/plain, text/ascii, */*" },
+      });
+      if (res.ok) text = await res.text();
+    } catch {
+      const res = await fetch("https://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt", {
+        next: { revalidate: 3600 },
+        headers: { "User-Agent": "MeteoSense-Dashboard/2.1", "Accept": "text/plain, text/ascii, */*" },
+      });
+      if (res.ok) text = await res.text();
+    }
 
-    if (!res.ok) return fallback;
+    if (!text) return fallback;
 
-    const text = await res.text();
-    const lines = text.trim().split("\n").filter((l) => l.trim().length > 0 && !l.startsWith("year") && !l.startsWith("Year"));
-    if (lines.length === 0) return fallback;
+    const lines = text.split("\n").filter((l) => l.trim().length > 0);
+    const dataRows = lines.filter((l) => /^\s*\d{4}\s+/.test(l));
+    if (dataRows.length === 0) return fallback;
 
-    // Parse last 14 days
-    const recent = lines.slice(-14);
-    const parsedDiagram = recent.map((line) => {
+    // Parse last 30 daily records
+    const recent30 = dataRows.slice(-30);
+    const parsedDiagram = recent30.map((line) => {
       const parts = line.trim().split(/\s+/);
       const yr = parts[0];
       const mon = parts[1]?.padStart(2, "0");
@@ -81,18 +91,25 @@ export async function fetchLiveMjoData(): Promise<MjoData> {
       const rmm1 = parseFloat(parts[3] || "0");
       const rmm2 = parseFloat(parts[4] || "0");
       const phase = parseInt(parts[5] || "1", 10);
+      let amplitude = parseFloat(parts[6] || "0");
+
+      if ((Number.isNaN(amplitude) || amplitude === 0) && !Number.isNaN(rmm1) && !Number.isNaN(rmm2)) {
+        amplitude = Math.sqrt(rmm1 * rmm1 + rmm2 * rmm2);
+      }
+
       return {
         date: `${yr}-${mon}-${day}`,
-        rmm1: Number.isNaN(rmm1) ? 0 : rmm1,
-        rmm2: Number.isNaN(rmm2) ? 0 : rmm2,
+        rmm1: Number.isNaN(rmm1) ? 0 : Math.round(rmm1 * 1000) / 1000,
+        rmm2: Number.isNaN(rmm2) ? 0 : Math.round(rmm2 * 1000) / 1000,
         phase: Number.isNaN(phase) ? 1 : phase,
+        amplitude: Number.isNaN(amplitude) ? 0 : Math.round(amplitude * 100) / 100,
       };
     });
 
     const latest = parsedDiagram[parsedDiagram.length - 1];
     if (!latest) return fallback;
 
-    const amp = Math.sqrt(latest.rmm1 * latest.rmm1 + latest.rmm2 * latest.rmm2);
+    const amp = latest.amplitude;
     const status: "Active" | "Inactive" = amp >= 1.0 ? "Active" : "Inactive";
     const convectionOverMC =
       status === "Active" && (latest.phase === 4 || latest.phase === 5)
@@ -109,8 +126,8 @@ export async function fetchLiveMjoData(): Promise<MjoData> {
       convectionOverMC,
       rmm1: latest.rmm1,
       rmm2: latest.rmm2,
-      lastUpdated: `BOM / NOAA (${latest.date})`,
-      summary: `Data MJO RMM terkini dari BOM Australia / NOAA mencatat Fase ${latest.phase} dengan Amplitudo ${amp.toFixed(2)} (${status}). Konveksi di wilayah Indonesia: ${convectionOverMC}.`,
+      lastUpdated: `BOM Australia RMM (${latest.date})`,
+      summary: `Data MJO RMM terkini dari BOM Australia mencatat Fase ${latest.phase} dengan Amplitudo ${amp.toFixed(2)} (${status}). Konveksi di wilayah Indonesia: ${convectionOverMC}.`,
       phaseDiagram: parsedDiagram,
     };
   } catch (err) {
