@@ -214,16 +214,18 @@ export default function AnalisisDashboardPage() {
     return `${yyyy}-${mm}-${dd}`;
   };
 
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+
   // API query paths
   const dailyApiPath = useMemo(() => {
     if (!sensorId) return null;
-    return `/api/analysis/daily?sensorId=${sensorId}&date=${formatYmd(dailyDate)}`;
-  }, [sensorId, dailyDate]);
+    return `/api/analysis/daily?sensorId=${sensorId}&date=${formatYmd(dailyDate)}${refreshKey ? `&_t=${refreshKey}` : ""}`;
+  }, [sensorId, dailyDate, refreshKey]);
 
   const weeklyApiPath = useMemo(() => {
     if (!sensorId) return null;
-    return `/api/analysis/weekly?sensorId=${sensorId}&startDate=${formatYmd(weeklyStartDate)}&days=${periodDays}`;
-  }, [sensorId, weeklyStartDate, periodDays]);
+    return `/api/analysis/weekly?sensorId=${sensorId}&startDate=${formatYmd(weeklyStartDate)}&days=${periodDays}${refreshKey ? `&_t=${refreshKey}` : ""}`;
+  }, [sensorId, weeklyStartDate, periodDays, refreshKey]);
 
   // SWR Hooks
   const {
@@ -233,7 +235,7 @@ export default function AnalisisDashboardPage() {
     mutate: mutateDaily,
   } = useSWR(activeTab === "daily" ? dailyApiPath : null, fetcher, {
     revalidateOnFocus: false,
-    dedupingInterval: 60000,
+    dedupingInterval: 0,
   });
 
   const {
@@ -243,7 +245,7 @@ export default function AnalisisDashboardPage() {
     mutate: mutateWeekly,
   } = useSWR(activeTab === "weekly" ? weeklyApiPath : null, fetcher, {
     revalidateOnFocus: false,
-    dedupingInterval: 60000,
+    dedupingInterval: 0,
   });
 
   // Derived load state & error
@@ -251,6 +253,7 @@ export default function AnalisisDashboardPage() {
   const error = activeTab === "daily" ? dailyError : weeklyError;
 
   const handleRefresh = useCallback(() => {
+    setRefreshKey(Date.now());
     if (activeTab === "daily") {
       mutateDaily();
     } else {

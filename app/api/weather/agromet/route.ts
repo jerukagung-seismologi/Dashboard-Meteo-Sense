@@ -11,6 +11,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Latitude and longitude are required' }, { status: 400 });
   }
 
+  const isRefresh = searchParams.get('refresh') === 'true' || searchParams.has('_t') || searchParams.has('force');
+
   try {
     const url = new URL('https://api.open-meteo.com/v1/forecast');
     url.searchParams.append('latitude', lat);
@@ -28,16 +30,20 @@ export async function GET(request: Request) {
     // Timezone
     url.searchParams.append('timezone', 'auto');
 
-    const res = await fetch(url.toString(), {
-      next: { revalidate: 300 }
-    });
+    const res = await fetch(url.toString(), isRefresh ? { cache: 'no-store' } : { next: { revalidate: 300 } });
 
     if (!res.ok) {
       throw new Error(`Open-Meteo returned status: ${res.status}`);
     }
 
     const data = await res.json();
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': isRefresh
+          ? 'no-store, no-cache, must-revalidate, proxy-revalidate'
+          : 'public, s-maxage=300, stale-while-revalidate=600',
+      },
+    });
   } catch (error: any) {
     console.error("Open-Meteo API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

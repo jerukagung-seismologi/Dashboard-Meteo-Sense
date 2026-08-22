@@ -98,7 +98,15 @@ export async function GET(request: Request) {
     const climatology = processERA5Hourly(rawData);
     (climatology as any).sourceModel = sourceModelUsed;
 
-    return NextResponse.json(climatology);
+    const isRefresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
+
+    return NextResponse.json(climatology, {
+      headers: {
+        "Cache-Control": isRefresh
+          ? "no-store, no-cache, must-revalidate, proxy-revalidate"
+          : "public, s-maxage=3600, stale-while-revalidate=86400",
+      },
+    });
   } catch (error: any) {
     console.error("Error in GET /api/reanalysis/data:", error);
     return NextResponse.json(

@@ -16,19 +16,28 @@ import { getMjoData } from "@/lib/climate-drivers/climateData";
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function MjoSubpage() {
-  const { data: mjoApiData, isLoading } = useSWR("/api/climate-drivers/mjo", fetcher, {
-    revalidateOnFocus: false,
-    dedupingInterval: 60000,
-  });
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+
+  const { data: mjoApiData, isLoading, mutate: mutateMjo } = useSWR(
+    `/api/climate-drivers/mjo${refreshKey ? `?_t=${refreshKey}&refresh=true` : ""}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 0 }
+  );
 
   const [mjoYears, setMjoYears] = useState(5);
   const [loadingMoreMjo, setLoadingMoreMjo] = useState(false);
 
-  const { data: mjoHistoryData } = useSWR(
-    `/api/climate-drivers/mjo/history?years=${mjoYears}`,
+  const { data: mjoHistoryData, mutate: mutateHistory } = useSWR(
+    `/api/climate-drivers/mjo/history?years=${mjoYears}${refreshKey ? `&_t=${refreshKey}&refresh=true` : ""}`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60000 }
+    { revalidateOnFocus: false, dedupingInterval: 0 }
   );
+
+  const handleRefresh = () => {
+    setRefreshKey(Date.now());
+    mutateMjo();
+    mutateHistory();
+  };
 
   const handleLoadMoreMjo = () => {
     setLoadingMoreMjo(true);
@@ -72,6 +81,8 @@ export default function MjoSubpage() {
       <SubpageHeader
         title="MJO (Madden-Julian Oscillation)"
         subtitle="Analisis perambatan gelombang konveksi intraseasonal tropis di Samudra Hindia dan Indonesia"
+        onRefresh={handleRefresh}
+        isRefreshing={isLoading}
       />
 
       {/* Official Data Source Banner */}

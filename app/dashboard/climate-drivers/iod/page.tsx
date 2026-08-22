@@ -15,19 +15,28 @@ import { getIodData } from "@/lib/climate-drivers/climateData";
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function IodSubpage() {
-  const { data: iodApiData, isLoading } = useSWR("/api/climate-drivers/iod", fetcher, {
-    revalidateOnFocus: false,
-    dedupingInterval: 60000,
-  });
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+
+  const { data: iodApiData, isLoading, mutate: mutateIod } = useSWR(
+    `/api/climate-drivers/iod${refreshKey ? `?_t=${refreshKey}&refresh=true` : ""}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 0 }
+  );
 
   const [iodYears, setIodYears] = useState(5);
   const [loadingMoreIod, setLoadingMoreIod] = useState(false);
 
-  const { data: iodHistoryData } = useSWR(
-    `/api/climate-drivers/iod/history?years=${iodYears}`,
+  const { data: iodHistoryData, mutate: mutateHistory } = useSWR(
+    `/api/climate-drivers/iod/history?years=${iodYears}${refreshKey ? `&_t=${refreshKey}&refresh=true` : ""}`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60000 }
+    { revalidateOnFocus: false, dedupingInterval: 0 }
   );
+
+  const handleRefresh = () => {
+    setRefreshKey(Date.now());
+    mutateIod();
+    mutateHistory();
+  };
 
   const handleLoadMoreIod = () => {
     setLoadingMoreIod(true);
@@ -71,6 +80,8 @@ export default function IodSubpage() {
       <SubpageHeader
         title="IOD (Indian Ocean Dipole)"
         subtitle="Analisis fenomena dipol suhu permukaan laut Samudra Hindia bagian Barat dan Timur"
+        onRefresh={handleRefresh}
+        isRefreshing={isLoading}
       />
 
       {/* Official Data Source Banner */}

@@ -19,17 +19,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "sensorId and action are required" }, { status: 400 });
   }
 
+  const isRefresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
+  const responseOptions = {
+    headers: {
+      "Cache-Control": isRefresh
+        ? "no-store, no-cache, must-revalidate, proxy-revalidate"
+        : "public, s-maxage=60, stale-while-revalidate=120",
+    },
+  };
+
   try {
     switch (action) {
       case "metadata": {
         const data = await fetchSensorMetadata(sensorId);
-        return NextResponse.json(data);
+        return NextResponse.json(data, responseOptions);
       }
       case "latest": {
         const limitStr = searchParams.get("limit");
         const limit = limitStr ? parseInt(limitStr, 10) : 1;
         const data = await fetchSensorData(sensorId, limit, applyCalibration);
-        return NextResponse.json(data);
+        return NextResponse.json(data, responseOptions);
       }
       case "range": {
         const startStr = searchParams.get("start");
@@ -40,7 +49,7 @@ export async function GET(request: Request) {
         const startTimestamp = parseInt(startStr, 10);
         const endTimestamp = parseInt(endStr, 10);
         const data = await fetchSensorDataByDateRange(sensorId, startTimestamp, endTimestamp, applyCalibration);
-        return NextResponse.json(data);
+        return NextResponse.json(data, responseOptions);
       }
       case "value": {
         const field = searchParams.get("field");
@@ -50,7 +59,7 @@ export async function GET(request: Request) {
         }
         const value = parseFloat(valueStr);
         const data = await fetchSensorDataByValue(sensorId, field, value, applyCalibration);
-        return NextResponse.json(data);
+        return NextResponse.json(data, responseOptions);
       }
       default:
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });

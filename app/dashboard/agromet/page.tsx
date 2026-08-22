@@ -107,8 +107,15 @@ export default function AgrometPage() {
     }
   }, [user]);
 
-  const apiUrl = selectedSensor ? `/api/weather/agromet?lat=${selectedSensor.lat}&lon=${selectedSensor.lng}` : null;
-  const { data, error, isLoading, mutate } = useSWR(apiUrl, fetcher, { refreshInterval: 300000 });
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+
+  const apiUrl = selectedSensor ? `/api/weather/agromet?lat=${selectedSensor.lat}&lon=${selectedSensor.lng}${refreshKey ? `&_t=${refreshKey}` : ""}` : null;
+  const { data, error, isLoading, mutate } = useSWR(apiUrl, fetcher, { refreshInterval: 300000, dedupingInterval: 0 });
+
+  const handleRefresh = () => {
+    setRefreshKey(Date.now());
+    mutate();
+  };
 
   if (sensorOptions.length === 0) {
     return (
@@ -227,7 +234,7 @@ export default function AgrometPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => mutate()} disabled={isLoading}>
+          <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
             Perbarui Data
           </Button>

@@ -47,14 +47,25 @@ export async function GET(request: Request) {
     // Calculate descriptive statistics on the server side
     const stats = calculateStats(rawPoints, dailyPoints, hourlyPoints, isHourly);
 
-    return NextResponse.json({
-      sensorId,
-      preset,
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
-      points,
-      stats,
-    });
+    const isRefresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
+
+    return NextResponse.json(
+      {
+        sensorId,
+        preset,
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+        points,
+        stats,
+      },
+      {
+        headers: {
+          "Cache-Control": isRefresh
+            ? "no-store, no-cache, must-revalidate, proxy-revalidate"
+            : "public, s-maxage=60, stale-while-revalidate=120",
+        },
+      }
+    );
   } catch (error: any) {
     console.error("Error in GET /api/climatology:", error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });

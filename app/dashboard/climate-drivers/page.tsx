@@ -17,10 +17,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function ClimateDriversPage() {
-  const { data: summaryData, isLoading } = useSWR("/api/climate-drivers/summary", fetcher, {
-    revalidateOnFocus: false,
-    dedupingInterval: 60000,
-  });
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+
+  const { data: summaryData, isLoading, mutate } = useSWR(
+    `/api/climate-drivers/summary${refreshKey ? `?_t=${refreshKey}&refresh=true` : ""}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 0 }
+  );
+
+  const handleRefresh = () => {
+    setRefreshKey(Date.now());
+    mutate();
+  };
 
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -57,6 +65,8 @@ export default function ClimateDriversPage() {
       <SubpageHeader
         title="Dinamika Iklim Skala Besar (Climate Drivers)"
         subtitle="Analisis fenomena osilasi atmosfer & samudra global yang memengaruhi pola cuaca dan curah hujan Indonesia"
+        onRefresh={handleRefresh}
+        isRefreshing={isLoading}
       />
 
       {/* Hero Educational Intro Card */}

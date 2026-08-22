@@ -1,7 +1,7 @@
 // app/dashboard/klimatologi/page.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import useSWR from "swr";
 import { Loader2, Sparkles, MapPin, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -86,6 +86,8 @@ export default function KlimatologiPage() {
     }
   }, [user]);
 
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+
   // Construct API Query String
   const apiPath = useMemo(() => {
     if (!sensorId) return null;
@@ -97,13 +99,21 @@ export default function KlimatologiPage() {
     } else if (preset === "yearly") {
       queryParams += `&year=${selectedYear}`;
     }
+    if (refreshKey) {
+      queryParams += `&_t=${refreshKey}`;
+    }
     return `/api/climatology?${queryParams}`;
-  }, [sensorId, preset, selectedMonth, selectedYear, selectedDasarian]);
+  }, [sensorId, preset, selectedMonth, selectedYear, selectedDasarian, refreshKey]);
 
   const { data, error, isLoading, mutate } = useSWR(apiPath, fetcher, {
     revalidateOnFocus: false,
-    dedupingInterval: 10000,
+    dedupingInterval: 0,
   });
+
+  const handleRefresh = useCallback(() => {
+    setRefreshKey(Date.now());
+    mutate();
+  }, [mutate]);
 
   const renderLoading = () => (
     <div className="space-y-6">
@@ -186,7 +196,7 @@ export default function KlimatologiPage() {
             selectedDasarian={selectedDasarian}
             setSelectedDasarian={setSelectedDasarian}
             isLoading={isLoading}
-            onRefresh={() => mutate()}
+            onRefresh={handleRefresh}
           />
         </CardContent>
       </Card>

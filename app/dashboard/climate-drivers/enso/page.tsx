@@ -15,19 +15,28 @@ import { getEnsoData } from "@/lib/climate-drivers/climateData";
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function EnsoSubpage() {
-  const { data: ensoApiData, isLoading } = useSWR("/api/climate-drivers/enso", fetcher, {
-    revalidateOnFocus: false,
-    dedupingInterval: 60000,
-  });
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+
+  const { data: ensoApiData, isLoading, mutate: mutateEnso } = useSWR(
+    `/api/climate-drivers/enso${refreshKey ? `?_t=${refreshKey}&refresh=true` : ""}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 0 }
+  );
 
   const [ensoYears, setEnsoYears] = useState(5);
   const [loadingMoreEnso, setLoadingMoreEnso] = useState(false);
 
-  const { data: ensoHistoryData } = useSWR(
-    `/api/climate-drivers/enso/history?years=${ensoYears}`,
+  const { data: ensoHistoryData, mutate: mutateHistory } = useSWR(
+    `/api/climate-drivers/enso/history?years=${ensoYears}${refreshKey ? `&_t=${refreshKey}&refresh=true` : ""}`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60000 }
+    { revalidateOnFocus: false, dedupingInterval: 0 }
   );
+
+  const handleRefresh = () => {
+    setRefreshKey(Date.now());
+    mutateEnso();
+    mutateHistory();
+  };
 
   const handleLoadMoreEnso = () => {
     setLoadingMoreEnso(true);
@@ -71,6 +80,8 @@ export default function EnsoSubpage() {
       <SubpageHeader
         title="ENSO (El Niño - Southern Oscillation)"
         subtitle="Analisis dinamika suhu permukaan laut dan tekanan udara Pasifik Ekuator"
+        onRefresh={handleRefresh}
+        isRefreshing={isLoading}
       />
 
       {/* Official Data Source Banner */}

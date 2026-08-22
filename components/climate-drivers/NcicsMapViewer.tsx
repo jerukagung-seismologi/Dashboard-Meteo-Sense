@@ -258,18 +258,21 @@ export const NcicsMapViewer: React.FC = () => {
   const [imageError, setImageError] = useState<boolean>(false);
   const [lightboxOpen, setLightboxOpen] = useState<boolean>(false);
 
+  const [cacheBuster, setCacheBuster] = useState<number>(0);
+
   const currentVar = NCICS_VARIABLES.find((v) => v.id === selectedVarId) || NCICS_VARIABLES[0];
 
   // Construct direct NCICS image URL
   const imageUrl = currentVar.isHovmoller
-    ? `https://ncics.org/pub/mjo/v2/hov/${currentVar.prefix}.png`
-    : `https://ncics.org/pub/mjo/v2/map/${currentVar.prefix}.cfs.all.indonesia.${selectedLeadTime}.png`;
+    ? `https://ncics.org/pub/mjo/v2/hov/${currentVar.prefix}.png${cacheBuster ? `?_t=${cacheBuster}` : ""}`
+    : `https://ncics.org/pub/mjo/v2/map/${currentVar.prefix}.cfs.all.indonesia.${selectedLeadTime}.png${cacheBuster ? `?_t=${cacheBuster}` : ""}`;
 
   const filteredVariables = activeCategory === "all"
     ? NCICS_VARIABLES
     : NCICS_VARIABLES.filter((v) => v.category === activeCategory);
 
   const handleRefresh = () => {
+    setCacheBuster(Date.now());
     setImageLoading(true);
     setImageError(false);
   };

@@ -3,10 +3,11 @@ import type { SensorDate, SensorValue, SensorMetaData } from "./FetchingSensorDa
 export async function fetchSensorData(
   sensorId: string,
   limit: number,
-  applyCalibration: boolean = true
+  applyCalibration: boolean = true,
+  forceRefresh: boolean = false
 ): Promise<SensorDate[]> {
-  const url = `/api/sensors?action=latest&sensorId=${sensorId}&limit=${limit}&calibration=${applyCalibration}`;
-  const res = await fetch(url);
+  const url = `/api/sensors?action=latest&sensorId=${sensorId}&limit=${limit}&calibration=${applyCalibration}${forceRefresh ? `&refresh=true&_t=${Date.now()}` : ""}`;
+  const res = await fetch(url, forceRefresh ? { cache: 'no-store' } : undefined);
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.error || "Failed to fetch sensor data");
@@ -18,10 +19,11 @@ export async function fetchSensorDataByDateRange(
   sensorId: string,
   startTimestamp: number,
   endTimestamp: number,
-  applyCalibration: boolean = true
+  applyCalibration: boolean = true,
+  forceRefresh: boolean = false
 ): Promise<SensorDate[]> {
-  const url = `/api/sensors?action=range&sensorId=${sensorId}&start=${startTimestamp}&end=${endTimestamp}&calibration=${applyCalibration}`;
-  const res = await fetch(url);
+  const url = `/api/sensors?action=range&sensorId=${sensorId}&start=${startTimestamp}&end=${endTimestamp}&calibration=${applyCalibration}${forceRefresh ? `&refresh=true&_t=${Date.now()}` : ""}`;
+  const res = await fetch(url, forceRefresh ? { cache: 'no-store' } : undefined);
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.error || "Failed to fetch sensor data by date range");
@@ -33,10 +35,11 @@ export async function fetchSensorDataByValue(
   sensorId: string,
   field: string,
   value: number,
-  applyCalibration: boolean = true
+  applyCalibration: boolean = true,
+  forceRefresh: boolean = false
 ): Promise<SensorDate[]> {
-  const url = `/api/sensors?action=value&sensorId=${sensorId}&field=${field}&value=${value}&calibration=${applyCalibration}`;
-  const res = await fetch(url);
+  const url = `/api/sensors?action=value&sensorId=${sensorId}&field=${field}&value=${value}&calibration=${applyCalibration}${forceRefresh ? `&refresh=true&_t=${Date.now()}` : ""}`;
+  const res = await fetch(url, forceRefresh ? { cache: 'no-store' } : undefined);
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.error || "Failed to fetch sensor data by value");
@@ -45,10 +48,11 @@ export async function fetchSensorDataByValue(
 }
 
 export async function fetchSensorMetadata(
-  sensorId: string
+  sensorId: string,
+  forceRefresh: boolean = false
 ): Promise<SensorMetaData> {
-  const url = `/api/sensors?action=metadata&sensorId=${sensorId}`;
-  const res = await fetch(url);
+  const url = `/api/sensors?action=metadata&sensorId=${sensorId}${forceRefresh ? `&refresh=true&_t=${Date.now()}` : ""}`;
+  const res = await fetch(url, forceRefresh ? { cache: 'no-store' } : undefined);
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.error || "Failed to fetch sensor metadata");

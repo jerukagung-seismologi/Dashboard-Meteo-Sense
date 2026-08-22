@@ -50,16 +50,25 @@ export async function GET(request: Request) {
       humidity: generateDailyHeatmapMatrix(rawPoints, (p) => p.humidity),
       pressure: generateDailyHeatmapMatrix(rawPoints, (p) => p.pressure),
     };
-
     const formattedDate = `${yyyy}-${String(mm + 1).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+    const isRefresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
 
-    return NextResponse.json({
-      sensorId,
-      date: formattedDate,
-      points,
-      stats,
-      heatmaps,
-    });
+    return NextResponse.json(
+      {
+        sensorId,
+        date: formattedDate,
+        points,
+        stats,
+        heatmaps,
+      },
+      {
+        headers: {
+          "Cache-Control": isRefresh
+            ? "no-store, no-cache, must-revalidate, proxy-revalidate"
+            : "public, s-maxage=60, stale-while-revalidate=120",
+        },
+      }
+    );
   } catch (error: any) {
     console.error("Error in GET /api/analysis/daily:", error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });

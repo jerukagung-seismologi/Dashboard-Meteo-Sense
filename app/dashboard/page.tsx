@@ -154,7 +154,7 @@ export default function DashboardPage() {
   const [recentAlerts, setRecentAlerts] = useState<LogEvent[]>([])
   const [loading, setLoading] = useState(true)
 
-  const loadDashboardData = useCallback(async () => {
+  const loadDashboardData = useCallback(async (forceRefresh: boolean = false) => {
     if (!user?.uid) return
     setLoading(true)
 
@@ -167,8 +167,8 @@ export default function DashboardPage() {
         userDevices.map(async (device) => {
           const sensorToken = device.authToken || device.id
           const [metadata, latestDataArr] = await Promise.all([
-            fetchSensorMetadata(sensorToken),
-            fetchSensorData(sensorToken, 1),
+            fetchSensorMetadata(sensorToken, forceRefresh),
+            fetchSensorData(sensorToken, 1, true, forceRefresh),
           ])
           return {
             ...device,
@@ -216,7 +216,7 @@ export default function DashboardPage() {
   }, [authLoading])
 
   const handleRefresh = () => {
-    loadDashboardData()
+    loadDashboardData(true)
   }
 
   const getStatusColor = (status: string) => {

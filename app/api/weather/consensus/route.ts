@@ -261,8 +261,10 @@ export async function GET(request: Request) {
       forecast_days: "3",
     })
 
+    const refresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
+
     const forecastUrl = `https://api.open-meteo.com/v1/forecast?${params.toString()}`
-    const response = await fetch(forecastUrl, {
+    const response = await fetch(forecastUrl, refresh ? { cache: "no-store" } : {
       next: { revalidate: 300 }, // Cache 5 menit di Edge
     })
 
@@ -369,15 +371,24 @@ export async function GET(request: Request) {
       }
     })
 
-    return NextResponse.json({
-      success: true,
-      location: locationName,
-      coordinates: { latitude: lat, longitude: lon },
-      forecastDate: targetDateStr,
-      generatedAt: new Date().toISOString(),
-      modelsUsed: GLOBAL_NWP_MODELS,
-      rows: hourlyResults,
-    })
+    return NextResponse.json(
+      {
+        success: true,
+        location: locationName,
+        coordinates: { latitude: lat, longitude: lon },
+        forecastDate: targetDateStr,
+        generatedAt: new Date().toISOString(),
+        modelsUsed: GLOBAL_NWP_MODELS,
+        rows: hourlyResults,
+      },
+      {
+        headers: {
+          "Cache-Control": refresh
+            ? "no-store, no-cache, must-revalidate, proxy-revalidate"
+            : "public, s-maxage=300, stale-while-revalidate=600",
+        },
+      }
+    )
   } catch (error: any) {
     console.error("Error in /api/weather/consensus:", error)
     return NextResponse.json(

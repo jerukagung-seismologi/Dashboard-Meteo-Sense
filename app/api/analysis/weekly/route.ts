@@ -99,15 +99,26 @@ export async function GET(request: Request) {
     const startDateFormatted = new Date(startTimestamp).toISOString().substring(0, 10);
     const endDateFormatted = new Date(endTimestamp).toISOString().substring(0, 10);
 
-    return NextResponse.json({
-      sensorId,
-      startDate: startDateFormatted,
-      endDate: endDateFormatted,
-      points,
-      stats,
-      histograms,
-      heatmaps,
-    });
+    const isRefresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
+
+    return NextResponse.json(
+      {
+        sensorId,
+        startDate: startDateFormatted,
+        endDate: endDateFormatted,
+        points,
+        stats,
+        histograms,
+        heatmaps,
+      },
+      {
+        headers: {
+          "Cache-Control": isRefresh
+            ? "no-store, no-cache, must-revalidate, proxy-revalidate"
+            : "public, s-maxage=60, stale-while-revalidate=120",
+        },
+      }
+    );
   } catch (error: any) {
     console.error("Error in GET /api/analysis/weekly:", error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });

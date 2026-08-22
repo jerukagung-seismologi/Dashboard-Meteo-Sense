@@ -4,7 +4,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, ArrowLeft, Layers, Waves, CloudRain, Compass } from "lucide-react";
+import { Globe, ArrowLeft, Layers, Waves, CloudRain, Compass, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -12,11 +12,15 @@ interface SubpageHeaderProps {
   title: string;
   subtitle: string;
   activeTab?: string;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
   title,
   subtitle,
+  onRefresh,
+  isRefreshing,
 }) => {
   const pathname = usePathname();
 
@@ -56,6 +60,18 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
 
         {/* Action button to explore climate documentation or back to main */}
         <div className="flex items-center gap-2 self-end md:self-auto">
+          {onRefresh && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5 text-indigo-500", isRefreshing && "animate-spin")} />
+              Perbarui Data
+            </Button>
+          )}
           <Button variant="outline" size="sm" asChild className="gap-2 text-xs font-semibold">
             <Link href="/dashboard/klimatologi">
               <Compass className="h-4 w-4 text-indigo-500" /> Analisis Stasiun Cuaca

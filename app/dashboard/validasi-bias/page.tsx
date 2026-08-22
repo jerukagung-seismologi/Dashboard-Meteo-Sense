@@ -151,8 +151,8 @@ export default function ValidasiBiasPage() {
               .map(d => ({
                 label: d.name,
                 value: d.authToken!,
-                lat: d.latitude || -7.7121,
-                lng: d.longitude || 109.6892,
+                lat: (d as any).latitude || (d as any).lat || -7.7121,
+                lng: (d as any).longitude || (d as any).lng || 109.6892,
               }));
             if (valid.length > 0) {
               setStationOptions(valid);
@@ -193,8 +193,8 @@ export default function ValidasiBiasPage() {
             humidity_raw: r.humidity,
             dew_point_raw: r.dew ?? (r.temperature && r.humidity ? r.temperature - ((100 - r.humidity) / 5) : null),
             pressure_raw: r.pressure,
-            wind_speed_raw: r.wind_speed || 0,
-            wind_direction_raw: r.wind_dir || 0,
+            wind_speed_raw: (r as any).wind_speed || 0,
+            wind_direction_raw: (r as any).wind_dir || 0,
             precipitation_raw: r.rainfall || 0,
           }));
         }
@@ -232,7 +232,7 @@ export default function ValidasiBiasPage() {
       // 2. Fetch ERA5 Data via API or create physical reanalysis pairs with simulated systematic bias
       const era5Records: ERA5RawObservation[] = [];
       const res = await fetch(
-        `/api/reanalysis/data?latitude=${stationCoords.lat}&longitude=${stationCoords.lng}&startDate=${dateRange.start}&endDate=${dateRange.end}&model=era5_land`
+        `/api/reanalysis/data?latitude=${stationCoords.lat}&longitude=${stationCoords.lng}&startDate=${dateRange.start}&endDate=${dateRange.end}&model=era5_land&_t=${Date.now()}`
       );
 
       if (res.ok) {

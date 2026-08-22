@@ -165,6 +165,14 @@ export function ForecastHistoryList({
     return matchesSearch && matchesStatus
   })
 
+  const handleRefresh = async () => {
+    await fetchHistory();
+    toast({
+      title: "Data Diperbarui",
+      description: "Riwayat prakiraan berhasil disegarkan.",
+    });
+  };
+
   return (
     <div className="space-y-4">
       {/* --- HEADER CONTROL TOOLBAR (CRUD: Create, Read, Filter, Refresh) --- */}
@@ -203,7 +211,7 @@ export function ForecastHistoryList({
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchHistory}
+            onClick={handleRefresh}
             disabled={loading}
             className="h-9 text-slate-600 dark:text-slate-300"
           >

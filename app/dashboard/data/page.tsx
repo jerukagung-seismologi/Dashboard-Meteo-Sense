@@ -316,8 +316,7 @@ export default function DataPage() {
     }
   }, [sensorId, selectedPeriod]);
 
-  // Fetch data untuk pemuatan awal atau refresh manual
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (forceRefresh: boolean = false) => {
     if (!sensorId) {
       setLoading(false);
       return;
@@ -333,12 +332,13 @@ export default function DataPage() {
           sensorId,
           startTimestamp,
           endTimestamp,
-          false
+          false,
+          forceRefresh
         );
       } else {
         const rangeMs = selectedPeriod.valueInMinutes * 60000;
         const now = Date.now();
-        const rawData = await fetchSensorDataByDateRange(sensorId, now - rangeMs, now, false);
+        const rawData = await fetchSensorDataByDateRange(sensorId, now - rangeMs, now, false, forceRefresh);
         data = filterByTimeRange(rawData, rangeMs);
       }
       processAndSetData(data);
@@ -354,6 +354,10 @@ export default function DataPage() {
       setLoading(false);
     }
   }, [sensorId, selectedPeriod, dateRange]);
+
+  const handleManualRefresh = useCallback(() => {
+    fetchData(true);
+  }, [fetchData]);
 
   // Fungsi untuk menangani pencarian
   const handleSearch = useCallback(async () => {
@@ -857,7 +861,7 @@ export default function DataPage() {
             <Button
               variant="outline"
               size="icon"
-              onClick={fetchData} 
+              onClick={handleManualRefresh} 
               disabled={loading}
             >
               <RefreshCwIcon className={`h-4 w-4 ${loading ? "animate-spin" : ""} ${isDarkMode ? "text-gray-200" : ""}`} />

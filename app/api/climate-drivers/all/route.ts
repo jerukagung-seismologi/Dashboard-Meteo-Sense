@@ -7,12 +7,14 @@ export const revalidate = 3600; // Cache API response for 1 hour
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const refresh = searchParams.get("refresh") === "true";
+    const refresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
 
     const data = await getUnifiedClimateData(refresh);
     return NextResponse.json(data, {
       headers: {
-        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+        "Cache-Control": refresh
+          ? "no-store, no-cache, must-revalidate, proxy-revalidate"
+          : "public, s-maxage=3600, stale-while-revalidate=86400",
         "Access-Control-Allow-Origin": "*",
       },
     });
