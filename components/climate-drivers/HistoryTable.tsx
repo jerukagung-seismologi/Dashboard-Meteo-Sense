@@ -88,9 +88,9 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
     let rows: string[] = [];
 
     if (type === "enso") {
-      headers = ["Tanggal", "Tahun", "Bulan", "SST Anomali (°C)", "SST Real (°C)", "Status ENSO"];
+      headers = ["Tanggal", "Tahun", "Bulan", "Niño 1+2 Anomali (°C)", "Niño 3 Anomali (°C)", "Niño 3.4 Anomali (°C)", "Niño 4 Anomali (°C)", "Status ENSO"];
       rows = (data as EnsoHistoryPoint[]).map((d) =>
-        `"${d.dateStr}",${d.year},${d.month},${d.anomaly ?? ""},${d.sst ?? ""},"${d.status}"`
+        `"${d.dateStr}",${d.year},${d.month},${d.nino12 ?? ""},${d.nino3 ?? ""},${d.nino34 ?? d.anomaly ?? ""},${d.nino4 ?? ""},"${d.status}"`
       );
     } else if (type === "iod") {
       headers = ["Tanggal", "Tahun", "Bulan", "DMI Index (°C)", "Status IOD"];
@@ -211,9 +211,11 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
                 <th className="p-3">Tanggal / Periode</th>
                 {type === "enso" && (
                   <>
-                    <th className="p-3 text-center">SST Anomali Niño 3.4 (°C)</th>
-                    <th className="p-3 text-center">Estimasi SST (°C)</th>
-                    <th className="p-3 text-right">Kategori Status ENSO</th>
+                    <th className="p-3 text-center">Niño 1+2 (°C)</th>
+                    <th className="p-3 text-center">Niño 3 (°C)</th>
+                    <th className="p-3 text-center font-bold text-indigo-600 dark:text-indigo-400">Niño 3.4 (°C)</th>
+                    <th className="p-3 text-center">Niño 4 (°C)</th>
+                    <th className="p-3 text-right">Kategori Status</th>
                   </>
                 )}
                 {type === "iod" && (
@@ -244,8 +246,22 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
                 visibleData.map((row, idx) => {
                   if (type === "enso") {
                     const r = row as EnsoHistoryPoint;
-                    const isElNino = r.anomaly !== null && r.anomaly >= 0.5;
-                    const isLaNina = r.anomaly !== null && r.anomaly <= -0.5;
+                    const nino34Val = r.nino34 ?? r.anomaly;
+
+                    const renderBadge = (val: number | null | undefined, isHighlight = false) => {
+                      if (val === null || val === undefined) return "-";
+                      const str = val >= 0 ? `+${val.toFixed(2)}` : val.toFixed(2);
+                      const color = val >= 0.5
+                        ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                        : val <= -0.5
+                        ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                        : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300";
+                      return (
+                        <span className={`font-mono font-bold px-2 py-0.5 rounded text-xs ${color} ${isHighlight ? "ring-1 ring-indigo-400 dark:ring-indigo-600 shadow-sm" : ""}`}>
+                          {str}
+                        </span>
+                      );
+                    };
 
                     return (
                       <tr key={idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
@@ -253,22 +269,10 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
                           <Calendar className="h-3.5 w-3.5 text-slate-400" />
                           {r.dateStr}
                         </td>
-                        <td className="p-3 text-center">
-                          <span
-                            className={`font-mono font-bold px-2 py-0.5 rounded text-xs ${
-                              isElNino
-                                ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
-                                : isLaNina
-                                ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
-                                : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                            }`}
-                          >
-                            {r.anomaly !== null ? (r.anomaly >= 0 ? `+${r.anomaly.toFixed(2)}` : r.anomaly.toFixed(2)) : "-"}
-                          </span>
-                        </td>
-                        <td className="p-3 text-center font-mono text-slate-600 dark:text-slate-400">
-                          {r.sst !== null ? `${r.sst.toFixed(2)} °C` : "-"}
-                        </td>
+                        <td className="p-3 text-center">{renderBadge(r.nino12)}</td>
+                        <td className="p-3 text-center">{renderBadge(r.nino3)}</td>
+                        <td className="p-3 text-center">{renderBadge(nino34Val, true)}</td>
+                        <td className="p-3 text-center">{renderBadge(r.nino4)}</td>
                         <td className="p-3 text-right">
                           <StatusBadge type="enso" value={r.status} size="sm" />
                         </td>

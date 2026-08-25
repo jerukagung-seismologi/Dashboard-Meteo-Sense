@@ -193,8 +193,106 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
     };
   }, [data, textColor, gridColor]);
 
+  // 4. Perbandingan 4 Wilayah Niño Option (Niño 1+2, 3, 3.4, 4)
+  const ninoRegionsOption = useMemo(() => {
+    const dates = data.historicalNino34.map((d) => d.date);
+    const map12 = new Map((data.historicalNino12 || []).map((d) => [d.date, d.value]));
+    const map3 = new Map((data.historicalNino3 || []).map((d) => [d.date, d.value]));
+    const map34 = new Map((data.historicalNino34 || []).map((d) => [d.date, d.value]));
+    const map4 = new Map((data.historicalNino4 || []).map((d) => [d.date, d.value]));
+
+    return {
+      tooltip: {
+        trigger: "axis",
+        formatter: (params: any[]) => {
+          let html = `<div class="font-semibold mb-1">${params[0]?.name || ""}</div>`;
+          params.forEach((p) => {
+            const val = p.value;
+            const str = val !== null && val !== undefined ? `${val >= 0 ? "+" : ""}${val.toFixed(2)}°C` : "-";
+            html += `<div class="text-xs flex items-center justify-between gap-3">
+              <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color};margin-right:4px;"></span>${p.seriesName}:</span>
+              <span class="font-bold">${str}</span>
+            </div>`;
+          });
+          return html;
+        },
+      },
+      legend: {
+        data: ["Niño 1+2", "Niño 3", "Niño 3.4", "Niño 4"],
+        textStyle: { color: textColor },
+        top: "0%",
+      },
+      grid: { left: "3%", right: "4%", top: "15%", bottom: "10%", containLabel: true },
+      xAxis: {
+        type: "category",
+        data: dates,
+        axisLabel: { color: textColor },
+      },
+      yAxis: {
+        type: "value",
+        name: "Anomali SST (°C)",
+        nameTextStyle: { color: textColor },
+        axisLabel: { color: textColor },
+        splitLine: { lineStyle: { color: gridColor } },
+      },
+      series: [
+        {
+          name: "Niño 1+2",
+          type: "line",
+          smooth: true,
+          showSymbol: true,
+          lineStyle: { width: 2.5 },
+          color: "#ef4444",
+          data: dates.map((d) => map12.get(d) ?? null),
+        },
+        {
+          name: "Niño 3",
+          type: "line",
+          smooth: true,
+          showSymbol: true,
+          lineStyle: { width: 2.5 },
+          color: "#f97316",
+          data: dates.map((d) => map3.get(d) ?? null),
+        },
+        {
+          name: "Niño 3.4",
+          type: "line",
+          smooth: true,
+          showSymbol: true,
+          lineStyle: { width: 3 },
+          color: "#6366f1",
+          data: dates.map((d) => map34.get(d) ?? null),
+        },
+        {
+          name: "Niño 4",
+          type: "line",
+          smooth: true,
+          showSymbol: true,
+          lineStyle: { width: 2.5 },
+          color: "#06b6d4",
+          data: dates.map((d) => map4.get(d) ?? null),
+        },
+      ],
+    };
+  }, [data, textColor, gridColor]);
+
   return (
     <div className="space-y-6">
+      {/* 4 Regions Comparison Chart */}
+      <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
+        <CardHeader>
+          <CardTitle className="text-lg font-bold flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-indigo-500" /> Perbandingan 4 Wilayah Pasifik Niño (Niño 1+2, 3, 3.4, 4)
+          </CardTitle>
+          <CardDescription>
+            Dipantau dari pantai Amerika Selatan (Niño 1+2) hingga Pasifik Tengah-Barat (Niño 4) oleh NOAA CPC
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="h-[340px] p-2">
+          <ReactECharts option={ninoRegionsOption} style={{ height: "100%", width: "100%" }} />
+        </CardContent>
+      </Card>
+
       {/* ONI Time Series */}
       <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
         <CardHeader>
@@ -215,7 +313,7 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
           <CardHeader>
             <CardTitle className="text-base font-bold flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-purple-500" /> Anomali Suhu Perairan Niño 3.4
+              <BarChart2 className="h-5 w-5 text-purple-500" /> Anomali Suhu Perairan Niño 3.4
             </CardTitle>
             <CardDescription className="text-xs">
               Suhu permukaan laut kawasan Pasifik Tengah (5°N-5°S, 170°W-120°W)

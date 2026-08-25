@@ -90,6 +90,24 @@ export function getEnsoData(): EnsoData {
     { date: "2026-08", oni: 0.1, anomaly: 0.1 },
   ];
 
+  const historicalNino12 = [
+    { date: "2026-02", value: 0.92 },
+    { date: "2026-03", value: 1.29 },
+    { date: "2026-04", value: 1.52 },
+    { date: "2026-05", value: 1.81 },
+    { date: "2026-06", value: 2.83 },
+    { date: "2026-07", value: 3.56 },
+  ];
+
+  const historicalNino3 = [
+    { date: "2026-02", value: -0.01 },
+    { date: "2026-03", value: 0.24 },
+    { date: "2026-04", value: 0.55 },
+    { date: "2026-05", value: 1.14 },
+    { date: "2026-06", value: 1.75 },
+    { date: "2026-07", value: 2.33 },
+  ];
+
   const historicalNino34 = [
     { date: "2025-08", value: 0.15 },
     { date: "2025-09", value: 0.05 },
@@ -97,13 +115,21 @@ export function getEnsoData(): EnsoData {
     { date: "2025-11", value: -0.28 },
     { date: "2025-12", value: -0.35 },
     { date: "2026-01", value: -0.22 },
-    { date: "2026-02", value: -0.08 },
-    { date: "2026-03", value: 0.04 },
-    { date: "2026-04", value: 0.12 },
-    { date: "2026-05", value: 0.18 },
-    { date: "2026-06", value: 0.21 },
-    { date: "2026-07", value: 0.14 },
-    { date: "2026-08", value: 0.10 },
+    { date: "2026-02", value: -0.20 },
+    { date: "2026-03", value: 0.03 },
+    { date: "2026-04", value: 0.47 },
+    { date: "2026-05", value: 0.94 },
+    { date: "2026-06", value: 1.55 },
+    { date: "2026-07", value: 2.03 },
+  ];
+
+  const historicalNino4 = [
+    { date: "2026-02", value: 0.23 },
+    { date: "2026-03", value: 0.34 },
+    { date: "2026-04", value: 0.82 },
+    { date: "2026-05", value: 0.98 },
+    { date: "2026-06", value: 1.23 },
+    { date: "2026-07", value: 1.06 },
   ];
 
   const historicalSoi = [
@@ -123,21 +149,30 @@ export function getEnsoData(): EnsoData {
   ];
 
   const oni = 0.1;
-  const nino34 = 0.1;
+  const nino12 = 3.56;
+  const nino3 = 2.33;
+  const nino34 = 2.03;
+  const nino4 = 1.06;
   const soi = 0.6;
   const status = oni >= 0.5 ? "El Niño" : oni <= -0.5 ? "La Niña" : "Neutral";
 
   return {
     status,
     oni,
+    nino12,
+    nino3,
     nino34,
+    nino4,
     soi,
     lastUpdated: "Agustus 2026",
     dataSource: OFFICIAL_SOURCES.ENSO.name,
     sourceUrl: OFFICIAL_SOURCES.ENSO.url,
-    summary: "Kondisi ENSO saat ini berada pada fase Netral (ONI: +0.1°C). Suhu permukaan laut Pasifik Tropis mendekati rata-rata klimatologis NOAA CPC.",
+    summary: "Kondisi ENSO saat ini dipantau dari 4 wilayah Pasifik Ekuator NOAA CPC (Niño 1+2, 3, 3.4, 4) serta indeks ONI dan SOI.",
     historicalOni,
+    historicalNino12,
+    historicalNino3,
     historicalNino34,
+    historicalNino4,
     historicalSoi,
     interpretation: {
       whatIsIt: "ENSO (El Niño-Southern Oscillation) adalah fenomena iklim global berkala berupa variasi suhu permukaan laut di Samudra Pasifik Ekuator yang dipantau resmi oleh NOAA CPC.",

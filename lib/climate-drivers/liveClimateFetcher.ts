@@ -8,48 +8,110 @@ import { getEnsoData as getFallbackEnso, getMjoData as getFallbackMjo, getIodDat
 export async function fetchLiveEnsoData(): Promise<EnsoData> {
   const fallback = getFallbackEnso();
   try {
-    const res = await fetch("https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt", {
-      next: { revalidate: 3600 },
-      headers: { "User-Agent": "MeteoSense-Dashboard/2.1" },
-    });
+    const [oniRes, sstoiRes] = await Promise.allSettled([
+      fetch("https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt", {
+        next: { revalidate: 3600 },
+        headers: { "User-Agent": "MeteoSense-Dashboard/2.1" },
+      }),
+      fetch("https://www.cpc.ncep.noaa.gov/data/indices/sstoi.indices", {
+        next: { revalidate: 3600 },
+        headers: { "User-Agent": "MeteoSense-Dashboard/2.1" },
+      }),
+    ]);
 
-    if (!res.ok) return fallback;
+    let parsedHistoricalOni = fallback.historicalOni;
+    let latestOni = fallback.oni;
 
-    const text = await res.text();
-    const lines = text.trim().split("\n").filter((l) => l.trim().length > 0);
-    
-    // Parse last 24 records from NOAA ONI ASCII file
-    // Header format: SEAS YR TOTAL ANOM
-    const dataLines = lines.filter((l) => !l.startsWith("SEAS"));
-    if (dataLines.length === 0) return fallback;
+    if (oniRes.status === "fulfilled" && oniRes.value.ok) {
+      const text = await oniRes.value.text();
+      const lines = text.trim().split("\n").filter((l) => /^\s*[A-Z]{3}\s+\d{4}\s+/.test(l));
+      if (lines.length > 0) {
+        const recent = lines.slice(-24);
+        parsedHistoricalOni = recent.map((line) => {
+          const parts = line.trim().split(/\s+/);
+          const season = parts[0];
+          const year = parts[1];
+          const anomaly = parseFloat(parts[3] || "0");
+          return {
+            date: `${year} ${season}`,
+            oni: Number.isNaN(anomaly) ? 0 : anomaly,
+            anomaly: Number.isNaN(anomaly) ? 0 : anomaly,
+          };
+        });
+        const latest = parsedHistoricalOni[parsedHistoricalOni.length - 1];
+        if (latest) latestOni = latest.oni;
+      }
+    }
 
-    const recentLines = dataLines.slice(-24);
-    const parsedHistoricalOni = recentLines.map((line) => {
-      const parts = line.trim().split(/\s+/);
-      const season = parts[0];
-      const year = parts[1];
-      const anomaly = parseFloat(parts[3] || "0");
-      return {
-        date: `${year} ${season}`,
-        oni: anomaly,
-        anomaly,
-      };
-    });
+    let nino12 = fallback.nino12;
+    let nino3 = fallback.nino3;
+    let nino34 = fallback.nino34;
+    let nino4 = fallback.nino4;
 
-    const latest = parsedHistoricalOni[parsedHistoricalOni.length - 1];
-    const latestOni = latest ? latest.oni : fallback.oni;
-    const status = getEnsoCategory(latestOni) as any;
+    let historicalNino12 = fallback.historicalNino12;
+    let historicalNino3 = fallback.historicalNino3;
+    let historicalNino34 = fallback.historicalNino34;
+    let historicalNino4 = fallback.historicalNino4;
+
+    if (sstoiRes.status === "fulfilled" && sstoiRes.value.ok) {
+      const text = await sstoiRes.value.text();
+      const lines = text.trim().split("\n").filter((l) => /^\s*\d{4}\s+\d{1,2}\s+/.test(l));
+      if (lines.length > 0) {
+        const recent = lines.slice(-24);
+        historicalNino12 = [];
+        historicalNino3 = [];
+        historicalNino34 = [];
+        historicalNino4 = [];
+
+        recent.forEach((line) => {
+          const p = line.trim().split(/\s+/);
+          const yr = p[0];
+          const mon = p[1]?.padStart(2, "0");
+          const dateStr = `${yr}-${mon}`;
+
+          const v12 = parseFloat(p[3] || "0");
+          const v3 = parseFloat(p[5] || "0");
+          const v4 = parseFloat(p[7] || "0");
+          const v34 = parseFloat(p[9] || "0");
+
+          if (!Number.isNaN(v12)) historicalNino12.push({ date: dateStr, value: v12 });
+          if (!Number.isNaN(v3)) historicalNino3.push({ date: dateStr, value: v3 });
+          if (!Number.isNaN(v4)) historicalNino4.push({ date: dateStr, value: v4 });
+          if (!Number.isNaN(v34)) historicalNino34.push({ date: dateStr, value: v34 });
+        });
+
+        const last12 = historicalNino12[historicalNino12.length - 1];
+        const last3 = historicalNino3[historicalNino3.length - 1];
+        const last34 = historicalNino34[historicalNino34.length - 1];
+        const last4 = historicalNino4[historicalNino4.length - 1];
+
+        if (last12) nino12 = last12.value;
+        if (last3) nino3 = last3.value;
+        if (last34) nino34 = last34.value;
+        if (last4) nino4 = last4.value;
+      }
+    }
+
+    const status = getEnsoCategory(nino34) as any;
 
     return {
       ...fallback,
       status,
       oni: latestOni,
-      lastUpdated: latest ? `NOAA CPC (${latest.date})` : fallback.lastUpdated,
-      summary: `Data NOAA CPC ONI resmi mencatat indeks ${latestOni >= 0 ? "+" : ""}${latestOni.toFixed(1)}°C (Fase ${status}). Suhu perairan Pasifik Tropis dipantau langsung dari stasiun NOAA.`,
+      nino12,
+      nino3,
+      nino34,
+      nino4,
+      lastUpdated: `NOAA CPC (${parsedHistoricalOni[parsedHistoricalOni.length - 1]?.date || "Terkini"})`,
+      summary: `Data NOAA CPC resmi memantau 4 wilayah Pasifik: Niño 1+2 (${nino12 >= 0 ? "+" : ""}${nino12.toFixed(2)}°C), Niño 3 (${nino3 >= 0 ? "+" : ""}${nino3.toFixed(2)}°C), Niño 3.4 (${nino34 >= 0 ? "+" : ""}${nino34.toFixed(2)}°C), dan Niño 4 (${nino4 >= 0 ? "+" : ""}${nino4.toFixed(2)}°C). Status ENSO: ${status}.`,
       historicalOni: parsedHistoricalOni,
+      historicalNino12,
+      historicalNino3,
+      historicalNino34,
+      historicalNino4,
     };
   } catch (err) {
-    console.warn("Live NOAA ONI fetch failed, using fallback:", err);
+    console.warn("Live NOAA ENSO fetch failed, using fallback:", err);
     return fallback;
   }
 }

@@ -21,14 +21,20 @@ export type ConvectionState = "Enhanced" | "Suppressed" | "Neutral";
 export interface EnsoData {
   status: EnsoStatusType;
   oni: number; // Oceanic Niño Index (°C)
+  nino12: number; // SST Anomaly in Niño 1+2 region (°C)
+  nino3: number; // SST Anomaly in Niño 3 region (°C)
   nino34: number; // SST Anomaly in Niño 3.4 region (°C)
+  nino4: number; // SST Anomaly in Niño 4 region (°C)
   soi: number; // Southern Oscillation Index
   lastUpdated: string;
   dataSource: string;
   sourceUrl: string;
   summary: string;
   historicalOni: Array<{ date: string; oni: number; anomaly: number }>;
+  historicalNino12: Array<{ date: string; value: number }>;
+  historicalNino3: Array<{ date: string; value: number }>;
   historicalNino34: Array<{ date: string; value: number }>;
+  historicalNino4: Array<{ date: string; value: number }>;
   historicalSoi: Array<{ date: string; value: number }>;
   interpretation: {
     whatIsIt: string;

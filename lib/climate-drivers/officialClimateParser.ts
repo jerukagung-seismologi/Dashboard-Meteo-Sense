@@ -44,9 +44,15 @@ export interface EnsoHistoryPoint {
   dateStr: string;
   year: number;
   month: number;
-  day: number;
-  sst: number | null;
-  anomaly: number | null;
+  day?: number;
+  nino12: number | null;
+  nino3: number | null;
+  nino34: number | null;
+  nino4: number | null;
+  oni: number | null;
+  soi: number | null;
+  sst?: number | null;
+  anomaly?: number | null;
   status: string;
 }
 
@@ -379,29 +385,74 @@ export async function parseEnsoHistory(limitYears: number = 5): Promise<{
   totalRecords: number;
   hasMore: boolean;
 }> {
+  const noaaSstoiUrl = "https://www.cpc.ncep.noaa.gov/data/indices/sstoi.indices";
   const bomNino34Url = "http://www.bom.gov.au/clim_data/IDCK000072/rnino_3.4.txt";
-  const recordsNeeded = limitYears * 52;
+  const recordsNeeded = limitYears * 12;
 
   let allRows: EnsoHistoryPoint[] = [];
 
   try {
-    const rawText = await fetchWithRetry(bomNino34Url);
-    const lines = rawText.split("\n").filter((l) => l.trim().length > 0 && l.includes(","));
+    const rawText = await fetchWithRetry(noaaSstoiUrl);
+    const lines = rawText.split("\n").filter((l) => /^\s*\d{4}\s+\d{1,2}\s+/.test(l));
 
     allRows = lines.map((line) => {
-      const parts = line.trim().split(",");
-      const startDateStr = parts[0]; // e.g. 20260720
-      const year = parseInt(startDateStr.substring(0, 4), 10) || 2026;
-      const month = parseInt(startDateStr.substring(4, 6), 10) || 1;
-      const day = parseInt(startDateStr.substring(6, 8), 10) || 1;
-      const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      const anomaly = sanitizeFloat(parts[2]);
-      const sst = anomaly !== null ? Math.round((27.5 + anomaly) * 100) / 100 : null;
-      const status = anomaly !== null ? getEnsoCategory(anomaly) : "Netral";
-      return { dateStr, year, month, day, sst, anomaly, status };
+      const p = line.trim().split(/\s+/);
+      const year = parseInt(p[0], 10);
+      const month = parseInt(p[1], 10);
+      const dateStr = `${year}-${String(month).padStart(2, "0")}`;
+
+      const nino12 = sanitizeFloat(p[3]);
+      const nino3 = sanitizeFloat(p[5]);
+      const nino4 = sanitizeFloat(p[7]);
+      const nino34 = sanitizeFloat(p[9]);
+      const status = nino34 !== null ? getEnsoCategory(nino34) : "Netral";
+
+      return {
+        dateStr,
+        year,
+        month,
+        nino12,
+        nino3,
+        nino34,
+        nino4,
+        oni: nino34,
+        soi: null,
+        anomaly: nino34,
+        status,
+      };
     });
   } catch (err) {
-    console.warn("[ClimateParser] BOM ENSO history fetch failed:", err);
+    console.warn("[ClimateParser] NOAA sstoi.indices fetch failed, trying BOM fallback:", err);
+    try {
+      const rawText = await fetchWithRetry(bomNino34Url);
+      const lines = rawText.split("\n").filter((l) => l.trim().length > 0 && l.includes(","));
+      allRows = lines.map((line) => {
+        const parts = line.trim().split(",");
+        const startDateStr = parts[0];
+        const year = parseInt(startDateStr.substring(0, 4), 10) || 2026;
+        const month = parseInt(startDateStr.substring(4, 6), 10) || 1;
+        const day = parseInt(startDateStr.substring(6, 8), 10) || 1;
+        const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const anomaly = sanitizeFloat(parts[2]);
+        const status = anomaly !== null ? getEnsoCategory(anomaly) : "Netral";
+        return {
+          dateStr,
+          year,
+          month,
+          day,
+          nino12: null,
+          nino3: null,
+          nino34: anomaly,
+          nino4: null,
+          oni: anomaly,
+          soi: null,
+          anomaly,
+          status,
+        };
+      });
+    } catch (e2) {
+      console.warn("[ClimateParser] BOM fallback also failed:", e2);
+    }
   }
 
   const reversed = [...allRows].reverse();

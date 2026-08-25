@@ -103,7 +103,7 @@ export default function EnsoSubpage() {
       </div>
 
       {/* Current Status Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         {/* Status */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
           <CardContent className="p-4 flex flex-col justify-between h-[110px]">
@@ -128,35 +128,69 @@ export default function EnsoSubpage() {
             <div className="text-2xl font-black text-slate-900 dark:text-slate-100">
               {data.oni >= 0 ? `+${data.oni.toFixed(1)}` : data.oni.toFixed(1)}°C
             </div>
-            <span className="text-[11px] text-slate-400">Ambang El Niño: +0.5°C</span>
+            <span className="text-[11px] text-slate-400">Oceanic Niño Index</span>
+          </CardContent>
+        </Card>
+
+        {/* Niño 1+2 */}
+        <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
+          <CardContent className="p-4 flex flex-col justify-between h-[110px]">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-semibold text-slate-500">Niño 1+2 (Pantai)</span>
+              <Activity className="h-4 w-4 text-red-500" />
+            </div>
+            <div className="text-2xl font-black text-red-600 dark:text-red-400">
+              {data.nino12 !== undefined && data.nino12 !== null
+                ? `${data.nino12 >= 0 ? "+" : ""}${data.nino12.toFixed(2)}°C`
+                : "-"}
+            </div>
+            <span className="text-[11px] text-slate-400">Peru &amp; Ekuador</span>
+          </CardContent>
+        </Card>
+
+        {/* Niño 3 */}
+        <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
+          <CardContent className="p-4 flex flex-col justify-between h-[110px]">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-semibold text-slate-500">Niño 3 (Pasifik Timur)</span>
+              <Activity className="h-4 w-4 text-orange-500" />
+            </div>
+            <div className="text-2xl font-black text-orange-600 dark:text-orange-400">
+              {data.nino3 !== undefined && data.nino3 !== null
+                ? `${data.nino3 >= 0 ? "+" : ""}${data.nino3.toFixed(2)}°C`
+                : "-"}
+            </div>
+            <span className="text-[11px] text-slate-400">150°W - 90°W</span>
           </CardContent>
         </Card>
 
         {/* Niño 3.4 */}
-        <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
+        <Card className="border-none shadow-sm dark:bg-slate-900 bg-white border-l-4 border-l-indigo-500">
           <CardContent className="p-4 flex flex-col justify-between h-[110px]">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-500">SST Anomali Niño 3.4</span>
-              <Activity className="h-4 w-4 text-purple-500" />
+              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">Niño 3.4 (Utama)</span>
+              <Activity className="h-4 w-4 text-indigo-500" />
             </div>
-            <div className="text-2xl font-black text-purple-600 dark:text-purple-400">
+            <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
               {data.nino34 >= 0 ? `+${data.nino34.toFixed(2)}` : data.nino34.toFixed(2)}°C
             </div>
-            <span className="text-[11px] text-slate-400">Kawasan Pasifik Ekuator</span>
+            <span className="text-[11px] text-slate-400">Indikator Standar ENSO</span>
           </CardContent>
         </Card>
 
-        {/* SOI */}
+        {/* Niño 4 */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
           <CardContent className="p-4 flex flex-col justify-between h-[110px]">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-500">Indeks SOI</span>
-              <ShieldAlert className="h-4 w-4 text-emerald-500" />
+              <span className="text-xs font-semibold text-slate-500">Niño 4 (Pasifik Barat)</span>
+              <ShieldAlert className="h-4 w-4 text-cyan-500" />
             </div>
-            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-              {data.soi >= 0 ? `+${data.soi.toFixed(1)}` : data.soi.toFixed(1)}
+            <div className="text-2xl font-black text-cyan-600 dark:text-cyan-400">
+              {data.nino4 !== undefined && data.nino4 !== null
+                ? `${data.nino4 >= 0 ? "+" : ""}${data.nino4.toFixed(2)}°C`
+                : "-"}
             </div>
-            <span className="text-[11px] text-slate-400">Tahiti vs Darwin</span>
+            <span className="text-[11px] text-slate-400">160°E - 150°W</span>
           </CardContent>
         </Card>
       </div>
