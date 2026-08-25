@@ -227,8 +227,8 @@ export async function parseEnsoData(): Promise<EnsoParsedOutput> {
 
 // --- 2. MJO PARSER (BOM Australia RMM Index: rmm.74toRealtime.txt) ---
 export async function parseMjoData(): Promise<MjoParsedOutput> {
-  const mjoUrl = "http://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt";
-  const mjoMirrorUrl = "https://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt";
+  const mjoUrl = "http://www.bom.gov.au/clim_data/IDCKGEM000/rmm.74toRealtime.txt";
+  const mjoMirrorUrl = "https://www.bom.gov.au/clim_data/IDCKGEM000/rmm.74toRealtime.txt";
 
   let phaseDiagramData: MjoPhasePoint[] = [];
 
@@ -476,8 +476,8 @@ export async function parseMjoHistory(limitDays: number = 1825): Promise<{
   totalRecords: number;
   hasMore: boolean;
 }> {
-  const mjoUrl = "http://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt";
-  const mjoMirrorUrl = "https://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt";
+  const mjoUrl = "http://www.bom.gov.au/clim_data/IDCKGEM000/rmm.74toRealtime.txt";
+  const mjoMirrorUrl = "https://www.bom.gov.au/clim_data/IDCKGEM000/rmm.74toRealtime.txt";
 
   let allRows: MjoHistoryPoint[] = [];
 

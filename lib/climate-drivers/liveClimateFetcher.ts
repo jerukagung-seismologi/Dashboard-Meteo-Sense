@@ -62,13 +62,13 @@ export async function fetchLiveMjoData(): Promise<MjoData> {
   try {
     let text = "";
     try {
-      const res = await fetch("http://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt", {
+      const res = await fetch("http://www.bom.gov.au/clim_data/IDCKGEM000/rmm.74toRealtime.txt", {
         next: { revalidate: 3600 },
         headers: { "User-Agent": "MeteoSense-Dashboard/2.1", "Accept": "text/plain, text/ascii, */*" },
       });
       if (res.ok) text = await res.text();
     } catch {
-      const res = await fetch("https://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt", {
+      const res = await fetch("https://www.bom.gov.au/clim_data/IDCKGEM000/rmm.74toRealtime.txt", {
         next: { revalidate: 3600 },
         headers: { "User-Agent": "MeteoSense-Dashboard/2.1", "Accept": "text/plain, text/ascii, */*" },
       });
