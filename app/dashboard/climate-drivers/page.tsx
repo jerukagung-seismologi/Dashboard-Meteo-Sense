@@ -74,7 +74,7 @@ export default function ClimateDriversPage() {
     <div className="space-y-6 pb-12">
       {/* Persistent Header Banner (Static on tab switch) */}
       <SubpageHeader
-        title="Dinamika Iklim Skala Besar (Climate Drivers)"
+        title="Indeks Iklim Global (Global Climate Drivers)"
         subtitle="Analisis 3 pilar telekoneksi laut-atmosfer global: ENSO (Pasifik), MJO (Konveksi Tropis), dan IOD (Samudra Hindia)"
         onRefresh={handleRefresh}
         isRefreshing={isLoading}

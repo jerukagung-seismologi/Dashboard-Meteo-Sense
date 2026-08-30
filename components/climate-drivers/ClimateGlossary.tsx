@@ -196,15 +196,19 @@ export const GLOSSARY_DATA: GlossaryTerm[] = [
   }
 ];
 
-interface ClimateGlossaryProps {
+export interface ClimateGlossaryProps {
   initialCategory?: "all" | "enso" | "mjo" | "iod" | "monsoon" | "cams" | "era5";
+  defaultCategory?: "all" | "enso" | "mjo" | "iod" | "monsoon" | "cams" | "era5";
 }
 
 export const ClimateGlossary: React.FC<ClimateGlossaryProps> = ({
-  initialCategory = "all",
+  initialCategory,
+  defaultCategory,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
+  const [selectedCategory, setSelectedCategory] = useState<string>(
+    defaultCategory || initialCategory || "all"
+  );
 
   const categories = [
     { id: "all", label: "Semua Istilah", icon: Layers },
