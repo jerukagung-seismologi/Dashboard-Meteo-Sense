@@ -1,76 +1,43 @@
 // app/dashboard/climate-drivers/monsoon/page.tsx
-"use client";
-
-import React, { useEffect, useState } from "react";
-import useSWR from "swr";
-import { Loader2 } from "lucide-react";
+import React from "react";
+import Link from "next/link";
 import { SubpageHeader } from "@/components/climate-drivers/SubpageHeader";
-import { MonsoonCharts } from "@/components/climate-drivers/MonsoonCharts";
-import { EducationalPanel } from "@/components/climate-drivers/EducationalPanel";
-import { getMonsoonData } from "@/lib/climate-drivers/climateData";
-import { MonsoonData } from "@/lib/climate-drivers/types";
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Sprout, ArrowRight, Wind, Calendar } from "lucide-react";
 
 export default function MonsoonSubpage() {
-  const [refreshKey, setRefreshKey] = useState<number>(0);
-
-  const { data: monsoonApiData, isLoading, mutate } = useSWR<MonsoonData>(
-    `/api/climate-drivers/monsoon${refreshKey ? `?_t=${refreshKey}&refresh=true` : ""}`,
-    fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60000 }
-  );
-
-  const handleRefresh = () => {
-    setRefreshKey(Date.now());
-    mutate();
-  };
-
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  useEffect(() => {
-    const checkDarkMode = () => {
-      setIsDarkMode(document.documentElement.classList.contains("dark"));
-    };
-    checkDarkMode();
-    const observer = new MutationObserver(checkDarkMode);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
-
-  const data = monsoonApiData && !("error" in monsoonApiData) ? monsoonApiData : getMonsoonData();
-
   return (
     <div className="space-y-6 pb-12">
-      {/* Persistent Header Banner */}
       <SubpageHeader
-        title="Indeks Monsun Indonesia (IMI)"
-        subtitle="Pemantauan sirkulasi angin musiman skala regional antara Benua Asia dan Benua Australia penentu siklus musim hujan dan kemarau"
-        onRefresh={handleRefresh}
-        isRefreshing={isLoading}
+        title="Monsun &amp; Agrometeorologi Indonesia"
+        subtitle="Analisis sirkulasi monsun dan kalender pola tanam telah dipusatkan di menu Agrometeorologi"
       />
 
-      {isLoading && !monsoonApiData ? (
-        <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-          <p className="text-sm text-slate-500 font-medium">Memuat data sirkulasi angin monsun Indonesia...</p>
+      <Card className="border-none shadow-md bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-950 text-white overflow-hidden p-8 text-center space-y-6 max-w-3xl mx-auto rounded-3xl">
+        <div className="mx-auto p-4 bg-emerald-500/20 text-emerald-400 rounded-2xl w-fit">
+          <Sprout className="h-10 w-10" />
         </div>
-      ) : (
-        <>
-          {/* Main Visualizations & Metrics */}
-          <MonsoonCharts data={data} isDarkMode={isDarkMode} />
 
-          {/* Educational Explanation & Meteorological FAQ */}
-          <EducationalPanel
-            title="Monsun"
-            whatIsIt={data.interpretation.whatIsIt}
-            indonesiaImpact={data.interpretation.indonesiaImpact}
-            positiveIod={data.interpretation.westMonsoon}
-            negativeIod={data.interpretation.eastMonsoon}
-            currentAssessment={data.interpretation.currentAssessment}
-          />
-        </>
-      )}
+        <div className="space-y-2">
+          <CardTitle className="text-2xl font-black text-white">
+            Fitur Analisis Monsun Kini Hadir di Menu Agrometeorologi
+          </CardTitle>
+          <CardDescription className="text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
+            Untuk mendukung pengambilan keputusan pertanian dan penentuan awal musim tanam (AMH / AMK), visualisasi deret waktu angin zonal, proyeksi transisi 7 bulan SEAS5, dan rekomendasi komoditas telah diintegrasikan ke halaman <strong>Agrometeorologi &amp; Indeks Pertanian</strong>.
+          </CardDescription>
+        </div>
+
+        <div className="pt-2">
+          <Button asChild size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 px-6">
+            <Link href="/dashboard/agromet">
+              <span>Buka Menu Agrometeorologi &amp; Kalender Tanam</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }
+

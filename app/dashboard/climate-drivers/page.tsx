@@ -69,14 +69,13 @@ export default function ClimateDriversPage() {
   const ensoData = ensoApiData && !ensoApiData.error ? ensoApiData : getEnsoData();
   const mjoData = mjoApiData && !mjoApiData.error ? mjoApiData : getMjoData();
   const iodData = iodApiData && !iodApiData.error ? iodApiData : getIodData();
-  const monsoonData = monsoonApiData && !monsoonApiData.error ? monsoonApiData : getMonsoonData();
 
   return (
     <div className="space-y-6 pb-12">
       {/* Persistent Header Banner (Static on tab switch) */}
       <SubpageHeader
         title="Dinamika Iklim Skala Besar (Climate Drivers)"
-        subtitle="Analisis 4 pilar penggerak iklim Indonesia: ENSO, MJO, IOD, dan Monsun Indonesia penentu pola cuaca dan curah hujan"
+        subtitle="Analisis 3 pilar telekoneksi laut-atmosfer global: ENSO (Pasifik), MJO (Konveksi Tropis), dan IOD (Samudra Hindia)"
         onRefresh={handleRefresh}
         isRefreshing={isLoading}
       />
@@ -104,10 +103,10 @@ export default function ClimateDriversPage() {
                 </span>
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-white">
-                Memahami 4 Pilar Dinamika Iklim di Balik Cuaca Indonesia
+                Memahami 3 Pilar Dinamika Iklim Global di Balik Cuaca Indonesia
               </h2>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                Cuaca di Indonesia sangat ditentukan oleh interaksi 4 penggerak iklim utama: <strong>ENSO (Pasifik)</strong>, <strong>MJO (Gelombang Konveksi Tropis)</strong>, <strong>IOD (Samudra Hindia)</strong>, dan <strong>Monsun Indonesia (Sirkulasi Angin Regional Asia-Australia)</strong>. Halaman ini menyajikan status indikator real-time beserta grafik dan peta pemantauan atmosfer NCICS.
+                Cuaca di Indonesia sangat ditentukan oleh interaksi 3 driver iklim global utama: <strong>ENSO (Pasifik)</strong>, <strong>MJO (Gelombang Konveksi Tropis)</strong>, dan <strong>IOD (Samudra Hindia)</strong>. Untuk analisis sirkulasi <strong>Monsun &amp; Kalender Pola Tanam Pertanian</strong>, kunjungi menu <a href="/dashboard/agromet" className="text-cyan-300 underline font-semibold hover:text-cyan-200">Agrometeorologi</a>.
               </p>
             </div>
             <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 text-center shrink-0 self-stretch md:self-auto flex flex-col justify-center">
@@ -118,22 +117,22 @@ export default function ClimateDriversPage() {
         </CardContent>
       </Card>
 
-      {/* 4 Summary Dashboard Cards */}
-      <SummaryCards summary={summary} monsoon={monsoonData} />
+      {/* 3 Summary Dashboard Cards */}
+      <SummaryCards summary={summary} />
 
       {/* Interactive Tabbed Visualizations Overview */}
       <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <Globe className="h-5 w-5 text-indigo-500" /> Pratinjau Visualisasi & Grafik Terintegrasi
+            <Globe className="h-5 w-5 text-indigo-500" /> Pratinjau Visualisasi &amp; Grafik Terintegrasi
           </CardTitle>
           <CardDescription>
-            Beralih antar tab di bawah untuk melihat grafik deret waktu ENSO, MJO, IOD, Monsun, serta peta diagnostik satelit NCICS
+            Beralih antar tab di bawah untuk melihat grafik deret waktu ENSO, MJO, IOD, serta peta diagnostik satelit NCICS
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-2">
           <Tabs defaultValue="enso" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
               <TabsTrigger value="enso" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
                 <Waves className="h-4 w-4 text-blue-500" /> ENSO
               </TabsTrigger>
@@ -142,9 +141,6 @@ export default function ClimateDriversPage() {
               </TabsTrigger>
               <TabsTrigger value="iod" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
                 <Compass className="h-4 w-4 text-amber-500" /> IOD
-              </TabsTrigger>
-              <TabsTrigger value="monsoon" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
-                <Wind className="h-4 w-4 text-cyan-500" /> Monsun
               </TabsTrigger>
               <TabsTrigger value="ncics" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
                 <Globe className="h-4 w-4 text-indigo-500" /> Peta NCICS
@@ -161,10 +157,6 @@ export default function ClimateDriversPage() {
 
             <TabsContent value="iod" className="mt-0">
               <IODCharts data={iodData} isDarkMode={isDarkMode} />
-            </TabsContent>
-
-            <TabsContent value="monsoon" className="mt-0">
-              <MonsoonCharts data={monsoonData} isDarkMode={isDarkMode} />
             </TabsContent>
 
             <TabsContent value="ncics" className="mt-0">

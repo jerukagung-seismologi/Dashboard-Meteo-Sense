@@ -12,14 +12,11 @@ import { getMonsoonData } from "@/lib/climate-drivers/climateData";
 
 interface SummaryCardsProps {
   summary: ClimateDriversSummary;
-  monsoon?: MonsoonData;
 }
 
-export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, monsoon }) => {
-  const monsoonData = monsoon || getMonsoonData();
-
+export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* 1. ENSO Card */}
       <Card className="flex flex-col justify-between border-none shadow-md hover:shadow-lg transition-all duration-300 dark:bg-slate-900 bg-white group overflow-hidden relative">
         <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all pointer-events-none" />
@@ -30,7 +27,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, monsoon }) 
             </div>
             <StatusBadge type="enso" value={summary.enso.status} size="md" />
           </div>
-          <CardTitle className="text-lg font-bold mt-3 text-slate-900 dark:text-slate-100 flex items-center gap-2">
+          <CardTitle className="text-xl font-bold mt-3 text-slate-900 dark:text-slate-100 flex items-center gap-2">
             ENSO <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(El Niño / La Niña)</span>
           </CardTitle>
           <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
@@ -82,11 +79,11 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, monsoon }) 
             </div>
             <StatusBadge type="mjo" value={summary.mjo.status} size="md" />
           </div>
-          <CardTitle className="text-lg font-bold mt-3 text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            MJO <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Madden-Julian)</span>
+          <CardTitle className="text-xl font-bold mt-3 text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            MJO <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Madden-Julian Oscillation)</span>
           </CardTitle>
           <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-            Gelombang Konveksi Tropis
+            Gelombang Konveksi Intraseasonal Tropis
           </CardDescription>
         </CardHeader>
 
@@ -143,11 +140,11 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, monsoon }) 
             </div>
             <StatusBadge type="iod" value={summary.iod.status} size="md" />
           </div>
-          <CardTitle className="text-lg font-bold mt-3 text-slate-900 dark:text-slate-100 flex items-center gap-2">
+          <CardTitle className="text-xl font-bold mt-3 text-slate-900 dark:text-slate-100 flex items-center gap-2">
             IOD <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Indian Ocean Dipole)</span>
           </CardTitle>
           <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-            Dipol Suhu Samudra Hindia
+            Dipol Suhu Permukaan Samudra Hindia
           </CardDescription>
         </CardHeader>
 
@@ -179,64 +176,6 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, monsoon }) 
           <Button asChild className="w-full justify-between bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs sm:text-sm shadow-sm group-hover:translate-x-0.5 transition-all">
             <Link href="/dashboard/climate-drivers/iod">
               <span>Lihat Detail IOD</span>
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Link>
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* 4. Monsun Indonesia Card */}
-      <Card className="flex flex-col justify-between border-none shadow-md hover:shadow-lg transition-all duration-300 dark:bg-slate-900 bg-white group overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all pointer-events-none" />
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="p-2.5 bg-cyan-50 dark:bg-cyan-950/60 rounded-xl text-cyan-600 dark:text-cyan-400">
-              <Wind className="h-6 w-6" />
-            </div>
-            <span className={`px-2 py-0.5 text-xs rounded-full font-bold border ${
-              monsoonData.currentZonalWind > 2 ? "bg-cyan-100 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border-cyan-300" :
-              monsoonData.currentZonalWind < -2 ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300" :
-              "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300"
-            }`}>
-              {monsoonData.seasonType}
-            </span>
-          </div>
-          <CardTitle className="text-lg font-bold mt-3 text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            Monsun <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Indonesian Monsoon)</span>
-          </CardTitle>
-          <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-            Sirkulasi Angin Musiman Asia-Australia
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-4 flex-1">
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border dark:border-slate-800 flex items-center justify-between">
-            <div>
-              <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">Angin Zonal (U)</span>
-              <span className="text-2xl font-black text-slate-900 dark:text-slate-100">
-                {monsoonData.currentZonalWind > 0 ? `+${monsoonData.currentZonalWind}` : monsoonData.currentZonalWind} m/s
-              </span>
-            </div>
-            <div className="text-right">
-              <span className="text-xs text-slate-500 dark:text-slate-400 block">Arah Datang</span>
-              <span className="text-sm font-bold text-cyan-600 dark:text-cyan-400">{monsoonData.directionName}</span>
-            </div>
-          </div>
-
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
-            {monsoonData.summary}
-          </p>
-
-          <div className="pt-2 text-[10px] text-slate-400 dark:text-slate-500 flex items-center justify-between">
-            <span>Sumber Data Resmi:</span>
-            <span className="font-semibold text-cyan-600 dark:text-cyan-400">{monsoonData.dataSource}</span>
-          </div>
-        </CardContent>
-
-        <CardFooter className="pt-2 border-t dark:border-slate-800/80">
-          <Button asChild className="w-full justify-between bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs sm:text-sm shadow-sm group-hover:translate-x-0.5 transition-all">
-            <Link href="/dashboard/climate-drivers/monsoon">
-              <span>Lihat Detail Monsun</span>
               <ArrowRight className="h-4 w-4 ml-1" />
             </Link>
           </Button>

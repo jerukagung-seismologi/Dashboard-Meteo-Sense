@@ -29,7 +29,6 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
     { id: "enso", label: "ENSO (El Niño / La Niña)", href: "/dashboard/climate-drivers/enso", icon: Waves },
     { id: "mjo", label: "MJO (Madden-Julian Oscillation)", href: "/dashboard/climate-drivers/mjo", icon: CloudRain },
     { id: "iod", label: "IOD (Indian Ocean Dipole)", href: "/dashboard/climate-drivers/iod", icon: Compass },
-    { id: "monsoon", label: "Monsun Indonesia (IMI)", href: "/dashboard/climate-drivers/monsoon", icon: Wind },
   ];
 
   return (

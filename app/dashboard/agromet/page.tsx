@@ -26,6 +26,7 @@ import {
   CardTitle,
   CardDescription
 } from "@/components/ui/card";
+import { MonsoonAgrometSection } from "@/components/agromet/MonsoonAgrometSection";
 import {
   Select,
   SelectContent,
@@ -572,6 +573,9 @@ export default function AgrometPage() {
               </Card>
             </div>
           </div>
+
+          {/* Dedicated Indonesian Monsoon & Crop Calendar Section */}
+          <MonsoonAgrometSection isDarkMode={isDarkMode} />
 
         </>
       )}
