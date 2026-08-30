@@ -1,12 +1,12 @@
 // components/indeks-monsun/MonsoonIndicesCharts.tsx
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Wind, Compass, Activity, ShieldAlert, Sparkles, Globe } from "lucide-react";
+import { Wind, Compass, Activity, ShieldAlert, Sparkles, Globe, Layers, Navigation } from "lucide-react";
 
 interface MonsoonIndicesChartsProps {
   timeSeries: Array<{
@@ -18,6 +18,8 @@ interface MonsoonIndicesChartsProps {
     wyi?: number;
     sasmi?: number;
     easmi?: number;
+    bsiso1?: number;
+    bsiso2?: number;
   }>;
   currentBsiso: {
     phase: number;
@@ -34,6 +36,8 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
   currentBsiso,
   isDarkMode = false,
 }) => {
+  const [activeTab, setActiveTab] = useState("dipole");
+
   const dates = timeSeries.map((t) => t.date);
   const ausmiVals = timeSeries.map((t) => t.ausmi);
   const wnpmiVals = timeSeries.map((t) => t.wnpmi);
@@ -42,6 +46,8 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
   const wyiVals = timeSeries.map((t) => t.wyi ?? 0);
   const sasmiVals = timeSeries.map((t) => t.sasmi ?? 0);
   const easmiVals = timeSeries.map((t) => t.easmi ?? 0);
+  const bsiso1Vals = timeSeries.map((t) => t.bsiso1 ?? 0);
+  const bsiso2Vals = timeSeries.map((t) => t.bsiso2 ?? 0);
 
   // 1. Dual Dipole Chart Option (AUSMI vs WNPMI)
   const dipoleChartOption = useMemo(() => {
@@ -266,10 +272,97 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
     };
   }, [dates, wyiVals, sasmiVals, easmiVals, isDarkMode]);
 
-  // 4. BSISO 2D Phase Space Diagram (Wheeler-Hendon 2D Phase)
+  // 4. BSISO1 & BSISO2 Time Series Line Chart
+  const bsisoTimeSeriesOption = useMemo(() => {
+    return {
+      backgroundColor: "transparent",
+      tooltip: {
+        trigger: "axis",
+        backgroundColor: isDarkMode ? "#0f172a" : "#ffffff",
+        borderColor: isDarkMode ? "#334155" : "#e2e8f0",
+        textStyle: { color: isDarkMode ? "#f8fafc" : "#0f172a", fontSize: 12 },
+      },
+      legend: {
+        top: 0,
+        textStyle: { color: isDarkMode ? "#cbd5e1" : "#475569", fontSize: 11 },
+        data: ["BSISO1 (30–60 Hari / Propagasi Utara)", "BSISO2 (10–23 Hari / Kuasi Dua-Mingguan)"],
+      },
+      grid: {
+        top: 40,
+        left: 50,
+        right: 20,
+        bottom: 35,
+        containLabel: false,
+      },
+      xAxis: {
+        type: "category",
+        data: dates,
+        axisLine: { lineStyle: { color: isDarkMode ? "#334155" : "#cbd5e1" } },
+        axisLabel: {
+          color: isDarkMode ? "#94a3b8" : "#64748b",
+          fontSize: 10,
+          formatter: (val: string) => val.substring(5),
+        },
+      },
+      yAxis: {
+        type: "value",
+        name: "Amplitudo Indeks",
+        nameTextStyle: { color: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 11 },
+        splitLine: { lineStyle: { color: isDarkMode ? "#1e293b" : "#f1f5f9" } },
+        axisLabel: {
+          color: isDarkMode ? "#94a3b8" : "#64748b",
+          fontSize: 10,
+          formatter: (v: number) => (v > 0 ? `+${v.toFixed(1)}` : `${v.toFixed(1)}`),
+        },
+      },
+      series: [
+        {
+          name: "BSISO1 (30–60 Hari / Propagasi Utara)",
+          type: "line",
+          data: bsiso1Vals,
+          smooth: true,
+          itemStyle: { color: "#3b82f6" },
+          lineStyle: { color: "#3b82f6", width: 2.5 },
+          areaStyle: {
+            color: isDarkMode ? "rgba(59, 130, 246, 0.15)" : "rgba(59, 130, 246, 0.10)",
+          },
+        },
+        {
+          name: "BSISO2 (10–23 Hari / Kuasi Dua-Mingguan)",
+          type: "line",
+          data: bsiso2Vals,
+          smooth: true,
+          itemStyle: { color: "#8b5cf6" },
+          lineStyle: { color: "#8b5cf6", width: 2.5 },
+          areaStyle: {
+            color: isDarkMode ? "rgba(139, 92, 246, 0.15)" : "rgba(139, 92, 246, 0.10)",
+          },
+        },
+      ],
+    };
+  }, [dates, bsiso1Vals, bsiso2Vals, isDarkMode]);
+
+  // 5. BSISO 2D Phase Space Diagram (Wheeler-Hendon 2D Phase with Trajectory & Auto-Scaling)
   const bsisoPhaseOption = useMemo(() => {
     const bs1 = currentBsiso.bsiso1;
     const bs2 = currentBsiso.bsiso2;
+
+    // Collect all trajectory points
+    const trajectoryPoints = timeSeries.map((t, idx) => ({
+      name: t.date,
+      value: [t.bsiso1 ?? 0, t.bsiso2 ?? 0],
+      idx,
+    }));
+
+    // Auto-scale axis limits dynamically so no points are clipped
+    const maxVal = Math.max(
+      3.5,
+      ...trajectoryPoints.map((p) => Math.abs(p.value[0])),
+      ...trajectoryPoints.map((p) => Math.abs(p.value[1])),
+      Math.abs(bs1),
+      Math.abs(bs2)
+    );
+    const limit = Math.ceil(maxVal + 0.5);
 
     return {
       backgroundColor: "transparent",
@@ -278,46 +371,54 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
         backgroundColor: isDarkMode ? "#0f172a" : "#ffffff",
         borderColor: isDarkMode ? "#334155" : "#e2e8f0",
         textStyle: { color: isDarkMode ? "#f8fafc" : "#0f172a", fontSize: 12 },
-        formatter: () => {
-          return `
-            <div class="font-bold text-sm">Posisi BSISO Terkini</div>
-            <div class="text-xs space-y-1 mt-1">
-              <div>Fase: <b>Fase ${currentBsiso.phase}</b></div>
-              <div>Amplitudo: <b>${currentBsiso.amplitude}</b> (${currentBsiso.amplitude >= 1 ? "Aktif Kuat" : "Lemah"})</div>
-              <div>BSISO1: <b>${bs1}</b> | BSISO2: <b>${bs2}</b></div>
-            </div>
-          `;
+        formatter: (params: any) => {
+          if (params.seriesType === "scatter") {
+            return `
+              <div class="font-bold text-sm text-indigo-600 dark:text-indigo-400">Posisi BSISO Terkini</div>
+              <div class="text-xs space-y-1 mt-1">
+                <div>Fase: <b>Fase ${currentBsiso.phase}</b></div>
+                <div>Amplitudo Total: <b>${currentBsiso.amplitude}</b> (${currentBsiso.amplitude >= 1.0 ? "Aktif Kuat" : "Netral"})</div>
+                <div>BSISO1: <b>${bs1}</b> | BSISO2: <b>${bs2}</b></div>
+              </div>
+            `;
+          }
+          if (params.seriesType === "line" && params.name) {
+            return `<div class="text-xs">Tanggal: <b>${params.name}</b><br/>Posisi: [${params.value[0]}, ${params.value[1]}]</div>`;
+          }
+          return "";
         },
       },
       grid: {
-        top: 20,
+        top: 25,
         left: 45,
         right: 45,
-        bottom: 20,
+        bottom: 25,
         containLabel: true,
       },
       xAxis: {
         type: "value",
-        min: -3,
-        max: 3,
-        name: "BSISO 1",
+        min: -limit,
+        max: limit,
+        name: "BSISO 1 (30–60 Hari)",
         nameLocation: "middle",
         nameGap: 25,
+        nameTextStyle: { color: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 11, fontWeight: "bold" },
         axisLine: { lineStyle: { color: isDarkMode ? "#475569" : "#cbd5e1" } },
         splitLine: { lineStyle: { color: isDarkMode ? "#1e293b" : "#f1f5f9" } },
       },
       yAxis: {
         type: "value",
-        min: -3,
-        max: 3,
-        name: "BSISO 2",
+        min: -limit,
+        max: limit,
+        name: "BSISO 2 (10–23 Hari)",
         nameLocation: "middle",
         nameGap: 25,
+        nameTextStyle: { color: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 11, fontWeight: "bold" },
         axisLine: { lineStyle: { color: isDarkMode ? "#475569" : "#cbd5e1" } },
         splitLine: { lineStyle: { color: isDarkMode ? "#1e293b" : "#f1f5f9" } },
       },
       series: [
-        // Unit Circle Threshold
+        // Unit Circle Threshold (Amp = 1.0)
         {
           name: "Ambang Batas Lingkaran (Amp = 1.0)",
           type: "line",
@@ -329,21 +430,38 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
           showSymbol: false,
           silent: true,
         },
-        // Current Position Point
+        // 30-Day Historical Trajectory Line
+        {
+          name: "Lintasan Trayektori 30 Hari",
+          type: "line",
+          data: trajectoryPoints.map((p) => p.value),
+          smooth: true,
+          showSymbol: true,
+          symbol: "circle",
+          symbolSize: 4,
+          lineStyle: {
+            color: isDarkMode ? "rgba(129, 140, 248, 0.6)" : "rgba(99, 102, 241, 0.5)",
+            width: 2,
+          },
+          itemStyle: {
+            color: isDarkMode ? "#818cf8" : "#6366f1",
+          },
+        },
+        // Current Position Point (Glowing big circle)
         {
           name: "Posisi Terkini",
           type: "scatter",
           data: [[bs1, bs2]],
-          symbolSize: 18,
+          symbolSize: 20,
           itemStyle: {
             color: "#6366f1",
-            shadowBlur: 10,
-            shadowColor: "rgba(99, 102, 241, 0.8)",
+            shadowBlur: 14,
+            shadowColor: "rgba(99, 102, 241, 1.0)",
           },
           label: {
             show: true,
             formatter: `Fase ${currentBsiso.phase}\n(Amp: ${currentBsiso.amplitude})`,
-            position: "right",
+            position: "top",
             color: isDarkMode ? "#f8fafc" : "#0f172a",
             fontWeight: "bold",
             fontSize: 11,
@@ -351,7 +469,7 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
         },
       ],
     };
-  }, [currentBsiso, isDarkMode]);
+  }, [timeSeries, currentBsiso, isDarkMode]);
 
   return (
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
@@ -359,17 +477,17 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <CardTitle className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Activity className="h-5 w-5 text-teal-500" /> Analisis Visualisasi 7 Indeks Monsun &amp; Osilasi BSISO
+              <Activity className="h-5 w-5 text-teal-500" /> Analisis Visualisasi 7 Indeks Monsun &amp; 2 Modus BSISO
             </CardTitle>
             <CardDescription className="text-xs text-slate-500">
-              Eksplorasi perbandingan deret waktu sirkulasi dua sayap monsun, deteksi seruakan dingin, monsun skala luas Asia, dan diagram fase 2D BSISO
+              Eksplorasi deret waktu sirkulasi dua sayap monsun, deteksi seruakan dingin, monsun skala luas Asia, serta grafik &amp; diagram fase 2D BSISO
             </CardDescription>
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="pt-4">
-        <Tabs defaultValue="dipole" className="w-full">
+        <Tabs defaultValue="dipole" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
             <TabsTrigger value="dipole" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
               <Wind className="h-4 w-4 text-cyan-500" /> Dual Dipole: AUSMI vs WNPMI
@@ -381,7 +499,7 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
               <Globe className="h-4 w-4 text-indigo-500" /> Sirkulasi Asia (WYI/SASMI/EASMI)
             </TabsTrigger>
             <TabsTrigger value="bsiso" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 text-indigo-500" /> Diagram Fase 2D BSISO
+              <Sparkles className="h-4 w-4 text-indigo-500" /> Osilasi BSISO (Grafik &amp; 2D)
             </TabsTrigger>
           </TabsList>
 
@@ -394,7 +512,7 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
               <span className="text-[11px] text-slate-400">Rentang: 30 Hari Terakhir &amp; 16 Hari Prakiraan</span>
             </div>
             <div className="h-[340px] w-full">
-              <ReactECharts option={dipoleChartOption} style={{ height: "100%", width: "100%" }} />
+              <ReactECharts option={dipoleChartOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
             </div>
           </TabsContent>
 
@@ -409,7 +527,7 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
               </Badge>
             </div>
             <div className="h-[340px] w-full">
-              <ReactECharts option={surgeChartOption} style={{ height: "100%", width: "100%" }} />
+              <ReactECharts option={surgeChartOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
             </div>
           </TabsContent>
 
@@ -422,33 +540,56 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
               <span className="text-[11px] text-slate-400">Rentang: 30 Hari Terakhir &amp; 16 Hari Prakiraan</span>
             </div>
             <div className="h-[340px] w-full">
-              <ReactECharts option={broadscaleChartOption} style={{ height: "100%", width: "100%" }} />
+              <ReactECharts option={broadscaleChartOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
             </div>
           </TabsContent>
 
-          {/* Tab 4: BSISO 2D Phase Diagram */}
-          <TabsContent value="bsiso" className="mt-0 space-y-4">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
-                Diagram Ruang Fase 2D BSISO (Boreal Summer Intraseasonal Oscillation):
-              </span>
-              <Badge variant="outline" className="text-[10px] text-indigo-600 border-indigo-300">
-                Ambang Batas Aktif: Amplitudo ≥ 1.0
-              </Badge>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-              <div className="h-[320px] w-full lg:col-span-2">
-                <ReactECharts option={bsisoPhaseOption} style={{ height: "100%", width: "100%" }} />
+          {/* Tab 4: BSISO Complete Suite (Time Series + 2D Phase Space) */}
+          <TabsContent value="bsiso" className="mt-0 space-y-6">
+            {/* Sub-section A: BSISO Time Series Line Chart */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Layers className="h-4 w-4 text-blue-500" /> Deret Waktu Harian BSISO1 (30–60 Hari) vs BSISO2 (10–23 Hari):
+                </span>
+                <span className="text-[11px] text-slate-400">Rentang: 30 Hari Terakhir &amp; 16 Hari Prakiraan</span>
               </div>
-              <div className="p-4 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20 text-xs space-y-2">
-                <div className="font-bold text-indigo-700 dark:text-indigo-300 text-sm flex items-center gap-1.5">
-                  <Sparkles className="h-4 w-4" /> Apa itu BSISO?
+              <div className="h-[280px] w-full">
+                <ReactECharts option={bsisoTimeSeriesOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
+              </div>
+            </div>
+
+            {/* Sub-section B: BSISO 2D Phase Space Diagram with 30-Day Trajectory */}
+            <div className="space-y-2 pt-2 border-t dark:border-slate-800">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Navigation className="h-4 w-4 text-indigo-500" /> Diagram Ruang Fase 2D BSISO &amp; Lintasan Trayektori 30 Hari:
+                </span>
+                <Badge variant="outline" className="text-[10px] text-indigo-600 border-indigo-300">
+                  Ambang Batas Aktif: Amplitudo ≥ 1.0
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                <div className="h-[340px] w-full lg:col-span-2">
+                  <ReactECharts option={bsisoPhaseOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
                 </div>
-                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                  BSISO adalah variabilitas iklim intraseasonal (30–60 hari) selama musim panas belahan bumi utara (Mei–Oktober). Tidak seperti MJO yang merambat ke timur ekuator, BSISO merambat <strong>ke arah utara (*northward propagation*)</strong> dari Samudra Hindia melintasi Laut Cina Selatan dan Filipina.
-                </p>
-                <div className="pt-1 text-[11px] font-semibold text-indigo-900 dark:text-indigo-200">
-                  Status Saat Ini: <strong>{currentBsiso.name}</strong> (Amp: {currentBsiso.amplitude})
+                <div className="p-4 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20 text-xs space-y-3">
+                  <div className="font-bold text-indigo-700 dark:text-indigo-300 text-sm flex items-center gap-1.5">
+                    <Sparkles className="h-4 w-4" /> Posisi &amp; Pergerakan BSISO Terkini
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border dark:border-slate-800 space-y-1">
+                    <div className="text-slate-500 text-[11px]">Fase Aktif:</div>
+                    <div className="text-base font-black text-indigo-600 dark:text-indigo-400">
+                      Fase {currentBsiso.phase} (Amp: {currentBsiso.amplitude})
+                    </div>
+                    <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                      {currentBsiso.name}
+                    </div>
+                  </div>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
+                    Garis lintasan biru muda menunjukkan pergerakan titik BSISO selama 30 hari terakhir. Titik ungu bercahaya menunjukkan posisi hari ini.
+                  </p>
                 </div>
               </div>
             </div>
