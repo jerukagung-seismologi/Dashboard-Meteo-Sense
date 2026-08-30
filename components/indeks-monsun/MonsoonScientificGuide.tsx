@@ -17,7 +17,9 @@ import {
   CloudRain,
   Waves,
   Sparkles,
-  ChevronRight,
+  Layers,
+  ArrowDown,
+  ArrowUp,
 } from "lucide-react";
 
 export const MonsoonScientificGuide: React.FC = () => {
@@ -29,26 +31,25 @@ export const MonsoonScientificGuide: React.FC = () => {
       author: "Wang & Fan (2001)",
       formula: "U850 pada koordinat 5°S–15°S, 110°E–130°E (selatan Jawa–Bali–Nusa Tenggara–Laut Timor)",
       icon: Wind,
-      color: "cyan",
       badgeText: "Belahan Bumi Selatan",
       positiveState: {
-        title: "Saat Positif (U > +2.0 m/s / Angin Baratan)",
-        badge: "Monsun Barat Aktif",
+        title: "KONDISI POSITIF: Saat U > +2.0 m/s (Aliran Angin Baratan Aktif Kuat)",
+        badge: "Monsun Barat Aktif (Musim Hujan)",
         badgeColor: "bg-cyan-100 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border-cyan-300",
         points: [
-          "Massa udara basah dari Samudra Hindia dan Asia ditarik kuat melintasi Laut Jawa dan Nusa Tenggara.",
+          "Massa udara basah dari Samudra Hindia dan Asia ditarik kuat melintasi Laut Jawa dan kepulauan Nusa Tenggara.",
           "Menandai Puncak Musim Hujan di Jawa, Bali, NTB, dan NTT pada periode Desember–Februari (DJF).",
-          "Meningkatkan risiko banjir, tanah longsor, dan gelombang tinggi di perairan selatan Indonesia.",
+          "Meningkatkan risiko bencana hidrometeorologi basah (banjir, tanah longsor) dan gelombang tinggi di perairan selatan Indonesia.",
         ],
       },
       negativeState: {
-        title: "Saat Berkebalikan / Negatif (U < -2.0 m/s / Angin Timuran)",
-        badge: "Pasat Timuran / Kemarau",
+        title: "KONDISI BERKEBALIKAN / NEGATIF: Saat U < -2.0 m/s (Aliran Angin Pasat Timuran)",
+        badge: "Pasat Timuran / Musim Kemarau",
         badgeColor: "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300",
         points: [
           "Monsun Australia berganti menjadi aliran angin pasat timuran dari daratan benua Australia yang kering dan dingin.",
           "Memicu Musim Kemarau di Jawa hingga Nusa Tenggara pada periode Juni–September (JJA).",
-          "Pembentukan awan hujan tertekan drastis, kelembapan udara turun, dan suhu malam hari terasa dingin (fenomena bediding).",
+          "Pembentukan awan hujan tertekan drastis, kelembapan udara turun tajam, dan suhu malam hari terasa dingin menyengat (fenomena bediding).",
         ],
       },
     },
@@ -59,25 +60,24 @@ export const MonsoonScientificGuide: React.FC = () => {
       author: "Wang & Fan (2001)",
       formula: "U850 (5°N–15°N, 100°E–130°E) dikurangi U850 (20°N–30°N, 110°E–140°E)",
       icon: Compass,
-      color: "amber",
       badgeText: "Pasifik Barat Laut & Filipina",
       positiveState: {
-        title: "Saat Positif (> +2.0 m/s / Palung Monsun Kuat)",
+        title: "KONDISI POSITIF: Saat Nilai > +2.0 m/s (Palung Monsun Aktif Kuat)",
         badge: "Palung Monsun Aktif Kuat",
         badgeColor: "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300",
         points: [
-          "Sirkulasi siklonik raksasa terbentuk di Laut Filipina dan Pasifik Barat Laut (periode Juli–September).",
+          "Sirkulasi siklonik raksasa terbentuk di Laut Filipina dan Pasifik Barat Laut (periode puncak Juli–September).",
           "Bertindak sebagai 'pompa raksasa' yang menarik massa udara dari selatan ekuator ke utara, memperkuat angin timuran kering di Indonesia selatan.",
           "Sering memicu pembentukan bibit siklon tropis di utara Filipina yang menimbulkan angin kencang di Sulawesi Utara dan Maluku Utara.",
         ],
       },
       negativeState: {
-        title: "Saat Berkebalikan / Negatif (< -2.0 m/s / Palung Melemah)",
+        title: "KONDISI BERKEBALIKAN / NEGATIF: Saat Nilai < -2.0 m/s (Palung Melemah / Sirkulasi Tenang)",
         badge: "Sirkulasi Pasifik Tenang",
         badgeColor: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300",
         points: [
           "Palung monsun Pasifik Barat Laut melemah atau menghilang (periode musim dingin belahan utara).",
-          "Tarikan udara ke utara mereda, memungkinkan sabuk awan hujan dan ITCZ bergeser turun ke wilayah Indonesia.",
+          "Tarikan udara ke utara mereda, memungkinkan sabuk awan konvektif dan ITCZ bergeser turun kembali ke wilayah kepulauan Indonesia.",
         ],
       },
     },
@@ -88,23 +88,22 @@ export const MonsoonScientificGuide: React.FC = () => {
       author: "Wang et al. (2004)",
       formula: "U850 pada koordinat 5°N–15°N, 110°E–120°E (Laut Cina Selatan)",
       icon: Activity,
-      color: "teal",
       badgeText: "Laut Cina Selatan",
       positiveState: {
-        title: "Saat Positif (U > +2.0 m/s / Baratan LCS)",
+        title: "KONDISI POSITIF: Saat U > +2.0 m/s (Aliran Angin Baratan LCS)",
         badge: "Onset Musim Panas Aktif",
         badgeColor: "bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-300",
         points: [
           "Pembalikan arah angin dari timuran menjadi baratan di Laut Cina Selatan menandai Onset Resmi Monsun Musim Panas Asia Tenggara (pertengahan Mei).",
-          "Pasokan uap air meningkat di wilayah Natuna, Selat Karimata, dan Kalimantan Barat.",
+          "Pasokan uap air meningkat pesat di wilayah Natuna, Selat Karimata, dan Kalimantan Barat.",
         ],
       },
       negativeState: {
-        title: "Saat Berkebalikan / Negatif (U < -2.0 m/s / Timuran LCS)",
+        title: "KONDISI BERKEBALIKAN / NEGATIF: Saat U < -2.0 m/s (Aliran Angin Timuran LCS)",
         badge: "Monsun Dingin LCS / Pra-Onset",
         badgeColor: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300",
         points: [
-          "Didominasi angin timuran stabil dari Pasifik Subtropis.",
+          "Didominasi aliran angin timuran stabil dari wilayah antisiklon subtropis Pasifik.",
           "Menandakan periode musim dingin belahan utara atau fase pra-onset dengan kondisi cuaca relatif kering di wilayah Laut Cina Selatan.",
         ],
       },
@@ -116,10 +115,9 @@ export const MonsoonScientificGuide: React.FC = () => {
       author: "Chang et al. (2005) / Standar BMKG",
       formula: "Komponen angin meridional V925 pada 10°N–15°N, 110°E–115°E (Laut Cina Selatan)",
       icon: ShieldAlert,
-      color: "rose",
       badgeText: "Peringatan Banjir Pantura",
       positiveState: {
-        title: "Saat Terjadi Seruakan Dingin (V ≤ -8.0 m/s / Angin Utara Ekstrem)",
+        title: "KONDISI AKTIF EKSTREM: Saat Terjadi Seruakan Dingin (V ≤ -8.0 m/s / Angin Utara Ekstrem)",
         badge: "🚨 SERUAKAN DINGIN AKTIF",
         badgeColor: "bg-rose-100 text-rose-800 border-rose-500 font-bold",
         points: [
@@ -129,11 +127,11 @@ export const MonsoonScientificGuide: React.FC = () => {
         ],
       },
       negativeState: {
-        title: "Saat Berkebalikan / Kondisi Tenang (V > -5.0 m/s)",
+        title: "KONDISI BERKEBALIKAN / NORMAL: Saat Kondisi Tenang (V > -5.0 m/s)",
         badge: "Kondisi Tenang / Normal",
         badgeColor: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300",
         points: [
-          "Aliran angin dari belahan bumi utara stabil pada kecepatan normal tanpa adanya dorongan massa udara ekstrem.",
+          "Aliran angin dari belahan bumi utara stabil pada kecepatan normal tanpa adanya dorongan massa udara beku.",
           "Risiko cuaca ekstrem berskala luas akibat faktor eksternal Siberia berada pada level rendah.",
         ],
       },
@@ -145,19 +143,18 @@ export const MonsoonScientificGuide: React.FC = () => {
       author: "Webster & Yang (1992)",
       formula: "Geser angin vertikal zonal U850 - U200 pada 0°–20°N, 40°E–110°E (Asia Selatan–Samudra Hindia)",
       icon: Globe,
-      color: "indigo",
       badgeText: "Sirkulasi Makro Asia",
       positiveState: {
-        title: "Saat Positif (Geser Vertikal Zonal Kuat)",
+        title: "KONDISI POSITIF: Saat Geser Vertikal Zonal Kuat (U850 - U200 > 0)",
         badge: "Sirkulasi Asia Skala Luas Kuat",
         badgeColor: "bg-indigo-100 text-indigo-800 border-indigo-300",
         points: [
-          "Pemanasan termal daratan Asia sangat dominan dibandingkan Samudra Hindia tropis.",
-          "Sirkulasi monsun musim panas Asia secara makro berjalan dengan kekuatan penuh.",
+          "Pemanasan termal daratan benua Asia sangat intensif dibandingkan Samudra Hindia tropis.",
+          "Sirkulasi monsun musim panas Asia secara makro berjalan dengan kapasitas penuh mendukung pasokan sirkulasi regional.",
         ],
       },
       negativeState: {
-        title: "Saat Berkebalikan / Negatif (Geser Vertikal Lemah)",
+        title: "KONDISI BERKEBALIKAN / NEGATIF: Saat Geser Vertikal Zonal Lemah",
         badge: "Sirkulasi Makro Melemah",
         badgeColor: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300",
         points: [
@@ -172,10 +169,9 @@ export const MonsoonScientificGuide: React.FC = () => {
       author: "Goswami et al. (1999)",
       formula: "Geser angin meridional V850 - V200 pada 10°N–30°N, 70°E–110°E (Teluk Benggala–India)",
       icon: CloudRain,
-      color: "emerald",
       badgeText: "Teluk Benggala & Sumatra Utara",
       positiveState: {
-        title: "Saat Positif (Sirkulasi Meridional V Kuat)",
+        title: "KONDISI POSITIF: Saat Sirkulasi Meridional V Aktif Kuat",
         badge: "Suplai Uap Air Aktif",
         badgeColor: "bg-emerald-100 text-emerald-800 border-emerald-300",
         points: [
@@ -184,7 +180,7 @@ export const MonsoonScientificGuide: React.FC = () => {
         ],
       },
       negativeState: {
-        title: "Saat Berkebalikan / Negatif (Sirkulasi Meridional Lemah)",
+        title: "KONDISI BERKEBALIKAN / NEGATIF: Saat Sirkulasi Meridional Lemah",
         badge: "Suplai Uap Air Menurun",
         badgeColor: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300",
         points: [
@@ -199,52 +195,78 @@ export const MonsoonScientificGuide: React.FC = () => {
       author: "Zhang et al. (2003) / Wang et al. (2008)",
       formula: "Geser angin musiman di Laut Cina Timur pada 20°N–40°N, 110°E–130°E",
       icon: Waves,
-      color: "purple",
       badgeText: "Asia Timur & Sabuk Meiyu",
       positiveState: {
-        title: "Saat Positif (Monsun Musim Panas Asia Timur Kuat)",
+        title: "KONDISI POSITIF: Saat Monsun Musim Panas Asia Timur Kuat",
         badge: "Sabuk Hujan Meiyu Aktif",
         badgeColor: "bg-purple-100 text-purple-800 border-purple-300",
         points: [
-          "Aliran angin selatan membawa kelembapan dari Pasifik menuju Tiongkok timur dan Jepang.",
-          "Sabuk konvergensi stasioner (Meiyu di Tiongkok, Baiu di Jepang) aktif menghasilkan hujan lebat.",
+          "Aliran angin selatan membawa kelembapan dari Pasifik menuju daratan Tiongkok timur dan Jepang.",
+          "Sabuk konvergensi stasioner (Meiyu di Tiongkok, Baiu di Jepang) aktif menghasilkan hujan lebat musiman.",
         ],
       },
       negativeState: {
-        title: "Saat Berkebalikan / Negatif (Monsun Melemah)",
+        title: "KONDISI BERKEBALIKAN / NEGATIF: Saat Monsun Melemah",
         badge: "Sirkulasi Subtropis Tenang",
         badgeColor: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300",
         points: [
-          "Sabuk hujan subtropis tertahan di lintang selatan atau melemah.",
+          "Sabuk hujan subtropis tertahan di lintang selatan atau menghilang.",
         ],
       },
     },
     {
-      id: "bsiso",
+      id: "bsiso1",
       number: "8",
-      name: "BSISO (Boreal Summer Intraseasonal Oscillation)",
+      name: "BSISO1 (Boreal Summer Intraseasonal Oscillation 1 - 30–60 Hari)",
       author: "Lee et al. (2013) / APCC",
-      formula: "Proyeksi EOF multivariat anomali OLR dan U850 (Fase 1–8, Siklus 30–60 hari)",
-      icon: Sparkles,
-      color: "indigo",
-      badgeText: "Osilasi Intraseasonal Musim Panas",
+      formula: "Komponen EOF1-2 anomali OLR dan U850 (Siklus 30–60 hari, perambatan utara)",
+      icon: Layers,
+      badgeText: "Osilasi Intraseasonal 30–60 Hari",
       positiveState: {
-        title: "Saat Aktif Kuat (Amplitudo ≥ 1.0)",
-        badge: "Propagasi Konveksi Utara Aktif",
-        badgeColor: "bg-indigo-100 text-indigo-800 border-indigo-300",
+        title: "KONDISI POSITIF / AKTIF: Saat Amplitudo BSISO1 ≥ 1.0 (Propagasi Monsun ke Utara Aktif)",
+        badge: "BSISO1 Aktif Kuat",
+        badgeColor: "bg-blue-100 text-blue-800 border-blue-300",
         points: [
-          "Awan konvektif merambat ke arah utara (northward propagation) dari Samudra Hindia melintasi Laut Cina Selatan dan Filipina.",
-          "Fase 1–3: Curah hujan meningkat di barat Sumatra dan Kalimantan.",
-          "Fase 4–5: Puncak monsun dan hujan lebat di Laut Cina Selatan, Filipina, dan Kalimantan Utara.",
+          "Sabuk awan konvektif monsun merambat teratur ke arah utara (northward propagation) dari Samudra Hindia melintasi Selat Malaka, Laut Cina Selatan, dan Filipina.",
+          "Fase 1–3: Peningkatan curah hujan signifikan di barat Sumatra, Riau, dan Kalimantan Barat.",
+          "Fase 4–5: Puncak curah hujan monsun di Laut Cina Selatan, Kalimantan Utara, dan Sulawesi Utara.",
         ],
       },
       negativeState: {
-        title: "Saat Berkebalikan / Inaktif (Amplitudo < 1.0)",
-        badge: "BSISO Inaktif / Lemah",
+        title: "KONDISI BERKEBALIKAN / INAKTIF: Saat Amplitudo BSISO1 < 1.0",
+        badge: "BSISO1 Inaktif / Netral",
         badgeColor: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300",
         points: [
-          "Osilasi intraseasonal berada di dalam lingkaran batas netral.",
-          "Variabilitas cuaca harian lebih banyak dikendalikan oleh dinamika lokal, angin darat-laut, dan gelombang diurnal pegunungan.",
+          "Osilasi intraseasonal 30–60 hari berada di dalam lingkaran batas netral (tidak ada gelombang propagasi yang terorganisir).",
+          "Variabilitas cuaca harian lebih banyak dikendalikan oleh dinamika lokal dan angin darat-laut.",
+        ],
+      },
+    },
+    {
+      id: "bsiso2",
+      number: "9",
+      name: "BSISO2 (Boreal Summer Intraseasonal Oscillation 2 - 10–23 Hari)",
+      author: "Lee et al. (2013) / APCC",
+      formula: "Komponen EOF3-4 anomali OLR dan U850 (Siklus kuasi dua-mingguan 10–23 hari)",
+      icon: Sparkles,
+      badgeText: "Osilasi Kuasi 2-Mingguan / Onset",
+      positiveState: {
+        title: "KONDISI POSITIF / AKTIF: Saat Amplitudo BSISO2 ≥ 1.0 (Pemicu Onset & Fluktuasi Sub-Musiman)",
+        badge: "BSISO2 Aktif Kuat",
+        badgeColor: "bg-indigo-100 text-indigo-800 border-indigo-300",
+        points: [
+          "Gelombang atmosfer berosilasi cepat dalam rentang 10–23 hari melintasi Laut Arab, Teluk Benggala, dan Laut Cina Selatan.",
+          "Berperan sebagai 'pemicu detonator' (trigger) yang mempercepat tibanya awal musim hujan (Onset) di kawasan monsun Asia Tenggara.",
+          "Memicu episode hujan lebat berdurasi pendek (short-duration heavy rainfall surges) di kepulauan Indonesia bagian utara.",
+        ],
+      },
+      negativeState: {
+        title: "KONDISI BERKEBALIKAN / INAKTIF: Saat Amplitudo BSISO2 < 1.0",
+        badge: "BSISO2 Inaktif / Netral",
+        badgeColor: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300",
+        points: [
+          "Gelombang osilasi kuasi dua-mingguan dalam kondisi tenang.",
+          "Tidak ada dorongan trigger sub-musiman jangka pendek.",
         ],
       },
     },
@@ -256,14 +278,14 @@ export const MonsoonScientificGuide: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-teal-500" /> Panduan &amp; Penjelasan Ilmiah 7 Indeks Monsun + BSISO
+              <BookOpen className="h-5 w-5 text-teal-500" /> Panduan &amp; Penjelasan Ilmiah 7 Indeks Monsun + 2 BSISO
             </CardTitle>
             <CardDescription className="text-xs text-slate-500">
-              Uraian terstruktur per poin untuk setiap indeks monsun dengan penjelasan eksplisit kondisi normal/positif vs kondisi berkebalikan/negatif
+              Format terstruktur per indeks dengan tata letak atas-bawah (Atas: Kondisi Normal/Positif vs Bawah: Kondisi Berkebalikan/Negatif)
             </CardDescription>
           </div>
           <Badge variant="outline" className="text-xs font-bold text-teal-600 dark:text-teal-400 border-teal-300 dark:border-teal-800 self-start sm:self-auto">
-            <ArrowRightLeft className="h-3 w-3 mr-1" /> Analisis Dual-Polaritas
+            <ArrowRightLeft className="h-3 w-3 mr-1" /> Analisis Dual-Polaritas Atas-Bawah
           </Badge>
         </div>
       </CardHeader>
@@ -276,8 +298,8 @@ export const MonsoonScientificGuide: React.FC = () => {
               key={item.id}
               className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 space-y-4 hover:border-teal-300 dark:hover:border-teal-800 transition duration-200"
             >
-              {/* Index Title & Meta Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              {/* Header Title Bar per Indeks */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b dark:border-slate-800">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 font-black text-sm">
                     <Icon className="h-5 w-5" />
@@ -287,7 +309,7 @@ export const MonsoonScientificGuide: React.FC = () => {
                       <span>{item.number}.</span> {item.name}
                     </h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Rujukan: <strong>{item.author}</strong> | Wilayah: {item.formula}
+                      Rujukan Ilmiah: <strong>{item.author}</strong> | Wilayah: {item.formula}
                     </p>
                   </div>
                 </div>
@@ -296,44 +318,46 @@ export const MonsoonScientificGuide: React.FC = () => {
                 </Badge>
               </div>
 
-              {/* Side-by-Side Dual-Polarity Cards (Positive vs Negative/Opposite) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                {/* 1. Positive State Card */}
-                <div className="p-4 rounded-xl border border-teal-200 dark:border-teal-900/60 bg-teal-50/40 dark:bg-teal-950/20 space-y-2.5">
-                  <div className="flex items-center justify-between gap-2">
+              {/* SUSUNAN ATAS - BAWAH */}
+              <div className="space-y-3">
+                {/* 1. BAGIAN ATAS: KONDISI POSITIF / AKTIF */}
+                <div className="p-4 rounded-xl border border-teal-200 dark:border-teal-900/60 bg-teal-50/40 dark:bg-teal-950/20 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                     <span className="text-xs font-black text-teal-900 dark:text-teal-200 flex items-center gap-1.5">
+                      <span className="p-1 bg-teal-600 text-white rounded-md text-[10px] font-black leading-none">ATAS</span>
                       <CheckCircle2 className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
                       {item.positiveState.title}
                     </span>
-                    <Badge variant="outline" className={`text-[9px] font-bold shrink-0 ${item.positiveState.badgeColor}`}>
+                    <Badge variant="outline" className={`text-[10px] font-bold self-start sm:self-auto shrink-0 ${item.positiveState.badgeColor}`}>
                       {item.positiveState.badge}
                     </Badge>
                   </div>
-                  <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
+                  <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300 pl-1">
                     {item.positiveState.points.map((pt, pIdx) => (
-                      <li key={pIdx} className="flex items-start gap-1.5 leading-relaxed">
-                        <span className="text-teal-500 font-bold shrink-0 mt-0.5">•</span>
+                      <li key={pIdx} className="flex items-start gap-2 leading-relaxed">
+                        <span className="text-teal-600 font-bold shrink-0 mt-0.5">•</span>
                         <span>{pt}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                {/* 2. Negative / Opposite State Card */}
-                <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 space-y-2.5">
-                  <div className="flex items-center justify-between gap-2">
+                {/* 2. BAGIAN BAWAH: KONDISI BERKEBALIKAN / NEGATIF */}
+                <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                     <span className="text-xs font-black text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                      <span className="p-1 bg-amber-600 text-white rounded-md text-[10px] font-black leading-none">BAWAH</span>
                       <ArrowRightLeft className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
                       {item.negativeState.title}
                     </span>
-                    <Badge variant="outline" className={`text-[9px] font-bold shrink-0 ${item.negativeState.badgeColor}`}>
+                    <Badge variant="outline" className={`text-[10px] font-bold self-start sm:self-auto shrink-0 ${item.negativeState.badgeColor}`}>
                       {item.negativeState.badge}
                     </Badge>
                   </div>
-                  <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
+                  <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300 pl-1">
                     {item.negativeState.points.map((pt, pIdx) => (
-                      <li key={pIdx} className="flex items-start gap-1.5 leading-relaxed">
-                        <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
+                      <li key={pIdx} className="flex items-start gap-2 leading-relaxed">
+                        <span className="text-amber-600 font-bold shrink-0 mt-0.5">•</span>
                         <span>{pt}</span>
                       </li>
                     ))}

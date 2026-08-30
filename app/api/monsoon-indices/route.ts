@@ -12,6 +12,8 @@ export interface MonsoonDailyPoint {
   wyi: number; // m/s (zonal shear Webster-Yang)
   sasmi: number; // m/s (meridional shear South Asian)
   easmi: number; // m/s (East Asian Summer Monsoon)
+  bsiso1: number; // normalized index (30-60 days)
+  bsiso2: number; // normalized index (10-23 days)
 }
 
 export async function GET(req: NextRequest) {
@@ -116,6 +118,10 @@ export async function GET(req: NextRequest) {
       const dirEasmi = (dailyEasmi.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
       const vEasmi = Number((-spdEasmi * Math.cos(dirEasmi)).toFixed(2));
 
+      // 8. BSISO1 (30-60 days mode) & 9. BSISO2 (10-23 days mode)
+      const b1 = Number((scsmi * 0.45 - uAus * 0.35).toFixed(2));
+      const b2 = Number((wnpmi * 0.30 - vCsi * 0.25).toFixed(2));
+
       timePoints.push({
         date,
         ausmi: uAus,
@@ -125,6 +131,8 @@ export async function GET(req: NextRequest) {
         wyi: uWyi,
         sasmi: vSasmi,
         easmi: vEasmi,
+        bsiso1: b1,
+        bsiso2: b2,
       });
     }
 
@@ -134,8 +142,8 @@ export async function GET(req: NextRequest) {
     const current = timePoints[currentIdx] || timePoints[timePoints.length - 1];
 
     // Compute BSISO status (Boreal Summer Intraseasonal Oscillation)
-    const bsiso1 = Number((current.scsmi * 0.45 - current.ausmi * 0.35).toFixed(2));
-    const bsiso2 = Number((current.wnpmi * 0.30 - current.csi * 0.25).toFixed(2));
+    const bsiso1 = current.bsiso1;
+    const bsiso2 = current.bsiso2;
     const bsisoAmp = Number(Math.sqrt(bsiso1 * bsiso1 + bsiso2 * bsiso2).toFixed(2));
 
     let bsisoPhase = 1;
@@ -206,6 +214,18 @@ export async function GET(req: NextRequest) {
           unit: "m/s",
           status: current.easmi > 2 ? "Monsun Asia Timur Aktif" : "Kondisi Tenang",
           description: "Indeks Zhang et al. (2003) mengukur sirkulasi monsun musim panas Asia Timur dan sabuk hujan Meiyu/Baiu.",
+        },
+        bsiso1: {
+          value: bsiso1,
+          unit: "indeks",
+          status: Math.abs(bsiso1) >= 1.0 ? "BSISO1 Aktif Kuat" : "BSISO1 Netral / Lemah",
+          description: "Modus osilasi intraseasonal musim panas siklus 30–60 hari. Mengendalikan propagasi awan konvektif monsun ke arah utara dari Samudra Hindia melintasi Indonesia barat.",
+        },
+        bsiso2: {
+          value: bsiso2,
+          unit: "indeks",
+          status: Math.abs(bsiso2) >= 1.0 ? "BSISO2 Aktif Kuat" : "BSISO2 Netral / Lemah",
+          description: "Modus osilasi kuasi dua-mingguan siklus 10–23 hari. Bertindak sebagai pemicu (trigger) awal masuknya musim hujan (Onset) dan fluktuasi sub-musiman di Laut Cina Selatan.",
         },
         bsiso: {
           phase: bsisoPhase,
