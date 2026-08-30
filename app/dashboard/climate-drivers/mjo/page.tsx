@@ -64,26 +64,25 @@ export default function MjoSubpage() {
 
   const data = mjoApiData && !mjoApiData.error ? mjoApiData : getMjoData();
 
-  if (isLoading && !mjoApiData) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-        <p className="text-sm text-slate-500 font-medium animate-pulse">
-          Memuat analisis MJO (Madden-Julian Oscillation)...
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
+      {/* Persistent Header Banner (Static on tab switch) */}
       <SubpageHeader
         title="MJO (Madden-Julian Oscillation)"
         subtitle="Analisis perambatan gelombang konveksi intraseasonal tropis di Samudra Hindia dan Indonesia"
         onRefresh={handleRefresh}
         isRefreshing={isLoading}
       />
+
+      {isLoading && !mjoApiData ? (
+        <div className="flex flex-col items-center justify-center min-h-[350px] gap-3 bg-white dark:bg-slate-900 rounded-2xl p-8 border dark:border-slate-800">
+          <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+          <p className="text-sm text-slate-500 font-medium animate-pulse">
+            Memuat data analisis MJO (Madden-Julian Oscillation)...
+          </p>
+        </div>
+      ) : (
+        <>
 
       {/* Official Data Source Banner */}
       <div className="flex items-center justify-between p-3 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded-xl text-xs text-emerald-900 dark:text-emerald-200">
@@ -192,6 +191,8 @@ export default function MjoSubpage() {
         phaseMeanings={data.interpretation.phaseMeanings}
         currentAssessment={data.interpretation.currentAssessment}
       />
+        </>
+      )}
     </div>
   );
 }

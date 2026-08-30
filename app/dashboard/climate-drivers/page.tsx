@@ -48,26 +48,25 @@ export default function ClimateDriversPage() {
   const mjoData = getMjoData();
   const iodData = getIodData();
 
-  if (isLoading && !summaryData) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-        <p className="text-sm text-slate-500 font-medium animate-pulse">
-          Memuat ringkasan dinamika iklim skala besar...
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 pb-12">
-      {/* Subpage Header */}
+      {/* Persistent Header Banner (Static on tab switch) */}
       <SubpageHeader
         title="Dinamika Iklim Skala Besar (Climate Drivers)"
         subtitle="Analisis fenomena osilasi atmosfer & samudra global yang memengaruhi pola cuaca dan curah hujan Indonesia"
         onRefresh={handleRefresh}
         isRefreshing={isLoading}
       />
+
+      {isLoading && !summaryData ? (
+        <div className="flex flex-col items-center justify-center min-h-[350px] gap-3 bg-white dark:bg-slate-900 rounded-2xl p-8 border dark:border-slate-800">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+          <p className="text-sm text-slate-500 font-medium animate-pulse">
+            Memuat ringkasan dinamika iklim skala besar...
+          </p>
+        </div>
+      ) : (
+        <>
 
       {/* Hero Educational Intro Card */}
       <Card className="bg-gradient-to-r from-indigo-900 via-slate-900 to-blue-950 text-white border-none shadow-lg overflow-hidden relative">
@@ -144,6 +143,8 @@ export default function ClimateDriversPage() {
           </Tabs>
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   );
 }

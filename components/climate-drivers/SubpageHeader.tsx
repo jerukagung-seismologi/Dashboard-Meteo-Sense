@@ -54,9 +54,6 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-3">
             <Globe className="h-7 w-7 text-indigo-400" /> {title}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
-            {subtitle}
-          </p>
         </div>
 
         {/* Action Buttons */}

@@ -63,26 +63,25 @@ export default function EnsoSubpage() {
 
   const data = ensoApiData && !ensoApiData.error ? ensoApiData : getEnsoData();
 
-  if (isLoading && !ensoApiData) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <p className="text-sm text-slate-500 font-medium animate-pulse">
-          Memuat analisis ENSO (El Niño / La Niña)...
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
+      {/* Persistent Header Banner (Static on tab switch) */}
       <SubpageHeader
         title="ENSO (El Niño - Southern Oscillation)"
         subtitle="Analisis dinamika suhu permukaan laut dan tekanan udara Pasifik Ekuator"
         onRefresh={handleRefresh}
         isRefreshing={isLoading}
       />
+
+      {isLoading && !ensoApiData ? (
+        <div className="flex flex-col items-center justify-center min-h-[350px] gap-3 bg-white dark:bg-slate-900 rounded-2xl p-8 border dark:border-slate-800">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+          <p className="text-sm text-slate-500 font-medium animate-pulse">
+            Memuat data analisis ENSO (El Niño / La Niña)...
+          </p>
+        </div>
+      ) : (
+        <>
 
       {/* Official Data Source Banner */}
       <div className="flex items-center justify-between p-3 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-xl text-xs text-blue-900 dark:text-blue-200">
@@ -218,6 +217,8 @@ export default function EnsoSubpage() {
         phaseComparison={data.interpretation.phaseDifference}
         currentAssessment={data.interpretation.currentAssessment}
       />
+        </>
+      )}
     </div>
   );
 }

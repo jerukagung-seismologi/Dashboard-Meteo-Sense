@@ -63,26 +63,25 @@ export default function IodSubpage() {
 
   const data = iodApiData && !iodApiData.error ? iodApiData : getIodData();
 
-  if (isLoading && !iodApiData) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
-        <p className="text-sm text-slate-500 font-medium animate-pulse">
-          Memuat analisis IOD (Indian Ocean Dipole)...
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
+      {/* Persistent Header Banner (Static on tab switch) */}
       <SubpageHeader
         title="IOD (Indian Ocean Dipole)"
         subtitle="Analisis fenomena dipol suhu permukaan laut Samudra Hindia bagian Barat dan Timur"
         onRefresh={handleRefresh}
         isRefreshing={isLoading}
       />
+
+      {isLoading && !iodApiData ? (
+        <div className="flex flex-col items-center justify-center min-h-[350px] gap-3 bg-white dark:bg-slate-900 rounded-2xl p-8 border dark:border-slate-800">
+          <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+          <p className="text-sm text-slate-500 font-medium animate-pulse">
+            Memuat data analisis IOD (Indian Ocean Dipole)...
+          </p>
+        </div>
+      ) : (
+        <>
 
       {/* Official Data Source Banner */}
       <div className="flex items-center justify-between p-3 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl text-xs text-amber-900 dark:text-amber-200">
@@ -185,6 +184,8 @@ export default function IodSubpage() {
         negativeIod={data.interpretation.negativeIod}
         currentAssessment={data.interpretation.currentAssessment}
       />
+        </>
+      )}
     </div>
   );
 }
