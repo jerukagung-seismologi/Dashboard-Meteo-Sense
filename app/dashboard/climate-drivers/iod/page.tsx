@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SubpageHeader } from "@/components/climate-drivers/SubpageHeader";
 import { StatusBadge } from "@/components/climate-drivers/StatusBadge";
 import { IODCharts } from "@/components/climate-drivers/IODCharts";
+import { IODForecastSection } from "@/components/climate-drivers/IODForecastSection";
 import { EducationalPanel } from "@/components/climate-drivers/EducationalPanel";
 import { HistoryTable } from "@/components/climate-drivers/HistoryTable";
 import { getIodData } from "@/lib/climate-drivers/climateData";
@@ -162,6 +163,9 @@ export default function IodSubpage() {
 
       {/* Interactive Visualizations */}
       <IODCharts data={data} isDarkMode={isDarkMode} />
+
+      {/* Multi-Model Seasonal Forecast & Probabilities for IOD */}
+      <IODForecastSection isDarkMode={isDarkMode} />
 
       {/* 5-Year Server Historical Data Table with Load More */}
       <HistoryTable

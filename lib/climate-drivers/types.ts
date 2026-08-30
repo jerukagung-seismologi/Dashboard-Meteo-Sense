@@ -157,3 +157,55 @@ export interface EnsoForecastData {
   };
 }
 
+export interface IodForecastMonth {
+  month: string;
+  label: string;
+  season: string;
+  wtioMeanSst: number;
+  setioMeanSst: number;
+  wtioAnomaly: number;
+  setioAnomaly: number;
+  meanDmi: number;
+  medianDmi: number;
+  minDmi: number;
+  maxDmi: number;
+  p10Dmi: number;
+  p25Dmi: number;
+  p75Dmi: number;
+  p90Dmi: number;
+  dmiMembers: number[];
+  probability: {
+    positiveIod: number;
+    neutral: number;
+    negativeIod: number;
+  };
+}
+
+export interface IodForecastData {
+  baseDate: string;
+  source: string;
+  model: string;
+  wtioCoords: { lat: number; lon: number };
+  setioCoords: { lat: number; lon: number };
+  months: IodForecastMonth[];
+  summary: {
+    dominantPhase: string;
+    peakMonth: string;
+    peakDmi: number;
+    outlookDiscussion: string;
+  };
+  officialConsensus: {
+    source: string;
+    issuedDate: string;
+    status: string;
+    discussion: string;
+    seasons: Array<{
+      season: string;
+      positiveProb: number;
+      neutralProb: number;
+      negativeProb: number;
+    }>;
+  };
+}
+
+
