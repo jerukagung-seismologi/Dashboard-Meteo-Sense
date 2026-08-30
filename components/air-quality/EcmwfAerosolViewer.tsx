@@ -122,12 +122,31 @@ export const EcmwfAerosolViewer: React.FC = () => {
   const handleDownload = async () => {
     if (!data?.imageUrl) return;
     try {
+      // Format clean region name
+      const regionSlug =
+        projection === "classical_south_east_asia_and_indonesia"
+          ? "Indonesia-SEAsia"
+          : projection === "classical_asia"
+          ? "Asia"
+          : "Global";
+
+      // Parse baseTime and validTime (e.g. "2026-08-29T00:00:00Z" -> "20260829_00UTC")
+      const cleanBase = baseTime.replace(/[-:]/g, "");
+      const baseDateTag = `${cleanBase.substring(0, 8)}_${cleanBase.substring(9, 11)}UTC`;
+
+      const cleanValid = validTime.replace(/[-:]/g, "");
+      const validDateTag = `${cleanValid.substring(0, 8)}_${cleanValid.substring(9, 11)}UTC`;
+
+      const offsetTag = `+${String(currentStep.offset).padStart(3, "0")}h`;
+
+      const filename = `ECMWF_CAMS_Aerosol_${regionSlug}_Init_${baseDateTag}_Valid_${validDateTag}_${offsetTag}.png`;
+
       const response = await fetch(data.imageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `ECMWF-Aerosol-Forecast-${projection}-${currentStep.offset}h.png`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
