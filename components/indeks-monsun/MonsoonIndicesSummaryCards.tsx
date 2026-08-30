@@ -21,6 +21,19 @@ interface MonsoonIndicesSummaryCardsProps {
   };
 }
 
+const getStatusBadgeClass = (status: string) => {
+  if (status === "Positif") {
+    return "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 font-bold";
+  }
+  if (status === "Negatif") {
+    return "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 font-bold";
+  }
+  if (status === "Waspada") {
+    return "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800 font-bold animate-pulse";
+  }
+  return "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700";
+};
+
 export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProps> = ({ current }) => {
   return (
     <div className="space-y-6">
@@ -49,16 +62,12 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                 <div className="p-2 bg-cyan-50 dark:bg-cyan-950/60 rounded-xl text-cyan-600 dark:text-cyan-400">
                   <Wind className="h-5 w-5" />
                 </div>
-                <Badge variant="outline" className={`text-[10px] font-bold ${
-                  current.ausmi.value > 2 ? "bg-cyan-100 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border-cyan-300" :
-                  current.ausmi.value < -2 ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300" :
-                  "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                }`}>
+                <Badge variant="outline" className={`text-xs font-bold ${getStatusBadgeClass(current.ausmi.status)}`}>
                   {current.ausmi.status}
                 </Badge>
               </div>
               <CardTitle className="text-base font-bold mt-2 text-slate-900 dark:text-slate-100">
-                1. AUSMI <span className="text-[11px] font-normal text-slate-500">(Australian)</span>
+                1. AUSMI <span className="text-[11px] font-normal text-slate-500">(Australian Monsoon Index)</span>
               </CardTitle>
               <CardDescription className="text-[11px] text-slate-500">
                 Angin Zonal 5°-15°S, 110°-130°E
@@ -74,7 +83,7 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                   </span>
                 </div>
                 <span className="text-[10px] font-semibold text-cyan-600 dark:text-cyan-400 text-right">
-                  {current.ausmi.value > 0 ? "Puncak Hujan Jawa" : "Kemarau Jawa"}
+                  {current.ausmi.value > 0 ? "Baratan (Hujan)" : current.ausmi.value < 0 ? "Timuran (Kemarau)" : "Netral"}
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
@@ -91,12 +100,12 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                 <div className="p-2 bg-amber-50 dark:bg-amber-950/60 rounded-xl text-amber-600 dark:text-amber-400">
                   <Compass className="h-5 w-5" />
                 </div>
-                <Badge variant="outline" className="text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300">
+                <Badge variant="outline" className={`text-xs font-bold ${getStatusBadgeClass(current.wnpmi.status)}`}>
                   {current.wnpmi.status}
                 </Badge>
               </div>
               <CardTitle className="text-base font-bold mt-2 text-slate-900 dark:text-slate-100">
-                2. WNPMI <span className="text-[11px] font-normal text-slate-500">(W. North Pacific)</span>
+                2. WNPMI <span className="text-[11px] font-normal text-slate-500">(Western North Pacific Monsoon Index)</span>
               </CardTitle>
               <CardDescription className="text-[11px] text-slate-500">
                 Palung Monsun 5°-15°N vs 20°-30°N
@@ -112,7 +121,7 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                   </span>
                 </div>
                 <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 text-right">
-                  {current.wnpmi.value > 0 ? "Tarikan Utara Kuat" : "Palung Tenang"}
+                  {current.wnpmi.value > 0 ? "Palung Kuat" : "Palung Tenang"}
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
@@ -129,12 +138,12 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                 <div className="p-2 bg-teal-50 dark:bg-teal-950/60 rounded-xl text-teal-600 dark:text-teal-400">
                   <Activity className="h-5 w-5" />
                 </div>
-                <Badge variant="outline" className="text-[10px] font-bold bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-300">
+                <Badge variant="outline" className={`text-xs font-bold ${getStatusBadgeClass(current.scsmi.status)}`}>
                   {current.scsmi.status}
                 </Badge>
               </div>
               <CardTitle className="text-base font-bold mt-2 text-slate-900 dark:text-slate-100">
-                3. SCSMI <span className="text-[11px] font-normal text-slate-500">(South China Sea)</span>
+                3. SCSMI <span className="text-[11px] font-normal text-slate-500">(South China Sea Monsoon Index)</span>
               </CardTitle>
               <CardDescription className="text-[11px] text-slate-500">
                 Angin Zonal 5°-15°N, 110°-120°E
@@ -150,7 +159,7 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                   </span>
                 </div>
                 <span className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 text-right">
-                  {current.scsmi.value > 2 ? "Onset Aktif" : "Belum Onset"}
+                  {current.scsmi.value > 2 ? "Onset Aktif" : "Pra-Onset"}
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
@@ -169,9 +178,7 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                 <div className={`p-2 rounded-xl ${current.csi.isSurgeActive ? "bg-rose-500 text-white animate-pulse" : "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400"}`}>
                   <ShieldAlert className="h-5 w-5" />
                 </div>
-                <Badge variant="outline" className={`text-[10px] font-bold ${
-                  current.csi.isSurgeActive ? "bg-rose-100 text-rose-800 border-rose-500" : "bg-slate-100 text-slate-600 border-slate-300"
-                }`}>
+                <Badge variant="outline" className={`text-xs font-bold ${getStatusBadgeClass(current.csi.status)}`}>
                   {current.csi.status}
                 </Badge>
               </div>
@@ -192,7 +199,7 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                   </span>
                 </div>
                 <span className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 text-right">
-                  {current.csi.isSurgeActive ? "⚠️ Banjir Jawa" : "Tenang"}
+                  {current.csi.isSurgeActive ? "⚠️ Banjir Jawa" : "Normal"}
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
@@ -228,12 +235,12 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                 <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 rounded-xl text-indigo-600 dark:text-indigo-400">
                   <Globe className="h-5 w-5" />
                 </div>
-                <Badge variant="outline" className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border-indigo-200">
+                <Badge variant="outline" className={`text-xs font-bold ${getStatusBadgeClass(current.wyi.status)}`}>
                   {current.wyi.status}
                 </Badge>
               </div>
               <CardTitle className="text-base font-bold mt-2 text-slate-900 dark:text-slate-100">
-                5. WYI <span className="text-[11px] font-normal text-slate-500">(Webster-Yang)</span>
+                5. WYI <span className="text-[11px] font-normal text-slate-500">(Webster-Yang Monsoon Index)</span>
               </CardTitle>
               <CardDescription className="text-[11px] text-slate-500">
                 Asia Selatan–Samudra Hindia
@@ -266,12 +273,12 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                 <div className="p-2 bg-emerald-50 dark:bg-emerald-950/60 rounded-xl text-emerald-600 dark:text-emerald-400">
                   <CloudRain className="h-5 w-5" />
                 </div>
-                <Badge variant="outline" className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border-emerald-200">
+                <Badge variant="outline" className={`text-xs font-bold ${getStatusBadgeClass(current.sasmi.status)}`}>
                   {current.sasmi.status}
                 </Badge>
               </div>
               <CardTitle className="text-base font-bold mt-2 text-slate-900 dark:text-slate-100">
-                6. SASMI <span className="text-[11px] font-normal text-slate-500">(South Asian)</span>
+                6. SASMI <span className="text-[11px] font-normal text-slate-500">(South Asian Summer Monsoon Index)</span>
               </CardTitle>
               <CardDescription className="text-[11px] text-slate-500">
                 Teluk Benggala–India
@@ -304,12 +311,12 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                 <div className="p-2 bg-purple-50 dark:bg-purple-950/60 rounded-xl text-purple-600 dark:text-purple-400">
                   <Waves className="h-5 w-5" />
                 </div>
-                <Badge variant="outline" className="text-[10px] font-bold bg-purple-50 text-purple-700 border-purple-200">
+                <Badge variant="outline" className={`text-xs font-bold ${getStatusBadgeClass(current.easmi.status)}`}>
                   {current.easmi.status}
                 </Badge>
               </div>
               <CardTitle className="text-base font-bold mt-2 text-slate-900 dark:text-slate-100">
-                7. EASMI <span className="text-[11px] font-normal text-slate-500">(East Asian)</span>
+                7. EASMI <span className="text-[11px] font-normal text-slate-500">(East Asian Summer Monsoon Index)</span>
               </CardTitle>
               <CardDescription className="text-[11px] text-slate-500">
                 Laut Cina Timur &amp; Meiyu
@@ -342,15 +349,15 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                 <div className="p-2 bg-blue-50 dark:bg-blue-950/60 rounded-xl text-blue-600 dark:text-blue-400">
                   <Layers className="h-5 w-5" />
                 </div>
-                <Badge variant="outline" className="text-[10px] font-bold bg-blue-50 text-blue-700 border-blue-200">
+                <Badge variant="outline" className={`text-xs font-bold ${getStatusBadgeClass(current.bsiso1.status)}`}>
                   {current.bsiso1.status}
                 </Badge>
               </div>
               <CardTitle className="text-base font-bold mt-2 text-slate-900 dark:text-slate-100">
-                8. BSISO1 <span className="text-[11px] font-normal text-slate-500">(30–60 Hari)</span>
+                8. BSISO1 <span className="text-[11px] font-normal text-slate-500">(Boreal Summer Intraseasonal 1)</span>
               </CardTitle>
               <CardDescription className="text-[11px] text-slate-500">
-                Propagasi Monsun ke Utara
+                Propagasi Monsun 30–60 Hari
               </CardDescription>
             </CardHeader>
 
@@ -363,7 +370,7 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                   </span>
                 </div>
                 <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 text-right">
-                  Siklus Bulanan
+                  30–60 Hari
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
@@ -380,15 +387,15 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                 <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 rounded-xl text-indigo-600 dark:text-indigo-400">
                   <Sparkles className="h-5 w-5" />
                 </div>
-                <Badge variant="outline" className="text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-300">
+                <Badge variant="outline" className={`text-xs font-bold ${getStatusBadgeClass(current.bsiso2.status)}`}>
                   {current.bsiso2.status}
                 </Badge>
               </div>
               <CardTitle className="text-base font-bold mt-2 text-slate-900 dark:text-slate-100">
-                9. BSISO2 <span className="text-[11px] font-normal text-slate-500">(10–23 Hari)</span>
+                9. BSISO2 <span className="text-[11px] font-normal text-slate-500">(Boreal Summer Intraseasonal 2)</span>
               </CardTitle>
               <CardDescription className="text-[11px] text-slate-500">
-                Kuasi Dua-Mingguan / Onset
+                Kuasi Dua-Mingguan 10–23 Hari
               </CardDescription>
             </CardHeader>
 
@@ -401,7 +408,7 @@ export const MonsoonIndicesSummaryCards: React.FC<MonsoonIndicesSummaryCardsProp
                   </span>
                 </div>
                 <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 text-right">
-                  Pemicu Onset
+                  10–23 Hari
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
