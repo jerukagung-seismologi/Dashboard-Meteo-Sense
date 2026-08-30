@@ -107,3 +107,53 @@ export interface ClimateDriversSummary {
   };
   lastUpdated: string;
 }
+
+export interface EnsoForecastMonth {
+  month: string;
+  label: string;
+  season: string;
+  meanSst: number;
+  meanAnomaly: number;
+  medianAnomaly: number;
+  minAnomaly: number;
+  maxAnomaly: number;
+  p10Anomaly: number;
+  p25Anomaly: number;
+  p75Anomaly: number;
+  p90Anomaly: number;
+  members: number[];
+  probability: {
+    elNino: number;
+    neutral: number;
+    laNina: number;
+  };
+}
+
+export interface EnsoForecastData {
+  region: "nino34" | "nino3" | "nino4" | "nino12";
+  regionName: string;
+  coordinates: { lat: number; lon: number };
+  baseDate: string;
+  source: string;
+  model: string;
+  months: EnsoForecastMonth[];
+  summary: {
+    dominantPhase: string;
+    peakMonth: string;
+    peakAnomaly: number;
+    outlookDiscussion: string;
+  };
+  officialConsensus: {
+    source: string;
+    issuedDate: string;
+    status: string;
+    discussion: string;
+    seasons: Array<{
+      season: string;
+      elNinoProb: number;
+      neutralProb: number;
+      laNinaProb: number;
+    }>;
+  };
+}
+

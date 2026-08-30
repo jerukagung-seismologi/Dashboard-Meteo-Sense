@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { SubpageHeader } from "@/components/climate-drivers/SubpageHeader";
 import { StatusBadge } from "@/components/climate-drivers/StatusBadge";
 import { ENSOCharts } from "@/components/climate-drivers/ENSOCharts";
+import { ENSOForecastSection } from "@/components/climate-drivers/ENSOForecastSection";
 import { EducationalPanel } from "@/components/climate-drivers/EducationalPanel";
 import { HistoryTable } from "@/components/climate-drivers/HistoryTable";
 import { getEnsoData } from "@/lib/climate-drivers/climateData";
@@ -196,6 +197,9 @@ export default function EnsoSubpage() {
 
       {/* Interactive Visualizations */}
       <ENSOCharts data={data} isDarkMode={isDarkMode} />
+
+      {/* Multi-Model Seasonal Forecast & Probabilities */}
+      <ENSOForecastSection isDarkMode={isDarkMode} />
 
       {/* 5-Year Server Historical Data Table with Load More */}
       <HistoryTable
