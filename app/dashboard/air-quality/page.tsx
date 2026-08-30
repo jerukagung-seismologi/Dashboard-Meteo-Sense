@@ -4,6 +4,7 @@
 import React from "react";
 import { Wind, ShieldAlert, Sparkles, MapPin } from "lucide-react";
 import { EcmwfAerosolViewer } from "@/components/air-quality/EcmwfAerosolViewer";
+import { ClimateGlossary } from "@/components/climate-drivers/ClimateGlossary";
 
 export default function AirQualityPage() {
   return (
@@ -33,6 +34,9 @@ export default function AirQualityPage() {
 
       {/* Main Interactive ECMWF CAMS Viewer Component */}
       <EcmwfAerosolViewer />
+
+      {/* Comprehensive Air Quality & Climate Glossary */}
+      <ClimateGlossary initialCategory="cams" />
     </div>
   );
 }

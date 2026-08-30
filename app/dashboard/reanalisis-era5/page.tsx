@@ -31,6 +31,7 @@ import { MonthlyAnalysis } from "@/components/reanalysis/MonthlyAnalysis";
 import { AnnualAnalysis } from "@/components/reanalysis/AnnualAnalysis";
 import { WindRose } from "@/components/reanalysis/WindRose";
 import { ForecastDiagnostics } from "@/components/reanalysis/ForecastDiagnostics";
+import { ClimateGlossary } from "@/components/climate-drivers/ClimateGlossary";
 
 interface FavoriteLocation {
   name: string;
@@ -729,6 +730,9 @@ export default function ReanalysisPage() {
           )}
         </div>
       </div>
+
+      {/* ERA5 & Climate Science Glossary */}
+      <ClimateGlossary initialCategory="era5" />
     </div>
   );
 }

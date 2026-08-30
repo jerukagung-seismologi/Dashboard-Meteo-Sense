@@ -5,6 +5,7 @@ import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Info, CheckCircle2, HelpCircle, MapPin, Sparkles } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ClimateGlossary } from "./ClimateGlossary";
 
 interface EducationalPanelProps {
   title: string;
@@ -148,6 +149,19 @@ export const EducationalPanel: React.FC<EducationalPanelProps> = ({
           </Accordion>
         </CardContent>
       </Card>
+
+      {/* 3. Comprehensive Climate & Meteorology Glossary */}
+      <ClimateGlossary
+        initialCategory={
+          title.toLowerCase().includes("enso")
+            ? "enso"
+            : title.toLowerCase().includes("mjo")
+            ? "mjo"
+            : title.toLowerCase().includes("iod")
+            ? "iod"
+            : "all"
+        }
+      />
     </div>
   );
 };
