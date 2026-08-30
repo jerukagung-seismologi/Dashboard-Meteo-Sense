@@ -81,6 +81,54 @@ export const GLOSSARY_DATA: GlossaryTerm[] = [
     impactOrUse: "Ambang batas resmi: DMI >= +0.4°C menandakan IOD Positif; DMI <= -0.4°C menandakan IOD Negatif."
   },
   {
+    term: "Australian Monsoon Index",
+    abbreviation: "AUSMI",
+    category: "monsoon",
+    categoryLabel: "Monsun & Sirkulasi Angin",
+    definition: "Indeks resmi Wang & Fan (2001) berbasis angin zonal U850 pada kotak 5°S–15°S, 110°E–130°E (selatan Jawa, Bali, Nusa Tenggara, Laut Timor).",
+    impactOrUse: "Nilai positif mengonfirmasi aktifnya Monsun Barat dan puncak musim hujan di Jawa, Bali, NTB, dan NTT pada periode Desember–Februari (DJF)."
+  },
+  {
+    term: "Western North Pacific Monsoon Index",
+    abbreviation: "WNPMI",
+    category: "monsoon",
+    categoryLabel: "Monsun & Sirkulasi Angin",
+    definition: "Indeks geser angin zonal Wang & Fan (2001) antara lintang tropis (5°N–15°N) dan subtropis (20°N–30°N) di Pasifik Barat Laut dan Filipina.",
+    impactOrUse: "Saat WNPMI aktif (Juli–September), palung monsun utara menarik massa udara dari selatan ekuator, memperkuat angin timuran kering (musim kemarau) di Indonesia selatan."
+  },
+  {
+    term: "South China Sea Monsoon Index",
+    abbreviation: "SCSMI",
+    category: "monsoon",
+    categoryLabel: "Monsun & Sirkulasi Angin",
+    definition: "Indeks kecepatan angin zonal U850 di Laut Cina Selatan (5°N–15°N, 110°E–120°E).",
+    impactOrUse: "Peralihan angin dari timuran ke baratan di SCSMI menandai Onset (awal masuknya) Musim Panas Monsun Asia Tenggara pada pertengahan Mei."
+  },
+  {
+    term: "Webster-Yang Monsoon Index",
+    abbreviation: "WYI",
+    category: "monsoon",
+    categoryLabel: "Monsun & Sirkulasi Angin",
+    definition: "Indeks geser angin vertikal (U850 - U200) berskala luas di Asia Selatan dan Samudra Hindia tropis (Webster & Yang, 1992).",
+    impactOrUse: "Mengukur intensitas pemanasan termal benua Asia versus samudra dan sirkulasi musim panas Asia secara keseluruhan."
+  },
+  {
+    term: "South Asian Summer Monsoon Index",
+    abbreviation: "SASMI / IMI",
+    category: "monsoon",
+    categoryLabel: "Monsun & Sirkulasi Angin",
+    definition: "Indeks geser angin meridional utara-selatan (V850 - V200) di atas anak benua India dan Teluk Benggala (Goswami et al., 1999).",
+    impactOrUse: "Mengukur sirkulasi Hadley lokal dan pasokan konvektif yang memengaruhi curah hujan di Sumatra bagian utara dan Selat Malaka."
+  },
+  {
+    term: "Seruakan Dingin (Northerly Cold Surge)",
+    abbreviation: "CSI",
+    category: "monsoon",
+    categoryLabel: "Monsun & Sirkulasi Angin",
+    definition: "Lonjakan aliran massa udara dingin bertekanan tinggi dari Siberia yang melintasi Laut Cina Selatan menembus ekuator menuju Laut Jawa (V925 <= -8 m/s).",
+    impactOrUse: "Pemicu utama terjadinya cuaca ekstrem, konvergensi masif, dan banjir besar di Pantura Jawa dan Jabodetabek pada periode Januari–Februari."
+  },
+  {
     term: "Monsun Asia (Monsun Barat)",
     category: "monsoon",
     categoryLabel: "Monsun Indonesia",
