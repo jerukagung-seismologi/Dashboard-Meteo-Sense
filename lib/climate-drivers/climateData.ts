@@ -91,21 +91,35 @@ export function getEnsoData(): EnsoData {
   ];
 
   const historicalNino12 = [
+    { date: "2025-08", value: -0.42 },
+    { date: "2025-09", value: -0.38 },
+    { date: "2025-10", value: -0.15 },
+    { date: "2025-11", value: 0.12 },
+    { date: "2025-12", value: 0.45 },
+    { date: "2026-01", value: 0.78 },
     { date: "2026-02", value: 0.92 },
     { date: "2026-03", value: 1.29 },
     { date: "2026-04", value: 1.52 },
     { date: "2026-05", value: 1.81 },
     { date: "2026-06", value: 2.83 },
     { date: "2026-07", value: 3.56 },
+    { date: "2026-08", value: 3.82 },
   ];
 
   const historicalNino3 = [
+    { date: "2025-08", value: -0.25 },
+    { date: "2025-09", value: -0.18 },
+    { date: "2025-10", value: -0.05 },
+    { date: "2025-11", value: -0.15 },
+    { date: "2025-12", value: -0.10 },
+    { date: "2026-01", value: 0.05 },
     { date: "2026-02", value: -0.01 },
     { date: "2026-03", value: 0.24 },
     { date: "2026-04", value: 0.55 },
     { date: "2026-05", value: 1.14 },
     { date: "2026-06", value: 1.75 },
     { date: "2026-07", value: 2.33 },
+    { date: "2026-08", value: 2.65 },
   ];
 
   const historicalNino34 = [
@@ -121,15 +135,23 @@ export function getEnsoData(): EnsoData {
     { date: "2026-05", value: 0.94 },
     { date: "2026-06", value: 1.55 },
     { date: "2026-07", value: 2.03 },
+    { date: "2026-08", value: 2.45 },
   ];
 
   const historicalNino4 = [
+    { date: "2025-08", value: 0.35 },
+    { date: "2025-09", value: 0.28 },
+    { date: "2025-10", value: 0.15 },
+    { date: "2025-11", value: 0.08 },
+    { date: "2025-12", value: 0.12 },
+    { date: "2026-01", value: 0.18 },
     { date: "2026-02", value: 0.23 },
     { date: "2026-03", value: 0.34 },
     { date: "2026-04", value: 0.82 },
     { date: "2026-05", value: 0.98 },
     { date: "2026-06", value: 1.23 },
     { date: "2026-07", value: 1.06 },
+    { date: "2026-08", value: 1.15 },
   ];
 
   const historicalSoi = [

@@ -42,11 +42,27 @@ export default function ClimateDriversPage() {
     return () => observer.disconnect();
   }, []);
 
+  const { data: ensoApiData } = useSWR(
+    `/api/climate-drivers/enso${refreshKey ? `?_t=${refreshKey}&refresh=true` : ""}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  );
+  const { data: mjoApiData } = useSWR(
+    `/api/climate-drivers/mjo${refreshKey ? `?_t=${refreshKey}&refresh=true` : ""}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  );
+  const { data: iodApiData } = useSWR(
+    `/api/climate-drivers/iod${refreshKey ? `?_t=${refreshKey}&refresh=true` : ""}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  );
+
   // Use API summary or fallback
   const summary = summaryData && !summaryData.error ? summaryData : getClimateDriversSummary();
-  const ensoData = getEnsoData();
-  const mjoData = getMjoData();
-  const iodData = getIodData();
+  const ensoData = ensoApiData && !ensoApiData.error ? ensoApiData : getEnsoData();
+  const mjoData = mjoApiData && !mjoApiData.error ? mjoApiData : getMjoData();
+  const iodData = iodApiData && !iodApiData.error ? iodApiData : getIodData();
 
   return (
     <div className="space-y-6 pb-12">
