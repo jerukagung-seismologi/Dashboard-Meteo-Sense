@@ -4,7 +4,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, ArrowLeft, Layers, Waves, CloudRain, Compass, RefreshCw } from "lucide-react";
+import { Globe, ArrowLeft, Layers, Waves, CloudRain, Compass, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
