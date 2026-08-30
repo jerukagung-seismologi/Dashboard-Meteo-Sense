@@ -7,7 +7,7 @@ import { Loader2, Wind, Sparkles, BookOpen, Layers } from "lucide-react";
 import { MonsoonIndicesHeader } from "@/components/indeks-monsun/MonsoonIndicesHeader";
 import { MonsoonIndicesSummaryCards } from "@/components/indeks-monsun/MonsoonIndicesSummaryCards";
 import { MonsoonIndicesCharts } from "@/components/indeks-monsun/MonsoonIndicesCharts";
-import { ClimateGlossary } from "@/components/climate-drivers/ClimateGlossary";
+import { MonsoonScientificGuide } from "@/components/indeks-monsun/MonsoonScientificGuide";
 import { Card, CardContent } from "@/components/ui/card";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -95,15 +95,9 @@ export default function IndeksMonsunPage() {
             />
           )}
 
-          {/* Integrated Climate Glossary */}
-          <div className="space-y-3 pt-4">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-teal-500" />
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                Glosarium &amp; Rujukan Sains Monsun
-              </h3>
-            </div>
-            <ClimateGlossary defaultCategory="monsoon" />
+          {/* Contextual Scientific Guide & Dual-Polarity Point-by-Point Reference */}
+          <div className="pt-2">
+            <MonsoonScientificGuide />
           </div>
         </>
       )}
