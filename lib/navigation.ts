@@ -14,6 +14,7 @@ import {
   Settings2,
   Globe,
   GitCompare,
+  Wind,
   LucideIcon
 } from "lucide-react"
 
@@ -34,6 +35,7 @@ export const dashboardNavigation: NavigationItem[] = [
   { name: "Analisis Meteorologi", href: "/dashboard/meteorologi", icon: ChartNoAxesCombined, roles: ['Admin'] },
   { name: "Analisis Klimatologi", href: "/dashboard/klimatologi", icon: TrendingUp, roles: ['Admin', 'User'] },
   { name: "Dinamika Iklim", href: "/dashboard/climate-drivers", icon: Globe, roles: ['Admin', 'User'] },
+  { name: "Air Quality", href: "/dashboard/air-quality", icon: Wind, badge: "CAMS", roles: ['Admin', 'User'] },
   { name: "Reanalisis ERA5", href: "/dashboard/reanalisis-era5", icon: Compass, roles: ['Admin', 'User'] },
   { name: "Validasi Bias ERA5", href: "/dashboard/validasi-bias", icon: GitCompare, roles: ['Admin', 'User'] },
   { name: "Basis Data", href: "/dashboard/data", icon: Database, roles: ['Admin'] },
