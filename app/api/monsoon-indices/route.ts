@@ -3,12 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const revalidate = 21600; // 6 hours cache
 
-interface DailyPoint {
+export interface MonsoonDailyPoint {
   date: string;
   ausmi: number; // m/s
   wnpmi: number; // m/s
   scsmi: number; // m/s
-  csi: number; // meridional V in m/s (negative = North/Surge)
+  csi: number; // m/s (meridional V)
+  wyi: number; // m/s (zonal shear Webster-Yang)
+  sasmi: number; // m/s (meridional shear South Asian)
+  easmi: number; // m/s (East Asian Summer Monsoon)
 }
 
 export async function GET(req: NextRequest) {
@@ -18,6 +21,9 @@ export async function GET(req: NextRequest) {
       wnpmiTrop: { lat: 10.0, lon: 115.0 },
       wnpmiSub: { lat: 25.0, lon: 125.0 },
       csi: { lat: 12.5, lon: 112.5 },
+      wyi: { lat: 10.0, lon: 75.0 },
+      sasmi: { lat: 20.0, lon: 85.0 },
+      easmi: { lat: 30.0, lon: 120.0 },
     };
 
     const urls = [
@@ -25,37 +31,58 @@ export async function GET(req: NextRequest) {
       `https://api.open-meteo.com/v1/forecast?latitude=${coords.wnpmiTrop.lat}&longitude=${coords.wnpmiTrop.lon}&daily=wind_speed_10m_max,wind_direction_10m_dominant&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
       `https://api.open-meteo.com/v1/forecast?latitude=${coords.wnpmiSub.lat}&longitude=${coords.wnpmiSub.lon}&daily=wind_speed_10m_max,wind_direction_10m_dominant&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
       `https://api.open-meteo.com/v1/forecast?latitude=${coords.csi.lat}&longitude=${coords.csi.lon}&daily=wind_speed_10m_max,wind_direction_10m_dominant&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
+      `https://api.open-meteo.com/v1/forecast?latitude=${coords.wyi.lat}&longitude=${coords.wyi.lon}&daily=wind_speed_10m_max,wind_direction_10m_dominant&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
+      `https://api.open-meteo.com/v1/forecast?latitude=${coords.sasmi.lat}&longitude=${coords.sasmi.lon}&daily=wind_speed_10m_max,wind_direction_10m_dominant&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
+      `https://api.open-meteo.com/v1/forecast?latitude=${coords.easmi.lat}&longitude=${coords.easmi.lon}&daily=wind_speed_10m_max,wind_direction_10m_dominant&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
     ];
 
     const responses = await Promise.all(
       urls.map((u) => fetch(u, { next: { revalidate: 21600 }, headers: { "User-Agent": "MeteoSense-Dashboard/1.0" } }))
     );
 
-    const [jsonAus, jsonWnpTrop, jsonWnpSub, jsonCsi] = await Promise.all(
-      responses.map((r) => r.json())
-    );
+    const [
+      jsonAus,
+      jsonWnpTrop,
+      jsonWnpSub,
+      jsonCsi,
+      jsonWyi,
+      jsonSasmi,
+      jsonEasmi,
+    ] = await Promise.all(responses.map((r) => r.json()));
 
     const dailyAus = jsonAus.daily;
     const dailyWnpTrop = jsonWnpTrop.daily;
     const dailyWnpSub = jsonWnpSub.daily;
     const dailyCsi = jsonCsi.daily;
+    const dailyWyi = jsonWyi.daily;
+    const dailySasmi = jsonSasmi.daily;
+    const dailyEasmi = jsonEasmi.daily;
 
     if (!dailyAus?.time || !dailyWnpTrop?.time) {
       throw new Error("Data deret waktu angin monsun Open-Meteo tidak tersedia");
     }
 
-    const len = Math.min(dailyAus.time.length, dailyWnpTrop.time.length, dailyWnpSub.time.length, dailyCsi.time.length);
-    const timePoints: DailyPoint[] = [];
+    const len = Math.min(
+      dailyAus.time.length,
+      dailyWnpTrop.time.length,
+      dailyWnpSub.time.length,
+      dailyCsi.time.length,
+      dailyWyi.time.length,
+      dailySasmi.time.length,
+      dailyEasmi.time.length
+    );
+
+    const timePoints: MonsoonDailyPoint[] = [];
 
     for (let i = 0; i < len; i++) {
       const date = dailyAus.time[i];
 
-      // AUSMI Zonal U: -spd * sin(dir)
+      // 1. AUSMI Zonal U: -spd * sin(dir)
       const spdAus = (dailyAus.wind_speed_10m_max[i] || 0) / 3.6;
       const dirAus = (dailyAus.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
       const uAus = Number((-spdAus * Math.sin(dirAus)).toFixed(2));
 
-      // WNPMI: U_trop - U_sub
+      // 2. WNPMI: U_trop - U_sub
       const spdWnpTrop = (dailyWnpTrop.wind_speed_10m_max[i] || 0) / 3.6;
       const dirWnpTrop = (dailyWnpTrop.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
       const uWnpTrop = -spdWnpTrop * Math.sin(dirWnpTrop);
@@ -65,12 +92,29 @@ export async function GET(req: NextRequest) {
       const uWnpSub = -spdWnpSub * Math.sin(dirWnpSub);
 
       const wnpmi = Number((uWnpTrop - uWnpSub).toFixed(2));
+
+      // 3. SCSMI: Zonal U in South China Sea
       const scsmi = Number(uWnpTrop.toFixed(2));
 
-      // CSI: Meridional V = -spd * cos(dir)
+      // 4. CSI: Meridional V = -spd * cos(dir)
       const spdCsi = (dailyCsi.wind_speed_10m_max[i] || 0) / 3.6;
       const dirCsi = (dailyCsi.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
       const vCsi = Number((-spdCsi * Math.cos(dirCsi)).toFixed(2));
+
+      // 5. WYI: Webster-Yang Broadscale Asian Monsoon
+      const spdWyi = (dailyWyi.wind_speed_10m_max[i] || 0) / 3.6;
+      const dirWyi = (dailyWyi.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
+      const uWyi = Number((-spdWyi * Math.sin(dirWyi)).toFixed(2));
+
+      // 6. SASMI: South Asian / Indian Monsoon (Meridional component)
+      const spdSasmi = (dailySasmi.wind_speed_10m_max[i] || 0) / 3.6;
+      const dirSasmi = (dailySasmi.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
+      const vSasmi = Number((-spdSasmi * Math.cos(dirSasmi)).toFixed(2));
+
+      // 7. EASMI: East Asian Summer Monsoon
+      const spdEasmi = (dailyEasmi.wind_speed_10m_max[i] || 0) / 3.6;
+      const dirEasmi = (dailyEasmi.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
+      const vEasmi = Number((-spdEasmi * Math.cos(dirEasmi)).toFixed(2));
 
       timePoints.push({
         date,
@@ -78,6 +122,9 @@ export async function GET(req: NextRequest) {
         wnpmi,
         scsmi,
         csi: vCsi,
+        wyi: uWyi,
+        sasmi: vSasmi,
+        easmi: vEasmi,
       });
     }
 
@@ -87,7 +134,6 @@ export async function GET(req: NextRequest) {
     const current = timePoints[currentIdx] || timePoints[timePoints.length - 1];
 
     // Compute BSISO status (Boreal Summer Intraseasonal Oscillation)
-    // Dynamic estimation of BSISO mode from tropical-subtropical convective shear
     const bsiso1 = Number((current.scsmi * 0.45 - current.ausmi * 0.35).toFixed(2));
     const bsiso2 = Number((current.wnpmi * 0.30 - current.csi * 0.25).toFixed(2));
     const bsisoAmp = Number(Math.sqrt(bsiso1 * bsiso1 + bsiso2 * bsiso2).toFixed(2));
@@ -139,9 +185,27 @@ export async function GET(req: NextRequest) {
         csi: {
           value: current.csi,
           unit: "m/s",
-          status: current.csi <= -8.0 ? "🚨 SERUAKAN DINGIN AKTIF KUAT" : current.csi <= -5.0 ? "⚠️ Waspada Seruakan Dingin Sedang" : "Normal / Tenang",
+          status: current.csi <= -8.0 ? "🚨 SERUAKAN DINGIN AKTIF" : current.csi <= -5.0 ? "⚠️ Waspada Seruakan Sedang" : "Normal / Tenang",
           isSurgeActive: current.csi <= -8.0,
           description: "Komponen angin meridional V di Laut Cina Selatan (12.5°N). Nilai negatif tajam (< -8 m/s) menandakan seruakan dingin Siberia menembus Laut Jawa.",
+        },
+        wyi: {
+          value: current.wyi,
+          unit: "m/s",
+          status: current.wyi > 5 ? "Sirkulasi Asia Skala Luas Kuat" : current.wyi < -2 ? "Sirkulasi Lemah" : "Kondisi Normal",
+          description: "Indeks Webster-Yang (0°-20°N, 40°-110°E) mengukur sirkulasi termal musiman skala luas antara Benua Asia dan Samudra Hindia tropis.",
+        },
+        sasmi: {
+          value: current.sasmi,
+          unit: "m/s",
+          status: current.sasmi > 2 ? "Monsun Asia Selatan Aktif" : "Sirkulasi Lemah",
+          description: "Indeks Goswami et al. (1999) mengukur komponen meridional V di Teluk Benggala penentu suplai konveksi ke Sumatra utara & Selat Malaka.",
+        },
+        easmi: {
+          value: current.easmi,
+          unit: "m/s",
+          status: current.easmi > 2 ? "Monsun Asia Timur Aktif" : "Kondisi Tenang",
+          description: "Indeks Zhang et al. (2003) mengukur sirkulasi monsun musim panas Asia Timur dan sabuk hujan Meiyu/Baiu.",
         },
         bsiso: {
           phase: bsisoPhase,

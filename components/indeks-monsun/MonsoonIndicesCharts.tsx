@@ -6,7 +6,7 @@ import ReactECharts from "echarts-for-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Wind, Compass, Activity, ShieldAlert, Sparkles } from "lucide-react";
+import { Wind, Compass, Activity, ShieldAlert, Sparkles, Globe } from "lucide-react";
 
 interface MonsoonIndicesChartsProps {
   timeSeries: Array<{
@@ -15,6 +15,9 @@ interface MonsoonIndicesChartsProps {
     wnpmi: number;
     scsmi: number;
     csi: number;
+    wyi?: number;
+    sasmi?: number;
+    easmi?: number;
   }>;
   currentBsiso: {
     phase: number;
@@ -36,6 +39,9 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
   const wnpmiVals = timeSeries.map((t) => t.wnpmi);
   const scsmiVals = timeSeries.map((t) => t.scsmi);
   const csiVals = timeSeries.map((t) => t.csi);
+  const wyiVals = timeSeries.map((t) => t.wyi ?? 0);
+  const sasmiVals = timeSeries.map((t) => t.sasmi ?? 0);
+  const easmiVals = timeSeries.map((t) => t.easmi ?? 0);
 
   // 1. Dual Dipole Chart Option (AUSMI vs WNPMI)
   const dipoleChartOption = useMemo(() => {
@@ -188,7 +194,79 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
     };
   }, [dates, scsmiVals, csiVals, isDarkMode]);
 
-  // 3. BSISO 2D Phase Space Diagram (Wheeler-Hendon 2D Phase)
+  // 3. Broadscale Asian & Regional Monsoons (WYI, SASMI, EASMI)
+  const broadscaleChartOption = useMemo(() => {
+    return {
+      backgroundColor: "transparent",
+      tooltip: {
+        trigger: "axis",
+        backgroundColor: isDarkMode ? "#0f172a" : "#ffffff",
+        borderColor: isDarkMode ? "#334155" : "#e2e8f0",
+        textStyle: { color: isDarkMode ? "#f8fafc" : "#0f172a", fontSize: 12 },
+      },
+      legend: {
+        top: 0,
+        textStyle: { color: isDarkMode ? "#cbd5e1" : "#475569", fontSize: 11 },
+        data: ["WYI (Webster-Yang)", "SASMI (India / Teluk Benggala)", "EASMI (Asia Timur / Meiyu)"],
+      },
+      grid: {
+        top: 40,
+        left: 50,
+        right: 20,
+        bottom: 35,
+        containLabel: false,
+      },
+      xAxis: {
+        type: "category",
+        data: dates,
+        axisLine: { lineStyle: { color: isDarkMode ? "#334155" : "#cbd5e1" } },
+        axisLabel: {
+          color: isDarkMode ? "#94a3b8" : "#64748b",
+          fontSize: 10,
+          formatter: (val: string) => val.substring(5),
+        },
+      },
+      yAxis: {
+        type: "value",
+        name: "Kecepatan (m/s)",
+        nameTextStyle: { color: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 11 },
+        splitLine: { lineStyle: { color: isDarkMode ? "#1e293b" : "#f1f5f9" } },
+        axisLabel: {
+          color: isDarkMode ? "#94a3b8" : "#64748b",
+          fontSize: 10,
+          formatter: (v: number) => (v > 0 ? `+${v}` : `${v}`),
+        },
+      },
+      series: [
+        {
+          name: "WYI (Webster-Yang)",
+          type: "line",
+          data: wyiVals,
+          smooth: true,
+          itemStyle: { color: "#6366f1" },
+          lineStyle: { color: "#6366f1", width: 2 },
+        },
+        {
+          name: "SASMI (India / Teluk Benggala)",
+          type: "line",
+          data: sasmiVals,
+          smooth: true,
+          itemStyle: { color: "#10b981" },
+          lineStyle: { color: "#10b981", width: 2 },
+        },
+        {
+          name: "EASMI (Asia Timur / Meiyu)",
+          type: "line",
+          data: easmiVals,
+          smooth: true,
+          itemStyle: { color: "#a855f7" },
+          lineStyle: { color: "#a855f7", width: 2 },
+        },
+      ],
+    };
+  }, [dates, wyiVals, sasmiVals, easmiVals, isDarkMode]);
+
+  // 4. BSISO 2D Phase Space Diagram (Wheeler-Hendon 2D Phase)
   const bsisoPhaseOption = useMemo(() => {
     const bs1 = currentBsiso.bsiso1;
     const bs2 = currentBsiso.bsiso2;
@@ -281,10 +359,10 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <CardTitle className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Activity className="h-5 w-5 text-teal-500" /> Analisis Visualisasi Indeks Monsun &amp; Osilasi Musim Panas
+              <Activity className="h-5 w-5 text-teal-500" /> Analisis Visualisasi 7 Indeks Monsun &amp; Osilasi BSISO
             </CardTitle>
             <CardDescription className="text-xs text-slate-500">
-              Eksplorasi perbandingan deret waktu sirkulasi dua sayap monsun, deteksi seruakan dingin, dan diagram fase 2D BSISO
+              Eksplorasi perbandingan deret waktu sirkulasi dua sayap monsun, deteksi seruakan dingin, monsun skala luas Asia, dan diagram fase 2D BSISO
             </CardDescription>
           </div>
         </div>
@@ -292,12 +370,15 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
 
       <CardContent className="pt-4">
         <Tabs defaultValue="dipole" className="w-full">
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
             <TabsTrigger value="dipole" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
               <Wind className="h-4 w-4 text-cyan-500" /> Dual Dipole: AUSMI vs WNPMI
             </TabsTrigger>
             <TabsTrigger value="surge" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
-              <ShieldAlert className="h-4 w-4 text-rose-500" /> SCSMI &amp; Cold Surge Tracker
+              <ShieldAlert className="h-4 w-4 text-rose-500" /> SCSMI &amp; Cold Surge
+            </TabsTrigger>
+            <TabsTrigger value="broadscale" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
+              <Globe className="h-4 w-4 text-indigo-500" /> Sirkulasi Asia (WYI/SASMI/EASMI)
             </TabsTrigger>
             <TabsTrigger value="bsiso" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
               <Sparkles className="h-4 w-4 text-indigo-500" /> Diagram Fase 2D BSISO
@@ -332,7 +413,20 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
             </div>
           </TabsContent>
 
-          {/* Tab 3: BSISO 2D Phase Diagram */}
+          {/* Tab 3: Broadscale Asian Circulation */}
+          <TabsContent value="broadscale" className="mt-0 space-y-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                Sirkulasi Skala Luas Asia: Webster-Yang (WYI), South Asian (SASMI), &amp; East Asian (EASMI):
+              </span>
+              <span className="text-[11px] text-slate-400">Rentang: 30 Hari Terakhir &amp; 16 Hari Prakiraan</span>
+            </div>
+            <div className="h-[340px] w-full">
+              <ReactECharts option={broadscaleChartOption} style={{ height: "100%", width: "100%" }} />
+            </div>
+          </TabsContent>
+
+          {/* Tab 4: BSISO 2D Phase Diagram */}
           <TabsContent value="bsiso" className="mt-0 space-y-4">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-700 dark:text-slate-300">
