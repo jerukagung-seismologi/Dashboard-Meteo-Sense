@@ -4,7 +4,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, ArrowLeft, Layers, Waves, CloudRain, Compass, RefreshCw, Sparkles } from "lucide-react";
+import { Globe, ArrowLeft, Layers, Waves, CloudRain, Compass, Wind, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -25,10 +25,11 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
   const pathname = usePathname();
 
   const tabs = [
-    { id: "overview", label: "Ringkasan Dynamic", href: "/dashboard/climate-drivers", icon: Layers },
+    { id: "overview", label: "Ringkasan Dinamika", href: "/dashboard/climate-drivers", icon: Layers },
     { id: "enso", label: "ENSO (El Niño / La Niña)", href: "/dashboard/climate-drivers/enso", icon: Waves },
     { id: "mjo", label: "MJO (Madden-Julian Oscillation)", href: "/dashboard/climate-drivers/mjo", icon: CloudRain },
     { id: "iod", label: "IOD (Indian Ocean Dipole)", href: "/dashboard/climate-drivers/iod", icon: Compass },
+    { id: "monsoon", label: "Monsun Indonesia (IMI)", href: "/dashboard/climate-drivers/monsoon", icon: Wind },
   ];
 
   return (

@@ -10,7 +10,7 @@ import { BookOpen, Search, Sparkles, HelpCircle, Layers, Wind, Compass, Waves } 
 export interface GlossaryTerm {
   term: string;
   abbreviation?: string;
-  category: "enso" | "mjo" | "iod" | "cams" | "era5";
+  category: "enso" | "mjo" | "iod" | "monsoon" | "cams" | "era5";
   categoryLabel: string;
   definition: string;
   impactOrUse: string;
@@ -49,42 +49,65 @@ export const GLOSSARY_DATA: GlossaryTerm[] = [
     impactOrUse: "Niño 3.4 adalah indikator paling representatif untuk dampak ENSO global dan Indonesia."
   },
   {
-    term: "Real-time Multivariate MJO Index",
-    abbreviation: "RMM",
+    term: "Madden-Julian Oscillation",
+    abbreviation: "MJO",
     category: "mjo",
-    categoryLabel: "MJO & Gelombang Tropis",
-    definition: "Indeks statistik berdimensi dua (RMM1 dan RMM2) berbasis kombinasi OLR dan angin zonal troposfer (850 hPa & 200 hPa) untuk mengacak pergerakan MJO.",
-    impactOrUse: "Amplitudo RMM > 1.0 menandakan sinyal MJO aktif. Lokasi MJO dipetakan ke dalam 8 fase geografis."
+    categoryLabel: "MJO & Konveksi Tropis",
+    definition: "Gelombang gangguan atmosfer intraseasonal (siklus 30–60 hari) yang merambat ke arah timur di sepanjang sabuk ekuator global.",
+    impactOrUse: "Fase 3, 4, dan 5 melintasi Benua Maritim Indonesia memicu peningkatan curah hujan lebat, pertumbuhan awan kumulonimbus, dan potensi cuaca ekstrem."
   },
   {
-    term: "Fase 4 & 5 MJO (Maritime Continent)",
+    term: "RMM Index (Real-time Multivariate MJO)",
+    abbreviation: "RMM1 & RMM2",
     category: "mjo",
-    categoryLabel: "MJO & Gelombang Tropis",
-    definition: "Kondisi di mana pusat gugus awan konvektif aktif MJO melintas tepat di atas wilayah Benua Maritim Indonesia (Maritime Continent).",
-    impactOrUse: "Meningkatkan pembentukan awan Cumulonimbus, curah hujan ekstrem, dan risiko banjir/tanah longsor di wilayah Indonesia."
+    categoryLabel: "MJO & Konveksi Tropis",
+    definition: "Dua indeks komponen utama (EOF) yang menggabungkan radiasi gelombang panjang keluar (OLR) satelit serta angin zonal pada level 850 hPa dan 200 hPa.",
+    impactOrUse: "Digunakan dalam Diagram Fase MJO 2-Dimensi Wheeler-Hendon untuk menentukan fase posisi (1–8) dan amplitudo kekuatan MJO (lingkaran threshold >= 1.0)."
   },
   {
-    term: "Outgoing Longwave Radiation",
-    abbreviation: "OLR",
-    category: "mjo",
-    categoryLabel: "MJO & Gelombang Tropis",
-    definition: "Radiasi gelombang panjang infra merah yang dipancarkan puncak awan atau bumi ke angkasa luar.",
-    impactOrUse: "Anomali OLR negatif (rendah) menandakan puncak awan konvektif yang sangat tinggi dan tebal (indikator hujan lebat)."
+    term: "Indian Ocean Dipole",
+    abbreviation: "IOD",
+    category: "iod",
+    categoryLabel: "IOD & Samudra Hindia",
+    definition: "Fenomena osilasi antarmuka laut-atmosfer di Samudra Hindia tropis yang ditandai dengan perbedaan gradien suhu permukaan laut bagian barat (WTIO) dan timur (SETIO).",
+    impactOrUse: "IOD Positif memicu kekeringan dan penurunan curah hujan di Indonesia barat/selatan; IOD Negatif meningkatkan curah hujan dan potensi musim hujan basah."
   },
   {
     term: "Dipole Mode Index",
     abbreviation: "DMI",
     category: "iod",
     categoryLabel: "IOD & Samudra Hindia",
-    definition: "Indeks selisih anomali suhu permukaan laut antara Samudra Hindia Barat Tropis (50°E-70°E) dan Samudra Hindia Tenggara (90°E-110°E, dekat Jawa/Sumatra).",
-    impactOrUse: "DMI > +0.4°C = IOD Positif (Indonesia lebih kering); DMI < -0.4°C = IOD Negatif (Indonesia lebih basah)."
+    definition: "Indeks kuantitatif selisih anomali suhu permukaan laut antara Samudra Hindia Barat (WTIO: 50°E–70°E, 10°S–10°N) dan Samudra Hindia Tenggara (SETIO: 90°E–110°E, 10°S–0°).",
+    impactOrUse: "Ambang batas resmi: DMI >= +0.4°C menandakan IOD Positif; DMI <= -0.4°C menandakan IOD Negatif."
   },
   {
-    term: "IOD Positif vs IOD Negatif",
-    category: "iod",
-    categoryLabel: "IOD & Samudra Hindia",
-    definition: "Fenomena dipol iklim Samudra Hindia. IOD Positif terjadi saat perairan barat hangat & timur dingin. IOD Negatif terjadi saat perairan selatan Jawa/Sumatra jauh lebih hangat.",
-    impactOrUse: "IOD Positif memicu kemarau panjang di Indonesia. IOD Negatif memicu musim hujan basah dan peningkatan konveksi laut Samudra Hindia."
+    term: "Monsun Asia (Monsun Barat)",
+    category: "monsoon",
+    categoryLabel: "Monsun Indonesia",
+    definition: "Sirkulasi angin musiman berkekuatan tinggi yang bertiup dari daratan Benua Asia / Pasifik Barat Laut melintasi Laut Cina Selatan dan Samudra Hindia menuju Benua Australia (Oktober–Maret).",
+    impactOrUse: "Membawa uap air melimpah ke wilayah Indonesia, bertindak sebagai pemicu utama datangnya Musim Hujan di sebagian besar wilayah Nusantara."
+  },
+  {
+    term: "Monsun Australia (Monsun Timur)",
+    category: "monsoon",
+    categoryLabel: "Monsun Indonesia",
+    definition: "Sirkulasi angin yang bertiup dari daratan benua Australia yang kering dan dingin melintasi Indonesia menuju Asia (April–September).",
+    impactOrUse: "Menurunkan kelembapan atmosfer dan menghambat pembentukan awan konvektif, memicu Musim Kemarau di Jawa, Bali, NTB, dan NTT."
+  },
+  {
+    term: "Angin Zonal U (Zonal Wind Component)",
+    abbreviation: "U",
+    category: "monsoon",
+    categoryLabel: "Monsun Indonesia",
+    definition: "Komponen kecepatan angin arah barat-timur (baratan vs timuran). Tanda positif (U > 0) berarti angin bertiup dari Barat (Baratan); tanda negatif (U < 0) berarti angin bertiup dari Timur (Timuran).",
+    impactOrUse: "Indikator standar Indeks Monsun Indonesia (IMI): U > +2 m/s = Monsun Barat Aktif (Hujan); U < -2 m/s = Monsun Timur Aktif (Kemarau)."
+  },
+  {
+    term: "Masa Pancaroba (Transisi Musim)",
+    category: "monsoon",
+    categoryLabel: "Monsun Indonesia",
+    definition: "Periode peralihan antara dua musim monsun (Maret–Mei dan September–November) ketika angin zonal melemah dan arah angin menjadi variabel/berputar.",
+    impactOrUse: "Ditandai dengan pemanasan kuat siang hari diikuti hujan konvektif lokal sangat lebat, angin puting beliung, dan petir di sore/malam hari."
   },
   {
     term: "Aerosol Optical Depth",
@@ -126,7 +149,7 @@ export const GLOSSARY_DATA: GlossaryTerm[] = [
 ];
 
 interface ClimateGlossaryProps {
-  initialCategory?: "all" | "enso" | "mjo" | "iod" | "cams" | "era5";
+  initialCategory?: "all" | "enso" | "mjo" | "iod" | "monsoon" | "cams" | "era5";
 }
 
 export const ClimateGlossary: React.FC<ClimateGlossaryProps> = ({
@@ -138,10 +161,11 @@ export const ClimateGlossary: React.FC<ClimateGlossaryProps> = ({
   const categories = [
     { id: "all", label: "Semua Istilah", icon: Layers },
     { id: "enso", label: "ENSO", icon: Waves },
-    { id: "mjo", label: "MJO", icon: Wind },
+    { id: "mjo", label: "MJO", icon: Sparkles },
     { id: "iod", label: "IOD", icon: Compass },
-    { id: "cams", label: "Air Quality / CAMS", icon: Sparkles },
-    { id: "era5", label: "ERA5", icon: BookOpen },
+    { id: "monsoon", label: "Monsun", icon: Wind },
+    { id: "cams", label: "CAMS Aerosol", icon: Wind },
+    { id: "era5", label: "ERA5 Reanalysis", icon: BookOpen },
   ];
 
   const filteredTerms = useMemo(() => {

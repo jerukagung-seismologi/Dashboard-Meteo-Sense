@@ -159,6 +159,8 @@ export const EducationalPanel: React.FC<EducationalPanelProps> = ({
             ? "mjo"
             : title.toLowerCase().includes("iod")
             ? "iod"
+            : title.toLowerCase().includes("monsun") || title.toLowerCase().includes("monsoon")
+            ? "monsoon"
             : "all"
         }
       />

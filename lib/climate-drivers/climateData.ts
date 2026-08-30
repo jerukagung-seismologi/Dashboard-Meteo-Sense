@@ -370,3 +370,51 @@ export function getClimateDriversSummary(): ClimateDriversSummary {
     lastUpdated: "3 Agustus 2026",
   };
 }
+
+/**
+ * Returns representative Monsoon data for fallback.
+ */
+export function getMonsoonData(): import("./types").MonsoonData {
+  return {
+    status: "Monsun Timur (Musim Kemarau)",
+    currentZonalWind: -4.2,
+    currentWindSpeedMs: 5.8,
+    currentWindDirection: 118,
+    directionName: "Tenggara (SE)",
+    seasonType: "Musim Kemarau",
+    lastUpdated: "30 Agustus 2026",
+    dataSource: "Open-Meteo ECMWF Atmosphere Reanalysis",
+    sourceUrl: "https://open-meteo.com/en/docs",
+    summary: "Monsun Timur (Australian Monsoon) saat ini aktif kuat dengan angin zonal U = -4.2 m/s bertiup stabil dari arah Tenggara (118°), mendominasi musim kemarau di Jawa, Bali, dan Nusa Tenggara.",
+    historical: [
+      { date: "2026-08-01", zonalWind: -3.8, meridionalWind: 1.2, windSpeed: 21, windSpeedMs: 5.8, windDirection: 110, status: "Monsun Timur (Musim Kemarau)" },
+      { date: "2026-08-08", zonalWind: -4.5, meridionalWind: 1.5, windSpeed: 23, windSpeedMs: 6.4, windDirection: 115, status: "Monsun Timur (Musim Kemarau)" },
+      { date: "2026-08-15", zonalWind: -4.1, meridionalWind: 1.0, windSpeed: 20, windSpeedMs: 5.6, windDirection: 112, status: "Monsun Timur (Musim Kemarau)" },
+      { date: "2026-08-22", zonalWind: -3.9, meridionalWind: 0.9, windSpeed: 19, windSpeedMs: 5.3, windDirection: 114, status: "Monsun Timur (Musim Kemarau)" },
+      { date: "2026-08-29", zonalWind: -4.2, meridionalWind: 1.3, windSpeed: 21, windSpeedMs: 5.8, windDirection: 118, status: "Monsun Timur (Musim Kemarau)" },
+    ],
+    forecast16Days: [
+      { date: "2026-08-30", zonalWind: -4.2, meridionalWind: 1.3, windSpeed: 21, windSpeedMs: 5.8, windDirection: 118, status: "Monsun Timur (Musim Kemarau)" },
+      { date: "2026-09-05", zonalWind: -3.6, meridionalWind: 1.0, windSpeed: 18, windSpeedMs: 5.0, windDirection: 112, status: "Monsun Timur (Musim Kemarau)" },
+      { date: "2026-09-10", zonalWind: -2.8, meridionalWind: 0.8, windSpeed: 15, windSpeedMs: 4.2, windDirection: 110, status: "Monsun Timur (Musim Kemarau)" },
+      { date: "2026-09-15", zonalWind: -1.5, meridionalWind: 0.4, windSpeed: 12, windSpeedMs: 3.3, windDirection: 105, status: "Pancaroba / Transisi" },
+    ],
+    seasonalForecast: [
+      { month: "2026-09", label: "Sep 2026", meanZonalWind: -3.5, status: "Monsun Timur (Musim Kemarau)", dominantDirection: "Tenggara (SE)" },
+      { month: "2026-10", label: "Okt 2026", meanZonalWind: -0.8, status: "Pancaroba / Transisi", dominantDirection: "Variabel" },
+      { month: "2026-11", label: "Nov 2026", meanZonalWind: 2.3, status: "Monsun Barat (Musim Hujan)", dominantDirection: "Barat Laut (NW)" },
+      { month: "2026-12", label: "Des 2026", meanZonalWind: 4.8, status: "Monsun Barat (Musim Hujan)", dominantDirection: "Barat (W)" },
+      { month: "2027-01", label: "Jan 2027", meanZonalWind: 5.5, status: "Monsun Barat (Musim Hujan)", dominantDirection: "Barat (W)" },
+      { month: "2027-02", label: "Feb 2027", meanZonalWind: 4.2, status: "Monsun Barat (Musim Hujan)", dominantDirection: "Barat-Barat Laut (WNW)" },
+    ],
+    interpretation: {
+      whatIsIt: "Monsun adalah sirkulasi angin periodik setengah tahunan yang membalik arah antara Benua Asia dan Australia.",
+      indonesiaImpact: "Mengendalikan siklus musim hujan (Monsun Barat) dan kemarau (Monsun Timur).",
+      westMonsoon: "Monsun Barat (U > +2.0 m/s): Suplai uap air tinggi, pemicu musim hujan.",
+      eastMonsoon: "Monsun Timur (U < -2.0 m/s): Udara kering dari Australia, pemicu musim kemarau.",
+      transitionSeason: "Masa Pancaroba (|U| <= 2.0 m/s): Peralihan arah angin, rawan cuaca konvektif ekstrem lokal.",
+      currentAssessment: "Monsun Timur mendominasi wilayah Indonesia dengan angin tenggara stabil, menandai puncak musim kemarau.",
+    },
+  };
+}
+

@@ -208,4 +208,50 @@ export interface IodForecastData {
   };
 }
 
+export type MonsoonStatusType =
+  | "Monsun Barat (Musim Hujan)"
+  | "Monsun Timur (Musim Kemarau)"
+  | "Pancaroba / Transisi";
+
+export interface MonsoonDataPoint {
+  date: string;
+  zonalWind: number;
+  meridionalWind: number;
+  windSpeed: number;
+  windSpeedMs: number;
+  windDirection: number;
+  status: MonsoonStatusType;
+}
+
+export interface MonsoonData {
+  status: MonsoonStatusType;
+  currentZonalWind: number;
+  currentWindSpeedMs: number;
+  currentWindDirection: number;
+  directionName: string;
+  seasonType: "Musim Kemarau" | "Musim Hujan" | "Pancaroba";
+  lastUpdated: string;
+  dataSource: string;
+  sourceUrl: string;
+  summary: string;
+  historical: MonsoonDataPoint[];
+  forecast16Days: MonsoonDataPoint[];
+  seasonalForecast: Array<{
+    month: string;
+    label: string;
+    meanZonalWind: number;
+    status: MonsoonStatusType;
+    dominantDirection: string;
+  }>;
+  interpretation: {
+    whatIsIt: string;
+    indonesiaImpact: string;
+    westMonsoon: string;
+    eastMonsoon: string;
+    transitionSeason: string;
+    currentAssessment: string;
+  };
+}
+
+
 
