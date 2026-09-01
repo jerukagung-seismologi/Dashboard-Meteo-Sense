@@ -185,7 +185,7 @@ export default function AgrometPage() {
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
   const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
 
-  // Water Balance Option
+  // Water Balance Option (Dynamic scale)
   const waterBalanceOption = useMemo(
     () => ({
       backgroundColor: "transparent",
@@ -193,7 +193,13 @@ export default function AgrometPage() {
       legend: { data: ["Curah Hujan", "Evapotranspirasi (ET0)"], textStyle: { color: textColor } },
       grid: { left: "4%", right: "4%", bottom: "10%", containLabel: true },
       xAxis: { type: "category", data: daily.time?.slice(0, 7), axisLabel: { color: textColor } },
-      yAxis: { type: "value", name: "mm", axisLabel: { color: textColor }, splitLine: { lineStyle: { color: gridColor } } },
+      yAxis: {
+        type: "value",
+        name: "mm",
+        scale: true,
+        axisLabel: { color: textColor },
+        splitLine: { lineStyle: { color: gridColor } },
+      },
       series: [
         { name: "Curah Hujan", type: "bar", data: daily.precipitation_sum?.slice(0, 7), itemStyle: { color: "#3b82f6" } },
         { name: "Evapotranspirasi (ET0)", type: "line", data: daily.et0_fao_evapotranspiration_sum?.slice(0, 7), itemStyle: { color: "#f59e0b" }, smooth: true },
@@ -202,7 +208,7 @@ export default function AgrometPage() {
     [daily, textColor, gridColor]
   );
 
-  // Soil Moisture Option
+  // Soil Moisture Option (Dynamic scale, not starting at 0)
   const soilMoistureOption = useMemo(
     () => ({
       backgroundColor: "transparent",
@@ -210,7 +216,13 @@ export default function AgrometPage() {
       legend: { data: ["Permukaan (0-1cm)", "Zona Akar (9-27cm)"], textStyle: { color: textColor } },
       grid: { left: "4%", right: "4%", bottom: "10%", containLabel: true },
       xAxis: { type: "category", data: hourly.time?.slice(0, 24).map((t: string) => t.substring(11, 16)), axisLabel: { color: textColor } },
-      yAxis: { type: "value", name: "%", axisLabel: { color: textColor }, splitLine: { lineStyle: { color: gridColor } } },
+      yAxis: {
+        type: "value",
+        name: "%",
+        scale: true,
+        axisLabel: { color: textColor },
+        splitLine: { lineStyle: { color: gridColor } },
+      },
       series: [
         { name: "Permukaan (0-1cm)", type: "line", data: hourly.soil_moisture_0_to_1cm?.slice(0, 24).map((v: number) => Number((v * 100).toFixed(1))), itemStyle: { color: "#8b5cf6" }, smooth: true },
         { name: "Zona Akar (9-27cm)", type: "line", data: hourly.soil_moisture_9_to_27cm?.slice(0, 24).map((v: number) => Number((v * 100).toFixed(1))), itemStyle: { color: "#10b981" }, smooth: true },
@@ -219,14 +231,20 @@ export default function AgrometPage() {
     [hourly, textColor, gridColor]
   );
 
-  // Solar Radiation Option
+  // Solar Radiation Option (Dynamic scale)
   const solarOption = useMemo(
     () => ({
       backgroundColor: "transparent",
       tooltip: { trigger: "axis" },
       grid: { left: "4%", right: "4%", bottom: "10%", containLabel: true },
       xAxis: { type: "category", data: hourly.time?.slice(0, 24).map((t: string) => t.substring(11, 16)), axisLabel: { color: textColor } },
-      yAxis: { type: "value", name: "W/m²", axisLabel: { color: textColor }, splitLine: { lineStyle: { color: gridColor } } },
+      yAxis: {
+        type: "value",
+        name: "W/m²",
+        scale: true,
+        axisLabel: { color: textColor },
+        splitLine: { lineStyle: { color: gridColor } },
+      },
       series: [
         { name: "Radiasi Surya", type: "line", areaStyle: { opacity: 0.3 }, data: hourly.shortwave_radiation?.slice(0, 24), itemStyle: { color: "#fcd34d" }, smooth: true },
       ],
@@ -255,14 +273,14 @@ export default function AgrometPage() {
                 <Sprout className="h-3.5 w-3.5 mr-1" /> Agrometeorologi &amp; Iklim Mikro Lahan
               </Badge>
               <Badge variant="outline" className="text-slate-300 border-white/20 text-[11px]">
-                ERA5-Agro &amp; ECMWF IFS Ensemble
+                ECMWF IFS Ensemble
               </Badge>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Monitoring Lingkungan Tanaman, Profil Tanah &amp; Prediksi Ensemble 50
+              Monitoring Lingkungan Tanaman dan Prediksi Agrometeorologi
             </h1>
             <p className="text-xs sm:text-sm text-emerald-100/80 leading-relaxed">
-              Integrasi komprehensif data cuaca mikro pertanian, titik embun, neraca air, profil tanah bertingkat, serta prediksi ketidakpastian 50 anggota model ensemble ECMWF/GFS untuk perencanaan budidaya tanaman.
+              Pemantauan kondisi cuaca mikro pertanian, profil perakaran tanah, neraca air, dan prediksi ensemble 50 anggota.
             </p>
           </div>
 
@@ -667,14 +685,14 @@ export default function AgrometPage() {
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
                     <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Stres Panas (Heat Stress)</span>
                     <Badge variant="outline" className={`text-[10px] font-bold ${isHeatStress ? "bg-red-100 text-red-700 border-red-300" : "bg-emerald-100 text-emerald-700 border-emerald-300"}`}>
-                      {isHeatStress ? "⚠️ Tinggi" : "Aman / Normal"}
+                      {isHeatStress ? "⚠️ Tinggi" : "Aman"}
                     </Badge>
                   </div>
 
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
                     <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Risiko Kekeringan Perakaran</span>
                     <Badge variant="outline" className={`text-[10px] font-bold ${isDroughtRisk ? "bg-red-100 text-red-700 border-red-300" : "bg-emerald-100 text-emerald-700 border-emerald-300"}`}>
-                      {isDroughtRisk ? "⚠️ Kering Kritis" : "Kecukupan Baik"}
+                      {isDroughtRisk ? "⚠️ Kering" : "Kecukupan Baik"}
                     </Badge>
                   </div>
 
@@ -819,7 +837,7 @@ export default function AgrometPage() {
                         <th className="px-3 py-2.5">Tanggal</th>
                         <th className="px-3 py-2.5">Min / Max</th>
                         <th className="px-3 py-2.5">Hujan</th>
-                        <th className="px-3 py-2.5">ET0 (Penguapan)</th>
+                        <th className="px-3 py-2.5">ET0</th>
                       </tr>
                     </thead>
                     <tbody>

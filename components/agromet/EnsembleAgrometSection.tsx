@@ -30,8 +30,6 @@ import {
   TrendingUp,
   RefreshCw,
   Info,
-  Activity,
-  Calendar,
 } from "lucide-react";
 
 interface EnsembleAgrometSectionProps {
@@ -170,7 +168,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
                 <span>${p10Val}°C – ${p90Val}°C</span>
               </div>
               <div class="flex justify-between gap-4 text-slate-400 text-[11px]">
-                <span>Rentang Ekstrem (Min–Max):</span>
+                <span>Rentang Ekstrem:</span>
                 <span>${minVal}°C – ${maxVal}°C</span>
               </div>
             </div>
@@ -209,6 +207,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
       yAxis: {
         type: "value",
         name: "Suhu (°C)",
+        scale: true,
         nameTextStyle: { color: textColor, fontSize: 11 },
         splitLine: { lineStyle: { color: gridColor } },
         axisLabel: {
@@ -327,7 +326,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
                 <span>${p10Val}°C – ${p90Val}°C</span>
               </div>
               <div class="flex justify-between gap-4 text-slate-400 text-[11px]">
-                <span>Rentang Ekstrem (Min–Max):</span>
+                <span>Rentang Ekstrem:</span>
                 <span>${minVal}°C – ${maxVal}°C</span>
               </div>
             </div>
@@ -366,6 +365,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
       yAxis: {
         type: "value",
         name: "Titik Embun (°C)",
+        scale: true,
         nameTextStyle: { color: textColor, fontSize: 11 },
         splitLine: { lineStyle: { color: gridColor } },
         axisLabel: {
@@ -484,7 +484,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
                 <span>${p10Val} – ${p90Val} hPa</span>
               </div>
               <div class="flex justify-between gap-4 text-slate-400 text-[11px]">
-                <span>Rentang Ekstrem (Min–Max):</span>
+                <span>Rentang Ekstrem:</span>
                 <span>${minVal} – ${maxVal} hPa</span>
               </div>
             </div>
@@ -523,8 +523,8 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
       yAxis: {
         type: "value",
         name: "Tekanan (hPa)",
-        nameTextStyle: { color: textColor, fontSize: 11 },
         scale: true,
+        nameTextStyle: { color: textColor, fontSize: 11 },
         splitLine: { lineStyle: { color: gridColor } },
         axisLabel: {
           color: textColor,
@@ -551,11 +551,11 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
                 <Sparkles className="h-5 w-5" />
               </span>
               <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                Prediksi Probabilistik 50 Anggota Ensemble (7 Hari ke Depan)
+                Prediksi 50 Anggota Ensemble (7 Hari ke Depan)
               </CardTitle>
             </div>
             <CardDescription className="text-xs text-slate-500 mt-1">
-              Visualisasi prediksi 50 skenario model numerik cuaca resolusi tinggi untuk menganalisis rentang ketidakpastian iklim mikro lahan
+              Visualisasi prediksi 50 skenario model numerik cuaca untuk memantau rentang ketidakpastian iklim mikro
             </CardDescription>
           </div>
 
@@ -586,7 +586,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
               onClick={() => setShowSpaghetti(!showSpaghetti)}
             >
               <Layers className="h-3.5 w-3.5 mr-1" />
-              {showSpaghetti ? "Spaghetti 50 Line (Aktif)" : "Sembunyikan Garis Member"}
+              {showSpaghetti ? "Spaghetti 50 Line (Aktif)" : "Sembunyikan Garis"}
             </Button>
 
             <Button
@@ -611,7 +611,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
                 <Thermometer className="h-4 w-4" />
               </div>
               <div>
-                <span className="text-[10px] text-slate-500 block font-medium">Prediksi Suhu Mean Hari Ini</span>
+                <span className="text-[10px] text-slate-500 block font-medium">Suhu Mean Hari Ini</span>
                 <span className="text-base font-black text-red-600 dark:text-red-400">{currentTempMean}°C</span>
               </div>
             </div>
@@ -626,7 +626,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
                 <Droplets className="h-4 w-4" />
               </div>
               <div>
-                <span className="text-[10px] text-slate-500 block font-medium">Prediksi Titik Embun (Dew Point)</span>
+                <span className="text-[10px] text-slate-500 block font-medium">Titik Embun (Dew Point)</span>
                 <span className="text-base font-black text-teal-600 dark:text-teal-400">{currentDpMean}°C</span>
               </div>
             </div>
@@ -641,7 +641,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
                 <Gauge className="h-4 w-4" />
               </div>
               <div>
-                <span className="text-[10px] text-slate-500 block font-medium">Prediksi Tekanan Permukaan</span>
+                <span className="text-[10px] text-slate-500 block font-medium">Tekanan Permukaan</span>
                 <span className="text-base font-black text-indigo-600 dark:text-indigo-400">{currentPressMean} hPa</span>
               </div>
             </div>
@@ -668,11 +668,11 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
           {isLoading ? (
             <div className="h-[360px] flex flex-col items-center justify-center space-y-2">
               <RefreshCw className="h-8 w-8 animate-spin text-emerald-500" />
-              <p className="text-xs text-slate-500">Memuat dan menghitung 50 skenario ensemble model {model}...</p>
+              <p className="text-xs text-slate-500">Memuat 50 skenario ensemble model {model}...</p>
             </div>
           ) : error ? (
             <div className="h-[360px] flex items-center justify-center text-red-600 text-sm">
-              Gagal memuat data ensemble prediksi cuaca. Silakan klik tombol refresh.
+              Gagal memuat data ensemble. Silakan klik tombol perbarui.
             </div>
           ) : (
             <>
@@ -681,7 +681,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
                   <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                     <TrendingUp className="h-3.5 w-3.5 text-red-500" />
-                    Pita Probabilitas Suhu Udara 7 Hari ({memberCount} Anggota Ensemble ECMWF/GFS):
+                    Pita Probabilitas Suhu Udara 7 Hari ({memberCount} Anggota Ensemble):
                   </span>
                   <span className="text-[11px] text-slate-400">
                     Garis Merah: Ensemble Mean | Area Bayangan: Rentang 80% (P10–P90)
@@ -695,10 +695,10 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
                     style={{ height: "100%", width: "100%" }}
                   />
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-start gap-2">
-                  <Info className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
+                  <Info className="h-4 w-4 text-red-500 shrink-0" />
                   <span>
-                    <strong>Manfaat Agronomis:</strong> Semakin sempit pita persentil (P10–P90), semakin tinggi kepastian prakiraan cuaca. Garis sebaran yang melebar setelah hari ke-4 menandakan peningkatan dinamika cuaca yang membutuhkan pemantauan berkala untuk mitigasi stres panas tanaman.
+                    <strong>Catatan:</strong> Lebar pita P10–P90 menunjukkan tingkat ketidakpastian model. Semakin sempit pita, semakin tinggi kepastian prakiraan suhu.
                   </span>
                 </div>
               </TabsContent>
@@ -722,10 +722,10 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
                     style={{ height: "100%", width: "100%" }}
                   />
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-start gap-2">
-                  <Info className="h-4 w-4 text-teal-500 shrink-0 mt-0.5" />
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
+                  <Info className="h-4 w-4 text-teal-500 shrink-0" />
                   <span>
-                    <strong>Manfaat Agronomis:</strong> Titik embun (Dew Point) menunjukkan suhu saat uap air di udara mulai mengembun pada permukaan daun. Jika suhu udara malam turun mendekati titik embun (selisih T - Td &le; 1.5°C), durasi kebasahan daun (leaf wetness) meningkat drastis yang mempercepat perkembangan spora jamur tanaman.
+                    <strong>Catatan:</strong> Titik embun mendekati suhu udara malam (selisih &le; 1.5°C) memicu pembentukan embun pekat yang meningkatkan risiko jamur daun.
                   </span>
                 </div>
               </TabsContent>
@@ -749,10 +749,10 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
                     style={{ height: "100%", width: "100%" }}
                   />
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-start gap-2">
-                  <Info className="h-4 w-4 text-indigo-500 shrink-0 mt-0.5" />
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
+                  <Info className="h-4 w-4 text-indigo-500 shrink-0" />
                   <span>
-                    <strong>Manfaat Agronomis:</strong> Penurunan tajam tekanan udara permukaan dalam skenario ensemble (&lt; 1008 hPa) menjadi tanda awal terbentuknya palung konvergensi monsun atau pembentukan awan badai konvektif lebat di atas lahan pertanian.
+                    <strong>Catatan:</strong> Penurunan tekanan tajam (&lt; 1008 hPa) menandakan potensi pertumbuhan sistem awan konvektif dan cuaca basah.
                   </span>
                 </div>
               </TabsContent>
