@@ -1,3 +1,4 @@
+// app/api/weather/agromet/route.ts
 import { NextResponse } from 'next/server';
 
 export const revalidate = 300; // Cache for 5 minutes
@@ -19,13 +20,22 @@ export async function GET(request: Request) {
     url.searchParams.append('longitude', lon);
     
     // Current Conditions
-    url.searchParams.append('current', 'temperature_2m,relative_humidity_2m,precipitation,rain,wind_speed_10m,wind_direction_10m,cloud_cover,shortwave_radiation,surface_pressure');
+    url.searchParams.append(
+      'current',
+      'temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,rain,weather_code,wind_speed_10m,wind_direction_10m,cloud_cover,shortwave_radiation,surface_pressure,vapour_pressure_deficit'
+    );
     
     // Hourly Conditions (Next 7 Days)
-    url.searchParams.append('hourly', 'temperature_2m,relative_humidity_2m,dew_point_2m,precipitation,et0_fao_evapotranspiration,soil_temperature_0cm,soil_temperature_18cm,soil_moisture_0_to_1cm,soil_moisture_9_to_27cm,shortwave_radiation,cloud_cover');
+    url.searchParams.append(
+      'hourly',
+      'temperature_2m,relative_humidity_2m,dew_point_2m,surface_pressure,vapour_pressure_deficit,precipitation,et0_fao_evapotranspiration,soil_temperature_0cm,soil_temperature_18cm,soil_moisture_0_to_1cm,soil_moisture_9_to_27cm,shortwave_radiation,cloud_cover,wind_speed_10m,wind_direction_10m'
+    );
     
     // Daily Conditions (Next 7 Days)
-    url.searchParams.append('daily', 'temperature_2m_max,temperature_2m_min,precipitation_sum,et0_fao_evapotranspiration_sum,shortwave_radiation_sum,sunshine_duration');
+    url.searchParams.append(
+      'daily',
+      'temperature_2m_max,temperature_2m_min,precipitation_sum,et0_fao_evapotranspiration_sum,shortwave_radiation_sum,sunshine_duration,uv_index_max'
+    );
     
     // Timezone
     url.searchParams.append('timezone', 'auto');
