@@ -1,7 +1,40 @@
-// app/api/ecmwf/aerosol/route.ts
+// app/api/ecmwf/cams/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export const revalidate = 1800; // Cache for 30 minutes
+
+export const CAMS_PRODUCTS = {
+  "aerosol-forecasts": {
+    label: "Aerosol & Debu (Optical Depth)",
+    unit: "AOD (550nm)",
+    description: "Distribusi ketebalan optik aerosol total, partikel debu gurun, dan materi organik",
+  },
+  "carbon-monoxide-forecasts": {
+    label: "Karbon Monoksida (CO)",
+    unit: "10^18 molekul/cm²",
+    description: "Kolom total karbon monoksida dari emisi pembakaran bahan bakar dan biomassa",
+  },
+  "carbon-dioxide-forecasts": {
+    label: "Karbon Dioksida (CO2)",
+    unit: "ppmv",
+    description: "Fraksi molar rata-rata kolom gas rumah kaca karbon dioksida di atmosfer",
+  },
+  "nitrogen-dioxide-forecasts": {
+    label: "Nitrogen Dioksida (NO2)",
+    unit: "10^15 molekul/cm²",
+    description: "Kolom total nitrogen dioksida dari emisi lalu lintas kendaraan dan kawasan industri",
+  },
+  "ozone-forecasts": {
+    label: "Ozon Total (O3)",
+    unit: "Dobson Units (DU)",
+    description: "Distribusi kolom total ozon atmosfer dan pelindung radiasi ultraviolet",
+  },
+  "sulphur-dioxide-forecasts": {
+    label: "Sulfur Dioksida (SO2)",
+    unit: "10^15 molekul/cm²",
+    description: "Kolom total sulfur dioksida dari aktivitas industri, PLTU batubara, dan erupsi vulkanik",
+  },
+};
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -33,7 +66,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!res.ok) {
-      // Fallback request without parameters if specific valid_time expired
+      // Fallback request without specific time parameters if timestamp expired
       const fallbackRes = await fetch(
         `https://charts.ecmwf.int/opencharts-api/v1/products/${encodeURIComponent(
           product
@@ -50,8 +83,8 @@ export async function GET(request: NextRequest) {
           {
             success: true,
             product,
-            title: fallbackJson.data?.attributes?.title || "CAMS Forecasts",
-            description: fallbackJson.data?.attributes?.description || "",
+            title: fallbackJson.data?.attributes?.title || CAMS_PRODUCTS[product as keyof typeof CAMS_PRODUCTS]?.label || "CAMS Forecast",
+            description: fallbackJson.data?.attributes?.description || CAMS_PRODUCTS[product as keyof typeof CAMS_PRODUCTS]?.description || "",
             imageUrl: fallbackJson.data?.link?.href || null,
             projection,
             isFallback: true,
@@ -76,8 +109,8 @@ export async function GET(request: NextRequest) {
       {
         success: true,
         product,
-        title: attributes.title || "CAMS Forecasts",
-        description: attributes.description || "",
+        title: attributes.title || CAMS_PRODUCTS[product as keyof typeof CAMS_PRODUCTS]?.label || "CAMS Forecast",
+        description: attributes.description || CAMS_PRODUCTS[product as keyof typeof CAMS_PRODUCTS]?.description || "",
         imageUrl: link.href || null,
         projection,
         isFallback: false,
@@ -87,9 +120,9 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error: any) {
-    console.error("Error in GET /api/ecmwf/aerosol:", error);
+    console.error("Error in GET /api/ecmwf/cams:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to fetch ECMWF data" },
+      { success: false, error: error.message || "Failed to fetch ECMWF CAMS data" },
       { status: 500 }
     );
   }

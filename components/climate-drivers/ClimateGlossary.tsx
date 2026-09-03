@@ -181,6 +181,54 @@ export const GLOSSARY_DATA: GlossaryTerm[] = [
     impactOrUse: "Memberikan prediksi 5 hari ke depan untuk distribusi debu, polusi udara, dan ketebalan aerosol di seluruh wilayah Asia Tenggara."
   },
   {
+    term: "Karbon Monoksida (Carbon Monoxide)",
+    abbreviation: "CO",
+    category: "cams",
+    categoryLabel: "Kualitas Udara / CAMS",
+    definition: "Gas beracun tanpa warna dan bau yang dihasilkan dari proses pembakaran tidak sempurna bahan bakar fosil dan biomassa/kebakaran hutan.",
+    impactOrUse: "Mengikat hemoglobin dalam darah jauh lebih kuat daripada oksigen. Ambang batas aman harian < 4000 µg/m³ (WHO/BMKG)."
+  },
+  {
+    term: "Karbon Dioksida (Carbon Dioxide)",
+    abbreviation: "CO2",
+    category: "cams",
+    categoryLabel: "Kualitas Udara / CAMS",
+    definition: "Gas rumah kaca utama atmosfer dengan masa hidup panjang yang mengatur keseimbangan energi radiatif Bumi.",
+    impactOrUse: "Konsentrasi atmosfer global rata-rata saat ini berkisar ~420–460 ppm. Peningkatan pesat memicu pemanasan global dan pengasaman laut."
+  },
+  {
+    term: "Nitrogen Dioksida (Nitrogen Dioxide)",
+    abbreviation: "NO2",
+    category: "cams",
+    categoryLabel: "Kualitas Udara / CAMS",
+    definition: "Gas polutan reaktif berwarna cokelat kemerahan dari emisi knalpot kendaraan bermotor berkecepatan tinggi dan cerobong industri.",
+    impactOrUse: "Pemicu utama kabut asap fotokimia (smog), hujan asam, serta iritasi saluran pernapasan manusia."
+  },
+  {
+    term: "Sulfur Dioksida (Sulphur Dioxide)",
+    abbreviation: "SO2",
+    category: "cams",
+    categoryLabel: "Kualitas Udara / CAMS",
+    definition: "Gas polutan berbau menyengat yang dilepaskan dari pembakaran batubara berkadar belerang, kilang minyak bumi, dan aktivitas vulkanik.",
+    impactOrUse: "Bereaksi dengan uap air membentuk asam sulfat (hujan asam) yang merusak ekosistem pertanian dan korosi infrastruktur."
+  },
+  {
+    term: "Ozon Permukaan Troposfer (Surface Ozone)",
+    abbreviation: "O3",
+    category: "cams",
+    categoryLabel: "Kualitas Udara / CAMS",
+    definition: "Polutan sekunder yang terbentuk di permukaan tanah melalui reaksi fotokimia antara radiasi sinar matahari, NOx, dan senyawa organik volatil (VOC).",
+    impactOrUse: "Ozon di stratosfer melindungi bumi dari UV, namun ozon di troposfer bersifat toksik bagi paru-paru manusia dan merusak jaringan klorofil tanaman."
+  },
+  {
+    term: "Particulate Matter 2.5 (PM2.5)",
+    abbreviation: "PM2.5",
+    category: "cams",
+    categoryLabel: "Kualitas Udara / CAMS",
+    definition: "Partikel padat atau cair mikroskopis di udara dengan diameter aerodinamis <= 2.5 mikrometer (sekitar 1/30 diameter sehelai rambut).",
+    impactOrUse: "Dapat menembus jauh ke dalam alveolus paru-paru dan peredaran darah, meningkatkan risiko penyakit kardiovaskular dan ISPA."
+  },
+  {
     term: "Reanalisis Atmosfer (Atmospheric Reanalysis)",
     category: "era5",
     categoryLabel: "ERA5 & Klimatologi",
