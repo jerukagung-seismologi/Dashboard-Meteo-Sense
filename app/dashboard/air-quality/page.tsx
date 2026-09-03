@@ -1,12 +1,29 @@
 // app/dashboard/air-quality/page.tsx
 "use client";
 
-import React from "react";
-import { Wind, ShieldAlert, Sparkles, MapPin } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Wind, Flame, Sparkles, MapPin, Activity } from "lucide-react";
+import { GasPollutantsViewer } from "@/components/air-quality/GasPollutantsViewer";
 import { EcmwfAerosolViewer } from "@/components/air-quality/EcmwfAerosolViewer";
 import { ClimateGlossary } from "@/components/climate-drivers/ClimateGlossary";
 
 export default function AirQualityPage() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
+    };
+    checkDarkMode();
+    window.addEventListener("resize", checkDarkMode);
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => {
+      window.removeEventListener("resize", checkDarkMode);
+      observer.disconnect();
+    };
+  }, []);
+
   return (
     <div className="space-y-6 pb-12">
       {/* Subpage Header */}
@@ -19,10 +36,10 @@ export default function AirQualityPage() {
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-3">
-            <Wind className="h-7 w-7 text-sky-400" /> Air Quality &amp; Aerosol Forecasts
+            <Wind className="h-7 w-7 text-sky-400" /> Air Quality, Gas Pollutants &amp; Aerosol
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
-            Pemantauan dan prakiraan spasial kualitas udara, distribusi debu, serta ketebalan optik aerosol di wilayah Indonesia dan Asia Tenggara secara real-time.
+            Pemantauan real-time dan prakiraan gas polutan (Karbon Monoksida, Karbon Dioksida, NO2, SO2, Ozon), partikulat PM2.5/PM10, serta distribusi aerosol CAMS di Indonesia.
           </p>
         </div>
 
@@ -32,10 +49,13 @@ export default function AirQualityPage() {
         </div>
       </div>
 
-      {/* Main Interactive ECMWF CAMS Viewer Component */}
+      {/* 1. Gas Pollutants & Air Quality Time-Series Plots (CO, CO2, NO2, SO2, O3, PM2.5/PM10) */}
+      <GasPollutantsViewer isDarkMode={isDarkMode} />
+
+      {/* 2. Main Interactive ECMWF CAMS Spatial Aerosol Viewer Component */}
       <EcmwfAerosolViewer />
 
-      {/* Comprehensive Air Quality & Climate Glossary */}
+      {/* 3. Comprehensive Air Quality & Climate Glossary */}
       <ClimateGlossary initialCategory="cams" />
     </div>
   );
