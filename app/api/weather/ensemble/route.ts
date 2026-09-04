@@ -3,34 +3,63 @@ import { NextResponse } from 'next/server';
 
 export const revalidate = 600; // Cache for 10 minutes
 
+const AI_MODELS = ['gfs_graphcast025', 'ecmwf_aifs025'];
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const lat = searchParams.get('lat');
   const lon = searchParams.get('lon');
-  const model = searchParams.get('model') || 'ecmwf_ifs025'; // ecmwf_ifs025 (50 members) or gfs025 (30 members)
+  const model = searchParams.get('model') || 'ecmwf_ifs025';
 
   if (!lat || !lon) {
     return NextResponse.json({ error: 'Latitude and longitude are required' }, { status: 400 });
   }
 
   const isRefresh = searchParams.get('refresh') === 'true' || searchParams.has('_t') || searchParams.has('force');
+  const isAI = AI_MODELS.includes(model);
 
   try {
-    const url = new URL('https://ensemble-api.open-meteo.com/v1/ensemble');
-    url.searchParams.append('latitude', lat);
-    url.searchParams.append('longitude', lon);
-    url.searchParams.append('hourly', 'temperature_2m,dew_point_2m,surface_pressure');
-    url.searchParams.append('models', model);
-    url.searchParams.append('forecast_days', '7');
-    url.searchParams.append('timezone', 'auto');
+    const hourlyVars = [
+      'temperature_2m',
+      'dew_point_2m',
+      'surface_pressure',
+      'precipitation',
+      'relative_humidity_2m',
+      'wind_speed_10m',
+      'shortwave_radiation',
+      'et0_fao_evapotranspiration',
+    ].join(',');
 
-    const res = await fetch(url.toString(), isRefresh ? { cache: 'no-store' } : { next: { revalidate: 600 } });
+    let data: any;
 
-    if (!res.ok) {
-      throw new Error(`Open-Meteo Ensemble API error with status: ${res.status}`);
+    if (isAI) {
+      // Deterministic AI NWP API
+      const url = new URL('https://api.open-meteo.com/v1/forecast');
+      url.searchParams.append('latitude', lat);
+      url.searchParams.append('longitude', lon);
+      url.searchParams.append('hourly', hourlyVars);
+      url.searchParams.append('models', model);
+      url.searchParams.append('forecast_days', '7');
+      url.searchParams.append('timezone', 'auto');
+
+      const res = await fetch(url.toString(), isRefresh ? { cache: 'no-store' } : { next: { revalidate: 600 } });
+      if (!res.ok) throw new Error(`Open-Meteo AI API error: ${res.status}`);
+      data = await res.json();
+    } else {
+      // Multi-Member Ensemble API
+      const url = new URL('https://ensemble-api.open-meteo.com/v1/ensemble');
+      url.searchParams.append('latitude', lat);
+      url.searchParams.append('longitude', lon);
+      url.searchParams.append('hourly', hourlyVars);
+      url.searchParams.append('models', model);
+      url.searchParams.append('forecast_days', '7');
+      url.searchParams.append('timezone', 'auto');
+
+      const res = await fetch(url.toString(), isRefresh ? { cache: 'no-store' } : { next: { revalidate: 600 } });
+      if (!res.ok) throw new Error(`Open-Meteo Ensemble API error: ${res.status}`);
+      data = await res.json();
     }
 
-    const data = await res.json();
     const hourly = data.hourly || {};
     const times: string[] = hourly.time || [];
     const timeLen = times.length;
@@ -38,9 +67,7 @@ export async function GET(request: Request) {
     // Helper to extract and aggregate members for a variable
     const processVariable = (varPrefix: string) => {
       const control: number[] = hourly[varPrefix] || [];
-      const memberKeys = Object.keys(hourly).filter(
-        (k) => k.startsWith(`${varPrefix}_member`)
-      );
+      const memberKeys = Object.keys(hourly).filter((k) => k.startsWith(`${varPrefix}_member`));
 
       const members: number[][] = memberKeys.map((k) => hourly[k]);
       const memberCount = members.length;
@@ -56,7 +83,7 @@ export async function GET(request: Request) {
       for (let t = 0; t < timeLen; t++) {
         const stepVals: number[] = [];
         for (let m = 0; m < memberCount; m++) {
-          const val = members[m][t];
+          const val = members[m]?.[t];
           if (val !== undefined && val !== null && !isNaN(val)) {
             stepVals.push(val);
           }
@@ -95,7 +122,7 @@ export async function GET(request: Request) {
       }
 
       return {
-        memberCount,
+        memberCount: memberCount > 0 ? memberCount : 1,
         control,
         mean: means,
         min: mins,
@@ -104,22 +131,33 @@ export async function GET(request: Request) {
         p90: p90s,
         p25: p25s,
         p75: p75s,
-        members, // raw member array for spaghetti plot
+        members,
       };
     };
 
     const temperature = processVariable('temperature_2m');
     const dewPoint = processVariable('dew_point_2m');
     const surfacePressure = processVariable('surface_pressure');
+    const precipitation = processVariable('precipitation');
+    const relativeHumidity = processVariable('relative_humidity_2m');
+    const windSpeed = processVariable('wind_speed_10m');
+    const solarRadiation = processVariable('shortwave_radiation');
+    const et0 = processVariable('et0_fao_evapotranspiration');
 
     return NextResponse.json(
       {
         model,
-        memberCount: temperature.memberCount,
+        isAI,
+        memberCount: isAI ? 1 : temperature.memberCount,
         times,
         temperature,
         dewPoint,
         surfacePressure,
+        precipitation,
+        relativeHumidity,
+        windSpeed,
+        solarRadiation,
+        et0,
       },
       {
         headers: {
