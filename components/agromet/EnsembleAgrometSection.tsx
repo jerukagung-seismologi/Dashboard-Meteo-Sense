@@ -35,7 +35,6 @@ import {
   Sun,
   Sprout,
   Waves,
-  Cpu,
 } from "lucide-react";
 
 interface EnsembleAgrometSectionProps {
@@ -45,13 +44,12 @@ interface EnsembleAgrometSectionProps {
 }
 
 const GLOBAL_MODELS = [
-  { id: "ecmwf_ifs025", label: "ECMWF IFS (50 Member)", badge: "Eropa • 50 Skenario", isAI: false },
-  { id: "gfs025", label: "NCEP GFS (30 Member)", badge: "USA/NOAA • 30 Skenario", isAI: false },
-  { id: "icon_seamless", label: "DWD ICON (40 Member)", badge: "Jerman • 40 Skenario", isAI: false },
-  { id: "gem_global", label: "CMC GEM (20 Member)", badge: "Kanada • 20 Skenario", isAI: false },
-  { id: "bom_access_global_ensemble", label: "BOM ACCESS-GE (18 Member)", badge: "Australia • 18 Skenario", isAI: false },
-  { id: "gfs_graphcast025", label: "Google DeepMind GraphCast AI", badge: "Google AI • 0.25°", isAI: true },
-  { id: "ecmwf_aifs025", label: "ECMWF AIFS (AI NWP)", badge: "ECMWF AI • Global", isAI: true },
+  { id: "ecmwf_ifs025", label: "ECMWF IFS (50 Member)", badge: "Eropa • 50 Skenario" },
+  { id: "gfs025", label: "NCEP GFS (30 Member)", badge: "USA/NOAA • 30 Skenario" },
+  { id: "icon_seamless", label: "DWD ICON (40 Member)", badge: "Jerman • 40 Skenario" },
+  { id: "gem_global", label: "CMC GEM (20 Member)", badge: "Kanada • 20 Skenario" },
+  { id: "gfs_seamless", label: "NCEP GFS Seamless (30 Member)", badge: "USA • 30 Skenario" },
+  { id: "icon_global", label: "DWD ICON Global (40 Member)", badge: "DWD • 40 Skenario" },
 ];
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -73,34 +71,31 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
 
   const times: string[] = data?.times || [];
   const memberCount: number = data?.memberCount || 50;
-  const isAIModel: boolean = data?.isAI || false;
-
   const currentModelMeta = GLOBAL_MODELS.find((m) => m.id === model) || GLOBAL_MODELS[0];
 
   // Chart Theme Colors
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
   const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.25)" : "rgba(203, 213, 225, 0.35)";
 
-  // Reusable Chart Generator
+  // Reusable Chart Option Generator with strict null safety
   const createEnsembleOption = (
     varData: any,
     varName: string,
     unit: string,
     lineColor: string,
     areaColorLight: string,
-    areaColorDark: string,
-    isBar: boolean = false
+    areaColorDark: string
   ) => {
     if (!varData) return {};
 
     const seriesList: any[] = [];
 
-    if (!isAIModel && varData.members?.length > 1) {
+    if (varData.members && varData.members.length > 0) {
       // Fan Chart / P10-P90 Uncertainty Envelope
       seriesList.push({
         name: "P10 (Batas Bawah 80%)",
         type: "line",
-        data: varData.p10,
+        data: varData.p10 || [],
         lineStyle: { opacity: 0 },
         stack: `confidence-band-${varName}`,
         symbol: "none",
@@ -109,7 +104,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
       seriesList.push({
         name: "Rentang Ketidakpastian 80% (P10–P90)",
         type: "line",
-        data: varData.p90?.map((v: number, i: number) => Number((v - (varData.p10?.[i] ?? 0)).toFixed(2))),
+        data: varData.p90?.map((v: number, i: number) => Number((v - (varData.p10?.[i] ?? 0)).toFixed(2))) || [],
         lineStyle: { opacity: 0 },
         areaStyle: {
           color: isDarkMode ? areaColorDark : areaColorLight,
@@ -124,7 +119,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
           seriesList.push({
             name: `Member ${idx + 1}`,
             type: "line",
-            data: mArr,
+            data: mArr || [],
             smooth: true,
             showSymbol: false,
             lineStyle: {
@@ -138,7 +133,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
     }
 
     // Deterministic Control Model
-    if (varData.control?.length > 0 && !isAIModel) {
+    if (varData.control && varData.control.length > 0) {
       seriesList.push({
         name: "Model Kontrol Deterministik",
         type: "line",
@@ -150,11 +145,11 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
       });
     }
 
-    // Ensemble Mean / AI Forecast Line
+    // Ensemble Mean Line
     seriesList.push({
-      name: isAIModel ? `Prakiraan ${currentModelMeta.label}` : `Rata-rata Ensemble Mean (${memberCount} Member)`,
-      type: isBar ? "bar" : "line",
-      data: varData.mean || varData.control,
+      name: `Rata-rata Ensemble Mean (${memberCount} Member)`,
+      type: "line",
+      data: varData.mean || varData.control || [],
       smooth: true,
       showSymbol: false,
       lineStyle: { color: lineColor, width: 3 },
@@ -171,7 +166,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
         formatter: (params: any[]) => {
           if (!params || params.length === 0) return "";
           const dateStr = params[0].axisValue;
-          const meanItem = params.find((p) => p.seriesName?.includes("Mean") || p.seriesName?.includes("Prakiraan"));
+          const meanItem = params.find((p) => p.seriesName?.includes("Mean"));
           const ctrlItem = params.find((p) => p.seriesName?.includes("Kontrol"));
           const idx = params[0].dataIndex;
 
@@ -218,13 +213,11 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
       legend: {
         top: 0,
         textStyle: { color: textColor, fontSize: 11 },
-        data: isAIModel
-          ? [`Prakiraan ${currentModelMeta.label}`]
-          : [
-              `Rata-rata Ensemble Mean (${memberCount} Member)`,
-              "Model Kontrol Deterministik",
-              "Rentang Ketidakpastian 80% (P10–P90)",
-            ],
+        data: [
+          `Rata-rata Ensemble Mean (${memberCount} Member)`,
+          "Model Kontrol Deterministik",
+          "Rentang Ketidakpastian 80% (P10–P90)",
+        ],
       },
       grid: {
         top: 40,
@@ -265,49 +258,49 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
   // 1. Suhu
   const tempOption = useMemo(
     () => createEnsembleOption(data?.temperature, "Suhu", "°C", "#ef4444", "rgba(239, 68, 68, 0.15)", "rgba(239, 68, 68, 0.22)"),
-    [data, showSpaghetti, times, isDarkMode, textColor, gridColor, isAIModel]
+    [data, showSpaghetti, times, isDarkMode, textColor, gridColor]
   );
 
   // 2. Titik Embun
   const dewOption = useMemo(
     () => createEnsembleOption(data?.dewPoint, "Titik Embun", "°C", "#0d9488", "rgba(20, 184, 166, 0.15)", "rgba(45, 212, 191, 0.22)"),
-    [data, showSpaghetti, times, isDarkMode, textColor, gridColor, isAIModel]
+    [data, showSpaghetti, times, isDarkMode, textColor, gridColor]
   );
 
   // 3. Tekanan
   const pressureOption = useMemo(
     () => createEnsembleOption(data?.surfacePressure, "Tekanan", "hPa", "#6366f1", "rgba(99, 102, 241, 0.15)", "rgba(129, 140, 248, 0.22)"),
-    [data, showSpaghetti, times, isDarkMode, textColor, gridColor, isAIModel]
+    [data, showSpaghetti, times, isDarkMode, textColor, gridColor]
   );
 
   // 4. Hujan / Presipitasi
   const precipOption = useMemo(
-    () => createEnsembleOption(data?.precipitation, "Presipitasi", "mm", "#0284c7", "rgba(2, 132, 199, 0.15)", "rgba(56, 189, 248, 0.22)", false),
-    [data, showSpaghetti, times, isDarkMode, textColor, gridColor, isAIModel]
+    () => createEnsembleOption(data?.precipitation, "Presipitasi", "mm", "#0284c7", "rgba(2, 132, 199, 0.15)", "rgba(56, 189, 248, 0.22)"),
+    [data, showSpaghetti, times, isDarkMode, textColor, gridColor]
   );
 
   // 5. Kelembapan Relatif (RH)
   const rhOption = useMemo(
     () => createEnsembleOption(data?.relativeHumidity, "Kelembapan", "%", "#3b82f6", "rgba(59, 130, 246, 0.15)", "rgba(96, 165, 250, 0.22)"),
-    [data, showSpaghetti, times, isDarkMode, textColor, gridColor, isAIModel]
+    [data, showSpaghetti, times, isDarkMode, textColor, gridColor]
   );
 
   // 6. Angin 10m
   const windOption = useMemo(
     () => createEnsembleOption(data?.windSpeed, "Angin 10m", "m/s", "#8b5cf6", "rgba(139, 92, 246, 0.15)", "rgba(167, 139, 250, 0.22)"),
-    [data, showSpaghetti, times, isDarkMode, textColor, gridColor, isAIModel]
+    [data, showSpaghetti, times, isDarkMode, textColor, gridColor]
   );
 
   // 7. Radiasi Surya
   const solarOption = useMemo(
     () => createEnsembleOption(data?.solarRadiation, "Radiasi Surya", "W/m²", "#f59e0b", "rgba(245, 158, 11, 0.15)", "rgba(251, 191, 36, 0.22)"),
-    [data, showSpaghetti, times, isDarkMode, textColor, gridColor, isAIModel]
+    [data, showSpaghetti, times, isDarkMode, textColor, gridColor]
   );
 
   // 8. Evapotranspirasi ET0
   const et0Option = useMemo(
     () => createEnsembleOption(data?.et0, "Evapotranspirasi ET0", "mm", "#10b981", "rgba(16, 185, 129, 0.15)", "rgba(52, 211, 153, 0.22)"),
-    [data, showSpaghetti, times, isDarkMode, textColor, gridColor, isAIModel]
+    [data, showSpaghetti, times, isDarkMode, textColor, gridColor]
   );
 
   // Current Summary Metrics
@@ -326,16 +319,14 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                {isAIModel ? <Cpu className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+                <Sparkles className="h-5 w-5" />
               </span>
               <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
                 Prediksi Ensemble Multi-Model Agrometeorologi (7 Hari)
               </CardTitle>
             </div>
             <CardDescription className="text-xs text-slate-500 mt-1">
-              {isAIModel
-                ? `Simulasi prakiraan cuaca beresolusi tinggi menggunakan model AI Deep Learning ${currentModelMeta.label}`
-                : `Analisis probabilistik ${memberCount} skenario model ensemble ${currentModelMeta.label} untuk mengukur risiko iklim mikro`}
+              Analisis probabilistik {memberCount} skenario model ensemble {currentModelMeta.label} untuk mengukur risiko iklim mikro
             </CardDescription>
           </div>
 
@@ -357,18 +348,16 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
               </SelectContent>
             </Select>
 
-            {/* Toggle Spaghetti Button (Only for multi-member models) */}
-            {!isAIModel && (
-              <Button
-                variant={showSpaghetti ? "default" : "outline"}
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => setShowSpaghetti(!showSpaghetti)}
-              >
-                <Layers className="h-3.5 w-3.5 mr-1" />
-                {showSpaghetti ? `${memberCount} Garis (Aktif)` : "Sembunyikan Garis"}
-              </Button>
-            )}
+            {/* Toggle Spaghetti Button */}
+            <Button
+              variant={showSpaghetti ? "default" : "outline"}
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => setShowSpaghetti(!showSpaghetti)}
+            >
+              <Layers className="h-3.5 w-3.5 mr-1" />
+              {showSpaghetti ? `${memberCount} Garis (Aktif)` : "Sembunyikan Garis"}
+            </Button>
 
             <Button
               variant="outline"

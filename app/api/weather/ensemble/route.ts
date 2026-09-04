@@ -3,8 +3,6 @@ import { NextResponse } from 'next/server';
 
 export const revalidate = 600; // Cache for 10 minutes
 
-const AI_MODELS = ['gfs_graphcast025', 'ecmwf_aifs025'];
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const lat = searchParams.get('lat');
@@ -16,7 +14,6 @@ export async function GET(request: Request) {
   }
 
   const isRefresh = searchParams.get('refresh') === 'true' || searchParams.has('_t') || searchParams.has('force');
-  const isAI = AI_MODELS.includes(model);
 
   try {
     const hourlyVars = [
@@ -30,47 +27,38 @@ export async function GET(request: Request) {
       'et0_fao_evapotranspiration',
     ].join(',');
 
-    let data: any;
+    // Fetch from Open-Meteo Ensemble API
+    const url = new URL('https://ensemble-api.open-meteo.com/v1/ensemble');
+    url.searchParams.append('latitude', lat);
+    url.searchParams.append('longitude', lon);
+    url.searchParams.append('hourly', hourlyVars);
+    url.searchParams.append('models', model);
+    url.searchParams.append('forecast_days', '7');
+    url.searchParams.append('timezone', 'auto');
 
-    if (isAI) {
-      // Deterministic AI NWP API
-      const url = new URL('https://api.open-meteo.com/v1/forecast');
-      url.searchParams.append('latitude', lat);
-      url.searchParams.append('longitude', lon);
-      url.searchParams.append('hourly', hourlyVars);
-      url.searchParams.append('models', model);
-      url.searchParams.append('forecast_days', '7');
-      url.searchParams.append('timezone', 'auto');
-
-      const res = await fetch(url.toString(), isRefresh ? { cache: 'no-store' } : { next: { revalidate: 600 } });
-      if (!res.ok) throw new Error(`Open-Meteo AI API error: ${res.status}`);
-      data = await res.json();
-    } else {
-      // Multi-Member Ensemble API
-      const url = new URL('https://ensemble-api.open-meteo.com/v1/ensemble');
-      url.searchParams.append('latitude', lat);
-      url.searchParams.append('longitude', lon);
-      url.searchParams.append('hourly', hourlyVars);
-      url.searchParams.append('models', model);
-      url.searchParams.append('forecast_days', '7');
-      url.searchParams.append('timezone', 'auto');
-
-      const res = await fetch(url.toString(), isRefresh ? { cache: 'no-store' } : { next: { revalidate: 600 } });
-      if (!res.ok) throw new Error(`Open-Meteo Ensemble API error: ${res.status}`);
-      data = await res.json();
-    }
+    const res = await fetch(url.toString(), isRefresh ? { cache: 'no-store' } : { next: { revalidate: 600 } });
+    if (!res.ok) throw new Error(`Open-Meteo Ensemble API error: ${res.status}`);
+    const data = await res.json();
 
     const hourly = data.hourly || {};
     const times: string[] = hourly.time || [];
     const timeLen = times.length;
 
-    // Helper to extract and aggregate members for a variable
+    // Helper to extract and aggregate members for a variable with strict null filtering
     const processVariable = (varPrefix: string) => {
       const control: number[] = hourly[varPrefix] || [];
       const memberKeys = Object.keys(hourly).filter((k) => k.startsWith(`${varPrefix}_member`));
 
-      const members: number[][] = memberKeys.map((k) => hourly[k]);
-      const memberCount = members.length;
+      // Extract raw members and filter out any completely null/undefined member arrays
+      const validMembers: number[][] = [];
+      for (const k of memberKeys) {
+        const arr = hourly[k];
+        if (Array.isArray(arr) && arr.some((v) => v !== null && v !== undefined && !isNaN(v))) {
+          validMembers.push(arr);
+        }
+      }
+
+      const memberCount = validMembers.length;
 
       const means: number[] = [];
       const mins: number[] = [];
@@ -83,14 +71,14 @@ export async function GET(request: Request) {
       for (let t = 0; t < timeLen; t++) {
         const stepVals: number[] = [];
         for (let m = 0; m < memberCount; m++) {
-          const val = members[m]?.[t];
+          const val = validMembers[m]?.[t];
           if (val !== undefined && val !== null && !isNaN(val)) {
             stepVals.push(val);
           }
         }
 
         if (stepVals.length === 0) {
-          const cVal = control[t] ?? 0;
+          const cVal = control[t] !== null && control[t] !== undefined && !isNaN(control[t]) ? control[t] : 0;
           means.push(cVal);
           mins.push(cVal);
           maxs.push(cVal);
@@ -123,7 +111,7 @@ export async function GET(request: Request) {
 
       return {
         memberCount: memberCount > 0 ? memberCount : 1,
-        control,
+        control: control.map((v) => (v !== null && v !== undefined && !isNaN(v) ? v : 0)),
         mean: means,
         min: mins,
         max: maxs,
@@ -131,7 +119,7 @@ export async function GET(request: Request) {
         p90: p90s,
         p25: p25s,
         p75: p75s,
-        members,
+        members: validMembers,
       };
     };
 
@@ -147,8 +135,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         model,
-        isAI,
-        memberCount: isAI ? 1 : temperature.memberCount,
+        memberCount: temperature.memberCount,
         times,
         temperature,
         dewPoint,
