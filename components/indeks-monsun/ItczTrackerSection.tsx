@@ -53,21 +53,21 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
   const isEquatorial = currentItczLat >= -2.0 && currentItczLat <= 2.0;
   const isNorthernHemisphere = currentItczLat > 2.0;
 
-  let itczStatusTitle = "Zona Ekuatorial (Transisi/Ekuinoks)";
+  let itczStatusTitle = "Masa Transisi (Pancaroba)";
   let itczBadgeColor = "bg-amber-100 text-amber-800 border-amber-300";
   let itczImpactDesc =
-    "Sabuk ITCZ berada tepat di atas garis khatulistiwa. Potensi hujan konvektif sore/malam merata di Sumatra tengah, Kalimantan, dan Sulawesi.";
+    "Sabuk hujan berada di khatulistiwa. Hujan lebih sering turun sore hari di Sumatra tengah, Kalimantan, dan Sulawesi.";
 
   if (isSouthernHemisphere) {
-    itczStatusTitle = "Belahan Bumi Selatan (Puncak Monsun Barat)";
+    itczStatusTitle = "Musim Hujan (Wilayah Selatan)";
     itczBadgeColor = "bg-emerald-100 text-emerald-800 border-emerald-300";
     itczImpactDesc =
-      "Sabuk ITCZ aktif di selatan ekuator (5°LS – 12°LS). Pertumbuhan awan konvektif dan curah hujan lebat terkonsentrasi di Jawa, Bali, NTB, NTT, dan Laut Jawa.";
+      "Sabuk hujan aktif di selatan ekuator. Potensi hujan lebat terkonsentrasi di Jawa, Bali, NTB, NTT, dan Laut Jawa.";
   } else if (isNorthernHemisphere) {
-    itczStatusTitle = "Belahan Bumi Utara (Monsun Musim Panas Asia)";
+    itczStatusTitle = "Musim Kemarau (Wilayah Selatan)";
     itczBadgeColor = "bg-sky-100 text-sky-800 border-sky-300";
     itczImpactDesc =
-      "Sabuk ITCZ terangkat ke utara ekuator (4°LU – 12°LU). Wilayah selatan Indonesia (Jawa, Bali, Nusa Tenggara) mengalami periode kemarau akibat aliran angin timuran kering.";
+      "Sabuk hujan bergeser ke utara (Asia/Filipina). Wilayah Jawa hingga Nusa Tenggara mengalami kemarau.";
   }
 
   // Monthly Climatological Migration Curve (12 Months)
@@ -218,17 +218,17 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
               </Badge>
             </div>
             <CardTitle className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
-              Pelacak Zona Konvergensi Antar-Tropis (ITCZ)
+              Pelacak Sabuk Hujan Tropis (ITCZ)
             </CardTitle>
             <CardDescription className="text-xs text-slate-500">
-              Pemantau posisi lintang sabuk konvergensi awan konvektif ekuatorial dan pergeseran musiman angin pasat
+              Pantauan pergerakan sabuk pembawa hujan tropis dan dampaknya terhadap musim di Indonesia
             </CardDescription>
           </div>
 
           <div className="flex items-center gap-2 self-start md:self-auto bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded-2xl border dark:border-slate-700 text-xs">
             <Calendar className="h-4 w-4 text-indigo-500" />
             <span className="text-slate-500">Bulan Ini:</span>
-            <span className="font-bold text-slate-900 dark:text-slate-100">{months[now.getMonth()]} (Hari ke-{dayOfYear})</span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">{months[now.getMonth()]}</span>
           </div>
         </div>
       </CardHeader>
@@ -239,7 +239,7 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
           {/* Posisi Lintang Saat Ini */}
           <div className="p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 flex flex-col justify-between">
             <div className="flex justify-between items-start">
-              <span className="text-xs font-bold text-slate-500">Posisi Lintang Rerata</span>
+              <span className="text-xs font-bold text-slate-500">Posisi Sabuk Hujan</span>
               <MapPin className="h-4 w-4 text-indigo-500" />
             </div>
             <div className="my-2">
@@ -248,14 +248,14 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
               </span>
             </div>
             <Badge variant="outline" className="text-[10px] w-fit font-bold bg-indigo-100 text-indigo-800 border-indigo-200">
-              {currentItczLat < 0 ? "Belahan Selatan" : "Belahan Utara"}
+              {currentItczLat < 0 ? "Di Selatan Khatulistiwa" : "Di Utara Khatulistiwa"}
             </Badge>
           </div>
 
           {/* Status Musim & Fase ITCZ */}
           <div className="p-4 rounded-2xl bg-teal-50/60 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex flex-col justify-between">
             <div className="flex justify-between items-start">
-              <span className="text-xs font-bold text-slate-500">Fase Migrasi Musiman</span>
+              <span className="text-xs font-bold text-slate-500">Kondisi Musim</span>
               <TrendingUp className="h-4 w-4 text-teal-500" />
             </div>
             <div className="my-2">
@@ -264,30 +264,30 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
               </span>
             </div>
             <Badge variant="outline" className={`text-[10px] w-fit font-bold ${itczBadgeColor}`}>
-              {isSouthernHemisphere ? "Musim Hujan Selatan" : isNorthernHemisphere ? "Musim Kemarau Selatan" : "Pancaroba / Ekuinoks"}
+              {isSouthernHemisphere ? "Puncak Hujan" : isNorthernHemisphere ? "Kemarau" : "Pancaroba"}
             </Badge>
           </div>
 
           {/* Konvergensi Angin Pasat */}
           <div className="p-4 rounded-2xl bg-sky-50/60 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/40 flex flex-col justify-between">
             <div className="flex justify-between items-start">
-              <span className="text-xs font-bold text-slate-500">Pertemuan Massa Udara</span>
+              <span className="text-xs font-bold text-slate-500">Arah Angin Utama</span>
               <Wind className="h-4 w-4 text-sky-500" />
             </div>
             <div className="my-2">
               <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                Pasat TL &amp; Pasat TG
+                {isSouthernHemisphere ? "Angin Monsun Barat (Basah)" : isNorthernHemisphere ? "Angin Monsun Timur (Kering)" : "Angin Lemah / Berubah"}
               </span>
             </div>
             <Badge variant="outline" className="text-[10px] w-fit font-normal text-slate-500">
-              Intertropical Front (ITF)
+              Pertemuan Angin Pasat
             </Badge>
           </div>
 
           {/* Zona Presipitasi Maksimum */}
           <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 flex flex-col justify-between">
             <div className="flex justify-between items-start">
-              <span className="text-xs font-bold text-slate-500">Pusat Hujan Konvektif</span>
+              <span className="text-xs font-bold text-slate-500">Fokus Wilayah Hujan</span>
               <CloudRain className="h-4 w-4 text-emerald-500" />
             </div>
             <div className="my-2">
@@ -295,12 +295,12 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
                 {isSouthernHemisphere
                   ? "Jawa, Bali, NTB, NTT"
                   : isNorthernHemisphere
-                  ? "Sumatra Utara & Laut Natuna"
-                  : "Sumatra Tengah & Kalimantan"}
+                  ? "Sumatra Bagian Utara"
+                  : "Sumatra & Kalimantan"}
               </span>
             </div>
             <Badge variant="outline" className="text-[10px] w-fit font-bold bg-emerald-100 text-emerald-800 border-emerald-200">
-              Konveksi Aktif
+              Aktivitas Hujan Aktif
             </Badge>
           </div>
         </div>
@@ -312,10 +312,10 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
               <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <Activity className="h-3.5 w-3.5 text-indigo-500" />
-                Kurva Migrasi Lintang ITCZ Tahunan (Januari – Desember):
+                Grafik Naik-Turun Sabuk Hujan Tahunan:
               </span>
               <span className="text-[11px] text-slate-400">
-                Titik Merah Muda: Posisi Bulan Berjalan
+                Titik Merah Muda: Posisi Saat Ini
               </span>
             </div>
             <div className="h-[320px] w-full bg-slate-50/50 dark:bg-slate-800/40 rounded-2xl p-2 border dark:border-slate-800">
@@ -324,7 +324,7 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
               <Info className="h-4 w-4 text-indigo-500 shrink-0" />
               <span>
-                <strong>Dinamika Lintang:</strong> ITCZ berosilasi antara 11°LS (Desember–Februari) hingga 12°LU (Juli–Agustus) mengikuti peredaran semu matahari, mengendalikan siklus musim hujan dan kemarau di Indonesia.
+                <strong>Cara Membaca:</strong> Saat garis berada di <strong>bawah (LS)</strong>, wilayah Jawa–Nusa Tenggara sedang musim hujan. Saat garis naik ke <strong>atas (LU)</strong>, wilayah selatan mengalami musim kemarau.
               </span>
             </div>
           </div>
@@ -333,15 +333,15 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
           <div className="lg:col-span-1 space-y-3 flex flex-col">
             <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs flex items-center gap-1">
               <Layers className="h-3.5 w-3.5 text-sky-500" />
-              Skema Konvergensi Angin Pasat di Indonesia:
+              Posisi Sabuk Awan di Indonesia:
             </span>
 
             <div className="p-4 rounded-2xl bg-gradient-to-b from-sky-950 via-slate-900 to-indigo-950 text-white border border-slate-800 flex-grow flex flex-col justify-between space-y-4 shadow-inner">
               {/* Visual Belt Animation Graphic */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-[11px] text-sky-300 pb-1 border-b border-white/10 font-mono">
-                  <span>6°LU (Batas Utara)</span>
-                  <span>Angin Pasat Timur Laut ↘</span>
+                  <span>6°LU (Utara)</span>
+                  <span>Angin dari Utara ↘</span>
                 </div>
 
                 {/* Animated ITCZ Active Belt */}
@@ -356,22 +356,22 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
                 >
                   <div className="flex items-center justify-center gap-1.5 font-black text-xs">
                     <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-                    <span>SABUK KONVERGENSI ITCZ AKTIF</span>
+                    <span>JALUR AWAN HUJAN AKTIF</span>
                   </div>
                   <span className="text-[10px] opacity-80 block mt-0.5">
-                    Lintang: {currentItczLat >= 0 ? `+${currentItczLat}°LU` : `${currentItczLat}°LS`} • Tekanan Rendah &amp; Awan Cb
+                    Posisi: {currentItczLat >= 0 ? `${currentItczLat}° LU` : `${Math.abs(currentItczLat)}° LS`} (Awan Hujan Tebal)
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] text-emerald-300 pt-1 border-t border-white/10 font-mono">
-                  <span>11°LS (Batas Selatan)</span>
-                  <span>↖ Angin Pasat Tenggara</span>
+                  <span>11°LS (Selatan)</span>
+                  <span>↖ Angin dari Selatan</span>
                 </div>
               </div>
 
               {/* Regional Impact Summary */}
               <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-xs text-slate-300 space-y-1.5">
-                <span className="font-bold text-white block text-[11px]">Dampak Wilayah Saat Ini:</span>
+                <span className="font-bold text-white block text-[11px]">Ringkasan Saat Ini:</span>
                 <p className="text-[11px] leading-relaxed text-slate-300">
                   {itczImpactDesc}
                 </p>
@@ -383,7 +383,7 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
         {/* 3. 4-Season Agricultural & Meteorological Impact Matrix */}
         <div className="space-y-3 pt-2">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-            Dampak 4 Siklus Musiman ITCZ Terhadap Wilayah Pertanian Indonesia
+            Panduan Musim Berdasarkan Posisi Sabuk Hujan (ITCZ)
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -392,11 +392,11 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Desember – Februari</span>
                 <Badge variant="outline" className="text-[9px] bg-emerald-100 text-emerald-800 border-emerald-200">
-                  Selatan (8°–12°LS)
+                  Sabuk Turun ke Selatan
                 </Badge>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Puncak Musim Hujan di Jawa, Bali, NTB, dan NTT. Air irigasi melimpah untuk fase tanam padi rendeng, waspada banjir genangan.
+                <strong>Musim Hujan Lebat:</strong> Jawa, Bali, dan Nusa Tenggara banjir air. Sangat tepat untuk masa tanam padi sawah.
               </p>
             </div>
 
@@ -405,11 +405,11 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-amber-600 dark:text-amber-400">Maret – Mei</span>
                 <Badge variant="outline" className="text-[9px] bg-amber-100 text-amber-800 border-amber-200">
-                  Ekuator (0°–4°LU)
+                  Sabuk Naik ke Tengah
                 </Badge>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Masa Pancaroba I. ITCZ melintasi ekuator ke utara. Hujan konvektif lokal sangat kuat di Sumatra &amp; Kalimantan, transisi panen raya.
+                <strong>Pancaroba (Peralihan):</strong> Hujan lebat disertai petir di sore hari di Sumatra &amp; Kalimantan. Musim panen raya.
               </p>
             </div>
 
@@ -418,11 +418,11 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-sky-600 dark:text-sky-400">Juni – Agustus</span>
                 <Badge variant="outline" className="text-[9px] bg-sky-100 text-sky-800 border-sky-200">
-                  Utara (6°–14°LU)
+                  Sabuk Naik ke Utara
                 </Badge>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Musim Kemarau di Jawa–Nusa Tenggara. ITCZ berada di belahan bumi utara (Filipina/Indochina). Ideal untuk budidaya palawija &amp; tembakau.
+                <strong>Musim Kemarau:</strong> Hujan minim di Jawa &amp; Nusa Tenggara. Waktu ideal untuk menanam palawija/jagung.
               </p>
             </div>
 
@@ -431,11 +431,11 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-purple-600 dark:text-purple-400">September – November</span>
                 <Badge variant="outline" className="text-[9px] bg-purple-100 text-purple-800 border-purple-200">
-                  Ekuator (0°–6°LS)
+                  Sabuk Mulai Turun
                 </Badge>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Masa Pancaroba II &amp; Onset Hujan. ITCZ bergeser turun ke selatan melintasi khatulistiwa, menandai awal persiapan olah lahan musim tanam.
+                <strong>Awal Musim Hujan:</strong> Hujan mulai kembali turun dari utara ke selatan. Petani mulai mengolah lahan.
               </p>
             </div>
           </div>
