@@ -7,6 +7,7 @@ import { Loader2, Wind, Sparkles, BookOpen, Layers } from "lucide-react";
 import { MonsoonIndicesHeader } from "@/components/indeks-monsun/MonsoonIndicesHeader";
 import { MonsoonIndicesSummaryCards } from "@/components/indeks-monsun/MonsoonIndicesSummaryCards";
 import { MonsoonIndicesCharts } from "@/components/indeks-monsun/MonsoonIndicesCharts";
+import { ItczTrackerSection } from "@/components/indeks-monsun/ItczTrackerSection";
 import { MonsoonScientificGuide } from "@/components/indeks-monsun/MonsoonScientificGuide";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -94,6 +95,9 @@ export default function IndeksMonsunPage() {
               isDarkMode={isDarkMode}
             />
           )}
+
+          {/* ITCZ (Intertropical Convergence Zone) Tracker & Seasonal Migration Section */}
+          <ItczTrackerSection isDarkMode={isDarkMode} />
 
           {/* Contextual Scientific Guide & Dual-Polarity Point-by-Point Reference */}
           <div className="pt-2">
