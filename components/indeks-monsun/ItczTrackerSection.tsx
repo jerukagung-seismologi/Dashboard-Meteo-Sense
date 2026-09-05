@@ -11,19 +11,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Compass,
   Wind,
   CloudRain,
-  Sun,
   Activity,
   MapPin,
   TrendingUp,
   Info,
   Calendar,
-  Layers,
-  Sparkles,
 } from "lucide-react";
 
 interface ItczTrackerSectionProps {
@@ -305,78 +301,25 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
           </div>
         </div>
 
-        {/* 2. Interactive Annual Migration Chart & Schematic Map */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Migration Curve (Left 2 cols) */}
-          <div className="lg:col-span-2 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
-              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                <Activity className="h-3.5 w-3.5 text-indigo-500" />
-                Grafik Naik-Turun Sabuk Hujan Tahunan:
-              </span>
-              <span className="text-[11px] text-slate-400">
-                Titik Merah Muda: Posisi Saat Ini
-              </span>
-            </div>
-            <div className="h-[320px] w-full bg-slate-50/50 dark:bg-slate-800/40 rounded-2xl p-2 border dark:border-slate-800">
-              <ReactECharts option={itczChartOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
-            </div>
-            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
-              <Info className="h-4 w-4 text-indigo-500 shrink-0" />
-              <span>
-                <strong>Cara Membaca:</strong> Saat garis berada di <strong>bawah (LS)</strong>, wilayah Jawa–Nusa Tenggara sedang musim hujan. Saat garis naik ke <strong>atas (LU)</strong>, wilayah selatan mengalami musim kemarau.
-              </span>
-            </div>
-          </div>
-
-          {/* Schematic Spatial Map of ITCZ over Indonesia (Right 1 col) */}
-          <div className="lg:col-span-1 space-y-3 flex flex-col">
-            <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs flex items-center gap-1">
-              <Layers className="h-3.5 w-3.5 text-sky-500" />
-              Posisi Sabuk Awan di Indonesia:
+        {/* 2. Interactive Annual Migration Chart */}
+        <div className="w-full space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+            <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <Activity className="h-3.5 w-3.5 text-indigo-500" />
+              Grafik Naik-Turun Sabuk Hujan Tahunan:
             </span>
-
-            <div className="p-4 rounded-2xl bg-gradient-to-b from-sky-950 via-slate-900 to-indigo-950 text-white border border-slate-800 flex-grow flex flex-col justify-between space-y-4 shadow-inner">
-              {/* Visual Belt Animation Graphic */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-[11px] text-sky-300 pb-1 border-b border-white/10 font-mono">
-                  <span>6°LU (Utara)</span>
-                  <span>Angin dari Utara ↘</span>
-                </div>
-
-                {/* Animated ITCZ Active Belt */}
-                <div
-                  className={`p-3 rounded-xl border transition-all duration-500 text-center ${
-                    isSouthernHemisphere
-                      ? "bg-emerald-500/20 border-emerald-400 text-emerald-200 mt-12"
-                      : isNorthernHemisphere
-                      ? "bg-sky-500/20 border-sky-400 text-sky-200 mt-2"
-                      : "bg-amber-500/20 border-amber-400 text-amber-200 mt-6"
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-1.5 font-black text-xs">
-                    <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-                    <span>JALUR AWAN HUJAN AKTIF</span>
-                  </div>
-                  <span className="text-[10px] opacity-80 block mt-0.5">
-                    Posisi: {currentItczLat >= 0 ? `${currentItczLat}° LU` : `${Math.abs(currentItczLat)}° LS`} (Awan Hujan Tebal)
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between text-[11px] text-emerald-300 pt-1 border-t border-white/10 font-mono">
-                  <span>11°LS (Selatan)</span>
-                  <span>↖ Angin dari Selatan</span>
-                </div>
-              </div>
-
-              {/* Regional Impact Summary */}
-              <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-xs text-slate-300 space-y-1.5">
-                <span className="font-bold text-white block text-[11px]">Ringkasan Saat Ini:</span>
-                <p className="text-[11px] leading-relaxed text-slate-300">
-                  {itczImpactDesc}
-                </p>
-              </div>
-            </div>
+            <span className="text-[11px] text-slate-400">
+              Titik Merah Muda: Posisi Saat Ini
+            </span>
+          </div>
+          <div className="h-[340px] w-full bg-slate-50/50 dark:bg-slate-800/40 rounded-2xl p-2 border dark:border-slate-800">
+            <ReactECharts option={itczChartOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
+            <Info className="h-4 w-4 text-indigo-500 shrink-0" />
+            <span>
+              <strong>Cara Membaca:</strong> Saat garis berada di <strong>bawah (LS)</strong>, wilayah Jawa–Nusa Tenggara sedang musim hujan. Saat garis naik ke <strong>atas (LU)</strong>, wilayah selatan mengalami musim kemarau.
+            </span>
           </div>
         </div>
 
