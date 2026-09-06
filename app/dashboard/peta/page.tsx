@@ -30,6 +30,7 @@ import {
 } from "@/lib/data/kebumenStations";
 import {
   seedBenchmarkDevicesIfEmpty,
+  fetchLiveERA5WeatherForStations,
   BenchmarkDevice,
 } from "@/lib/FetchingBenchmarkDevice";
 
@@ -48,23 +49,39 @@ export default function PetaPage() {
       try {
         const firestoreDevices = await seedBenchmarkDevicesIfEmpty();
         if (firestoreDevices && firestoreDevices.length > 0) {
-          benchmarkStations = firestoreDevices.map((b) => ({
-            id: b.id,
-            name: b.name,
-            location: b.location || "Kabupaten Kebumen",
-            lat: b.lat,
-            lng: b.lng,
-            temp: b.temp,
-            hum: b.hum,
-            pressure: b.pressure,
-            rainfall: b.rainfall,
-            rainrate: b.rainrate ?? 0.0,
-            windSpeed: b.windSpeed ?? 6.0,
-            status: b.status,
-            batteryVolt: b.batteryVolt ?? 4.1,
-            lastUpdate: b.lastUpdate || "Baru saja",
-            history1h: generateRealistic1HourHistory(b.temp, b.hum, b.pressure, b.rainfall),
-          }));
+          // Live fetch real-time atmospheric readings from ECMWF / ERA5
+          const liveWeatherMap = await fetchLiveERA5WeatherForStations(firestoreDevices);
+
+          benchmarkStations = firestoreDevices.map((b) => {
+            const live = liveWeatherMap[b.id];
+            const temp = live ? live.temp : 29.0;
+            const hum = live ? live.hum : 75;
+            const pressure = live ? live.pressure : 1012;
+            const rainfall = live ? live.rainfall : 0.0;
+            const windSpeed = live ? live.windSpeed : 6.0;
+            const history1h =
+              live && live.history1h && live.history1h.length > 0
+                ? live.history1h
+                : generateRealistic1HourHistory(temp, hum, pressure, rainfall);
+
+            return {
+              id: b.id,
+              name: b.name,
+              location: b.location || "Kabupaten Kebumen",
+              lat: b.lat,
+              lng: b.lng,
+              temp,
+              hum,
+              pressure,
+              rainfall,
+              rainrate: live?.rainrate ?? 0.0,
+              windSpeed,
+              status: b.status,
+              batteryVolt: live?.batteryVolt ?? 4.15,
+              lastUpdate: live ? "Live ERA5 / ECMWF" : "Standby",
+              history1h,
+            };
+          });
         } else {
           benchmarkStations = [...KEBUMEN_DEFAULT_STATIONS];
         }

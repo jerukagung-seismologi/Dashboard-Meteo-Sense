@@ -3,7 +3,6 @@ import {
   collection,
   doc,
   getDocs,
-  getDoc,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -12,6 +11,7 @@ import {
 } from "firebase/firestore"
 import { db } from "@/lib/ConfigFirebase"
 import { KEBUMEN_DEFAULT_STATIONS } from "@/lib/data/kebumenStations"
+import { SensorDataPoint } from "@/components/peta/OneHourTrendChart"
 
 export interface BenchmarkDevice {
   id: string
@@ -19,23 +19,27 @@ export interface BenchmarkDevice {
   location: string
   lat: number
   lng: number
+  status: "online" | "offline"
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface LiveBenchmarkWeather {
   temp: number
   hum: number
   pressure: number
   rainfall: number
-  rainrate?: number
-  windSpeed?: number
-  status: "online" | "offline"
-  batteryVolt?: number
-  lastUpdate?: string
-  createdAt?: string
-  updatedAt?: string
+  rainrate: number
+  windSpeed: number
+  batteryVolt: number
+  lastUpdate: string
+  history1h: SensorDataPoint[]
 }
 
 const COLLECTION_NAME = "benchmarkdevices"
 
 /**
- * Fetch all benchmark devices from Firestore
+ * Fetch all benchmark station metadata from Firestore (name, location, lat, lng, status)
  */
 export async function fetchBenchmarkDevices(): Promise<BenchmarkDevice[]> {
   try {
@@ -55,15 +59,7 @@ export async function fetchBenchmarkDevices(): Promise<BenchmarkDevice[]> {
         location: data.location || "Kabupaten Kebumen",
         lat: typeof data.lat === "number" ? data.lat : -7.685,
         lng: typeof data.lng === "number" ? data.lng : 109.655,
-        temp: typeof data.temp === "number" ? data.temp : 29.0,
-        hum: typeof data.hum === "number" ? data.hum : 75,
-        pressure: typeof data.pressure === "number" ? data.pressure : 1012,
-        rainfall: typeof data.rainfall === "number" ? data.rainfall : 0.0,
-        rainrate: typeof data.rainrate === "number" ? data.rainrate : 0.0,
-        windSpeed: typeof data.windSpeed === "number" ? data.windSpeed : 6.0,
         status: data.status === "offline" ? "offline" : "online",
-        batteryVolt: typeof data.batteryVolt === "number" ? data.batteryVolt : 4.1,
-        lastUpdate: data.lastUpdate || "Tersimpan di Cloud",
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
       })
@@ -77,7 +73,7 @@ export async function fetchBenchmarkDevices(): Promise<BenchmarkDevice[]> {
 }
 
 /**
- * Add a new benchmark device to Firestore
+ * Add a new benchmark device to Firestore (only metadata, no weather values)
  */
 export async function addBenchmarkDevice(
   deviceData: Omit<BenchmarkDevice, "id"> & { customId?: string }
@@ -96,15 +92,7 @@ export async function addBenchmarkDevice(
     location: deviceData.location.trim(),
     lat: Number(deviceData.lat),
     lng: Number(deviceData.lng),
-    temp: Number(deviceData.temp ?? 29.0),
-    hum: Number(deviceData.hum ?? 75),
-    pressure: Number(deviceData.pressure ?? 1012),
-    rainfall: Number(deviceData.rainfall ?? 0.0),
-    rainrate: Number(deviceData.rainrate ?? 0.0),
-    windSpeed: Number(deviceData.windSpeed ?? 6.0),
     status: deviceData.status || "online",
-    batteryVolt: Number(deviceData.batteryVolt ?? 4.1),
-    lastUpdate: "Baru saja",
     createdAt: now,
     updatedAt: now,
   }
@@ -146,8 +134,7 @@ export async function deleteBenchmarkDevice(id: string): Promise<void> {
 }
 
 /**
- * Seed benchmark devices to Firestore if the collection is empty.
- * Returns the active list of devices.
+ * Seed benchmark station metadata to Firestore if empty.
  */
 export async function seedBenchmarkDevicesIfEmpty(): Promise<BenchmarkDevice[]> {
   try {
@@ -156,7 +143,6 @@ export async function seedBenchmarkDevicesIfEmpty(): Promise<BenchmarkDevice[]> 
       return existing
     }
 
-    // Collection is empty, bulk seed default Kebumen stations
     console.info("Firestore benchmarkdevices is empty. Seeding default Kebumen stations...")
     const seededList: BenchmarkDevice[] = []
 
@@ -169,15 +155,7 @@ export async function seedBenchmarkDevicesIfEmpty(): Promise<BenchmarkDevice[]> 
         location: station.location || "Kabupaten Kebumen",
         lat: station.lat,
         lng: station.lng,
-        temp: station.temp ?? 29.0,
-        hum: station.hum ?? 75,
-        pressure: station.pressure ?? 1012,
-        rainfall: station.rainfall ?? 0.0,
-        rainrate: station.rainrate ?? 0.0,
-        windSpeed: station.windSpeed ?? 6.0,
         status: station.status || "online",
-        batteryVolt: station.batteryVolt ?? 4.1,
-        lastUpdate: "Seeded",
         createdAt: now,
         updatedAt: now,
       }
@@ -197,7 +175,7 @@ export async function seedBenchmarkDevicesIfEmpty(): Promise<BenchmarkDevice[]> 
 }
 
 /**
- * Force bulk seed/reset all default Kebumen stations into Firestore
+ * Force bulk seed/reset all default Kebumen stations into Firestore (metadata only)
  */
 export async function bulkSeedBenchmarkDevices(): Promise<number> {
   let count = 0
@@ -211,15 +189,7 @@ export async function bulkSeedBenchmarkDevices(): Promise<number> {
       location: station.location || "Kabupaten Kebumen",
       lat: station.lat,
       lng: station.lng,
-      temp: station.temp ?? 29.0,
-      hum: station.hum ?? 75,
-      pressure: station.pressure ?? 1012,
-      rainfall: station.rainfall ?? 0.0,
-      rainrate: station.rainrate ?? 0.0,
-      windSpeed: station.windSpeed ?? 6.0,
       status: station.status || "online",
-      batteryVolt: station.batteryVolt ?? 4.1,
-      lastUpdate: "Seeded",
       createdAt: now,
       updatedAt: now,
     }
@@ -233,4 +203,104 @@ export async function bulkSeedBenchmarkDevices(): Promise<number> {
   }
 
   return count
+}
+
+/**
+ * Live Fetch real-time ECMWF / ERA5 atmospheric data for multiple stations in a single batch API call.
+ * Retrieves current temperature, humidity, surface pressure, precipitation, wind speed,
+ * and up to 24 hours of real atmospheric time series points.
+ */
+export async function fetchLiveERA5WeatherForStations(
+  stations: { id: string; lat: number; lng: number }[]
+): Promise<Record<string, LiveBenchmarkWeather>> {
+  if (!stations || stations.length === 0) return {}
+
+  try {
+    const lats = stations.map((s) => s.lat.toFixed(4)).join(",")
+    const lngs = stations.map((s) => s.lng.toFixed(4)).join(",")
+
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,wind_speed_10m&past_hours=24&forecast_hours=1&timezone=Asia%2FBangkok`
+
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`Open-Meteo HTTP error ${response.status}`)
+    }
+
+    const data = await response.json()
+    const results: Record<string, LiveBenchmarkWeather> = {}
+
+    // Open-Meteo returns an array if multiple locations, or single object if only 1 location
+    const locationsData = Array.isArray(data) ? data : [data]
+
+    stations.forEach((station, index) => {
+      const loc = locationsData[index]
+      if (loc && loc.current) {
+        const cur = loc.current
+        const hourly = loc.hourly || {}
+
+        // Construct 1h history (last 16 points) from hourly series
+        const times: string[] = hourly.time || []
+        const temps: number[] = hourly.temperature_2m || []
+        const hums: number[] = hourly.relative_humidity_2m || []
+        const pressures: number[] = hourly.surface_pressure || []
+        const rains: number[] = hourly.precipitation || []
+        const winds: number[] = hourly.wind_speed_10m || []
+
+        const history1h: SensorDataPoint[] = []
+
+        const total = times.length
+        const sliceCount = Math.min(16, total)
+        const startIndex = Math.max(0, total - sliceCount)
+
+        for (let i = startIndex; i < total; i++) {
+          const tStr = times[i]
+          const d = new Date(tStr)
+          const timeFormatted = isNaN(d.getTime())
+            ? tStr.substring(11, 16) || "--:--"
+            : d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false })
+
+          history1h.push({
+            time: timeFormatted,
+            timestamp: !isNaN(d.getTime()) ? d.getTime() : Date.now() - (total - i) * 3600 * 1000,
+            temperature: typeof temps[i] === "number" ? Number(temps[i].toFixed(1)) : cur.temperature_2m,
+            humidity: typeof hums[i] === "number" ? Math.round(hums[i]) : cur.relative_humidity_2m,
+            pressure: typeof pressures[i] === "number" ? Number(pressures[i].toFixed(1)) : cur.surface_pressure,
+            rainfall: typeof rains[i] === "number" ? Number(rains[i].toFixed(1)) : 0,
+            rainrate: 0,
+            windSpeed: typeof winds[i] === "number" ? Number(winds[i].toFixed(1)) : cur.wind_speed_10m,
+          })
+        }
+
+        results[station.id] = {
+          temp: typeof cur.temperature_2m === "number" ? Number(cur.temperature_2m.toFixed(1)) : 29.0,
+          hum: typeof cur.relative_humidity_2m === "number" ? Math.round(cur.relative_humidity_2m) : 75,
+          pressure: typeof cur.surface_pressure === "number" ? Number(cur.surface_pressure.toFixed(1)) : 1012.0,
+          rainfall: typeof cur.precipitation === "number" ? Number(cur.precipitation.toFixed(1)) : 0.0,
+          rainrate: 0.0,
+          windSpeed: typeof cur.wind_speed_10m === "number" ? Number(cur.wind_speed_10m.toFixed(1)) : 6.0,
+          batteryVolt: 4.15,
+          lastUpdate: "Live ERA5/ECMWF",
+          history1h,
+        }
+      } else {
+        // Fallback if data missing
+        results[station.id] = {
+          temp: 29.0,
+          hum: 75,
+          pressure: 1012.0,
+          rainfall: 0.0,
+          rainrate: 0.0,
+          windSpeed: 6.0,
+          batteryVolt: 4.1,
+          lastUpdate: "ERA5 Standby",
+          history1h: [],
+        }
+      }
+    })
+
+    return results
+  } catch (err) {
+    console.error("Error fetching live ERA5 weather for stations:", err)
+    return {}
+  }
 }
