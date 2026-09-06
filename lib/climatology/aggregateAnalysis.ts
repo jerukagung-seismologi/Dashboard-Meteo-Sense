@@ -9,35 +9,23 @@ import {
   DailyHeatmapData
 } from "@/lib/climatology/analysisTypes";
 
-// Bulletproof WIB timezone component extractor
+// Bulletproof and high-performance WIB timezone component extractor
 export function getWibTimeParts(timestamp: number) {
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Jakarta",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-
-  const parts = formatter.formatToParts(new Date(timestamp));
-  const map: Record<string, string> = {};
-  for (const part of parts) {
-    map[part.type] = part.value;
-  }
-
-  let hourStr = map.hour || "00";
-  if (hourStr === "24") hourStr = "00";
+  const d = new Date(timestamp + 25200000); // UTC+7 (Asia/Jakarta)
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const min = String(d.getUTCMinutes()).padStart(2, "0");
 
   return {
-    year: map.year,
-    month: map.month,
-    day: map.day,
-    ymd: `${map.year}-${map.month}-${map.day}`,
-    hm: `${hourStr}:${map.minute || "00"}`,
-    hour: hourStr,
-    dayLabel: `${map.day}/${map.month}`
+    year: String(yyyy),
+    month: mm,
+    day: dd,
+    ymd: `${yyyy}-${mm}-${dd}`,
+    hm: `${hh}:${min}`,
+    hour: hh,
+    dayLabel: `${dd}/${mm}`
   };
 }
 
@@ -131,16 +119,16 @@ export function generateHeatmapMatrix(
 
   const cellSum = Array.from({ length: days.length }, () => Array(24).fill(0));
   const cellCount = Array.from({ length: days.length }, () => Array(24).fill(0));
+  const dayIndexMap = new Map<string, number>();
+  days.forEach((day, idx) => dayIndexMap.set(day, idx));
 
   for (const p of rawPoints) {
     const wib = getWibTimeParts(p.timestamp);
-    const [h, m] = wib.hm.split(":");
-    
-    const dayIdx = days.indexOf(wib.ymd);
-    const hourIdx = Number(h);
+    const dayIdx = dayIndexMap.get(wib.ymd);
+    const hourIdx = Number(wib.hour);
     const val = extractValue(p);
 
-    if (dayIdx !== -1 && hourIdx >= 0 && hourIdx < 24 && Number.isFinite(val)) {
+    if (dayIdx !== undefined && hourIdx >= 0 && hourIdx < 24 && Number.isFinite(val)) {
       cellSum[dayIdx][hourIdx] += val;
       cellCount[dayIdx][hourIdx]++;
     }

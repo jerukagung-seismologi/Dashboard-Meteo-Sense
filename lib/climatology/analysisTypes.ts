@@ -31,6 +31,9 @@ export interface AnalysisStats {
   temperature: ParameterStats;
   humidity: ParameterStats;
   pressure: ParameterStats;
+  rainfall?: ParameterStats;
+  windSpeed?: ParameterStats;
+  solarRadiation?: ParameterStats;
 }
 
 export interface HistogramBin {

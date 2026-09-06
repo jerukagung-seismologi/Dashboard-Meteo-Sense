@@ -328,12 +328,15 @@ export default function DataPage() {
       if (dateRange?.from && dateRange?.to) {
         const startTimestamp = dateRange.from.getTime();
         const endTimestamp = dateRange.to.getTime();
+        const durationHours = (endTimestamp - startTimestamp) / (1000 * 3600);
+        const resolution = durationHours > 72 ? "hourly" : "raw";
         data = await fetchSensorDataByDateRange(
           sensorId,
           startTimestamp,
           endTimestamp,
           false,
-          forceRefresh
+          forceRefresh,
+          resolution
         );
       } else {
         const rangeMs = selectedPeriod.valueInMinutes * 60000;

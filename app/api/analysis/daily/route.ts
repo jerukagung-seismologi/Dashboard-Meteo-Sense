@@ -7,6 +7,13 @@ import {
   generateDailyHeatmapMatrix
 } from "@/lib/climatology/aggregateAnalysis";
 import { AnalysisStats } from "@/lib/climatology/analysisTypes";
+type CacheEntry = {
+  data: any;
+  cachedAt: number;
+};
+const dailyCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 menit TTL
+
 export const revalidate = 60; // Cache for 1 minute
 
 export async function GET(request: Request) {
@@ -19,6 +26,8 @@ export async function GET(request: Request) {
   if (!sensorId) {
     return NextResponse.json({ error: "sensorId is required" }, { status: 400 });
   }
+
+  const isRefresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
 
   try {
     let targetDate = new Date();
@@ -36,6 +45,19 @@ export async function GET(request: Request) {
     const startTimestamp = Date.UTC(yyyy, mm, dd, 0, 0, 0, 0);
     const endTimestamp = Date.UTC(yyyy, mm, dd, 23, 59, 59, 999);
 
+    const cacheKey = `${sensorId}:${startTimestamp}:${endTimestamp}:${useCalibration}`;
+    if (!isRefresh) {
+      const cached = dailyCache.get(cacheKey);
+      if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
+        return NextResponse.json(cached.data, {
+          headers: {
+            "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+            "X-Cache": "HIT",
+          },
+        });
+      }
+    }
+
     const rawPoints = await fetchSensorDataByDateRange(sensorId, startTimestamp, endTimestamp, useCalibration);
     const points = aggregateHourlyAnalysis(rawPoints);
 
@@ -51,24 +73,28 @@ export async function GET(request: Request) {
       pressure: generateDailyHeatmapMatrix(rawPoints, (p) => p.pressure),
     };
     const formattedDate = `${yyyy}-${String(mm + 1).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
-    const isRefresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
 
-    return NextResponse.json(
-      {
-        sensorId,
-        date: formattedDate,
-        points,
-        stats,
-        heatmaps,
+    const payload = {
+      sensorId,
+      date: formattedDate,
+      points,
+      stats,
+      heatmaps,
+    };
+
+    dailyCache.set(cacheKey, { data: payload, cachedAt: Date.now() });
+    if (dailyCache.size > 50) {
+      const oldestKey = dailyCache.keys().next().value;
+      if (oldestKey) dailyCache.delete(oldestKey);
+    }
+
+    return NextResponse.json(payload, {
+      headers: {
+        "Cache-Control": isRefresh
+          ? "no-store, no-cache, must-revalidate, proxy-revalidate"
+          : "public, s-maxage=60, stale-while-revalidate=120",
       },
-      {
-        headers: {
-          "Cache-Control": isRefresh
-            ? "no-store, no-cache, must-revalidate, proxy-revalidate"
-            : "public, s-maxage=60, stale-while-revalidate=120",
-        },
-      }
-    );
+    });
   } catch (error: any) {
     console.error("Error in GET /api/analysis/daily:", error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });

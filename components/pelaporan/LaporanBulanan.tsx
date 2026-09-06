@@ -359,7 +359,7 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
       const end = new Date(dateRange.to)
       end.setHours(23, 59, 59, 999)
 
-      const raw = await fetchSensorDataByDateRange(sensorId, start.getTime(), end.getTime());
+      const raw = await fetchSensorDataByDateRange(sensorId, start.getTime(), end.getTime(), true, false, "hourly");
       
       if (!raw || raw.length === 0) {
         setError("Tidak ada data pada periode tanggal tersebut.");

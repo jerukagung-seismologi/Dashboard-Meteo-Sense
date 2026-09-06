@@ -1,5 +1,4 @@
-// lib/bias-correction/preprocessing/hourlyAggregation.ts
-import type { SensorDate } from "@/lib/FetchingSensorData";
+import { fastFormatJakarta, type SensorDate } from "@/lib/FetchingSensorData";
 import type { AWSRawObservation } from "@/lib/bias-correction/types";
 
 /**
@@ -111,23 +110,7 @@ export function aggregateSensorToHourly(records: SensorDate[]): SensorDate[] {
       windDir = Math.round(deg);
     }
 
-    const d = new Date(ts);
-    const dateFormatted = d.toLocaleString("id-ID", {
-      timeZone: "Asia/Jakarta",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).replace(/\./g, ":");
-
-    const timeFormatted = d.toLocaleString("id-ID", {
-      timeZone: "Asia/Jakarta",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).replace(/\./g, ":");
+    const { timeFormatted, dateFormatted } = fastFormatJakarta(ts);
 
     return {
       timestamp: ts,

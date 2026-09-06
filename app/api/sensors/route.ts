@@ -7,6 +7,14 @@ import {
 } from "@/lib/FetchingSensorData";
 import { aggregateSensorToHourly } from "@/lib/bias-correction/preprocessing/hourlyAggregation";
 
+type CacheEntry = {
+  data: any;
+  cachedAt: number;
+};
+const rangeCache = new Map<string, CacheEntry>();
+const MAX_CACHE_ENTRIES = 50;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 menit TTL
+
 export const revalidate = 60; // Cache for 1 minute
 
 export async function GET(request: Request) {
@@ -50,10 +58,34 @@ export async function GET(request: Request) {
         const startTimestamp = parseInt(startStr, 10);
         const endTimestamp = parseInt(endStr, 10);
         const resolution = searchParams.get("resolution") || searchParams.get("aggregate");
-        let data = await fetchSensorDataByDateRange(sensorId, startTimestamp, endTimestamp, applyCalibration);
-        if (resolution === "hourly" && data && data.length > 0) {
-          data = aggregateSensorToHourly(data);
+        const cacheKey = `${sensorId}:${startTimestamp}:${endTimestamp}:${applyCalibration}:${resolution}`;
+
+        if (!isRefresh) {
+          const cached = rangeCache.get(cacheKey);
+          if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
+            return NextResponse.json(cached.data, {
+              headers: {
+                "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+                "X-Cache": "HIT",
+              },
+            });
+          }
         }
+
+        const data = await fetchSensorDataByDateRange(
+          sensorId,
+          startTimestamp,
+          endTimestamp,
+          applyCalibration,
+          resolution === "hourly" ? "hourly" : "raw"
+        );
+
+        if (rangeCache.size >= MAX_CACHE_ENTRIES) {
+          const oldestKey = rangeCache.keys().next().value;
+          if (oldestKey) rangeCache.delete(oldestKey);
+        }
+        rangeCache.set(cacheKey, { data, cachedAt: Date.now() });
+
         return NextResponse.json(data, responseOptions);
       }
       case "value": {

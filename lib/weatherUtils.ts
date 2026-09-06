@@ -120,7 +120,12 @@ function aggregateHourly(rows: SensorDate[]): HourlyRecord[] {
   for (const [hourKey, items] of byHour) {
     const n = items.length || 1;
     const sum = (ns: number[]) => ns.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
-    const rainfallTot = items.reduce((acc, i) => acc + (Number.isFinite(i._rainContrib) ? i._rainContrib : 0), 0);
+    const rainfallTot = items.reduce((acc, i) => {
+      if (i.rainfall != null && Number.isFinite(i.rainfall) && i.rainfall > 0) {
+        return acc + i.rainfall;
+      }
+      return acc + (Number.isFinite(i._rainContrib) ? i._rainContrib : 0);
+    }, 0);
 
     hours.push({
       hourKey,
@@ -342,9 +347,29 @@ export function findWeatherExtremes(dailyData: WeatherRecord[], rawData: SensorD
 }
 
 // Data Quality Calculation
-export function calculateDataQuality(rawData: SensorDate[], dateRangeDays: number, expectedIntervalMins = 10) {
-  const recordsPerDay = (24 * 60) / expectedIntervalMins;
-  const expectedTotal = recordsPerDay * Math.max(1, dateRangeDays);
+export function calculateDataQuality(rawData: SensorDate[], dateRangeDays: number, expectedIntervalMins?: number) {
+  let intervalMins = expectedIntervalMins;
+  if (!intervalMins) {
+    if (rawData.length >= 2) {
+      const gaps: number[] = [];
+      for (let i = 1; i < Math.min(rawData.length, 25); i++) {
+        const diffMins = (rawData[i].timestamp - rawData[i - 1].timestamp) / (60 * 1000);
+        if (diffMins > 0) gaps.push(diffMins);
+      }
+      if (gaps.length > 0) {
+        gaps.sort((a, b) => a - b);
+        const medianGap = gaps[Math.floor(gaps.length / 2)];
+        intervalMins = medianGap >= 45 ? 60 : 10;
+      } else {
+        intervalMins = 10;
+      }
+    } else {
+      intervalMins = 10;
+    }
+  }
+
+  const recordsPerDay = (24 * 60) / intervalMins;
+  const expectedTotal = Math.round(recordsPerDay * Math.max(1, dateRangeDays));
   const actualTotal = rawData.length;
   
   // Calculate longest gap

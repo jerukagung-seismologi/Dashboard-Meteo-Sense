@@ -263,8 +263,8 @@ export default function ExportWOWMetOffice({ sensorId, sensorName, displayName }
       start.setHours(0, 0, 0, 0);
       const end = new Date(dateRange.to);
       end.setHours(23, 59, 59, 999);
-
-      const records = await fetchSensorDataByDateRange(sensorId, start.getTime(), end.getTime(), true, true);
+      const resolution = intervalMin === "60" ? "hourly" : "raw";
+      const records = await fetchSensorDataByDateRange(sensorId, start.getTime(), end.getTime(), true, false, resolution);
       if (!records || records.length === 0) {
         setRawData([]);
         toast({ title: "Informasi", description: "Tidak ada data sensor pada rentang tanggal tersebut." });

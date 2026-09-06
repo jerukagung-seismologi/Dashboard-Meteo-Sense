@@ -9,6 +9,13 @@ import {
   getWibTimeParts
 } from "@/lib/climatology/aggregateAnalysis";
 import { AnalysisStats } from "@/lib/climatology/analysisTypes";
+type CacheEntry = {
+  data: any;
+  cachedAt: number;
+};
+const weeklyCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 menit TTL
+
 export const revalidate = 60; // Cache for 1 minute
 
 export async function GET(request: Request) {
@@ -23,6 +30,8 @@ export async function GET(request: Request) {
   if (!sensorId) {
     return NextResponse.json({ error: "sensorId is required" }, { status: 400 });
   }
+
+  const isRefresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
 
   try {
     let targetDate = new Date();
@@ -44,6 +53,19 @@ export async function GET(request: Request) {
     // Dynamic days = days * 24 * 60 * 60 * 1000 ms
     const endTimestamp = startTimestamp + days * 24 * 60 * 60 * 1000 - 1;
 
+    const cacheKey = `${sensorId}:${startTimestamp}:${endTimestamp}:${useCalibration}`;
+    if (!isRefresh) {
+      const cached = weeklyCache.get(cacheKey);
+      if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
+        return NextResponse.json(cached.data, {
+          headers: {
+            "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+            "X-Cache": "HIT",
+          },
+        });
+      }
+    }
+
     console.log(`Weekly Analysis API Request: sensorId=${sensorId}, startUTC=${new Date(startTimestamp).toISOString()}, endUTC=${new Date(endTimestamp).toISOString()}`);
 
     const rawPoints = await fetchSensorDataByDateRange(sensorId, startTimestamp, endTimestamp, useCalibration);
@@ -58,38 +80,24 @@ export async function GET(request: Request) {
       };
     });
 
-    // 2. Summary stats for the 7 days
-    const tempValues = rawPoints.map((p) => p.temperature).filter(Number.isFinite);
-    const humValues = rawPoints.map((p) => p.humidity).filter(Number.isFinite);
-    const pressValues = rawPoints.map((p) => p.pressure).filter(Number.isFinite);
-
-    const tempStats = calculateParameterStats(tempValues);
-    const humStats = calculateParameterStats(humValues);
-    const pressStats = calculateParameterStats(pressValues);
-
+    // 2. Compute parameters stats
     const stats: AnalysisStats = {
-      temperature: tempStats,
-      humidity: humStats,
-      pressure: pressStats,
+      temperature: calculateParameterStats(rawPoints.map((p) => p.temperature)),
+      humidity: calculateParameterStats(rawPoints.map((p) => p.humidity)),
+      pressure: calculateParameterStats(rawPoints.map((p) => p.pressure)),
+      rainfall: calculateParameterStats(rawPoints.map((p) => p.rainfall)),
+      windSpeed: calculateParameterStats(rawPoints.map((p) => (p as any).windSpeed ?? (p as any).wind_speed ?? 0)),
+      solarRadiation: calculateParameterStats(rawPoints.map((p) => p.lux ?? 0)),
     };
 
-    // 3. Pre-bin histograms (10 bins each)
+    // 3. Compute histogram bins
     const histograms = {
-      temperature: {
-        bins: calculateHistogramBins(tempValues, 10),
-        stats: tempStats,
-      },
-      humidity: {
-        bins: calculateHistogramBins(humValues, 10),
-        stats: humStats,
-      },
-      pressure: {
-        bins: calculateHistogramBins(pressValues, 10),
-        stats: pressStats,
-      },
+      temperature: calculateHistogramBins(rawPoints.map((p) => p.temperature)),
+      humidity: calculateHistogramBins(rawPoints.map((p) => p.humidity)),
+      pressure: calculateHistogramBins(rawPoints.map((p) => p.pressure)),
     };
 
-    // 4. Heatmaps: mapping day category and hour:minute category
+    // 4. Generate diurnal heatmap matrices (24 hours x Days)
     const heatmaps = {
       temperature: generateHeatmapMatrix(rawPoints, (p) => p.temperature),
       humidity: generateHeatmapMatrix(rawPoints, (p) => p.humidity),
@@ -99,26 +107,29 @@ export async function GET(request: Request) {
     const startDateFormatted = new Date(startTimestamp).toISOString().substring(0, 10);
     const endDateFormatted = new Date(endTimestamp).toISOString().substring(0, 10);
 
-    const isRefresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
+    const payload = {
+      sensorId,
+      startDate: startDateFormatted,
+      endDate: endDateFormatted,
+      points,
+      stats,
+      histograms,
+      heatmaps,
+    };
 
-    return NextResponse.json(
-      {
-        sensorId,
-        startDate: startDateFormatted,
-        endDate: endDateFormatted,
-        points,
-        stats,
-        histograms,
-        heatmaps,
+    weeklyCache.set(cacheKey, { data: payload, cachedAt: Date.now() });
+    if (weeklyCache.size > 50) {
+      const oldestKey = weeklyCache.keys().next().value;
+      if (oldestKey) weeklyCache.delete(oldestKey);
+    }
+
+    return NextResponse.json(payload, {
+      headers: {
+        "Cache-Control": isRefresh
+          ? "no-store, no-cache, must-revalidate, proxy-revalidate"
+          : "public, s-maxage=60, stale-while-revalidate=120",
       },
-      {
-        headers: {
-          "Cache-Control": isRefresh
-            ? "no-store, no-cache, must-revalidate, proxy-revalidate"
-            : "public, s-maxage=60, stale-while-revalidate=120",
-        },
-      }
-    );
+    });
   } catch (error: any) {
     console.error("Error in GET /api/analysis/weekly:", error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
