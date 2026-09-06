@@ -90,10 +90,10 @@ export function Topbar({ user, profile, setSidebarOpen, handleLogout, navigation
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
                 <div className="relative h-8 w-8 overflow-hidden rounded-full bg-gray-200 ring-2 ring-white dark:bg-gray-700 dark:ring-gray-800">
-                  {profile?.photoURL ? (
+                  {((profile as any)?.photoURL || user?.photoURL) ? (
                     <Image
-                      src={profile.photoURL}
-                      alt={profile.displayName || "User"}
+                      src={((profile as any)?.photoURL || user?.photoURL)!}
+                      alt={profile?.displayName || "User"}
                       fill
                       className="object-cover"
                     />

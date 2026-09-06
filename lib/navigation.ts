@@ -16,6 +16,7 @@ import {
   GitCompare,
   Wind,
   Radio,
+  SlidersHorizontal,
   LucideIcon
 } from "lucide-react"
 
@@ -41,11 +42,10 @@ export const dashboardNavigation: NavigationItem[] = [
   { name: "Indeks Monsun", href: "/dashboard/indeks-monsun", icon: Wind, badge: "Regional", roles: ['Admin', 'User'] },
   { name: "Air Quality", href: "/dashboard/air-quality", icon: Wind, badge: "CAMS", roles: ['Admin', 'User'] },
   { name: "Reanalisis ERA5", href: "/dashboard/reanalisis-era5", icon: Compass, roles: ['Admin', 'User'] },
-  { name: "Validasi Bias ERA5", href: "/dashboard/validasi-bias", icon: GitCompare, roles: ['Admin', 'User'] },
+  { name: "Kalibrasi & Validasi", href: "/dashboard/kalibrasi", icon: SlidersHorizontal, roles: ['Admin', 'User'] },
   { name: "Basis Data", href: "/dashboard/data", icon: Database, roles: ['Admin'] },
   { name: "Laporan Cuaca", href: "/dashboard/laporan", icon: FileText, badge: "Warga", roles: ['Admin'] },
   { name: "Prakirawan Cuaca", href: "/dashboard/prakirawan", icon: CloudRain, roles: ['Admin'] },
   { name: "Profil", href: "/dashboard/profil", icon: User, roles: ['Admin', 'User'] },
-  { name: "Kalibrasi", href: "/dashboard/settings/calibration", icon: Settings2, roles: ['Admin'] },
   { name: "Manajemen", href: "/dashboard/manager", icon: UsersRound, roles: ['Admin'] },
 ]

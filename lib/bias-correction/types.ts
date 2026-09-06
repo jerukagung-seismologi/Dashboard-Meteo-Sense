@@ -190,7 +190,12 @@ export type CorrectionMethod =
   | "linear_regression"
   | "quantile_mapping"
   | "zero_aware_rain"
-  | "circular_wind";
+  | "circular_wind"
+  | "polynomial_regression"
+  | "robust_huber"
+  | "quantile_delta_mapping"
+  | "power_law"
+  | "two_point";
 
 /**
  * Provenance & Audit Metadata for Layer 3 Dataset
@@ -258,11 +263,15 @@ export interface ICorrectionEngine<TParams = any> {
   readonly method: CorrectionMethod;
   readonly variable: MeteorologicalVariable;
   fit(calibrationPairs: { aws: number; era5: number }[]): TParams;
-  transform(era5Values: number[], params?: TParams): number[];
+  transform(
+    era5Values: (number | null | undefined)[],
+    params?: TParams,
+    timestamps?: number[]
+  ): (number | null)[];
   fitTransform(
     calibrationPairs: { aws: number; era5: number }[],
-    allEra5Values: number[]
-  ): { params: TParams; correctedValues: number[] };
+    allEra5Values: (number | null | undefined)[]
+  ): { params: TParams; correctedValues: (number | null)[] };
   evaluate(
     validationPairs: { aws: number; era5Raw: number; era5Corrected: number }[]
   ): ComparativeValidationResult;

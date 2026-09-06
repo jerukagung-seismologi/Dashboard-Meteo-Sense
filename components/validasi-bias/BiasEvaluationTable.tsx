@@ -21,6 +21,11 @@ const METHOD_LABELS: Record<CorrectionMethod, string> = {
   quantile_mapping: "Empirical Quantile Mapping (EQM)",
   zero_aware_rain: "Zero-Aware Precipitation Correction",
   circular_wind: "Circular Wind Direction & Speed EQM",
+  polynomial_regression: "Polynomial Regression (Derajat 2: a·x² + b·x + c)",
+  robust_huber: "Robust Huber Regression (Tahan Outlier)",
+  quantile_delta_mapping: "Quantile Delta Mapping (QDM Standar IPCC)",
+  power_law: "Power Law Scaling (y = a · x^b)",
+  two_point: "Two-Point Interpolation Calibration",
 };
 
 export const BiasEvaluationTable: React.FC<BiasEvaluationTableProps> = ({

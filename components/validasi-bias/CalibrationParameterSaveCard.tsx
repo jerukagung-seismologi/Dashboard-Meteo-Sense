@@ -68,10 +68,19 @@ export const CalibrationParameterSaveCard: React.FC<CalibrationParameterSaveCard
 
   // Translate bias correction fit parameters to sensor calibration format
   const derivedCalibration = React.useMemo<{
-    method: "offset" | "scale_offset" | "multiplier" | "percentage" | "none";
+    method: "offset" | "scale_offset" | "multiplier" | "percentage" | "polynomial" | "robust_linear" | "power_law" | "two_point" | "none";
     offset?: number;
     scale?: number;
     multiplier?: number;
+    polyA?: number;
+    polyB?: number;
+    polyC?: number;
+    powerA?: number;
+    powerB?: number;
+    point1Raw?: number;
+    point1Ref?: number;
+    point2Raw?: number;
+    point2Ref?: number;
     description: string;
   }>(() => {
     const params = fitParameters || {};
@@ -99,13 +108,51 @@ export const CalibrationParameterSaveCard: React.FC<CalibrationParameterSaveCard
         offset: Number(intercept.toFixed(3)),
         description: `Skala & Offset OLS: Skala ${slope.toFixed(3)}×, Offset ${intercept >= 0 ? "+" : ""}${intercept.toFixed(2)} ${unit} (R² = ${params.rSquared ?? 0})`,
       };
+    } else if (method === "robust_huber") {
+      const slope = params.slope ?? 1;
+      const intercept = params.intercept ?? 0;
+      return {
+        method: "robust_linear",
+        scale: Number(slope.toFixed(3)),
+        offset: Number(intercept.toFixed(3)),
+        description: `Robust Huber: Skala ${slope.toFixed(3)}×, Offset ${intercept >= 0 ? "+" : ""}${intercept.toFixed(2)} ${unit}`,
+      };
+    } else if (method === "polynomial_regression") {
+      const a = params.a ?? 0;
+      const b = params.b ?? 1;
+      const c = params.c ?? 0;
+      return {
+        method: "polynomial",
+        polyA: Number(a.toFixed(5)),
+        polyB: Number(b.toFixed(4)),
+        polyC: Number(c.toFixed(3)),
+        description: `Polynomial Derajat 2: y = ${a.toFixed(4)}·x² + ${b.toFixed(3)}·x ${c >= 0 ? "+" : "-"} ${Math.abs(c).toFixed(2)}`,
+      };
+    } else if (method === "power_law") {
+      const a = params.a ?? 1;
+      const b = params.b ?? 1;
+      return {
+        method: "power_law",
+        powerA: Number(a.toFixed(4)),
+        powerB: Number(b.toFixed(4)),
+        description: `Power Law: y = ${a.toFixed(3)} · (x ^ ${b.toFixed(3)})`,
+      };
+    } else if (method === "two_point") {
+      return {
+        method: "two_point",
+        point1Raw: Number((params.x1 ?? 0).toFixed(2)),
+        point1Ref: Number((params.y1 ?? 0).toFixed(2)),
+        point2Raw: Number((params.x2 ?? 100).toFixed(2)),
+        point2Ref: Number((params.y2 ?? 100).toFixed(2)),
+        description: `Two-Point: P1(${params.x1}→${params.y1}), P2(${params.x2}→${params.y2})`,
+      };
     } else if (method === "zero_aware_rain") {
       return {
         method: "multiplier",
         multiplier: 1.0,
         description: `Zero-Aware Rain: Threshold Presipitasi Wet-Day ${params.wetDayThresholdMm ?? 0.1} mm`,
       };
-    } else if (method === "quantile_mapping") {
+    } else if (method === "quantile_mapping" || method === "quantile_delta_mapping") {
       const offset = params.lowerOffset ?? params.medianOffset ?? 0;
       return {
         method: "offset",
@@ -164,6 +211,15 @@ export const CalibrationParameterSaveCard: React.FC<CalibrationParameterSaveCard
       if (derivedCalibration.offset !== undefined) updatedVarConfig.offset = derivedCalibration.offset;
       if (derivedCalibration.scale !== undefined) updatedVarConfig.scale = derivedCalibration.scale;
       if (derivedCalibration.multiplier !== undefined) updatedVarConfig.multiplier = derivedCalibration.multiplier;
+      if (derivedCalibration.polyA !== undefined) updatedVarConfig.polyA = derivedCalibration.polyA;
+      if (derivedCalibration.polyB !== undefined) updatedVarConfig.polyB = derivedCalibration.polyB;
+      if (derivedCalibration.polyC !== undefined) updatedVarConfig.polyC = derivedCalibration.polyC;
+      if (derivedCalibration.powerA !== undefined) updatedVarConfig.powerA = derivedCalibration.powerA;
+      if (derivedCalibration.powerB !== undefined) updatedVarConfig.powerB = derivedCalibration.powerB;
+      if (derivedCalibration.point1Raw !== undefined) updatedVarConfig.point1Raw = derivedCalibration.point1Raw;
+      if (derivedCalibration.point1Ref !== undefined) updatedVarConfig.point1Ref = derivedCalibration.point1Ref;
+      if (derivedCalibration.point2Raw !== undefined) updatedVarConfig.point2Raw = derivedCalibration.point2Raw;
+      if (derivedCalibration.point2Ref !== undefined) updatedVarConfig.point2Ref = derivedCalibration.point2Ref;
 
       const updatedDoc: StationCalibrationDocument = {
         ...baseDoc,
@@ -185,97 +241,98 @@ export const CalibrationParameterSaveCard: React.FC<CalibrationParameterSaveCard
       toast({
         variant: "destructive",
         title: "Gagal Menyimpan",
-        description: err?.message || "Terjadi kesalahan saat menyimpan ke database.",
+        description: err?.message || "Terjadi kesalahan saat menyimpan ke Firestore.",
       });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const existingSetting = (currentConfig as any)?.[sensorKey] as SensorVariableCalibration | undefined;
+  const currentVarConfig = currentConfig ? (currentConfig as any)[sensorKey] : null;
+  const isCurrentlyCalibrated = currentVarConfig && currentVarConfig.enabled && currentVarConfig.method !== "none";
 
   return (
-    <Card className="border-blue-100 dark:border-blue-900/50 bg-gradient-to-br from-blue-50/40 via-white to-white dark:from-slate-900 dark:to-slate-800 shadow-sm">
-      <CardHeader className="pb-3 border-b border-blue-100/60 dark:border-slate-800">
+    <Card className="border-indigo-100 dark:border-indigo-950/60 bg-gradient-to-r from-blue-50/50 via-indigo-50/30 to-purple-50/20 dark:from-blue-950/20 dark:via-indigo-950/20 dark:to-purple-950/10 shadow-sm">
+      <CardHeader className="pb-3 border-b border-indigo-100/60 dark:border-indigo-900/40">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-blue-100 dark:bg-blue-900/50 rounded-lg text-blue-700 dark:text-blue-300">
+            <div className="p-1.5 rounded-lg bg-indigo-600 text-white shadow-sm">
               <Sliders className="w-4 h-4" />
             </div>
             <div>
               <CardTitle className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                Pratinjau & Simpan Nilai Offset / Parameter Kalibrasi
+                Penerapan Parameter Kalibrasi ke Sensor IoT
               </CardTitle>
-              <p className="text-xs text-slate-500">
-                Terapkan hasil fitting bias model ERA5 langsung ke konfigurasi sensor stasiun otomatis.
+              <p className="text-xs text-slate-500 mt-0.5">
+                Simpan rumus bias hasil fitting ini secara otomatis ke konfigurasi sensor stasiun di Firestore.
               </p>
             </div>
           </div>
-          <div>
-            <Badge variant="outline" className="bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-300 text-xs">
-              <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Siap Disinkronkan
-            </Badge>
+
+          <div className="flex items-center gap-2">
+            {isCurrentlyCalibrated ? (
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 text-xs">
+                <Check className="w-3 h-3 mr-1" /> Sensor Terkalibrasi ({currentVarConfig.method})
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-slate-100 text-slate-600 dark:bg-slate-800 text-xs">
+                Sensor Menggunakan Data Mentah
+              </Badge>
+            )}
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="pt-4 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          {/* Estimated Offset Parameter */}
-          <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
-            <span className="text-slate-400 block mb-1">Nilai Offset / Parameter Terestimasi:</span>
-            <div className="text-base font-bold font-mono text-blue-600 dark:text-blue-400">
-              {derivedCalibration.offset !== undefined && (
-                <span>Offset: {derivedCalibration.offset >= 0 ? `+${derivedCalibration.offset}` : derivedCalibration.offset} {unit}</span>
-              )}
-              {derivedCalibration.scale !== undefined && (
-                <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Scale Factor: {derivedCalibration.scale}×
-                </span>
-              )}
-              {derivedCalibration.offset === undefined && derivedCalibration.scale === undefined && (
-                <span>{derivedCalibration.description}</span>
-              )}
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200/80 dark:border-slate-800">
+          <div>
+            <span className="text-[11px] text-slate-500 font-medium block">Target Sensor:</span>
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 capitalize">
+              {variable.replace(/_/g, " ")} ({sensorKey})
+            </span>
           </div>
 
-          {/* Current Setting in Database */}
-          <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
-            <span className="text-slate-400 block mb-1">Setting Kalibrasi Aktif Saat Ini:</span>
-            <div className="text-xs font-mono">
-              {existingSetting && existingSetting.enabled ? (
-                <div>
-                  <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] mb-1">
-                    Aktif: {existingSetting.method}
-                  </Badge>
-                  <span className="block text-slate-700 dark:text-slate-300">
-                    {existingSetting.offset !== undefined ? `Offset: ${existingSetting.offset} ${unit}` : ""}
-                    {existingSetting.scale !== undefined ? `Scale: ${existingSetting.scale}×` : ""}
-                  </span>
-                </div>
-              ) : (
-                <span className="text-slate-400 font-sans italic">Belum ada kalibrasi (Raw 1:1)</span>
-              )}
-            </div>
+          <div>
+            <span className="text-[11px] text-slate-500 font-medium block">Metode Konversi:</span>
+            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 capitalize">
+              {derivedCalibration.method}
+            </span>
           </div>
 
-          {/* Action Button */}
-          <div className="flex flex-col justify-center items-start sm:items-end">
-            <Button
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs h-10 shadow-sm"
-              onClick={handleSaveToSensorConfig}
-              disabled={isSaving || sampleCount === 0}
-            >
-              {isSaving ? (
-                <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-              ) : isSaved ? (
-                <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-300" />
-              ) : (
-                <Save className="w-3.5 h-3.5 mr-1.5" />
-              )}
-              {isSaved ? "Tersimpan ke Stasiun!" : "Simpan ke Kalibrasi Sensor"}
-            </Button>
+          <div>
+            <span className="text-[11px] text-slate-500 font-medium block">Deskripsi Nilai:</span>
+            <span className="text-xs font-mono text-slate-700 dark:text-slate-300">
+              {derivedCalibration.description}
+            </span>
           </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-1">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <ShieldCheck className="w-4 h-4 text-indigo-500" />
+            <span>
+              Parameter disimpan secara persisten di dokumen Firestore:{" "}
+              <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[11px]">
+                stations/{stationId}/calibration/config
+              </code>
+            </span>
+          </div>
+
+          <Button
+            size="sm"
+            onClick={handleSaveToSensorConfig}
+            disabled={isSaving || derivedCalibration.method === "none"}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs h-8 shadow-sm transition-all"
+          >
+            {isSaving ? (
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            ) : isSaved ? (
+              <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-300" />
+            ) : (
+              <Save className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            {isSaved ? "Tersimpan di Firestore!" : "Simpan Parameter ke Sensor"}
+          </Button>
         </div>
       </CardContent>
     </Card>

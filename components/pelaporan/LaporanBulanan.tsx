@@ -294,20 +294,20 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: La
       headerTitle = `LAPORAN METEOROLOGI PERIODIK (${startFormatted} - ${endFormatted})`;
     }
 
-    const rainTot = (stats.rainfall.total || 0).toFixed(1);
-    const rainDays = stats.rainfall.rainDays || 0;
-    const rainDesc = stats.rainfall.total === 0 ? "Tidak ada hujan" : `${rainDays} hari hujan`;
+    const rainTot = (stats.totalRain || 0).toFixed(1);
+    const rainDays = stats.rainyDays || 0;
+    const rainDesc = stats.totalRain === 0 ? "Tidak ada hujan" : `${rainDays} hari hujan`;
 
-    const tempAvg = stats.temp.avg != null ? `${stats.temp.avg.toFixed(1)}°C` : "—";
-    const tempMax = extremes.temperature.max.value != null ? `${extremes.temperature.max.value.toFixed(1)}°C` : "—";
-    const tempMin = extremes.temperature.min.value != null ? `${extremes.temperature.min.value.toFixed(1)}°C` : "—";
+    const tempAvg = stats.avgTemp != null ? `${stats.avgTemp.toFixed(1)}°C` : "—";
+    const tempMax = extremes.hottestDay.value != null ? `${extremes.hottestDay.value.toFixed(1)}°C` : "—";
+    const tempMin = extremes.coldestDay.value != null ? `${extremes.coldestDay.value.toFixed(1)}°C` : "—";
 
-    const humAvg = stats.humidity.avg != null ? `${Math.round(stats.humidity.avg)}%` : "—";
-    const humMin = extremes.humidity.min.value != null ? `${Math.round(extremes.humidity.min.value)}%` : "—";
-    const humMax = extremes.humidity.max.value != null ? `${Math.round(extremes.humidity.max.value)}%` : "—";
+    const humAvg = stats.avgHum != null ? `${Math.round(stats.avgHum)}%` : "—";
+    const humMin = stats.minHum != null ? `${Math.round(stats.minHum)}%` : "—";
+    const humMax = extremes.mostHumidDay.value != null ? `${Math.round(extremes.mostHumidDay.value)}%` : "—";
 
-    const pressMin = extremes.pressure.min.value != null ? extremes.pressure.min.value.toFixed(1) : "—";
-    const pressMax = extremes.pressure.max.value != null ? extremes.pressure.max.value.toFixed(1) : "—";
+    const pressMin = stats.minPres != null ? stats.minPres.toFixed(1) : "—";
+    const pressMax = stats.maxPres != null ? stats.maxPres.toFixed(1) : "—";
 
     return `${headerTitle}
 Curah Hujan: ${rainTot} mm (${rainDesc})
