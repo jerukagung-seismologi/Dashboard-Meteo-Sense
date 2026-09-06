@@ -135,9 +135,9 @@ export const StationDetailDrawer: React.FC<StationDetailDrawerProps> = ({
             <div className="flex items-center justify-between text-cyan-600 dark:text-cyan-400 text-xs font-semibold">
               <span>Kecepatan & Arah Angin</span>
               <div
-                style={{ transform: `rotate(${station.windDirection ?? 0}deg)` }}
+                style={{ transform: `rotate(${((station.windDirection ?? 0) + 180) % 360}deg)` }}
                 className="transition-transform duration-300 inline-flex"
-                title={`Arah: ${station.windDirection ?? 0}°`}
+                title={`Bertiup menuju ${((station.windDirection ?? 0) + 180) % 360}°`}
               >
                 <Navigation className="h-4 w-4 fill-current text-cyan-500" />
               </div>
@@ -147,8 +147,8 @@ export const StationDetailDrawer: React.FC<StationDetailDrawerProps> = ({
                 <span>{station.windSpeed !== undefined ? station.windSpeed.toFixed(1) : "0.0"}</span>
                 <span className="text-xs font-normal text-slate-500 ml-1">km/h</span>
               </div>
-              <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-400">
-                {station.windDirection ?? 0}°
+              <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-400" title={`Berasal dari ${station.windDirection ?? 0}°, bertiup ke ${((station.windDirection ?? 0) + 180) % 360}°`}>
+                Dari {station.windDirection ?? 0}°
               </span>
             </div>
           </div>

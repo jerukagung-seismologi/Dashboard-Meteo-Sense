@@ -151,7 +151,7 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
         {/* Arah & Kecepatan Angin */}
         <button
           onClick={() => setSelectedMetric("wind")}
-          title={`Kecepatan: ${station.windSpeed ?? 0} km/h, Arah: ${station.windDirection ?? 0}°`}
+          title={`Kecepatan: ${station.windSpeed ?? 0} km/h, Dari: ${getCardinalDirection(station.windDirection)} (${station.windDirection ?? 0}°), Aliran bertiup ke: ${((station.windDirection ?? 0) + 180) % 360}°`}
           className={`p-1.5 rounded-xl border transition-all text-center flex flex-col items-center cursor-pointer ${
             selectedMetric === "wind"
               ? "bg-cyan-50 dark:bg-cyan-950/40 border-cyan-300 dark:border-cyan-700 shadow-xs"
@@ -160,7 +160,7 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
         >
           <div
             className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400 mb-0.5 flex items-center justify-center transition-transform duration-300"
-            style={{ transform: `rotate(${station.windDirection ?? 0}deg)` }}
+            style={{ transform: `rotate(${((station.windDirection ?? 0) + 180) % 360}deg)` }}
           >
             <Navigation className="h-3 w-3 fill-current" />
           </div>
@@ -168,7 +168,7 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
             {station.windSpeed !== undefined ? `${station.windSpeed.toFixed(1)}` : "0.0"}
           </span>
           <span className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
-            {station.windDirection !== undefined ? `${getCardinalDirection(station.windDirection)} ${station.windDirection}°` : "Angin"}
+            {station.windDirection !== undefined ? `Dr ${getCardinalDirection(station.windDirection)}` : "Angin"}
           </span>
         </button>
       </div>

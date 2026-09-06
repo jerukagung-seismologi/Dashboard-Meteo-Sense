@@ -104,22 +104,26 @@ const createStationDivIcon = (
   const iconHeight = 32;
 
   if (displayMetric === "wind") {
-    // Mode Arah & Kecepatan Angin (Aerodinamis dengan Panah Vektor)
+    // Mode Arah & Kecepatan Angin (Aerodinamis dengan Panah Vektor Aliran Angin)
     const speed = station.windSpeed !== undefined ? station.windSpeed.toFixed(1) : "0.0";
-    const dir = station.windDirection ?? 0;
+    const originDir = station.windDirection ?? 0;
+    // Konvensi meteorologi: originDir adalah arah DARI MANA angin datang.
+    // Panah visual menunjuk KE MANA angin bertiup (flow direction): (originDir + 180) % 360.
+    const flowDir = (originDir + 180) % 360;
+
     borderColor = isSelected ? "#38bdf8" : "#06b6d4";
     bgColor = isSelected ? "#083344" : "#042f2e";
     iconWidth = 78;
 
     badgeContent = `
-      <div style="display: flex; align-items: center; gap: 4px;">
+      <div style="display: flex; align-items: center; gap: 4px;" title="Angin: ${speed} km/h, Dari: ${originDir}° (bertiup ke ${flowDir}°)">
         <div style="
           display: inline-flex;
           align-items: center;
           justify-content: center;
           width: 14px;
           height: 14px;
-          transform: rotate(${dir}deg);
+          transform: rotate(${flowDir}deg);
           transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           color: #38bdf8;
         ">
