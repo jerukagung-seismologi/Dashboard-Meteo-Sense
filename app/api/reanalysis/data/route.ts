@@ -1,6 +1,7 @@
 // app/api/reanalysis/data/route.ts
 import { NextResponse } from "next/server";
 import { processERA5Hourly } from "@/lib/reanalysis/climatology";
+import { fetchERA5FromSqlite } from "@/lib/reanalysis/era5SqliteSource";
 
 export const revalidate = 86400; // Cache ERA5 historical queries for 24 hours (climatological datasets do not change daily)
 
@@ -10,6 +11,7 @@ export async function GET(request: Request) {
   const lngStr = searchParams.get("longitude");
   const startDate = searchParams.get("startDate"); // YYYY-MM-DD
   const endDate = searchParams.get("endDate");     // YYYY-MM-DD
+  const requestedSource = searchParams.get("source") || "auto"; // "auto" | "sqlite" | "online"
 
   if (!latStr || !lngStr || !startDate || !endDate) {
     return NextResponse.json(
@@ -57,7 +59,16 @@ export async function GET(request: Request) {
     let rawData: any = null;
     let sourceModelUsed = "ECMWF ERA5-Land (9 km)";
 
-    if (useForecastIfs) {
+    // 0. Prioritas Utama: Cek Database SQLite Lokal (era5_data.db) jika mode auto/sqlite
+    if (requestedSource !== "online") {
+      const sqliteRes = fetchERA5FromSqlite(startDate, endDate, lat, lng);
+      if (sqliteRes && sqliteRes.hourly.time.length > 0) {
+        rawData = sqliteRes;
+        sourceModelUsed = sqliteRes.sourceModel;
+      }
+    }
+
+    if (!rawData && useForecastIfs) {
       // 1. Fetch from Forecast API (ECMWF IFS - Real Time / 0-Day Lag)
       const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=${variables.join(",")}&models=ecmwf_ifs&wind_speed_unit=ms&timezone=auto`;
       console.log("Fetching ECMWF IFS (Real-Time 0-Day Lag):", forecastUrl);
