@@ -20,9 +20,10 @@ export async function fetchSensorDataByDateRange(
   startTimestamp: number,
   endTimestamp: number,
   applyCalibration: boolean = true,
-  forceRefresh: boolean = false
+  forceRefresh: boolean = false,
+  resolution?: "hourly" | "raw"
 ): Promise<SensorDate[]> {
-  const url = `/api/sensors?action=range&sensorId=${sensorId}&start=${startTimestamp}&end=${endTimestamp}&calibration=${applyCalibration}${forceRefresh ? `&refresh=true&_t=${Date.now()}` : ""}`;
+  const url = `/api/sensors?action=range&sensorId=${sensorId}&start=${startTimestamp}&end=${endTimestamp}&calibration=${applyCalibration}${resolution ? `&resolution=${resolution}` : ""}${forceRefresh ? `&refresh=true&_t=${Date.now()}` : ""}`;
   const res = await fetch(url, forceRefresh ? { cache: 'no-store' } : undefined);
   if (!res.ok) {
     const error = await res.json();

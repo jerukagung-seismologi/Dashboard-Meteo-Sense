@@ -33,6 +33,7 @@ import {
   ArrowRight,
   ShieldCheck,
   Cpu,
+  Loader2,
 } from "lucide-react";
 
 import {
@@ -65,6 +66,14 @@ import { ExportModal } from "@/components/validasi-bias/ExportModal";
 import { MethodBenchmarkLeaderboard } from "@/components/calibration/MethodBenchmarkLeaderboard";
 import { ActiveSensorManager } from "@/components/calibration/ActiveSensorManager";
 import { useToast } from "@/hooks/use-toast";
+import {
+  aggregateSensorToHourly,
+  mapSensorToAWSRawObservations,
+} from "@/lib/bias-correction/preprocessing/hourlyAggregation";
+
+export const DEFAULT_STATION_OPTIONS = [
+  { label: "Node ID-01 (Jerukagung)", value: "id-01", lat: -7.7121, lng: 109.6892 },
+];
 
 const VARIABLES_CONFIG: {
   id: MeteorologicalVariable;
@@ -82,7 +91,7 @@ const VARIABLES_CONFIG: {
   { id: "precipitation", label: "Presipitasi (Rainfall)", unit: "mm", sensorKey: "rainfall", recommendedMethod: "zero_aware_rain" },
 ];
 
-export default function UnifiedCalibrationPage() {
+function UnifiedCalibrationContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -112,9 +121,9 @@ export default function UnifiedCalibrationPage() {
   };
 
   // Station States
-  const [stationOptions, setStationOptions] = useState<{ label: string; value: string; lat: number; lng: number }[]>([]);
-  const [selectedStationId, setSelectedStationId] = useState<string>("");
-  const [stationName, setStationName] = useState<string>("Stasiun Jerukagung");
+  const [stationOptions, setStationOptions] = useState<{ label: string; value: string; lat: number; lng: number }[]>(DEFAULT_STATION_OPTIONS);
+  const [selectedStationId, setSelectedStationId] = useState<string>("id-01");
+  const [stationName, setStationName] = useState<string>("Node ID-01 (Jerukagung)");
   const [stationCoords, setStationCoords] = useState<{ lat: number; lng: number }>({ lat: -7.7121, lng: 109.6892 });
 
   // Parameter & Method States
@@ -169,7 +178,7 @@ export default function UnifiedCalibrationPage() {
     sourceMethodName: string;
   } | null>(null);
 
-  // Load user station devices
+  // Load user station devices and merge with default id-01 node
   useEffect(() => {
     if (user?.uid) {
       fetchAllDevices(user.uid)
@@ -178,16 +187,15 @@ export default function UnifiedCalibrationPage() {
             const valid = devices
               .filter(d => d.authToken)
               .map(d => ({
-                label: d.name,
+                label: d.name ? `${d.name} (${d.location || d.authToken})` : d.authToken!,
                 value: d.authToken!,
-                lat: (d as any).latitude || (d as any).lat || -7.7121,
-                lng: (d as any).longitude || (d as any).lng || 109.6892,
+                lat: (d as any).latitude || (d as any).lat || d.coordinates?.lat || -7.7121,
+                lng: (d as any).longitude || (d as any).lng || d.coordinates?.lng || 109.6892,
               }));
             if (valid.length > 0) {
-              setStationOptions(valid);
-              setSelectedStationId(valid[0].value);
-              setStationName(valid[0].label);
-              setStationCoords({ lat: valid[0].lat, lng: valid[0].lng });
+              const hasId01 = valid.some(v => v.value === "id-01");
+              const merged = hasId01 ? valid : [...DEFAULT_STATION_OPTIONS, ...valid];
+              setStationOptions(merged);
             }
           }
         })
@@ -204,21 +212,20 @@ export default function UnifiedCalibrationPage() {
       const startMs = new Date(dateRange.start).getTime();
       const endMs = new Date(dateRange.end).getTime();
 
-      // 1. Fetch AWS Data
+      // 1. Fetch AWS Data (hourly resolution, raw uncalibrated readings)
       let awsRecords: AWSRawObservation[] = [];
       if (selectedStationId) {
-        const rawSensor = await fetchSensorDataByDateRange(selectedStationId, startMs, endMs);
+        const rawSensor = await fetchSensorDataByDateRange(
+          selectedStationId,
+          startMs,
+          endMs,
+          false,
+          false,
+          "hourly"
+        );
         if (rawSensor && rawSensor.length > 0) {
-          awsRecords = rawSensor.map(r => ({
-            timestamp: r.timestamp,
-            temperature_raw: r.temperature,
-            humidity_raw: r.humidity,
-            dew_point_raw: r.dew ?? (r.temperature && r.humidity ? r.temperature - ((100 - r.humidity) / 5) : null),
-            pressure_raw: r.pressure,
-            wind_speed_raw: (r as any).wind_speed || 0,
-            wind_direction_raw: (r as any).wind_dir || 0,
-            precipitation_raw: r.rainfall || 0,
-          }));
+          const processed = rawSensor.length > 1500 ? aggregateSensorToHourly(rawSensor) : rawSensor;
+          awsRecords = mapSensorToAWSRawObservations(processed);
         }
       }
 
@@ -259,19 +266,20 @@ export default function UnifiedCalibrationPage() {
 
       if (res.ok) {
         const json = await res.json();
-        if (json.hourly && json.hourly.time && json.hourly.time.length > 0) {
+        if (json.hourly) {
           const h = json.hourly;
-          for (let i = 0; i < h.time.length; i++) {
-            const ts = new Date(h.time[i]).getTime();
+          const timeArray = h.times || h.time || [];
+          for (let i = 0; i < timeArray.length; i++) {
+            const ts = new Date(timeArray[i]).getTime();
             era5Records.push({
               timestamp: ts,
-              temperature_era5: h.temperature_2m ? h.temperature_2m[i] : null,
-              humidity_era5: h.relative_humidity_2m ? h.relative_humidity_2m[i] : null,
-              dew_point_era5: h.dew_point_2m ? h.dew_point_2m[i] : null,
-              pressure_era5: h.surface_pressure ? h.surface_pressure[i] : null,
-              wind_speed_era5: h.wind_speed_10m ? h.wind_speed_10m[i] : null,
-              wind_direction_era5: h.wind_direction_10m ? h.wind_direction_10m[i] : null,
-              precipitation_era5: h.precipitation ? h.precipitation[i] : null,
+              temperature_era5: h.temperature?.[i] ?? h.temperature_2m?.[i] ?? null,
+              humidity_era5: h.humidity?.[i] ?? h.relative_humidity_2m?.[i] ?? null,
+              dew_point_era5: h.dewPoint?.[i] ?? h.dew_point_2m?.[i] ?? null,
+              pressure_era5: h.surfacePressure?.[i] ?? h.pressure?.[i] ?? h.surface_pressure?.[i] ?? null,
+              wind_speed_era5: h.windSpeed?.[i] ?? h.wind_speed_10m?.[i] ?? null,
+              wind_direction_era5: h.windDirection?.[i] ?? h.wind_direction_10m?.[i] ?? null,
+              precipitation_era5: h.precipitation?.[i] ?? h.rain?.[i] ?? null,
             });
           }
         }
@@ -679,11 +687,39 @@ export default function UnifiedCalibrationPage() {
         {/* TAB 1: VALIDASI & ANALISIS KOMPARASI BIAS                                 */}
         {/* ========================================================================= */}
         <TabsContent value="validation" className="space-y-6 pt-0">
+          {loading && (
+            <div className="flex items-center gap-3 p-4 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/70 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 text-xs animate-pulse">
+              <Loader2 className="w-4 h-4 animate-spin text-blue-600 flex-shrink-0" />
+              <div>
+                <span className="font-semibold">Menghubungkan &amp; Mengambil Observasi Stasiun {stationName}...</span>
+                <p className="text-[11px] text-blue-600 dark:text-blue-300 mt-0.5">
+                  Mengunduh observasi telemetri in-situ AWS dan menyandingkan dengan model reanalisis ECMWF ERA5 Land per jam.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!loading && (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border border-emerald-200/80 dark:border-emerald-800/50 bg-emerald-50/60 dark:bg-emerald-950/30 text-xs">
+              <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <span>
+                  Ground Truth Aktif: <strong>{stationName}</strong> ({selectedStationId}) &bull;{" "}
+                  <strong>{awsRawData.length}</strong> observasi jam-jamanan valid &bull;{" "}
+                  <strong>{matchedPairs.length}</strong> pasangan data tersinkronisasi ERA5.
+                </span>
+              </div>
+              <Badge variant="outline" className="text-[10px] bg-emerald-100/70 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border-emerald-300">
+                Live Data Connected
+              </Badge>
+            </div>
+          )}
+
           {/* Station Metadata & QC Summary Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <StationMetadataCard
               stationName={stationName}
-              stationId={selectedStationId || "station_01"}
+              stationId={selectedStationId || "id-01"}
               latitude={stationCoords.lat}
               longitude={stationCoords.lng}
               spatialGrid={spatialGrid}
@@ -760,6 +796,18 @@ export default function UnifiedCalibrationPage() {
         {/* TAB 2: MODEL KALIBRASI & LEADERBOARD ALGORITMA                            */}
         {/* ========================================================================= */}
         <TabsContent value="model-calibration" className="space-y-6 pt-0">
+          {loading && (
+            <div className="flex items-center gap-3 p-4 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 text-xs animate-pulse">
+              <Loader2 className="w-4 h-4 animate-spin text-indigo-600 flex-shrink-0" />
+              <div>
+                <span className="font-semibold">Menghitung Benchmark Leaderboard Stasiun {stationName}...</span>
+                <p className="text-[11px] text-indigo-600 dark:text-indigo-300 mt-0.5">
+                  Fitting 11 metode koreksi bias secara simultan terhadap data ground truth {selectedStationId}.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Automated Multi-Method Leaderboard */}
           <MethodBenchmarkLeaderboard
             benchmarks={benchmarkSummaries}
@@ -846,3 +894,19 @@ export default function UnifiedCalibrationPage() {
     </div>
   );
 }
+
+export default function UnifiedCalibrationPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-3">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <p className="text-sm text-slate-500 font-medium">Memuat Modul Kalibrasi &amp; Validasi Bias...</p>
+        </div>
+      }
+    >
+      <UnifiedCalibrationContent />
+    </React.Suspense>
+  );
+}
+

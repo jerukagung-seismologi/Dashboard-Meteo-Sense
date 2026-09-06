@@ -5,6 +5,7 @@ import {
   fetchSensorDataByValue,
   fetchSensorMetadata
 } from "@/lib/FetchingSensorData";
+import { aggregateSensorToHourly } from "@/lib/bias-correction/preprocessing/hourlyAggregation";
 
 export const revalidate = 60; // Cache for 1 minute
 
@@ -48,7 +49,11 @@ export async function GET(request: Request) {
         }
         const startTimestamp = parseInt(startStr, 10);
         const endTimestamp = parseInt(endStr, 10);
-        const data = await fetchSensorDataByDateRange(sensorId, startTimestamp, endTimestamp, applyCalibration);
+        const resolution = searchParams.get("resolution") || searchParams.get("aggregate");
+        let data = await fetchSensorDataByDateRange(sensorId, startTimestamp, endTimestamp, applyCalibration);
+        if (resolution === "hourly" && data && data.length > 0) {
+          data = aggregateSensorToHourly(data);
+        }
         return NextResponse.json(data, responseOptions);
       }
       case "value": {

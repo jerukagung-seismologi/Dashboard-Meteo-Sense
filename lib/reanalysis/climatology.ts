@@ -611,12 +611,17 @@ export function processERA5Hourly(rawJson: any): ClimatologySummary {
 
   const hourly = {
     times: rawJson.hourly?.time || [],
+    time: rawJson.hourly?.time || [],
     temperature: rawTemp,
     humidity: rawHum,
+    dewPoint: rawDew,
     pressure: rawMslPress,
+    surfacePressure: rawSurfPress,
     rain: rawRain,
+    precipitation: rawRain,
     windSpeed: rawWindSpeed,
     windGust: rawWindGust,
+    windDirection: rawWindDir,
     radiation: rawShortwave
   };
 
