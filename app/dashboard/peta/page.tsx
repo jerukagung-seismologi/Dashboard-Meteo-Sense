@@ -82,6 +82,7 @@ const KEBUMEN_DEFAULT_STATIONS: StationData[] = [
     status: "online",
     batteryVolt: 4.12,
     lastUpdate: "Baru saja",
+    stationType: "reference_station",
     history1h: generateRealistic1HourHistory(29.4, 76, 1011.8, 0.0),
   },
   {
@@ -99,6 +100,7 @@ const KEBUMEN_DEFAULT_STATIONS: StationData[] = [
     status: "online",
     batteryVolt: 4.02,
     lastUpdate: "Baru saja",
+    stationType: "reference_station",
     history1h: generateRealistic1HourHistory(30.2, 72, 1012.1, 0.0),
   },
   {
@@ -116,6 +118,7 @@ const KEBUMEN_DEFAULT_STATIONS: StationData[] = [
     status: "online",
     batteryVolt: 4.18,
     lastUpdate: "Baru saja",
+    stationType: "reference_station",
     history1h: generateRealistic1HourHistory(28.7, 81, 1012.5, 0.0),
   },
   {
@@ -133,6 +136,7 @@ const KEBUMEN_DEFAULT_STATIONS: StationData[] = [
     status: "online",
     batteryVolt: 3.95,
     lastUpdate: "Baru saja",
+    stationType: "reference_station",
     history1h: generateRealistic1HourHistory(29.1, 77, 1011.2, 0.0),
   },
   {
@@ -150,6 +154,7 @@ const KEBUMEN_DEFAULT_STATIONS: StationData[] = [
     status: "online",
     batteryVolt: 4.08,
     lastUpdate: "Baru saja",
+    stationType: "reference_station",
     history1h: generateRealistic1HourHistory(29.6, 74, 1011.5, 0.0),
   },
 ];
@@ -159,6 +164,7 @@ export default function PetaPage() {
   const [deviceData, setDeviceData] = useState<StationData[]>(KEBUMEN_DEFAULT_STATIONS);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [stationTypeFilter, setStationTypeFilter] = useState<"all" | "user_device" | "reference_station">("all");
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
   const loadData = async () => {
@@ -228,6 +234,7 @@ export default function PetaPage() {
               status: "online" as const,
               lastUpdate,
               batteryVolt: 4.10,
+              stationType: "user_device" as const,
               history1h,
             };
           });
@@ -253,16 +260,34 @@ export default function PetaPage() {
     loadData();
   }, [user]);
 
-  // Filtered devices based on search
+  // Filtered devices based on search and station type
   const filteredDevices = useMemo(() => {
-    if (!searchQuery.trim()) return deviceData;
+    let list = deviceData;
+
+    if (stationTypeFilter === "user_device") {
+      list = list.filter((d) => d.stationType === "user_device");
+    } else if (stationTypeFilter === "reference_station") {
+      list = list.filter((d) => d.stationType !== "user_device");
+    }
+
+    if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase();
-    return deviceData.filter(
+    return list.filter(
       (d) =>
         d.name.toLowerCase().includes(q) ||
         (d.location && d.location.toLowerCase().includes(q))
     );
-  }, [deviceData, searchQuery]);
+  }, [deviceData, searchQuery, stationTypeFilter]);
+
+  // Specific counts for user real hardware vs regional benchmark stations
+  const userDeviceCount = useMemo(
+    () => deviceData.filter((d) => d.stationType === "user_device").length,
+    [deviceData]
+  );
+  const refDeviceCount = useMemo(
+    () => deviceData.filter((d) => d.stationType !== "user_device").length,
+    [deviceData]
+  );
 
   // Aggregate Metrics Summary
   const stats = useMemo(() => {
@@ -361,6 +386,9 @@ export default function PetaPage() {
               {filteredDevices.length}{" "}
               <span className="text-xs font-normal text-slate-500">Titik</span>
             </div>
+            <span className="text-[10px] text-slate-400 block -mt-0.5">
+              {userDeviceCount} Riil • {refDeviceCount} Referensi
+            </span>
           </div>
         </div>
 
@@ -377,6 +405,9 @@ export default function PetaPage() {
               {stats.avgTemp}{" "}
               <span className="text-xs font-normal text-slate-500">°C</span>
             </div>
+            <span className="text-[10px] text-slate-400 block -mt-0.5">
+              Mikroklimat Kebumen
+            </span>
           </div>
         </div>
 
@@ -393,6 +424,9 @@ export default function PetaPage() {
               {stats.avgHum}{" "}
               <span className="text-xs font-normal text-slate-500">%</span>
             </div>
+            <span className="text-[10px] text-slate-400 block -mt-0.5">
+              Rata-rata Terukur
+            </span>
           </div>
         </div>
 
@@ -409,7 +443,87 @@ export default function PetaPage() {
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span>{stats.activeCount} Aktif Online</span>
             </div>
+            <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 block -mt-0.5">
+              Real-time Streaming
+            </span>
           </div>
+        </div>
+      </div>
+
+      {/* Station Category Filter & Distinction Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        {/* Segmented Filter Buttons */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-xl overflow-x-auto">
+          {/* Semua Stasiun */}
+          <button
+            onClick={() => setStationTypeFilter("all")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              stationTypeFilter === "all"
+                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+            }`}
+          >
+            <Layers className="h-3.5 w-3.5 text-indigo-500" />
+            <span>Semua Titik</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-600 font-mono">
+              {deviceData.length}
+            </span>
+          </button>
+
+          {/* Perangkat Saya (Hardware Riil) */}
+          <button
+            onClick={() => setStationTypeFilter("user_device")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              stationTypeFilter === "user_device"
+                ? "bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400/40"
+                : "text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300"
+            }`}
+          >
+            <span>⚡ Perangkat Saya (Riil)</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold ${
+                stationTypeFilter === "user_device"
+                  ? "bg-white/20 text-white"
+                  : "bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300"
+              }`}
+            >
+              {userDeviceCount}
+            </span>
+          </button>
+
+          {/* Stasiun Referensi Wilayah */}
+          <button
+            onClick={() => setStationTypeFilter("reference_station")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              stationTypeFilter === "reference_station"
+                ? "bg-amber-500 text-white shadow-xs ring-2 ring-amber-400/40"
+                : "text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-300"
+            }`}
+          >
+            <span>🌐 Stasiun Referensi Kebumen</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold ${
+                stationTypeFilter === "reference_station"
+                  ? "bg-white/20 text-white"
+                  : "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300"
+              }`}
+            >
+              {refDeviceCount}
+            </span>
+          </button>
+        </div>
+
+        {/* Legend Indicator Explaining The Difference */}
+        <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 px-2 py-0.5">
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+            <strong className="text-slate-800 dark:text-slate-200">⚡ Biru/Indigo</strong>: Hardware AWS Riil
+          </span>
+          <span className="text-slate-300 dark:text-slate-700">•</span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+            <strong className="text-slate-800 dark:text-slate-200">🌐 Amber</strong>: Benchmark Riset Kebumen
+          </span>
         </div>
       </div>
 
