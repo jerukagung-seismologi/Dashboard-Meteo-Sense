@@ -68,6 +68,7 @@ interface ActiveSensorManagerProps {
     sensorKey: string;
     calibrationData: any;
     sourceMethodName: string;
+    notes?: string;
   } | null;
   onClearPendingApply?: () => void;
 }
@@ -135,7 +136,7 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
   // Handle external 1-Click apply from Tab 2
   useEffect(() => {
     if (pendingApply && pendingApply.sensorKey) {
-      const { sensorKey, calibrationData, sourceMethodName } = pendingApply;
+      const { sensorKey, calibrationData, sourceMethodName, notes } = pendingApply;
       form.setValue(`${sensorKey}.enabled` as any, true);
       form.setValue(`${sensorKey}.method` as any, calibrationData.method);
 
@@ -157,7 +158,7 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
 
       toast({
         title: "Parameter Kalibrasi Disinkronkan",
-        description: `Rumus ${sourceMethodName} untuk ${sensorKey} berhasil diterapkan ke form aktif. Silakan tinjau dan simpan.`,
+        description: notes || `Rumus ${sourceMethodName} untuk ${sensorKey} berhasil diterapkan ke form aktif. Silakan tinjau dan simpan.`,
       });
 
       if (onClearPendingApply) {
@@ -249,7 +250,18 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
               size="sm"
               className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-9 font-semibold"
               disabled={isSaving || isLoadingConfig}
-              onClick={form.handleSubmit(data => onSubmit(data as StationCalibrationDocument))}
+              onClick={form.handleSubmit(
+                data => onSubmit(data as StationCalibrationDocument),
+                errors => {
+                  console.error("Gagal validasi form kalibrasi:", errors);
+                  const errorKeys = Object.keys(errors);
+                  toast({
+                    title: "Gagal Validasi Formulir",
+                    description: `Terdapat parameter yang tidak valid pada: ${errorKeys.join(", ")}. Pastikan angka terisi dengan benar.`,
+                    variant: "destructive",
+                  });
+                }
+              )}
             >
               {isSaving ? (
                 <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />

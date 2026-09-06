@@ -67,6 +67,7 @@ import { ExportModal } from "@/components/validasi-bias/ExportModal";
 
 import { MethodBenchmarkLeaderboard } from "@/components/calibration/MethodBenchmarkLeaderboard";
 import { ActiveSensorManager } from "@/components/calibration/ActiveSensorManager";
+import { fitSensorCalibrationFromERA5 } from "@/lib/calibration/sensorCalibrationFit";
 import { useToast } from "@/hooks/use-toast";
 import {
   aggregateSensorToHourly,
@@ -74,7 +75,12 @@ import {
 } from "@/lib/bias-correction/preprocessing/hourlyAggregation";
 
 export const DEFAULT_STATION_OPTIONS = [
-  { label: "Node ID-01 (Jerukagung)", value: "id-01", lat: -7.7121, lng: 109.6892 },
+  { label: "Node ID-01 (Jerukagung Utama)", value: "id-01", lat: -7.7121, lng: 109.6892 },
+  { label: "Node ID-02 (Kebumen Kota)", value: "id-02", lat: -7.6723, lng: 109.6533 },
+  { label: "Node ID-03 (Ambal Pesisir)", value: "id-03", lat: -7.7812, lng: 109.7289 },
+  { label: "Node ID-04 (Klirong Pesisir)", value: "id-04", lat: -7.7367, lng: 109.6461 },
+  { label: "Node ID-05 (Karanganyar)", value: "id-05", lat: -7.6321, lng: 109.6124 },
+  { label: "Node ID-11 (Gombong Barat)", value: "id-11", lat: -7.6012, lng: 109.5142 },
 ];
 
 const VARIABLES_CONFIG: {
@@ -180,6 +186,7 @@ function UnifiedCalibrationContent() {
     sensorKey: string;
     calibrationData: any;
     sourceMethodName: string;
+    notes?: string;
   } | null>(null);
 
   // Load user station devices and merge with default id-01 node
@@ -197,8 +204,8 @@ function UnifiedCalibrationContent() {
                 lng: (d as any).longitude || (d as any).lng || d.coordinates?.lng || 109.6892,
               }));
             if (valid.length > 0) {
-              const hasId01 = valid.some(v => v.value === "id-01");
-              const merged = hasId01 ? valid : [...DEFAULT_STATION_OPTIONS, ...valid];
+              const existingIds = new Set(valid.map(v => v.value));
+              const merged = [...valid, ...DEFAULT_STATION_OPTIONS.filter(d => !existingIds.has(d.value))];
               setStationOptions(merged);
             }
           }
@@ -410,58 +417,22 @@ function UnifiedCalibrationContent() {
     if (rec) setSelectedMethod(rec);
   };
 
-  // Convert bias correction fit parameters to IoT Sensor calibration schema
+  // Convert bias correction fit parameters to IoT Sensor calibration schema (AWS Raw -> ERA5 Reference)
   const handle1ClickApply = (method: CorrectionMethod, fitParams: any) => {
     const sensorKey = activeVarConfig.sensorKey;
-    const params = fitParams || {};
-    let calData: any = { method: "none" };
+    const calPairs = matchedPairs
+      .filter(p => p.split === "calibration" && p.aws_value != null && p.era5_value != null)
+      .map(p => ({ aws: p.aws_value!, era5: p.era5_value! }));
 
-    if (method === "mean_bias") {
-      calData = { method: "offset", offset: Number((params.bias ?? 0).toFixed(3)) };
-    } else if (method === "linear_regression") {
-      calData = {
-        method: "scale_offset",
-        scale: Number((params.slope ?? 1).toFixed(3)),
-        offset: Number((params.intercept ?? 0).toFixed(3)),
-      };
-    } else if (method === "robust_huber") {
-      calData = {
-        method: "robust_linear",
-        scale: Number((params.slope ?? 1).toFixed(3)),
-        offset: Number((params.intercept ?? 0).toFixed(3)),
-      };
-    } else if (method === "polynomial_regression") {
-      calData = {
-        method: "polynomial",
-        polyA: Number((params.a ?? 0).toFixed(5)),
-        polyB: Number((params.b ?? 1).toFixed(4)),
-        polyC: Number((params.c ?? 0).toFixed(3)),
-      };
-    } else if (method === "power_law") {
-      calData = {
-        method: "power_law",
-        powerA: Number((params.a ?? 1).toFixed(4)),
-        powerB: Number((params.b ?? 1).toFixed(4)),
-      };
-    } else if (method === "two_point") {
-      calData = {
-        method: "two_point",
-        point1Raw: Number((params.x1 ?? 0).toFixed(2)),
-        point1Ref: Number((params.y1 ?? 0).toFixed(2)),
-        point2Raw: Number((params.x2 ?? 100).toFixed(2)),
-        point2Ref: Number((params.y2 ?? 100).toFixed(2)),
-      };
-    } else {
-      // Fallback to offset
-      const avgBias = evaluationResult?.correctedEra5?.meanBias ?? 0;
-      calData = { method: "offset", offset: Number(avgBias.toFixed(3)) };
-    }
+    const fallbackBias = evaluationResult?.correctedEra5?.meanBias ?? 0;
+    const { sensorData, methodName, notes } = fitSensorCalibrationFromERA5(method, calPairs, fallbackBias);
 
     // Set pending apply payload and switch to Tab 3
     setPendingApply({
       sensorKey,
-      calibrationData: calData,
-      sourceMethodName: method,
+      calibrationData: sensorData,
+      sourceMethodName: `${methodName} (${method})`,
+      notes,
     });
     setActiveMainTab("sensor-settings");
     router.replace(`/dashboard/kalibrasi?tab=sensor-settings`, { scroll: false });

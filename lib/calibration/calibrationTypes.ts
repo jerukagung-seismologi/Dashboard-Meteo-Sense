@@ -16,25 +16,30 @@ export const CalibrationMethodSchema = z.enum([
 
 export type CalibrationMethod = z.infer<typeof CalibrationMethodSchema>;
 
+const safeNumber = z.preprocess(
+  (val) => (typeof val === "number" && isNaN(val) ? undefined : val ?? undefined),
+  z.number().optional()
+);
+
 export const SensorVariableCalibrationSchema = z.object({
   enabled: z.boolean(),
   method: CalibrationMethodSchema.default("none"),
-  percentage: z.number().optional(), // For 'percentage' method
-  offset: z.number().optional(), // For 'offset', 'scale_offset', 'robust_linear' methods
-  scale: z.number().optional(), // For 'scale', 'scale_offset', 'robust_linear' methods
-  multiplier: z.number().optional(), // For 'multiplier' method
+  percentage: safeNumber, // For 'percentage' method
+  offset: safeNumber, // For 'offset', 'scale_offset', 'robust_linear' methods
+  scale: safeNumber, // For 'scale', 'scale_offset', 'robust_linear' methods
+  multiplier: safeNumber, // For 'multiplier' method
   // Polynomial method: y = polyA * x^2 + polyB * x + polyC
-  polyA: z.number().optional(),
-  polyB: z.number().optional(),
-  polyC: z.number().optional(),
+  polyA: safeNumber,
+  polyB: safeNumber,
+  polyC: safeNumber,
   // Power law method: y = powerA * (x ^ powerB)
-  powerA: z.number().optional(),
-  powerB: z.number().optional(),
+  powerA: safeNumber,
+  powerB: safeNumber,
   // Two-point method: (point1Raw -> point1Ref) & (point2Raw -> point2Ref)
-  point1Raw: z.number().optional(),
-  point1Ref: z.number().optional(),
-  point2Raw: z.number().optional(),
-  point2Ref: z.number().optional(),
+  point1Raw: safeNumber,
+  point1Ref: safeNumber,
+  point2Raw: safeNumber,
+  point2Ref: safeNumber,
 });
 
 export type SensorVariableCalibration = z.infer<typeof SensorVariableCalibrationSchema>;

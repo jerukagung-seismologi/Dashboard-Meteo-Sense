@@ -17,6 +17,7 @@ import {
   Wind,
   Radio,
   SlidersHorizontal,
+  Archive,
   LucideIcon
 } from "lucide-react"
 
@@ -44,6 +45,7 @@ export const dashboardNavigation: NavigationItem[] = [
   { name: "Reanalisis ERA5", href: "/dashboard/reanalisis-era5", icon: Compass, roles: ['Admin', 'User'] },
   { name: "Kalibrasi & Validasi", href: "/dashboard/kalibrasi", icon: SlidersHorizontal, roles: ['Admin', 'User'] },
   { name: "Basis Data", href: "/dashboard/data", icon: Database, roles: ['Admin'] },
+  { name: "Cadangan SQLite", href: "/dashboard/backup-sqlite", icon: Archive, badge: "Offline", roles: ['Admin', 'User'] },
   { name: "Laporan Cuaca", href: "/dashboard/laporan", icon: FileText, badge: "Warga", roles: ['Admin'] },
   { name: "Prakirawan Cuaca", href: "/dashboard/prakirawan", icon: CloudRain, roles: ['Admin'] },
   { name: "Profil", href: "/dashboard/profil", icon: User, roles: ['Admin', 'User'] },

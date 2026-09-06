@@ -31,14 +31,14 @@ export async function getCalibrationDocument(stationId: string): Promise<Station
   }
 }
 
-// Recursively removes all undefined fields from an object so Firestore setDoc does not throw
+// Recursively removes all undefined and NaN fields from an object so Firestore setDoc does not throw
 function stripUndefined(obj: any): any {
   if (Array.isArray(obj)) {
     return obj.map(stripUndefined);
   } else if (obj !== null && typeof obj === "object") {
     const result: Record<string, any> = {};
     for (const [key, value] of Object.entries(obj)) {
-      if (value !== undefined) {
+      if (value !== undefined && !(typeof value === "number" && isNaN(value))) {
         result[key] = stripUndefined(value);
       }
     }
