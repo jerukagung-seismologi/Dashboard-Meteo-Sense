@@ -70,7 +70,6 @@ export function Sidebar({ navigation, sidebarOpen, setSidebarOpen }: SidebarProp
                 onClick={() => sidebarOpen && setSidebarOpen(false)}
                 className={cn(
                   "group flex items-center px-3 py-2.5 text-sm font-medium rounded-sm transition-all duration-200",
-                  item.isSubmenu && "ml-4 pl-3 py-2 text-xs border-l-2 border-blue-400/60 dark:border-blue-500/50 rounded-l-none",
                   isActive
                     ? "bg-blue-500 text-white dark:bg-blue-600 font-semibold"
                     : "text-gray-700 dark:text-gray-200 hover:bg-blue-100 dark:hover:bg-gray-700 hover:text-blue-800 dark:hover:text-blue-300"
@@ -78,8 +77,7 @@ export function Sidebar({ navigation, sidebarOpen, setSidebarOpen }: SidebarProp
               >
                 <item.icon 
                   className={cn(
-                    "mr-3 transition-all duration-200",
-                    item.isSubmenu ? "h-4 w-4" : "h-5 w-5",
+                    "mr-3 h-5 w-5 transition-all duration-200",
                     isActive
                       ? "text-white"
                       : "text-gray-500 dark:text-gray-400 group-hover:text-blue-700 dark:group-hover:text-blue-300"

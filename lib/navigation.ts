@@ -32,7 +32,7 @@ export interface NavigationItem {
 export const dashboardNavigation: NavigationItem[] = [
   { name: "Beranda", href: "/dashboard", icon: LayoutDashboard, roles: ['Admin', 'User'] },
   { name: "Perangkat", href: "/dashboard/perangkat", icon: Network, roles: ['Admin'] },
-  { name: "Stasiun Benchmark", href: "/dashboard/perangkat-benchmark", icon: Radio, isSubmenu: true, roles: ['Admin'] },
+  { name: "Stasiun Benchmark", href: "/dashboard/perangkat-benchmark", icon: Radio, roles: ['Admin'] },
   { name: "Sistem Geografis", href: "/dashboard/peta", icon: Earth, roles: ['Admin'] },
   { name: "Agrometeorologi", href: "/dashboard/agromet", icon: Sprout, roles: ['Admin', 'User'] },
   { name: "Analisis Meteorologi", href: "/dashboard/meteorologi", icon: ChartNoAxesCombined, roles: ['Admin'] },
