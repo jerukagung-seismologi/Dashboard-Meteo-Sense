@@ -76,14 +76,8 @@ export const StationDetailDrawer: React.FC<StationDetailDrawerProps> = ({
       <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
         {/* Status Badges */}
         <div className="flex items-center gap-2 flex-wrap text-xs">
-          <Badge
-            className={
-              station.stationType === "user_device"
-                ? "bg-indigo-600 text-white border-indigo-700 font-bold"
-                : "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-700 font-bold"
-            }
-          >
-            {station.stationType === "user_device" ? "⚡ Perangkat Saya (Hardware Riil)" : "🌐 Stasiun Referensi Wilayah"}
+          <Badge className="bg-indigo-600 text-white border-indigo-700 font-bold">
+            Stasiun Cuaca Kebumen
           </Badge>
           <Badge
             variant="outline"
@@ -98,24 +92,6 @@ export const StationDetailDrawer: React.FC<StationDetailDrawerProps> = ({
           <Badge variant="outline" className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">
             ID: {station.id.substring(0, 16)}
           </Badge>
-        </div>
-
-        {/* Station Provenance Callout Box */}
-        <div
-          className={`p-3 rounded-2xl border text-xs space-y-1 ${
-            station.stationType === "user_device"
-              ? "bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800/60 text-indigo-900 dark:text-indigo-200"
-              : "bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60 text-amber-950 dark:text-amber-200"
-          }`}
-        >
-          <div className="font-bold flex items-center gap-1.5">
-            <span>{station.stationType === "user_device" ? "⚡ Hardware IoT Riil Anda" : "🌐 Titik Referensi Spasial Kebumen"}</span>
-          </div>
-          <p className="text-[11px] leading-relaxed opacity-90">
-            {station.stationType === "user_device"
-              ? "Perangkat ini adalah instrumen fisik AWS milik Anda. Seluruh variabel telemetri ditarik secara langsung dari mikrokontroler di lapangan melalui Firebase RTDB secara real-time."
-              : "Titik observasi pembanding antarkecamatan di Kebumen untuk melengkapi persebaran peta, menganalisis variasi iklim mikro lokal, dan menjadi acuan validasi bias data ERA5."}
-          </p>
         </div>
 
         {/* Real-time Current Values Grid */}

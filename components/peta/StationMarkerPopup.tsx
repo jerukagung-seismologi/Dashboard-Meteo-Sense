@@ -51,38 +51,10 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
   const [selectedMetric, setSelectedMetric] = useState<ChartMetricType>("temperature");
 
   const isOnline = station.status !== "offline";
-  const isUserDevice = station.stationType === "user_device";
   const historyData = station.history1h || [];
 
   return (
     <div className="w-[310px] sm:w-[340px] text-slate-800 dark:text-slate-100 p-0 font-sans space-y-3">
-      {/* Prominent Station Classification Banner */}
-      <div
-        className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold flex items-center justify-between border shadow-xs ${
-          isUserDevice
-            ? "bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800 text-indigo-800 dark:text-indigo-200"
-            : "bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200"
-        }`}
-      >
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs">{isUserDevice ? "⚡" : "🌐"}</span>
-          <span>
-            {isUserDevice
-              ? "Perangkat Saya (Hardware AWS Riil)"
-              : "Stasiun Referensi (Benchmark Wilayah)"}
-          </span>
-        </div>
-        <span
-          className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold ${
-            isUserDevice
-              ? "bg-indigo-600 text-white"
-              : "bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200"
-          }`}
-        >
-          {isUserDevice ? "IoT Live" : "Spasial"}
-        </span>
-      </div>
-
       {/* Header */}
       <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-200/80 dark:border-slate-700/80">
         <div>
@@ -107,13 +79,9 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
         <div className="flex flex-col items-end gap-1 shrink-0">
           <Badge
             variant="outline"
-            className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
-              isUserDevice
-                ? "bg-indigo-600 text-white border-indigo-700 shadow-xs"
-                : "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-700"
-            }`}
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
           >
-            {isUserDevice ? "⚡ Riil" : "🌐 Referensi"}
+            Stasiun Cuaca
           </Badge>
           <span className="text-[9px] text-slate-400 font-mono">
             {isOnline ? "Telemetri Aktif" : "Offline"}
@@ -227,9 +195,9 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
             </button>
           )}
         </div>
-        <div className="text-[9px] text-slate-400 dark:text-slate-500 italic flex items-center justify-between pt-0.5">
-          <span>{isUserDevice ? "✓ Sensor Telemetri Lapangan (RTDB)" : "ℹ Jaringan Riset Wilayah Kebumen"}</span>
-          <span className="font-mono font-semibold">{isUserDevice ? "Hardware Riil" : "Benchmark"}</span>
+        <div className="text-[9px] text-slate-400 dark:text-slate-500 flex items-center justify-between pt-0.5">
+          <span>Jaringan Stasiun Kebumen</span>
+          <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">● Live Stream</span>
         </div>
       </div>
     </div>

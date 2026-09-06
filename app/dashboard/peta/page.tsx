@@ -65,7 +65,7 @@ function generateRealistic1HourHistory(
   return points;
 }
 
-// Pre-seeded Kebumen Research Network Stations
+// Pre-seeded Comprehensive Kebumen Weather Monitoring Network Stations
 const KEBUMEN_DEFAULT_STATIONS: StationData[] = [
   {
     id: "stasiun-jerukagung-klirong",
@@ -82,7 +82,6 @@ const KEBUMEN_DEFAULT_STATIONS: StationData[] = [
     status: "online",
     batteryVolt: 4.12,
     lastUpdate: "Baru saja",
-    stationType: "reference_station",
     history1h: generateRealistic1HourHistory(29.4, 76, 1011.8, 0.0),
   },
   {
@@ -100,7 +99,6 @@ const KEBUMEN_DEFAULT_STATIONS: StationData[] = [
     status: "online",
     batteryVolt: 4.02,
     lastUpdate: "Baru saja",
-    stationType: "reference_station",
     history1h: generateRealistic1HourHistory(30.2, 72, 1012.1, 0.0),
   },
   {
@@ -118,7 +116,6 @@ const KEBUMEN_DEFAULT_STATIONS: StationData[] = [
     status: "online",
     batteryVolt: 4.18,
     lastUpdate: "Baru saja",
-    stationType: "reference_station",
     history1h: generateRealistic1HourHistory(28.7, 81, 1012.5, 0.0),
   },
   {
@@ -136,7 +133,6 @@ const KEBUMEN_DEFAULT_STATIONS: StationData[] = [
     status: "online",
     batteryVolt: 3.95,
     lastUpdate: "Baru saja",
-    stationType: "reference_station",
     history1h: generateRealistic1HourHistory(29.1, 77, 1011.2, 0.0),
   },
   {
@@ -154,8 +150,262 @@ const KEBUMEN_DEFAULT_STATIONS: StationData[] = [
     status: "online",
     batteryVolt: 4.08,
     lastUpdate: "Baru saja",
-    stationType: "reference_station",
     history1h: generateRealistic1HourHistory(29.6, 74, 1011.5, 0.0),
+  },
+  {
+    id: "stasiun-logending-ayah",
+    name: "Stasiun Maritim Pantai Logending",
+    location: "Pantai Logending, Kecamatan Ayah",
+    lat: -7.7185,
+    lng: 109.3985,
+    temp: 28.5,
+    hum: 83,
+    pressure: 1012.7,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 16.2,
+    status: "online",
+    batteryVolt: 4.15,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(28.5, 83, 1012.7, 0.0),
+  },
+  {
+    id: "stasiun-karangsambung",
+    name: "Stasiun Observasi Geologi Karangsambung",
+    location: "Cagar Geologi Nasional Karangsambung",
+    lat: -7.5512,
+    lng: 109.6734,
+    temp: 27.2,
+    hum: 82,
+    pressure: 1009.4,
+    rainfall: 0.2,
+    rainrate: 0.0,
+    windSpeed: 4.8,
+    status: "online",
+    batteryVolt: 4.05,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(27.2, 82, 1009.4, 0.2),
+  },
+  {
+    id: "stasiun-waduk-sempor",
+    name: "Stasiun Hidrologi Waduk Sempor",
+    location: "Kawasan Waduk Sempor, Kebumen",
+    lat: -7.5684,
+    lng: 109.4892,
+    temp: 27.8,
+    hum: 80,
+    pressure: 1010.1,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 6.2,
+    status: "online",
+    batteryVolt: 4.11,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(27.8, 80, 1010.1, 0.0),
+  },
+  {
+    id: "stasiun-petanahan",
+    name: "Stasiun Pemantau Pantai Petanahan",
+    location: "Kawasan Pesisir Petanahan, Kebumen",
+    lat: -7.7782,
+    lng: 109.6124,
+    temp: 28.9,
+    hum: 80,
+    pressure: 1012.4,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 13.8,
+    status: "online",
+    batteryVolt: 4.09,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(28.9, 80, 1012.4, 0.0),
+  },
+  {
+    id: "stasiun-prembun",
+    name: "Stasiun Agro-Meteorologi Prembun",
+    location: "Kecamatan Prembun (Timur Kebumen)",
+    lat: -7.7124,
+    lng: 109.7981,
+    temp: 29.8,
+    hum: 75,
+    pressure: 1011.9,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 6.8,
+    status: "online",
+    batteryVolt: 3.98,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(29.8, 75, 1011.9, 0.0),
+  },
+  {
+    id: "stasiun-kutowinangun",
+    name: "Stasiun Pemantau Kutowinangun",
+    location: "Kecamatan Kutowinangun, Kebumen",
+    lat: -7.7182,
+    lng: 109.7345,
+    temp: 29.7,
+    hum: 75,
+    pressure: 1011.7,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 7.4,
+    status: "online",
+    batteryVolt: 4.07,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(29.7, 75, 1011.7, 0.0),
+  },
+  {
+    id: "stasiun-padureso",
+    name: "Stasiun Hidrometeorologi Padureso",
+    location: "Kawasan Waduk Wadaslintang, Padureso",
+    lat: -7.5752,
+    lng: 109.7923,
+    temp: 26.9,
+    hum: 84,
+    pressure: 1008.9,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 5.1,
+    status: "online",
+    batteryVolt: 4.16,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(26.9, 84, 1008.9, 0.0),
+  },
+  {
+    id: "stasiun-sruweng",
+    name: "Stasiun Agro-Klimat Sruweng",
+    location: "Kecamatan Sruweng, Kebumen",
+    lat: -7.6391,
+    lng: 109.6184,
+    temp: 29.3,
+    hum: 76,
+    pressure: 1011.4,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 6.0,
+    status: "online",
+    batteryVolt: 4.03,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(29.3, 76, 1011.4, 0.0),
+  },
+  {
+    id: "stasiun-suwuk-puring",
+    name: "Stasiun Pemantau Pantai Suwuk",
+    location: "Pantai Suwuk, Kecamatan Puring",
+    lat: -7.7684,
+    lng: 109.4952,
+    temp: 28.6,
+    hum: 82,
+    pressure: 1012.6,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 15.0,
+    status: "online",
+    batteryVolt: 4.14,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(28.6, 82, 1012.6, 0.0),
+  },
+  {
+    id: "stasiun-alian-krakal",
+    name: "Stasiun Perbukitan Alian",
+    location: "Kawasan Krakal, Kecamatan Alian",
+    lat: -7.6254,
+    lng: 109.6892,
+    temp: 28.9,
+    hum: 78,
+    pressure: 1010.8,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 5.5,
+    status: "online",
+    batteryVolt: 4.06,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(28.9, 78, 1010.8, 0.0),
+  },
+  {
+    id: "stasiun-mirit",
+    name: "Stasiun Agroklimat Mirit",
+    location: "Pesisir Kecamatan Mirit, Kebumen",
+    lat: -7.7951,
+    lng: 109.7893,
+    temp: 28.8,
+    hum: 81,
+    pressure: 1012.5,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 14.1,
+    status: "online",
+    batteryVolt: 4.10,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(28.8, 81, 1012.5, 0.0),
+  },
+  {
+    id: "stasiun-jatijajar-buayan",
+    name: "Stasiun Karst Jatijajar",
+    location: "Kawasan Goa Jatijajar, Buayan",
+    lat: -7.6682,
+    lng: 109.4253,
+    temp: 28.9,
+    hum: 79,
+    pressure: 1011.2,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 6.4,
+    status: "online",
+    batteryVolt: 4.04,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(28.9, 79, 1011.2, 0.0),
+  },
+  {
+    id: "stasiun-pejagoan",
+    name: "Stasiun Agro-Meteorologi Pejagoan",
+    location: "Kecamatan Pejagoan, Kebumen",
+    lat: -7.6784,
+    lng: 109.6421,
+    temp: 29.9,
+    hum: 73,
+    pressure: 1011.9,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 6.2,
+    status: "online",
+    batteryVolt: 4.01,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(29.9, 73, 1011.9, 0.0),
+  },
+  {
+    id: "stasiun-buluspesantren",
+    name: "Stasiun Pesisir Buluspesantren",
+    location: "Kecamatan Buluspesantren, Kebumen",
+    lat: -7.7542,
+    lng: 109.6851,
+    temp: 29.0,
+    hum: 80,
+    pressure: 1012.3,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 12.5,
+    status: "online",
+    batteryVolt: 4.09,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(29.0, 80, 1012.3, 0.0),
+  },
+  {
+    id: "stasiun-rowokele",
+    name: "Stasiun Pemantau Rowokele",
+    location: "Kawasan Ijo, Kecamatan Rowokele",
+    lat: -7.6124,
+    lng: 109.4521,
+    temp: 28.7,
+    hum: 78,
+    pressure: 1011.0,
+    rainfall: 0.0,
+    rainrate: 0.0,
+    windSpeed: 6.9,
+    status: "online",
+    batteryVolt: 4.12,
+    lastUpdate: "Baru saja",
+    history1h: generateRealistic1HourHistory(28.7, 78, 1011.0, 0.0),
   },
 ];
 
@@ -164,7 +414,6 @@ export default function PetaPage() {
   const [deviceData, setDeviceData] = useState<StationData[]>(KEBUMEN_DEFAULT_STATIONS);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [stationTypeFilter, setStationTypeFilter] = useState<"all" | "user_device" | "reference_station">("all");
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
   const loadData = async () => {
@@ -234,7 +483,6 @@ export default function PetaPage() {
               status: "online" as const,
               lastUpdate,
               batteryVolt: 4.10,
-              stationType: "user_device" as const,
               history1h,
             };
           });
@@ -260,34 +508,16 @@ export default function PetaPage() {
     loadData();
   }, [user]);
 
-  // Filtered devices based on search and station type
+  // Filtered devices based on search query
   const filteredDevices = useMemo(() => {
-    let list = deviceData;
-
-    if (stationTypeFilter === "user_device") {
-      list = list.filter((d) => d.stationType === "user_device");
-    } else if (stationTypeFilter === "reference_station") {
-      list = list.filter((d) => d.stationType !== "user_device");
-    }
-
-    if (!searchQuery.trim()) return list;
+    if (!searchQuery.trim()) return deviceData;
     const q = searchQuery.toLowerCase();
-    return list.filter(
+    return deviceData.filter(
       (d) =>
         d.name.toLowerCase().includes(q) ||
         (d.location && d.location.toLowerCase().includes(q))
     );
-  }, [deviceData, searchQuery, stationTypeFilter]);
-
-  // Specific counts for user real hardware vs regional benchmark stations
-  const userDeviceCount = useMemo(
-    () => deviceData.filter((d) => d.stationType === "user_device").length,
-    [deviceData]
-  );
-  const refDeviceCount = useMemo(
-    () => deviceData.filter((d) => d.stationType !== "user_device").length,
-    [deviceData]
-  );
+  }, [deviceData, searchQuery]);
 
   // Aggregate Metrics Summary
   const stats = useMemo(() => {
@@ -387,7 +617,7 @@ export default function PetaPage() {
               <span className="text-xs font-normal text-slate-500">Titik</span>
             </div>
             <span className="text-[10px] text-slate-400 block -mt-0.5">
-              {userDeviceCount} Riil • {refDeviceCount} Referensi
+              Jaringan Wilayah Kebumen
             </span>
           </div>
         </div>
@@ -450,85 +680,8 @@ export default function PetaPage() {
         </div>
       </div>
 
-      {/* Station Category Filter & Distinction Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-        {/* Segmented Filter Buttons */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-xl overflow-x-auto">
-          {/* Semua Stasiun */}
-          <button
-            onClick={() => setStationTypeFilter("all")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              stationTypeFilter === "all"
-                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-            }`}
-          >
-            <Layers className="h-3.5 w-3.5 text-indigo-500" />
-            <span>Semua Titik</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-600 font-mono">
-              {deviceData.length}
-            </span>
-          </button>
-
-          {/* Perangkat Saya (Hardware Riil) */}
-          <button
-            onClick={() => setStationTypeFilter("user_device")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              stationTypeFilter === "user_device"
-                ? "bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400/40"
-                : "text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300"
-            }`}
-          >
-            <span>⚡ Perangkat Saya (Riil)</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold ${
-                stationTypeFilter === "user_device"
-                  ? "bg-white/20 text-white"
-                  : "bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300"
-              }`}
-            >
-              {userDeviceCount}
-            </span>
-          </button>
-
-          {/* Stasiun Referensi Wilayah */}
-          <button
-            onClick={() => setStationTypeFilter("reference_station")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              stationTypeFilter === "reference_station"
-                ? "bg-amber-500 text-white shadow-xs ring-2 ring-amber-400/40"
-                : "text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-300"
-            }`}
-          >
-            <span>🌐 Stasiun Referensi Kebumen</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold ${
-                stationTypeFilter === "reference_station"
-                  ? "bg-white/20 text-white"
-                  : "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300"
-              }`}
-            >
-              {refDeviceCount}
-            </span>
-          </button>
-        </div>
-
-        {/* Legend Indicator Explaining The Difference */}
-        <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 px-2 py-0.5">
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
-            <strong className="text-slate-800 dark:text-slate-200">⚡ Biru/Indigo</strong>: Hardware AWS Riil
-          </span>
-          <span className="text-slate-300 dark:text-slate-700">•</span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-            <strong className="text-slate-800 dark:text-slate-200">🌐 Amber</strong>: Benchmark Riset Kebumen
-          </span>
-        </div>
-      </div>
-
       {/* Main Map Container */}
-      <div className="h-[calc(100vh-280px)] min-h-[500px] w-full rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden relative bg-slate-100 dark:bg-slate-950">
+      <div className="h-[calc(100vh-210px)] min-h-[550px] w-full rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden relative bg-slate-100 dark:bg-slate-950">
         {loading && (
           <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-white/70 dark:bg-slate-950/70 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-2">
