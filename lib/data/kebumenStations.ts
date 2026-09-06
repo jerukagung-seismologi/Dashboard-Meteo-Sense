@@ -7,7 +7,9 @@ export function generateRealistic1HourHistory(
   baseTemp: number = 29.2,
   baseHum: number = 76,
   basePres: number = 1012,
-  baseRain: number = 0
+  baseRain: number = 0,
+  baseWindSpeed: number = 7.5,
+  baseWindDir: number = 135
 ): SensorDataPoint[] {
   const points: SensorDataPoint[] = [];
   const now = Date.now();
@@ -26,6 +28,8 @@ export function generateRealistic1HourHistory(
     const tempNoise = Math.sin(i * 0.5) * 0.5 + (Math.random() - 0.5) * 0.2;
     const humNoise = -tempNoise * 2.2 + (Math.random() - 0.5) * 0.8;
     const presNoise = Math.cos(i * 0.4) * 0.3;
+    const windNoise = Math.sin(i * 0.6) * 1.5;
+    const dirNoise = Math.cos(i * 0.4) * 15;
 
     points.push({
       time,
@@ -35,7 +39,8 @@ export function generateRealistic1HourHistory(
       pressure: Number((basePres + presNoise).toFixed(1)),
       rainfall: baseRain > 0 ? Number((baseRain * (0.8 + Math.random() * 0.4)).toFixed(1)) : 0,
       rainrate: 0,
-      windSpeed: Number((6.0 + Math.random() * 4.0).toFixed(1)),
+      windSpeed: Number(Math.max(1, baseWindSpeed + windNoise).toFixed(1)),
+      windDirection: Math.round((baseWindDir + dirNoise + 360) % 360),
     });
   }
 

@@ -31,6 +31,7 @@ export interface LiveBenchmarkWeather {
   rainfall: number
   rainrate: number
   windSpeed: number
+  windDirection: number
   batteryVolt: number
   lastUpdate: string
   history1h: SensorDataPoint[]
@@ -219,7 +220,7 @@ export async function fetchLiveERA5WeatherForStations(
     const lats = stations.map((s) => s.lat.toFixed(4)).join(",")
     const lngs = stations.map((s) => s.lng.toFixed(4)).join(",")
 
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,wind_speed_10m&past_hours=24&forecast_hours=1&timezone=Asia%2FBangkok`
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,wind_speed_10m,wind_direction_10m&past_hours=24&forecast_hours=1&timezone=Asia%2FBangkok`
 
     const response = await fetch(url)
     if (!response.ok) {
@@ -245,6 +246,7 @@ export async function fetchLiveERA5WeatherForStations(
         const pressures: number[] = hourly.surface_pressure || []
         const rains: number[] = hourly.precipitation || []
         const winds: number[] = hourly.wind_speed_10m || []
+        const windDirs: number[] = hourly.wind_direction_10m || []
 
         const history1h: SensorDataPoint[] = []
 
@@ -268,6 +270,7 @@ export async function fetchLiveERA5WeatherForStations(
             rainfall: typeof rains[i] === "number" ? Number(rains[i].toFixed(1)) : 0,
             rainrate: 0,
             windSpeed: typeof winds[i] === "number" ? Number(winds[i].toFixed(1)) : cur.wind_speed_10m,
+            windDirection: typeof windDirs[i] === "number" ? Math.round(windDirs[i]) : (cur.wind_direction_10m || 0),
           })
         }
 
@@ -278,6 +281,7 @@ export async function fetchLiveERA5WeatherForStations(
           rainfall: typeof cur.precipitation === "number" ? Number(cur.precipitation.toFixed(1)) : 0.0,
           rainrate: 0.0,
           windSpeed: typeof cur.wind_speed_10m === "number" ? Number(cur.wind_speed_10m.toFixed(1)) : 6.0,
+          windDirection: typeof cur.wind_direction_10m === "number" ? Math.round(cur.wind_direction_10m) : 0,
           batteryVolt: 4.15,
           lastUpdate: "Live ERA5/ECMWF",
           history1h,
@@ -291,6 +295,7 @@ export async function fetchLiveERA5WeatherForStations(
           rainfall: 0.0,
           rainrate: 0.0,
           windSpeed: 6.0,
+          windDirection: 90,
           batteryVolt: 4.1,
           lastUpdate: "ERA5 Standby",
           history1h: [],

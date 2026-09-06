@@ -22,6 +22,9 @@ import {
   Sparkles,
   Info,
   Radio,
+  Wind,
+  Thermometer,
+  CloudRain,
 } from "lucide-react";
 import { StationMarkerPopup, StationData } from "./StationMarkerPopup";
 import { StationDetailDrawer } from "./StationDetailDrawer";
@@ -39,6 +42,7 @@ const KEBUMEN_CENTER: [number, number] = [-7.685, 109.655];
 const DEFAULT_ZOOM = 12;
 
 type MapLayerType = "streets" | "satellite" | "dark" | "terrain";
+export type MapDisplayMetric = "wind" | "temperature" | "rainfall";
 
 const MAP_LAYERS: Record<MapLayerType, { name: string; url: string; attribution: string }> = {
   streets: {
@@ -85,13 +89,84 @@ function MapCameraController({
   return null;
 }
 
-// Function to create sleek modern divIcon with live temperature badge
-const createStationDivIcon = (station: StationData, isSelected: boolean = false) => {
+// Function to create sleek modern divIcon with dynamic metric badge & wind arrow
+const createStationDivIcon = (
+  station: StationData,
+  isSelected: boolean = false,
+  displayMetric: MapDisplayMetric = "wind"
+) => {
   const isOnline = station.status !== "offline";
-  const tempStr = station.temp !== undefined ? `${station.temp.toFixed(1)}°` : "📍";
 
-  const borderColor = isSelected ? "#38bdf8" : "#6366f1";
-  const bgColor = isSelected ? "#312e81" : "#1e1b4b";
+  let badgeContent = "";
+  let borderColor = isSelected ? "#38bdf8" : "#6366f1";
+  let bgColor = isSelected ? "#1e1b4b" : "#0f172a";
+  let iconWidth = 64;
+  const iconHeight = 32;
+
+  if (displayMetric === "wind") {
+    // Mode Arah & Kecepatan Angin (Aerodinamis dengan Panah Vektor)
+    const speed = station.windSpeed !== undefined ? station.windSpeed.toFixed(1) : "0.0";
+    const dir = station.windDirection ?? 0;
+    borderColor = isSelected ? "#38bdf8" : "#06b6d4";
+    bgColor = isSelected ? "#083344" : "#042f2e";
+    iconWidth = 78;
+
+    badgeContent = `
+      <div style="display: flex; align-items: center; gap: 4px;">
+        <div style="
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 14px;
+          height: 14px;
+          transform: rotate(${dir}deg);
+          transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          color: #38bdf8;
+        ">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1">
+            <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+          </svg>
+        </div>
+        <span style="font-size: 10.5px; font-weight: 800; font-family: monospace; letter-spacing: -0.3px; color: #f8fafc;">
+          ${speed}
+        </span>
+        <span style="font-size: 8px; color: #67e8f9; font-weight: 700; margin-left: -2px;">k/h</span>
+      </div>
+    `;
+  } else if (displayMetric === "rainfall") {
+    // Mode Curah Hujan
+    const rain = station.rainfall !== undefined ? station.rainfall.toFixed(1) : "0.0";
+    borderColor = isSelected ? "#34d399" : "#10b981";
+    bgColor = isSelected ? "#064e3b" : "#022c22";
+    iconWidth = 68;
+
+    badgeContent = `
+      <div style="display: flex; align-items: center; gap: 3px;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+          <path d="M16 14v6"></path>
+          <path d="M8 14v6"></path>
+          <path d="M12 16v6"></path>
+        </svg>
+        <span style="font-size: 10.5px; font-weight: 800; font-family: monospace; letter-spacing: -0.3px; color: #f8fafc;">
+          ${rain}
+        </span>
+        <span style="font-size: 8px; color: #6ee7b7; font-weight: 700;">mm</span>
+      </div>
+    `;
+  } else {
+    // Mode Suhu Udara
+    const tempStr = station.temp !== undefined ? `${station.temp.toFixed(1)}°` : "📍";
+    borderColor = isSelected ? "#fda4af" : "#f43f5e";
+    bgColor = isSelected ? "#4c0519" : "#1c1917";
+    iconWidth = 62;
+
+    badgeContent = `
+      <span style="font-size: 10.5px; font-weight: 800; font-family: monospace; letter-spacing: -0.3px; color: #f8fafc;">
+        ${tempStr}
+      </span>
+    `;
+  }
 
   const html = `
     <div style="display: flex; flex-direction: column; align-items: center; cursor: pointer; position: relative;">
@@ -102,14 +177,14 @@ const createStationDivIcon = (station: StationData, isSelected: boolean = false)
         gap: 5px;
         padding: 3px 8px;
         border-radius: 9999px;
-        box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.45);
         border: 1.8px solid ${borderColor};
         background-color: ${bgColor};
         color: #ffffff;
         transform: ${isSelected ? "scale(1.18)" : "scale(1)"};
-        transition: transform 0.2s ease;
+        transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
       ">
-        <span style="font-size: 10px; font-weight: 800; font-family: monospace; letter-spacing: -0.3px;">${tempStr}</span>
+        ${badgeContent}
         <span style="
           width: 6px;
           height: 6px;
@@ -117,6 +192,7 @@ const createStationDivIcon = (station: StationData, isSelected: boolean = false)
           background-color: ${isOnline ? "#10b981" : "#94a3b8"};
           display: inline-block;
           box-shadow: ${isOnline ? "0 0 5px #10b981" : "none"};
+          margin-left: 2px;
         "></span>
       </div>
       <div style="
@@ -133,9 +209,9 @@ const createStationDivIcon = (station: StationData, isSelected: boolean = false)
   return L.divIcon({
     className: "custom-station-marker",
     html,
-    iconSize: [60, 32],
-    iconAnchor: [30, 30],
-    popupAnchor: [0, -30],
+    iconSize: [iconWidth, iconHeight],
+    iconAnchor: [iconWidth / 2, iconHeight],
+    popupAnchor: [0, -iconHeight],
   });
 };
 
@@ -146,6 +222,7 @@ interface MapProps {
 
 const Map = ({ devices = [], isDarkMode = false }: MapProps) => {
   const [activeLayer, setActiveLayer] = useState<MapLayerType>("streets");
+  const [displayMetric, setDisplayMetric] = useState<MapDisplayMetric>("wind");
   const [targetPos, setTargetPos] = useState<[number, number] | null>(null);
   const [targetZoom, setTargetZoom] = useState<number>(DEFAULT_ZOOM);
   const [selectedStation, setSelectedStation] = useState<StationData | null>(null);
@@ -207,6 +284,48 @@ const Map = ({ devices = [], isDarkMode = false }: MapProps) => {
           z-index: 10 !important;
         }
       `}</style>
+
+      {/* Floating Display Mode Switcher (Top Left) */}
+      <div className="absolute top-4 left-4 z-[1000] flex items-center p-1 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-200/80 dark:border-slate-800 gap-1">
+        <button
+          onClick={() => setDisplayMetric("wind")}
+          title="Tampilkan Arah dan Kecepatan Angin"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            displayMetric === "wind"
+              ? "bg-cyan-600 text-white shadow-md shadow-cyan-600/30"
+              : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+          }`}
+        >
+          <Wind className="h-3.5 w-3.5" />
+          <span>Arah & Angin</span>
+        </button>
+
+        <button
+          onClick={() => setDisplayMetric("temperature")}
+          title="Tampilkan Suhu Udara"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            displayMetric === "temperature"
+              ? "bg-rose-600 text-white shadow-md shadow-rose-600/30"
+              : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+          }`}
+        >
+          <Thermometer className="h-3.5 w-3.5" />
+          <span>Suhu</span>
+        </button>
+
+        <button
+          onClick={() => setDisplayMetric("rainfall")}
+          title="Tampilkan Curah Hujan"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            displayMetric === "rainfall"
+              ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+              : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+          }`}
+        >
+          <CloudRain className="h-3.5 w-3.5" />
+          <span>Hujan</span>
+        </button>
+      </div>
 
       {/* Floating Control Toolbar (Top Right) */}
       <div className="absolute top-4 right-4 z-[1000] flex flex-col items-end gap-2">
@@ -319,7 +438,7 @@ const Map = ({ devices = [], isDarkMode = false }: MapProps) => {
             <Marker
               key={station.id || idx}
               position={[station.lat, station.lng]}
-              icon={createStationDivIcon(station, isSelected)}
+              icon={createStationDivIcon(station, isSelected, displayMetric)}
               eventHandlers={{
                 click: () => {
                   setTargetPos([station.lat, station.lng]);

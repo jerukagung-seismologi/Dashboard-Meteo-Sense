@@ -13,6 +13,8 @@ import {
   ExternalLink,
   Radio,
   Zap,
+  Navigation,
+  Wind,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OneHourTrendChart, ChartMetricType, SensorDataPoint } from "./OneHourTrendChart";
@@ -29,12 +31,19 @@ export interface StationData {
   rainfall?: number;
   rainrate?: number;
   windSpeed?: number;
+  windDirection?: number;
   lux?: number;
   status?: "online" | "offline";
   lastUpdate?: string;
   batteryVolt?: number;
   history1h?: SensorDataPoint[];
   stationType?: "user_device" | "reference_station";
+}
+
+function getCardinalDirection(deg: number = 0): string {
+  const directions = ["U", "TL", "T", "TG", "S", "BD", "B", "BL"];
+  const index = Math.round(((deg % 360) / 45)) % 8;
+  return directions[index];
 }
 
 interface StationMarkerPopupProps {
@@ -94,7 +103,7 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
         {/* Suhu */}
         <button
           onClick={() => setSelectedMetric("temperature")}
-          className={`p-1.5 rounded-xl border transition-all text-center flex flex-col items-center ${
+          className={`p-1.5 rounded-xl border transition-all text-center flex flex-col items-center cursor-pointer ${
             selectedMetric === "temperature"
               ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700 shadow-xs"
               : "bg-slate-50/60 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -110,7 +119,7 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
         {/* Kelembapan */}
         <button
           onClick={() => setSelectedMetric("humidity")}
-          className={`p-1.5 rounded-xl border transition-all text-center flex flex-col items-center ${
+          className={`p-1.5 rounded-xl border transition-all text-center flex flex-col items-center cursor-pointer ${
             selectedMetric === "humidity"
               ? "bg-sky-50 dark:bg-sky-950/40 border-sky-300 dark:border-sky-700 shadow-xs"
               : "bg-slate-50/60 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -126,7 +135,7 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
         {/* Curah Hujan */}
         <button
           onClick={() => setSelectedMetric("rainfall")}
-          className={`p-1.5 rounded-xl border transition-all text-center flex flex-col items-center ${
+          className={`p-1.5 rounded-xl border transition-all text-center flex flex-col items-center cursor-pointer ${
             selectedMetric === "rainfall"
               ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 shadow-xs"
               : "bg-slate-50/60 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -139,20 +148,28 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
           <span className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Hujan</span>
         </button>
 
-        {/* Tekanan Udara */}
+        {/* Arah & Kecepatan Angin */}
         <button
-          onClick={() => setSelectedMetric("pressure")}
-          className={`p-1.5 rounded-xl border transition-all text-center flex flex-col items-center ${
-            selectedMetric === "pressure"
-              ? "bg-violet-50 dark:bg-violet-950/40 border-violet-300 dark:border-violet-700 shadow-xs"
+          onClick={() => setSelectedMetric("wind")}
+          title={`Kecepatan: ${station.windSpeed ?? 0} km/h, Arah: ${station.windDirection ?? 0}°`}
+          className={`p-1.5 rounded-xl border transition-all text-center flex flex-col items-center cursor-pointer ${
+            selectedMetric === "wind"
+              ? "bg-cyan-50 dark:bg-cyan-950/40 border-cyan-300 dark:border-cyan-700 shadow-xs"
               : "bg-slate-50/60 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800"
           }`}
         >
-          <Gauge className="h-3.5 w-3.5 text-violet-500 mb-0.5" />
-          <span className="font-mono font-bold text-xs text-violet-600 dark:text-violet-400">
-            {station.pressure !== undefined ? `${Math.round(station.pressure)}` : "--"}
+          <div
+            className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400 mb-0.5 flex items-center justify-center transition-transform duration-300"
+            style={{ transform: `rotate(${station.windDirection ?? 0}deg)` }}
+          >
+            <Navigation className="h-3 w-3 fill-current" />
+          </div>
+          <span className="font-mono font-bold text-xs text-cyan-600 dark:text-cyan-400">
+            {station.windSpeed !== undefined ? `${station.windSpeed.toFixed(1)}` : "0.0"}
           </span>
-          <span className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Tekanan</span>
+          <span className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
+            {station.windDirection !== undefined ? `${getCardinalDirection(station.windDirection)} ${station.windDirection}°` : "Angin"}
+          </span>
         </button>
       </div>
 

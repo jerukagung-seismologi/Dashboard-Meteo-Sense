@@ -12,10 +12,11 @@ export interface SensorDataPoint {
   rainfall?: number;
   rainrate?: number;
   windSpeed?: number;
+  windDirection?: number;
   lux?: number;
 }
 
-export type ChartMetricType = "temperature" | "humidity" | "rainfall" | "pressure";
+export type ChartMetricType = "temperature" | "humidity" | "rainfall" | "wind" | "pressure";
 
 interface OneHourTrendChartProps {
   data: SensorDataPoint[];
@@ -61,6 +62,15 @@ const METRIC_CONFIGS: Record<ChartMetricType, {
     minDecimals: 1,
     defaultRange: [0, 5],
   },
+  wind: {
+    label: "Kecepatan Angin",
+    unit: "km/h",
+    color: "#06b6d4", // Cyan 500
+    gradientStart: "rgba(6, 182, 212, 0.4)",
+    gradientEnd: "rgba(6, 182, 212, 0.02)",
+    minDecimals: 1,
+    defaultRange: [0, 25],
+  },
   pressure: {
     label: "Tekanan Udara",
     unit: "hPa",
@@ -81,15 +91,24 @@ export const OneHourTrendChart: React.FC<OneHourTrendChartProps> = ({
 }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  const config = METRIC_CONFIGS[metric];
+  const config = METRIC_CONFIGS[metric] || METRIC_CONFIGS.temperature;
 
   // Extract clean numerical series
   const series = useMemo(() => {
     if (!data || data.length === 0) return [];
     return data.map((d, idx) => {
-      let val = d[metric];
+      let val = metric === "wind" ? d.windSpeed : d[metric];
       if (typeof val !== "number" || isNaN(val)) {
-        val = metric === "temperature" ? 28 : metric === "humidity" ? 75 : metric === "pressure" ? 1011 : 0;
+        val =
+          metric === "temperature"
+            ? 28
+            : metric === "humidity"
+            ? 75
+            : metric === "wind"
+            ? 6.5
+            : metric === "pressure"
+            ? 1011
+            : 0;
       }
       return {
         idx,

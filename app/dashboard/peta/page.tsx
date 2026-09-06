@@ -59,10 +59,11 @@ export default function PetaPage() {
             const pressure = live ? live.pressure : 1012;
             const rainfall = live ? live.rainfall : 0.0;
             const windSpeed = live ? live.windSpeed : 6.0;
+            const windDirection = live ? live.windDirection : 135;
             const history1h =
               live && live.history1h && live.history1h.length > 0
                 ? live.history1h
-                : generateRealistic1HourHistory(temp, hum, pressure, rainfall);
+                : generateRealistic1HourHistory(temp, hum, pressure, rainfall, windSpeed, windDirection);
 
             return {
               id: b.id,
@@ -76,6 +77,7 @@ export default function PetaPage() {
               rainfall,
               rainrate: live?.rainrate ?? 0.0,
               windSpeed,
+              windDirection,
               status: b.status,
               batteryVolt: live?.batteryVolt ?? 4.15,
               lastUpdate: live ? "Live ERA5 / ECMWF" : "Standby",

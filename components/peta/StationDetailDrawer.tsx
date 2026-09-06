@@ -17,6 +17,7 @@ import {
   BarChart3,
   Calendar,
   CheckCircle2,
+  Navigation,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -129,14 +130,26 @@ export const StationDetailDrawer: React.FC<StationDetailDrawerProps> = ({
             </div>
           </div>
 
-          {/* Tekanan Udara */}
-          <div className="p-3 rounded-2xl bg-violet-50/50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/40 space-y-1">
-            <div className="flex items-center justify-between text-violet-600 dark:text-violet-400 text-xs font-semibold">
-              <span>Tekanan</span>
-              <Gauge className="h-4 w-4" />
+          {/* Kecepatan & Arah Angin */}
+          <div className="p-3 rounded-2xl bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-100 dark:border-cyan-900/40 space-y-1">
+            <div className="flex items-center justify-between text-cyan-600 dark:text-cyan-400 text-xs font-semibold">
+              <span>Kecepatan & Arah Angin</span>
+              <div
+                style={{ transform: `rotate(${station.windDirection ?? 0}deg)` }}
+                className="transition-transform duration-300 inline-flex"
+                title={`Arah: ${station.windDirection ?? 0}°`}
+              >
+                <Navigation className="h-4 w-4 fill-current text-cyan-500" />
+              </div>
             </div>
-            <div className="text-xl font-black text-violet-700 dark:text-violet-300 font-mono">
-              {station.pressure !== undefined ? `${Math.round(station.pressure)} hPa` : "--"}
+            <div className="text-xl font-black text-cyan-700 dark:text-cyan-300 font-mono flex items-baseline justify-between">
+              <div>
+                <span>{station.windSpeed !== undefined ? station.windSpeed.toFixed(1) : "0.0"}</span>
+                <span className="text-xs font-normal text-slate-500 ml-1">km/h</span>
+              </div>
+              <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-400">
+                {station.windDirection ?? 0}°
+              </span>
             </div>
           </div>
         </div>
@@ -152,8 +165,9 @@ export const StationDetailDrawer: React.FC<StationDetailDrawerProps> = ({
 
           {/* Tabs for Trend Metric */}
           <div className="grid grid-cols-4 gap-1 p-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
-            {(["temperature", "humidity", "rainfall", "pressure"] as ChartMetricType[]).map((m) => {
+            {(["wind", "temperature", "humidity", "rainfall"] as ChartMetricType[]).map((m) => {
               const labels: Record<ChartMetricType, string> = {
+                wind: "Angin",
                 temperature: "Suhu",
                 humidity: "RH",
                 rainfall: "Hujan",
@@ -163,7 +177,7 @@ export const StationDetailDrawer: React.FC<StationDetailDrawerProps> = ({
                 <button
                   key={m}
                   onClick={() => setActiveTab(m)}
-                  className={`py-1 rounded-lg text-center font-bold text-[11px] transition-all ${
+                  className={`py-1 rounded-lg text-center font-bold text-[11px] transition-all cursor-pointer ${
                     activeTab === m
                       ? "bg-indigo-600 text-white shadow-xs"
                       : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
