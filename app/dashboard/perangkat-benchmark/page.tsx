@@ -3,6 +3,20 @@
 
 import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
+import dynamic from "next/dynamic"
+
+const LocationPickerMap = dynamic(
+  () => import("@/components/peta/LocationPickerMap"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-52 w-full rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse flex flex-col items-center justify-center gap-2 text-xs text-slate-400 border border-slate-200 dark:border-slate-700">
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+        <span>Memuat Peta Pemilih Titik Koordinat...</span>
+      </div>
+    ),
+  }
+)
 import {
   fetchBenchmarkDevices,
   addBenchmarkDevice,
@@ -647,7 +661,7 @@ export default function PerangkatBenchmarkPage() {
       {/* DIALOG: TAMBAH STASIUN BENCHMARK */}
       {/* ========================================================================= */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="max-w-md rounded-2xl bg-white dark:bg-slate-900 p-6 space-y-4">
+        <DialogContent className="max-w-xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 p-6 space-y-4">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Radio className="h-5 w-5 text-indigo-600" />
@@ -691,7 +705,28 @@ export default function PerangkatBenchmarkPage() {
               />
             </div>
 
-            {/* Koordinat Lat & Lng */}
+            {/* Peta Interaktif Pemilih Koordinat */}
+            <div className="space-y-1.5 pt-1">
+              <Label className="text-xs font-semibold flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5 text-indigo-600" />
+                  Titik Koordinat (Pilih Langsung dari Peta)
+                </span>
+                <span className="text-[10px] text-slate-400 font-normal">
+                  Klik peta atau geser pin
+                </span>
+              </Label>
+              <LocationPickerMap
+                lat={formData.lat}
+                lng={formData.lng}
+                onChange={(newLat, newLng) => {
+                  setFormData((prev) => ({ ...prev, lat: newLat, lng: newLng }))
+                }}
+                height="h-52"
+              />
+            </div>
+
+            {/* Koordinat Lat & Lng Input Manual */}
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Latitude</Label>
@@ -808,7 +843,7 @@ export default function PerangkatBenchmarkPage() {
       {/* DIALOG: EDIT STASIUN BENCHMARK */}
       {/* ========================================================================= */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-md rounded-2xl bg-white dark:bg-slate-900 p-6 space-y-4">
+        <DialogContent className="max-w-xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 p-6 space-y-4">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Edit className="h-5 w-5 text-indigo-600" />
@@ -840,7 +875,28 @@ export default function PerangkatBenchmarkPage() {
               />
             </div>
 
-            {/* Koordinat Lat & Lng */}
+            {/* Peta Interaktif Pemilih Koordinat */}
+            <div className="space-y-1.5 pt-1">
+              <Label className="text-xs font-semibold flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5 text-indigo-600" />
+                  Titik Koordinat (Pilih Langsung dari Peta)
+                </span>
+                <span className="text-[10px] text-slate-400 font-normal">
+                  Klik peta atau geser pin
+                </span>
+              </Label>
+              <LocationPickerMap
+                lat={formData.lat}
+                lng={formData.lng}
+                onChange={(newLat, newLng) => {
+                  setFormData((prev) => ({ ...prev, lat: newLat, lng: newLng }))
+                }}
+                height="h-52"
+              />
+            </div>
+
+            {/* Koordinat Lat & Lng Input Manual */}
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Latitude</Label>
