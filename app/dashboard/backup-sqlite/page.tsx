@@ -46,7 +46,8 @@ import {
   CloudDownload,
   PlusCircle,
   Zap,
-  Check
+  Check,
+  Cloud
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -68,6 +69,8 @@ interface StationSummary {
 
 interface DatabaseSummary {
   databasesDir: string;
+  environment?: "local" | "vercel" | "remote";
+  isLocalAvailable?: boolean;
   raw: {
     name: string;
     path: string;
@@ -775,11 +778,39 @@ export default function BackupSqlitePage() {
               Model: era5_data.db
             </span>
           </div>
-          <div className="font-mono text-slate-500 dark:text-slate-400">
-            Lokasi: <span className="text-slate-700 dark:text-slate-300">D:\Github\Firebase_Database_Administrator\databases</span>
+          <div className="flex items-center gap-3">
+            {summary?.isLocalAvailable ? (
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 gap-1.5 py-0.5 px-2.5 font-sans font-medium text-[11px]">
+                <HardDrive className="h-3 w-3 text-emerald-600" />
+                Workstation Lokal Terhubung
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-300 gap-1.5 py-0.5 px-2.5 font-sans font-medium text-[11px]">
+                <Cloud className="h-3 w-3 text-amber-600" />
+                Mode Cloud / Vercel Serverless
+              </Badge>
+            )}
+            <div className="font-mono text-slate-500 dark:text-slate-400 text-xs">
+              Lokasi: <span className="text-slate-700 dark:text-slate-300">{summary?.databasesDir || "D:\\Github\\Firebase_Database_Administrator\\databases"}</span>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Cloud Environment Warning Banner (jika dibuka di Vercel atau storage lokal tidak ada) */}
+      {summary && summary.isLocalAvailable === false && (
+        <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/90 dark:bg-amber-950/40 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-sm flex items-start gap-3 shadow-sm">
+          <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <div className="font-semibold text-amber-950 dark:text-amber-100">
+              Perhatian: Lingkungan Cloud / Vercel Terdeteksi — File SQLite Bersifat Lokal Administrator
+            </div>
+            <p className="mt-1 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+              File basis data SQLite (<code>meteo_local_cache.db</code>, <code>meteo_clean_data.db</code>, <code>era5_data.db</code>) tersimpan pada media penyimpanan fisik lokal komputer administrator (<code>{summary.databasesDir}</code>). Serverless Vercel bersifat <i>ephemeral</i> (stateless) dan tidak memiliki akses ke harddisk lokal laptop Anda. Fitur sinkronisasi offline dan pembersihan SQLite ini dirancang untuk dijalankan di lingkungan lokal (localhost). Seluruh fitur monitoring publik di dashboard utama tetap beroperasi normal menggunakan Firebase RTDB dan Open-Meteo API.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* KPI Top Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

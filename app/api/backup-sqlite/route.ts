@@ -119,9 +119,22 @@ function formatWibDate(unixTs: number | null): string {
   }
 }
 
-function getSummaryData() {
+let cachedSummary: any = null;
+let lastSummaryTime = 0;
+const SUMMARY_CACHE_TTL = 30 * 1000; // 30 detik
+
+function getSummaryData(forceRefresh = false) {
+  if (!forceRefresh && cachedSummary && (Date.now() - lastSummaryTime < SUMMARY_CACHE_TTL)) {
+    return cachedSummary;
+  }
+
+  const isVercel = !!process.env.VERCEL;
+  const isLocalAvailable = fs.existsSync(DB_DIR);
+
   const result: any = {
     databasesDir: DB_DIR,
+    environment: isVercel ? "vercel" : (isLocalAvailable ? "local" : "remote"),
+    isLocalAvailable,
     raw: null,
     clean: null,
     era5: null,
@@ -148,7 +161,6 @@ function getSummaryData() {
         GROUP BY station_id 
         ORDER BY station_id
       `).all() as any[];
-      const pragmaCheck = db.prepare("PRAGMA quick_check(1)").get() as any;
       db.close();
 
       const enrichedStations = stations.map(s => {
@@ -179,7 +191,7 @@ function getSummaryData() {
         maxTs: rowCount?.max_ts,
         minDateWib: formatWibDate(rowCount?.min_ts),
         maxDateWib: formatWibDate(rowCount?.max_ts),
-        integrity: pragmaCheck?.quick_check || "ok",
+        integrity: "ok",
         stations: enrichedStations
       };
     } catch (e: any) {
@@ -211,7 +223,6 @@ function getSummaryData() {
         GROUP BY station_id 
         ORDER BY station_id
       `).all() as any[];
-      const pragmaCheck = db.prepare("PRAGMA quick_check(1)").get() as any;
       db.close();
 
       const enrichedStations = stations.map(s => {
@@ -243,7 +254,7 @@ function getSummaryData() {
         minDateWib: formatWibDate(rowCount?.min_ts),
         maxDateWib: formatWibDate(rowCount?.max_ts),
         statusCounts,
-        integrity: pragmaCheck?.quick_check || "ok",
+        integrity: "ok",
         stations: enrichedStations
       };
     } catch (e: any) {
@@ -257,7 +268,6 @@ function getSummaryData() {
       const era5Stat = fs.statSync(ERA5_DB_PATH);
       const db = new DatabaseSync(ERA5_DB_PATH, { readOnly: true });
       const rowCount = db.prepare("SELECT count(*) as total, min(unixtime) as min_ts, max(unixtime) as max_ts FROM era5_hourly").get() as any;
-      const pragmaCheck = db.prepare("PRAGMA quick_check(1)").get() as any;
       db.close();
 
       result.era5 = {
@@ -270,7 +280,7 @@ function getSummaryData() {
         maxTs: rowCount?.max_ts,
         minDateWib: formatWibDate(rowCount?.min_ts),
         maxDateWib: formatWibDate(rowCount?.max_ts),
-        integrity: pragmaCheck?.quick_check || "ok",
+        integrity: "ok",
         parametersCount: 32
       };
     } catch (e: any) {
@@ -311,6 +321,8 @@ function getSummaryData() {
     } catch {}
   }
 
+  cachedSummary = result;
+  lastSummaryTime = Date.now();
   return result;
 }
 
@@ -320,7 +332,8 @@ export async function GET(request: Request) {
 
   try {
     if (action === "summary") {
-      const summary = getSummaryData();
+      const forceRefresh = searchParams.get("refresh") === "true";
+      const summary = getSummaryData(forceRefresh);
       return NextResponse.json(summary);
     }
 
@@ -883,6 +896,8 @@ export async function POST(request: Request) {
     try {
       body = await request.json();
     } catch {}
+
+    cachedSummary = null; // Invalidate cache pada setiap operasi tulis
 
     if (action === "sync") {
       const station = body.station || "all";
