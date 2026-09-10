@@ -27,33 +27,40 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
             </div>
             <StatusBadge type="enso" value={summary.enso.status} size="md" />
           </div>
-          <CardTitle className="text-xl font-bold mt-3 text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            ENSO <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(El Niño / La Niña)</span>
-          </CardTitle>
-          <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-            Suhu Permukaan Laut Pasifik Ekuator
-          </CardDescription>
+          <div className="mt-3 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold font-mono uppercase tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-200 border border-blue-200 dark:border-blue-800">
+                ENSO
+              </span>
+              <CardTitle className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                El Niño / La Niña
+              </CardTitle>
+            </div>
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Suhu Permukaan Laut Pasifik Ekuator
+            </CardDescription>
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-4 flex-1">
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border dark:border-slate-800 flex items-center justify-between">
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
             <div>
-              <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">Indeks ONI (Oceanic Niño)</span>
-              <span className="text-2xl font-black text-slate-900 dark:text-slate-100">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">Indeks ONI (Oceanic Niño)</span>
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight tabular-nums text-slate-900 dark:text-slate-100">
                 {summary.enso.oni >= 0 ? `+${summary.enso.oni.toFixed(1)}` : summary.enso.oni.toFixed(1)}°C
               </span>
             </div>
             <div className="text-right">
-              <span className="text-xs text-slate-500 dark:text-slate-400 block">Kondisi</span>
-              <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{summary.enso.status}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">Kondisi</span>
+              <span className="text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-400">{summary.enso.status}</span>
             </div>
           </div>
 
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed font-normal">
             {summary.enso.description}
           </p>
 
-          <div className="pt-2 text-[10px] text-slate-400 dark:text-slate-500 flex items-center justify-between">
+          <div className="pt-2 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between font-medium">
             <span>Sumber Data Resmi:</span>
             <span className="font-semibold text-blue-600 dark:text-blue-400">{summary.enso.dataSource}</span>
           </div>
@@ -79,42 +86,49 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
             </div>
             <StatusBadge type="mjo" value={summary.mjo.status} size="md" />
           </div>
-          <CardTitle className="text-xl font-bold mt-3 text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            MJO <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Madden-Julian Oscillation)</span>
-          </CardTitle>
-          <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-            Gelombang Konveksi Intraseasonal Tropis
-          </CardDescription>
+          <div className="mt-3 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold font-mono uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">
+                MJO
+              </span>
+              <CardTitle className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                Madden-Julian Oscillation
+              </CardTitle>
+            </div>
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Gelombang Konveksi Intraseasonal Tropis
+            </CardDescription>
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-4 flex-1">
-          <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border dark:border-slate-800">
+          <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-800">
             <div>
-              <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">Fase MJO</span>
-              <span className="text-2xl font-black text-slate-900 dark:text-slate-100">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">Fase MJO</span>
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight tabular-nums text-slate-900 dark:text-slate-100">
                 Fase {summary.mjo.phase}
               </span>
             </div>
             <div>
-              <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">Amplitudo</span>
-              <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">Amplitudo</span>
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight tabular-nums text-emerald-600 dark:text-emerald-400">
                 {summary.mjo.amplitude.toFixed(1)}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs p-2 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-lg text-emerald-800 dark:text-emerald-300">
-            <span className="flex items-center gap-1 font-medium">
-              <Sparkles className="h-3.5 w-3.5 text-emerald-500" /> Konveksi Indonesia:
+          <div className="flex items-center justify-between text-xs p-2.5 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-lg text-emerald-800 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-900/40">
+            <span className="flex items-center gap-1.5 font-semibold text-xs">
+              <Sparkles className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> Konveksi Indonesia:
             </span>
             <StatusBadge type="convection" value={summary.mjo.convectionOverMC} size="sm" />
           </div>
 
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed font-normal">
             {summary.mjo.description}
           </p>
 
-          <div className="pt-2 text-[10px] text-slate-400 dark:text-slate-500 flex items-center justify-between">
+          <div className="pt-2 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between font-medium">
             <span>Sumber Data Resmi:</span>
             <span className="font-semibold text-emerald-600 dark:text-emerald-400">{summary.mjo.dataSource}</span>
           </div>
@@ -140,33 +154,40 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
             </div>
             <StatusBadge type="iod" value={summary.iod.status} size="md" />
           </div>
-          <CardTitle className="text-xl font-bold mt-3 text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            IOD <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Indian Ocean Dipole)</span>
-          </CardTitle>
-          <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-            Dipol Suhu Permukaan Samudra Hindia
-          </CardDescription>
+          <div className="mt-3 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold font-mono uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
+                IOD
+              </span>
+              <CardTitle className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                Indian Ocean Dipole
+              </CardTitle>
+            </div>
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Dipol Suhu Permukaan Samudra Hindia
+            </CardDescription>
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-4 flex-1">
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border dark:border-slate-800 flex items-center justify-between">
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
             <div>
-              <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">Indeks DMI</span>
-              <span className="text-2xl font-black text-slate-900 dark:text-slate-100">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">Indeks DMI</span>
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight tabular-nums text-slate-900 dark:text-slate-100">
                 {summary.iod.dmi >= 0 ? `+${summary.iod.dmi.toFixed(2)}` : summary.iod.dmi.toFixed(2)}°C
               </span>
             </div>
             <div className="text-right">
-              <span className="text-xs text-slate-500 dark:text-slate-400 block">Status</span>
-              <span className="text-sm font-bold text-amber-600 dark:text-amber-400">{summary.iod.status} IOD</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">Status</span>
+              <span className="text-xs sm:text-sm font-bold text-amber-600 dark:text-amber-400">{summary.iod.status} IOD</span>
             </div>
           </div>
 
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed font-normal">
             {summary.iod.description}
           </p>
 
-          <div className="pt-2 text-[10px] text-slate-400 dark:text-slate-500 flex items-center justify-between">
+          <div className="pt-2 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between font-medium">
             <span>Sumber Data Resmi:</span>
             <span className="font-semibold text-amber-600 dark:text-amber-400">{summary.iod.dataSource}</span>
           </div>

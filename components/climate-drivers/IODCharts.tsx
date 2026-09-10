@@ -150,12 +150,12 @@ export const IODCharts: React.FC<IODChartsProps> = ({ data, isDarkMode = false }
     <div className="space-y-6">
       {/* DMI Time Series */}
       <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-        <CardHeader>
-          <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <Compass className="h-5 w-5 text-amber-500" /> Deret Waktu Indeks DMI (Dipole Mode Index)
+        <CardHeader className="pb-3 border-b dark:border-slate-800">
+          <CardTitle className="text-base sm:text-lg font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
+            <Compass className="h-5 w-5 text-amber-500 shrink-0" /> Deret Waktu Indeks DMI (Dipole Mode Index)
           </CardTitle>
-          <CardDescription>
-            Batas ambang IOD Positif (+0.4°C) dan IOD Negatif (-0.4°C) berdasarkan perbedaan suhu perairan Samudra Hindia Barat & Timur
+          <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+            Batas ambang IOD Positif (+0.40°C) dan IOD Negatif (-0.40°C) berdasarkan perbedaan suhu perairan Samudra Hindia Barat &amp; Timur
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[320px] p-2">
@@ -165,11 +165,11 @@ export const IODCharts: React.FC<IODChartsProps> = ({ data, isDarkMode = false }
 
       {/* Historical Periods Comparison */}
       <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-        <CardHeader>
-          <CardTitle className="text-base font-bold flex items-center gap-2">
-            <Layers className="h-5 w-5 text-amber-600" /> Perbandingan Periode IOD Positif vs Negatif
+        <CardHeader className="pb-3 border-b dark:border-slate-800">
+          <CardTitle className="text-base font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
+            <Layers className="h-5 w-5 text-amber-600 shrink-0" /> Perbandingan Periode IOD Positif vs Negatif
           </CardTitle>
-          <CardDescription className="text-xs">
+          <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-normal">
             Tren perubahan fase dipol Samudra Hindia antar kuartal
           </CardDescription>
         </CardHeader>

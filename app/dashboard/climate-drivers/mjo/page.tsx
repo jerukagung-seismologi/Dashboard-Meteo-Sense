@@ -106,26 +106,26 @@ export default function MjoSubpage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {/* Status */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-          <CardContent className="p-4 flex flex-col justify-between h-[110px]">
+          <CardContent className="p-4 flex flex-col justify-between h-[115px]">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-500">Status MJO</span>
-              <CloudRain className="h-4 w-4 text-emerald-500" />
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status MJO</span>
+              <CloudRain className="h-4 w-4 text-emerald-500 shrink-0" />
             </div>
-            <div className="mt-1">
-              <StatusBadge type="mjo" value={data.status} size="md" />
+            <div className="my-1">
+              <StatusBadge type="mjo" value={data.status} size="sm" />
             </div>
-            <span className="text-[11px] text-slate-400">Pembaruan: {data.lastUpdated}</span>
+            <span className="text-[11px] text-slate-400 font-medium">Pembaruan: {data.lastUpdated}</span>
           </CardContent>
         </Card>
 
         {/* Phase */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-          <CardContent className="p-4 flex flex-col justify-between h-[110px]">
+          <CardContent className="p-4 flex flex-col justify-between h-[115px]">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-500">Fase Berjalan</span>
-              <Compass className="h-4 w-4 text-indigo-500" />
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Fase Berjalan</span>
+              <Compass className="h-4 w-4 text-indigo-500 shrink-0" />
             </div>
-            <div className="text-2xl font-black text-slate-900 dark:text-slate-100">
+            <div className="text-2xl font-extrabold font-mono tracking-tight tabular-nums text-slate-900 dark:text-slate-100">
               Fase {data.phase}
             </div>
             <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
@@ -136,29 +136,29 @@ export default function MjoSubpage() {
 
         {/* Amplitude */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-          <CardContent className="p-4 flex flex-col justify-between h-[110px]">
+          <CardContent className="p-4 flex flex-col justify-between h-[115px]">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-500">Amplitudo</span>
-              <Activity className="h-4 w-4 text-teal-500" />
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Amplitudo</span>
+              <Activity className="h-4 w-4 text-teal-500 shrink-0" />
             </div>
-            <div className="text-2xl font-black text-teal-600 dark:text-teal-400">
+            <div className="text-2xl font-extrabold font-mono tracking-tight tabular-nums text-teal-600 dark:text-teal-400">
               {data.amplitude.toFixed(2)}
             </div>
-            <span className="text-[11px] text-slate-400">Ambang Aktif: &ge; 1.0</span>
+            <span className="text-[11px] text-slate-400 font-medium">Ambang Aktif: &ge; 1.0</span>
           </CardContent>
         </Card>
 
         {/* Convection over Maritime Continent */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-          <CardContent className="p-4 flex flex-col justify-between h-[110px]">
+          <CardContent className="p-4 flex flex-col justify-between h-[115px]">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-500">Konveksi Indonesia</span>
-              <Zap className="h-4 w-4 text-amber-500" />
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Konveksi Indonesia</span>
+              <Zap className="h-4 w-4 text-amber-500 shrink-0" />
             </div>
-            <div className="mt-1">
-              <StatusBadge type="convection" value={data.convectionOverMC} size="md" />
+            <div className="my-1">
+              <StatusBadge type="convection" value={data.convectionOverMC} size="sm" />
             </div>
-            <span className="text-[11px] text-slate-400">Maritime Continent</span>
+            <span className="text-[11px] text-slate-400 font-medium">Benua Maritim (MC)</span>
           </CardContent>
         </Card>
       </div>

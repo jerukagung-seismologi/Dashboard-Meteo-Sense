@@ -118,16 +118,16 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
       <CardHeader className="flex flex-col md:flex-row md:items-center justify-between pb-4 gap-4 border-b border-slate-100 dark:border-slate-800">
         <div>
-          <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
-            <History className="h-5 w-5 text-blue-500" />
+          <CardTitle className="text-base sm:text-lg font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
+            <History className="h-5 w-5 text-blue-500 shrink-0" />
             {title}
           </CardTitle>
-          <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-1">
             {description} (Memuat {yearsLoaded} Tahun Terakhir &bull; Total {data.length} data observasi)
           </CardDescription>
         </div>
 
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
           <Button
             variant="outline"
             size="sm"
@@ -207,7 +207,7 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
         <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
+              <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-[11px] uppercase tracking-wider">
                 <th className="p-3">Tanggal / Periode</th>
                 {type === "enso" && (
                   <>
@@ -220,7 +220,7 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
                 )}
                 {type === "iod" && (
                   <>
-                    <th className="p-3 text-center">Indeks DMI (°C)</th>
+                    <th className="p-3 text-center font-bold text-amber-600 dark:text-amber-400">Indeks DMI (°C)</th>
                     <th className="p-3 text-right">Kategori Status IOD</th>
                   </>
                 )}

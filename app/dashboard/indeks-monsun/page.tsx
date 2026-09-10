@@ -60,25 +60,25 @@ export default function IndeksMonsunPage() {
           {/* Educational Intro Hero Card */}
           <Card className="bg-gradient-to-r from-teal-950 via-slate-900 to-slate-950 text-white border-none shadow-md overflow-hidden relative">
             <div className="absolute right-0 top-0 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-            <CardContent className="p-6 relative z-10">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="space-y-2 max-w-3xl">
+            <CardContent className="p-6 sm:p-7 relative z-10">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+                <div className="space-y-2.5 max-w-3xl">
                   <div className="flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-teal-400 animate-pulse" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-teal-300">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-teal-300">
                       Sirkulasi Monsun Multi-Regional
                     </span>
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white">
-                    Memantau Sayap Monsun Australia, Pasifik, dan Laut Cina Selatan
+                  <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+                    Memantau Dinamika Monsun Australia, Pasifik Barat Laut, dan Laut Cina Selatan
                   </h2>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                    Kepulauan Indonesia diapit oleh dua sistem monsun raksasa: <strong>Monsun Musim Dingin/Panas Asia (WNPMI &amp; SCSMI)</strong> di utara dan <strong>Monsun Musim Panas Australia (AUSMI)</strong> di selatan. Halaman ini menghitung indeks sirkulasi kuantitatif resmi Wang &amp; Fan (2001) serta pemantau seruakan dingin (Cold Surge) dan osilasi intraseasonal musim panas (BSISO).
+                  <p className="text-xs sm:text-sm text-slate-300/90 leading-relaxed font-normal">
+                    Kepulauan Indonesia diapit oleh dua sistem sirkulasi monsun utama: <strong className="font-semibold text-white">Monsun Asia / Pasifik Barat Laut (WNPMI &amp; SCSMI)</strong> di utara dan <strong className="font-semibold text-white">Monsun Australia (AUSMI)</strong> di selatan. Halaman ini menghitung indeks sirkulasi kuantitatif resmi Wang &amp; Fan (2001) serta pemantau seruakan dingin (Cold Surge) dan osilasi intraseasonal musim panas (BSISO).
                   </p>
                 </div>
-                <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 text-center shrink-0 self-stretch md:self-auto flex flex-col justify-center">
-                  <span className="text-xs text-slate-300 block">Terakhir Diperbarui</span>
-                  <span className="text-base font-black text-teal-200">{data?.lastUpdated || "-"}</span>
+                <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 text-center shrink-0 self-stretch md:self-auto flex flex-col justify-center gap-1">
+                  <span className="text-[11px] font-medium text-slate-300 uppercase tracking-wider block">Terakhir Diperbarui</span>
+                  <span className="text-base font-bold font-mono text-teal-200">{data?.lastUpdated || "-"}</span>
                 </div>
               </div>
             </CardContent>

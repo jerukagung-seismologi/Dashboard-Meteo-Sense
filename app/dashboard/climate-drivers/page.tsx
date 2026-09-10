@@ -97,21 +97,21 @@ export default function ClimateDriversPage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-2 max-w-3xl">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-indigo-400 animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">
+                <Sparkles className="h-4 w-4 text-indigo-400 animate-pulse" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300">
                   Mengapa Cuaca Saat Ini Terjadi?
                 </span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-white">
+              <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
                 Memahami 3 Pilar Dinamika Iklim Global di Balik Cuaca Indonesia
               </h2>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
                 Cuaca di Indonesia sangat ditentukan oleh interaksi 3 driver iklim global utama: <strong>ENSO (Pasifik)</strong>, <strong>MJO (Gelombang Konveksi Tropis)</strong>, dan <strong>IOD (Samudra Hindia)</strong>. Untuk analisis sirkulasi <strong>Monsun &amp; Kalender Pola Tanam Pertanian</strong>, kunjungi menu <a href="/dashboard/agromet" className="text-cyan-300 underline font-semibold hover:text-cyan-200">Agrometeorologi</a>.
               </p>
             </div>
             <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 text-center shrink-0 self-stretch md:self-auto flex flex-col justify-center">
-              <span className="text-xs text-slate-300 block">Terakhir Diperbarui</span>
-              <span className="text-base font-black text-indigo-200">{summary.lastUpdated}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300 block">Terakhir Diperbarui</span>
+              <span className="text-sm sm:text-base font-bold font-mono tracking-tight text-indigo-200 tabular-nums">{summary.lastUpdated}</span>
             </div>
           </div>
         </CardContent>
@@ -122,27 +122,27 @@ export default function ClimateDriversPage() {
 
       {/* Interactive Tabbed Visualizations Overview */}
       <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg font-bold flex items-center gap-2">
+        <CardHeader className="pb-3 border-b dark:border-slate-800">
+          <CardTitle className="text-lg font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
             <Globe className="h-5 w-5 text-indigo-500" /> Pratinjau Visualisasi &amp; Grafik Terintegrasi
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed">
             Beralih antar tab di bawah untuk melihat grafik deret waktu ENSO, MJO, IOD, serta peta diagnostik satelit NCICS
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-2">
+        <CardContent className="pt-4">
           <Tabs defaultValue="enso" className="w-full">
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
-              <TabsTrigger value="enso" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
+              <TabsTrigger value="enso" className="py-2.5 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
                 <Waves className="h-4 w-4 text-blue-500" /> ENSO
               </TabsTrigger>
-              <TabsTrigger value="mjo" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
+              <TabsTrigger value="mjo" className="py-2.5 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
                 <CloudRain className="h-4 w-4 text-emerald-500" /> MJO
               </TabsTrigger>
-              <TabsTrigger value="iod" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
+              <TabsTrigger value="iod" className="py-2.5 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
                 <Compass className="h-4 w-4 text-amber-500" /> IOD
               </TabsTrigger>
-              <TabsTrigger value="ncics" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
+              <TabsTrigger value="ncics" className="py-2.5 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
                 <Globe className="h-4 w-4 text-indigo-500" /> Peta NCICS
               </TabsTrigger>
             </TabsList>

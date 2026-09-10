@@ -53,7 +53,7 @@ export const GLOSSARY_DATA: GlossaryTerm[] = [
     abbreviation: "MJO",
     category: "mjo",
     categoryLabel: "MJO & Konveksi Tropis",
-    definition: "Gelombang gangguan atmosfer intraseasonal (siklus 30–60 hari) yang merambat ke arah timur di sepanjang sabuk ekuator global.",
+    definition: "Gelombang gangguan atmosfer intraseasonal (siklus 30–60 hari) yang merambat ke arah timur di sepanjang lingkar ekuator tropis global.",
     impactOrUse: "Fase 3, 4, dan 5 melintasi Benua Maritim Indonesia memicu peningkatan curah hujan lebat, pertumbuhan awan kumulonimbus, dan potensi cuaca ekstrem."
   },
   {
@@ -156,6 +156,14 @@ export const GLOSSARY_DATA: GlossaryTerm[] = [
     categoryLabel: "Monsun Indonesia",
     definition: "Periode peralihan antara dua musim monsun (Maret–Mei dan September–November) ketika angin zonal melemah dan arah angin menjadi variabel/berputar.",
     impactOrUse: "Ditandai dengan pemanasan kuat siang hari diikuti hujan konvektif lokal sangat lebat, angin puting beliung, dan petir di sore/malam hari."
+  },
+  {
+    term: "Daerah Konvergensi Antar Tropis (Intertropical Convergence Zone)",
+    abbreviation: "DKAT / ITCZ",
+    category: "monsoon",
+    categoryLabel: "Monsun Indonesia",
+    definition: "Wilayah pertemuan massa udara dan konvergensi angin pasat dari Belahan Bumi Utara (BBU) dan Belahan Bumi Selatan (BBS) di sekitar ekuator yang ditandai dengan tekanan udara rendah dan aktivitas konveksi awan intens.",
+    impactOrUse: "Pergeseran musiman lintang ITCZ mengikuti gerak semu matahari mengendalikan waktu datangnya awal musim hujan (onset) dan sebaran curah hujan di wilayah kepulauan Indonesia."
   },
   {
     term: "Aerosol Optical Depth",
@@ -287,10 +295,10 @@ export const ClimateGlossary: React.FC<ClimateGlossaryProps> = ({
       <CardHeader className="pb-3 border-b dark:border-slate-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
-              <BookOpen className="h-5 w-5 text-indigo-500" /> Glosarium &amp; Ensiklopedia Iklim
+            <CardTitle className="text-base sm:text-lg font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <BookOpen className="h-5 w-5 text-indigo-500 shrink-0" /> Glosarium &amp; Ensiklopedia Iklim
             </CardTitle>
-            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
               Kamus sains meteorologi &amp; klimatologi lengkap untuk memahami parameter dan indeks resmi
             </CardDescription>
           </div>
@@ -303,7 +311,7 @@ export const ClimateGlossary: React.FC<ClimateGlossaryProps> = ({
               placeholder="Cari istilah (e.g. ONI, MJO, AOD)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 text-xs h-9 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+              className="pl-9 text-xs h-9 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 placeholder:text-slate-400"
             />
           </div>
         </div>
@@ -318,7 +326,7 @@ export const ClimateGlossary: React.FC<ClimateGlossaryProps> = ({
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold tracking-tight whitespace-nowrap transition ${
                   isActive
                     ? "bg-indigo-600 text-white shadow-sm"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
@@ -343,30 +351,30 @@ export const ClimateGlossary: React.FC<ClimateGlossaryProps> = ({
             {filteredTerms.map((item, idx) => (
               <div
                 key={idx}
-                className="p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/40 space-y-2 hover:border-indigo-300 dark:hover:border-indigo-800 transition"
+                className="p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/40 space-y-2.5 hover:border-indigo-300 dark:hover:border-indigo-800 transition"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    <h4 className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">
                       {item.term}
                     </h4>
                     {item.abbreviation && (
-                      <Badge variant="outline" className="text-[10px] font-mono bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800">
+                      <Badge variant="outline" className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800">
                         {item.abbreviation}
                       </Badge>
                     )}
                   </div>
-                  <Badge className="text-[9px] uppercase font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
+                  <Badge className="text-[9px] uppercase font-bold tracking-wider rounded-md bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
                     {item.categoryLabel}
                   </Badge>
                 </div>
 
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
                   {item.definition}
                 </p>
 
-                <div className="p-2.5 rounded-lg bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 text-[11px] text-indigo-900 dark:text-indigo-200">
-                  <span className="font-bold">Dampak &amp; Kegunaan:</span> {item.impactOrUse}
+                <div className="p-2.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed font-normal">
+                  <span className="font-semibold text-indigo-950 dark:text-indigo-100">Dampak &amp; Kegunaan:</span> {item.impactOrUse}
                 </div>
               </div>
             ))}

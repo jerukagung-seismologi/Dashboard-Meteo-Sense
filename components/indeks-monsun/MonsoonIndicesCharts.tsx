@@ -472,44 +472,44 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
   }, [timeSeries, currentBsiso, isDarkMode]);
 
   return (
-    <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-      <CardHeader className="pb-2 border-b dark:border-slate-800">
+    <Card className="border-none shadow-sm dark:bg-slate-900 bg-white rounded-2xl">
+      <CardHeader className="pb-3 border-b dark:border-slate-800">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <CardTitle className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <CardTitle className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
               <Activity className="h-5 w-5 text-teal-500" /> Analisis Visualisasi 7 Indeks Monsun &amp; 2 Modus BSISO
             </CardTitle>
-            <CardDescription className="text-xs text-slate-500">
-              Eksplorasi deret waktu sirkulasi dua sayap monsun, deteksi seruakan dingin, monsun skala luas Asia, serta grafik &amp; diagram fase 2D BSISO
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed font-normal">
+              Eksplorasi deret waktu sirkulasi monsun lintas ekuator, deteksi seruakan dingin, monsun skala luas Asia, serta grafik &amp; diagram fase 2D BSISO
             </CardDescription>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="pt-4">
+      <CardContent className="pt-5">
         <Tabs defaultValue="dipole" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
-            <TabsTrigger value="dipole" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
-              <Wind className="h-4 w-4 text-cyan-500" /> Dual Dipole: AUSMI vs WNPMI
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1.5 bg-slate-100/90 dark:bg-slate-800/80 rounded-xl mb-6 gap-1">
+            <TabsTrigger value="dipole" className="py-2 px-3 font-semibold text-xs sm:text-sm flex items-center gap-1.5 rounded-lg">
+              <Wind className="h-4 w-4 text-cyan-500 shrink-0" /> Dual Dipole: AUSMI vs WNPMI
             </TabsTrigger>
-            <TabsTrigger value="surge" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
-              <ShieldAlert className="h-4 w-4 text-rose-500" /> SCSMI &amp; Cold Surge
+            <TabsTrigger value="surge" className="py-2 px-3 font-semibold text-xs sm:text-sm flex items-center gap-1.5 rounded-lg">
+              <ShieldAlert className="h-4 w-4 text-rose-500 shrink-0" /> SCSMI &amp; Cold Surge
             </TabsTrigger>
-            <TabsTrigger value="broadscale" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
-              <Globe className="h-4 w-4 text-indigo-500" /> Sirkulasi Asia (WYI/SASMI/EASMI)
+            <TabsTrigger value="broadscale" className="py-2 px-3 font-semibold text-xs sm:text-sm flex items-center gap-1.5 rounded-lg">
+              <Globe className="h-4 w-4 text-indigo-500 shrink-0" /> Sirkulasi Asia (WYI/SASMI/EASMI)
             </TabsTrigger>
-            <TabsTrigger value="bsiso" className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 text-indigo-500" /> Osilasi BSISO (Grafik &amp; 2D)
+            <TabsTrigger value="bsiso" className="py-2 px-3 font-semibold text-xs sm:text-sm flex items-center gap-1.5 rounded-lg">
+              <Sparkles className="h-4 w-4 text-indigo-500 shrink-0" /> Osilasi BSISO (Grafik &amp; 2D)
             </TabsTrigger>
           </TabsList>
 
           {/* Tab 1: Dual Dipole AUSMI vs WNPMI */}
           <TabsContent value="dipole" className="mt-0 space-y-3">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
-                Perbandingan Sirkulasi Sayap Selatan (AUSMI) vs Sayap Utara (WNPMI):
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                Perbandingan Dinamika Monsun Australia (AUSMI) vs Pasifik Barat Laut (WNPMI):
               </span>
-              <span className="text-[11px] text-slate-400">Rentang: 30 Hari Terakhir &amp; 16 Hari Prakiraan</span>
+              <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">Rentang: 30 Hari Terakhir &amp; 16 Hari Prakiraan</span>
             </div>
             <div className="h-[340px] w-full">
               <ReactECharts option={dipoleChartOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
@@ -518,11 +518,11 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
 
           {/* Tab 2: Cold Surge Tracker */}
           <TabsContent value="surge" className="mt-0 space-y-3">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
                 Pemantau Angin Baratan Laut Cina Selatan (SCSMI) &amp; Seruakan Dingin Siberia (CSI):
               </span>
-              <Badge variant="outline" className="text-[10px] text-rose-600 border-rose-300">
+              <Badge variant="outline" className="text-[11px] font-mono font-semibold text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/30 self-start sm:self-auto py-0.5 px-2">
                 Ambang Batas Seruakan: V ≤ -8.0 m/s
               </Badge>
             </div>
@@ -533,11 +533,11 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
 
           {/* Tab 3: Broadscale Asian Circulation */}
           <TabsContent value="broadscale" className="mt-0 space-y-3">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
                 Sirkulasi Skala Luas Asia: Webster-Yang (WYI), South Asian (SASMI), &amp; East Asian (EASMI):
               </span>
-              <span className="text-[11px] text-slate-400">Rentang: 30 Hari Terakhir &amp; 16 Hari Prakiraan</span>
+              <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">Rentang: 30 Hari Terakhir &amp; 16 Hari Prakiraan</span>
             </div>
             <div className="h-[340px] w-full">
               <ReactECharts option={broadscaleChartOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
@@ -548,11 +548,11 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
           <TabsContent value="bsiso" className="mt-0 space-y-6">
             {/* Sub-section A: BSISO Time Series Line Chart */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <Layers className="h-4 w-4 text-blue-500" /> Deret Waktu Harian BSISO1 (30–60 Hari) vs BSISO2 (10–23 Hari):
                 </span>
-                <span className="text-[11px] text-slate-400">Rentang: 30 Hari Terakhir &amp; 16 Hari Prakiraan</span>
+                <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">Rentang: 30 Hari Terakhir &amp; 16 Hari Prakiraan</span>
               </div>
               <div className="h-[280px] w-full">
                 <ReactECharts option={bsisoTimeSeriesOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
@@ -560,12 +560,12 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
             </div>
 
             {/* Sub-section B: BSISO 2D Phase Space Diagram with 30-Day Trajectory */}
-            <div className="space-y-2 pt-2 border-t dark:border-slate-800">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <div className="space-y-3 pt-4 border-t dark:border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <Navigation className="h-4 w-4 text-indigo-500" /> Diagram Ruang Fase 2D BSISO &amp; Lintasan Trayektori 30 Hari:
                 </span>
-                <Badge variant="outline" className="text-[10px] text-indigo-600 border-indigo-300">
+                <Badge variant="outline" className="text-[11px] font-mono font-semibold text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 self-start sm:self-auto py-0.5 px-2">
                   Ambang Batas Aktif: Amplitudo ≥ 1.0
                 </Badge>
               </div>
@@ -574,20 +574,20 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
                 <div className="h-[340px] w-full lg:col-span-2">
                   <ReactECharts option={bsisoPhaseOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
                 </div>
-                <div className="p-4 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20 text-xs space-y-3">
-                  <div className="font-bold text-indigo-700 dark:text-indigo-300 text-sm flex items-center gap-1.5">
-                    <Sparkles className="h-4 w-4" /> Posisi &amp; Pergerakan BSISO Terkini
+                <div className="p-5 rounded-2xl border border-indigo-200/80 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20 text-xs space-y-3.5">
+                  <div className="font-bold text-indigo-800 dark:text-indigo-300 text-sm flex items-center gap-1.5 tracking-tight">
+                    <Sparkles className="h-4 w-4 text-indigo-500" /> Posisi &amp; Pergerakan BSISO Terkini
                   </div>
-                  <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border dark:border-slate-800 space-y-1">
-                    <div className="text-slate-500 text-[11px]">Fase Aktif:</div>
-                    <div className="text-base font-black text-indigo-600 dark:text-indigo-400">
-                      Fase {currentBsiso.phase} (Amp: {currentBsiso.amplitude})
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-1 shadow-xs">
+                    <div className="text-slate-500 dark:text-slate-400 text-xs font-medium">Fase Aktif:</div>
+                    <div className="text-lg font-extrabold text-indigo-600 dark:text-indigo-400 font-mono tracking-tight tabular-nums">
+                      Fase {currentBsiso.phase} <span className="text-xs font-sans font-normal text-slate-500">(Amp: {currentBsiso.amplitude})</span>
                     </div>
-                    <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                       {currentBsiso.name}
                     </div>
                   </div>
-                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs font-normal">
                     Garis lintasan biru muda menunjukkan pergerakan titik BSISO selama 30 hari terakhir. Titik ungu bercahaya menunjukkan posisi hari ini.
                   </p>
                 </div>

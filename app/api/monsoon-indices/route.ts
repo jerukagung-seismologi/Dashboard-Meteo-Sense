@@ -213,7 +213,7 @@ export async function GET(req: NextRequest) {
           value: current.easmi,
           unit: "m/s",
           status: current.easmi > 2.0 ? "Positif" : current.easmi < -2.0 ? "Negatif" : "Netral",
-          description: "Indeks Zhang et al. (2003) mengukur sirkulasi monsun musim panas Asia Timur dan sabuk hujan Meiyu/Baiu.",
+          description: "Indeks Zhang et al. (2003) mengukur intensitas monsun musim panas Asia Timur dan dinamika front semi-stasioner Meiyu/Baiu.",
         },
         bsiso1: {
           value: bsiso1,

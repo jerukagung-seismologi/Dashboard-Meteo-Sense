@@ -106,91 +106,91 @@ export default function EnsoSubpage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         {/* Status */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-          <CardContent className="p-4 flex flex-col justify-between h-[110px]">
+          <CardContent className="p-4 flex flex-col justify-between h-[115px]">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-500">Status ENSO</span>
-              <Waves className="h-4 w-4 text-blue-500" />
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status ENSO</span>
+              <Waves className="h-4 w-4 text-blue-500 shrink-0" />
             </div>
-            <div className="mt-1">
-              <StatusBadge type="enso" value={data.status} size="md" />
+            <div className="my-1">
+              <StatusBadge type="enso" value={data.status} size="sm" />
             </div>
-            <span className="text-[11px] text-slate-400">Pembaruan: {data.lastUpdated}</span>
+            <span className="text-[11px] text-slate-400 font-medium">Pembaruan: {data.lastUpdated}</span>
           </CardContent>
         </Card>
 
         {/* ONI */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-          <CardContent className="p-4 flex flex-col justify-between h-[110px]">
+          <CardContent className="p-4 flex flex-col justify-between h-[115px]">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-500">Indeks ONI</span>
-              <ThermometerSun className="h-4 w-4 text-amber-500" />
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Indeks ONI</span>
+              <ThermometerSun className="h-4 w-4 text-amber-500 shrink-0" />
             </div>
-            <div className="text-2xl font-black text-slate-900 dark:text-slate-100">
+            <div className="text-2xl font-extrabold font-mono tracking-tight tabular-nums text-slate-900 dark:text-slate-100">
               {data.oni >= 0 ? `+${data.oni.toFixed(1)}` : data.oni.toFixed(1)}°C
             </div>
-            <span className="text-[11px] text-slate-400">Oceanic Niño Index</span>
+            <span className="text-[11px] text-slate-400 font-medium">Oceanic Niño Index</span>
           </CardContent>
         </Card>
 
         {/* Niño 1+2 */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-          <CardContent className="p-4 flex flex-col justify-between h-[110px]">
+          <CardContent className="p-4 flex flex-col justify-between h-[115px]">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-500">Niño 1+2 (Pantai)</span>
-              <Activity className="h-4 w-4 text-red-500" />
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Niño 1+2</span>
+              <Activity className="h-4 w-4 text-red-500 shrink-0" />
             </div>
-            <div className="text-2xl font-black text-red-600 dark:text-red-400">
+            <div className="text-2xl font-extrabold font-mono tracking-tight tabular-nums text-red-600 dark:text-red-400">
               {data.nino12 !== undefined && data.nino12 !== null
                 ? `${data.nino12 >= 0 ? "+" : ""}${data.nino12.toFixed(2)}°C`
                 : "-"}
             </div>
-            <span className="text-[11px] text-slate-400">Peru &amp; Ekuador</span>
+            <span className="text-[11px] text-slate-400 font-medium">Pantai Peru &amp; Ekuador</span>
           </CardContent>
         </Card>
 
         {/* Niño 3 */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-          <CardContent className="p-4 flex flex-col justify-between h-[110px]">
+          <CardContent className="p-4 flex flex-col justify-between h-[115px]">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-500">Niño 3 (Pasifik Timur)</span>
-              <Activity className="h-4 w-4 text-orange-500" />
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Niño 3</span>
+              <Activity className="h-4 w-4 text-orange-500 shrink-0" />
             </div>
-            <div className="text-2xl font-black text-orange-600 dark:text-orange-400">
+            <div className="text-2xl font-extrabold font-mono tracking-tight tabular-nums text-orange-600 dark:text-orange-400">
               {data.nino3 !== undefined && data.nino3 !== null
                 ? `${data.nino3 >= 0 ? "+" : ""}${data.nino3.toFixed(2)}°C`
                 : "-"}
             </div>
-            <span className="text-[11px] text-slate-400">150°W - 90°W</span>
+            <span className="text-[11px] text-slate-400 font-medium">150°W - 90°W (Timur)</span>
           </CardContent>
         </Card>
 
         {/* Niño 3.4 */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white border-l-4 border-l-indigo-500">
-          <CardContent className="p-4 flex flex-col justify-between h-[110px]">
+          <CardContent className="p-4 flex flex-col justify-between h-[115px]">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">Niño 3.4 (Utama)</span>
-              <Activity className="h-4 w-4 text-indigo-500" />
+              <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Niño 3.4 (Utama)</span>
+              <Activity className="h-4 w-4 text-indigo-500 shrink-0" />
             </div>
-            <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+            <div className="text-2xl font-extrabold font-mono tracking-tight tabular-nums text-indigo-600 dark:text-indigo-400">
               {data.nino34 >= 0 ? `+${data.nino34.toFixed(2)}` : data.nino34.toFixed(2)}°C
             </div>
-            <span className="text-[11px] text-slate-400">Indikator Standar ENSO</span>
+            <span className="text-[11px] text-slate-400 font-medium">Indikator Standar ENSO</span>
           </CardContent>
         </Card>
 
         {/* Niño 4 */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-          <CardContent className="p-4 flex flex-col justify-between h-[110px]">
+          <CardContent className="p-4 flex flex-col justify-between h-[115px]">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-500">Niño 4 (Pasifik Barat)</span>
-              <ShieldAlert className="h-4 w-4 text-cyan-500" />
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Niño 4</span>
+              <ShieldAlert className="h-4 w-4 text-cyan-500 shrink-0" />
             </div>
-            <div className="text-2xl font-black text-cyan-600 dark:text-cyan-400">
+            <div className="text-2xl font-extrabold font-mono tracking-tight tabular-nums text-cyan-600 dark:text-cyan-400">
               {data.nino4 !== undefined && data.nino4 !== null
                 ? `${data.nino4 >= 0 ? "+" : ""}${data.nino4.toFixed(2)}°C`
                 : "-"}
             </div>
-            <span className="text-[11px] text-slate-400">160°E - 150°W</span>
+            <span className="text-[11px] text-slate-400 font-medium">160°E - 150°W (Barat)</span>
           </CardContent>
         </Card>
       </div>

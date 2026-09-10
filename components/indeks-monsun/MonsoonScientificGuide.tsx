@@ -63,8 +63,8 @@ export const MonsoonScientificGuide: React.FC = () => {
         badge: "Positif",
         badgeColor: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 font-bold",
         points: [
-          "Sirkulasi siklonik raksasa terbentuk di Laut Filipina dan Pasifik Barat Laut (periode puncak Juli–September).",
-          "Bertindak sebagai 'pompa raksasa' yang menarik massa udara dari selatan ekuator ke utara, memperkuat angin timuran kering di Indonesia selatan.",
+          "Sirkulasi siklonik berskala sinoptik terbentuk di Laut Filipina dan Pasifik Barat Laut (periode puncak Juli–September).",
+          "Menciptakan gradien tekanan yang menarik aliran massa udara lintas ekuator (cross-equatorial flow) dari belahan selatan ke utara, memperkuat angin timuran kering di Indonesia selatan.",
           "Sering memicu pembentukan bibit siklon tropis di utara Filipina yang menimbulkan angin kencang di Sulawesi Utara dan Maluku Utara.",
         ],
       },
@@ -74,7 +74,7 @@ export const MonsoonScientificGuide: React.FC = () => {
         badgeColor: "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 font-bold",
         points: [
           "Palung monsun Pasifik Barat Laut melemah atau menghilang (periode musim dingin belahan utara).",
-          "Tarikan udara ke utara mereda, memungkinkan sabuk awan konvektif dan ITCZ bergeser turun kembali ke wilayah kepulauan Indonesia.",
+          "Tarikan aliran udara ke utara mereda, memungkinkan zona konvektif ITCZ/DKAT bergeser kembali ke selatan menuju kepulauan Indonesia.",
         ],
       },
     },
@@ -112,15 +112,15 @@ export const MonsoonScientificGuide: React.FC = () => {
       author: "Chang et al. (2005) / Standar BMKG",
       formula: "Komponen angin meridional V925 pada 10°N–15°N, 110°E–115°E (Laut Cina Selatan)",
       icon: ShieldAlert,
-      badgeText: "Peringatan Banjir Pantura",
+      badgeText: "Indikator Seruakan Dingin",
       positiveState: {
         title: "KONDISI POSITIF / AKTIF EKSTREM: Saat Terjadi Seruakan Dingin (V ≤ -8.0 m/s)",
         badge: "Positif",
         badgeColor: "bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-500 font-bold animate-pulse",
         points: [
-          "Aliran massa udara beku bertekanan tinggi dari daratan Siberia meluncur cepat menyeberangi ekuator menuju Laut Jawa.",
-          "Memicu tabrakan massa udara (konvergensi masif) di atas Jawa bagian barat dan tengah.",
-          "Pemicu utama hujan lebat berhari-hari dan banjir besar di Jabodetabek dan Pantura Jawa pada Januari–Februari.",
+          "Aliran massa udara dingin kontinental (continental cold surge) bertekanan tinggi dari daratan Siberia meluncur cepat menyeberangi ekuator menuju Laut Jawa.",
+          "Memicu konvergensi massa udara masif di atas Jawa bagian barat dan tengah.",
+          "Pemicu utama peningkatan intensitas curah hujan ekstrem berdurasi panjang dan potensi banjir di Pantura Jawa serta Jabodetabek pada Januari–Februari.",
         ],
       },
       negativeState: {
@@ -128,7 +128,7 @@ export const MonsoonScientificGuide: React.FC = () => {
         badge: "Netral",
         badgeColor: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700",
         points: [
-          "Aliran angin dari belahan bumi utara stabil pada kecepatan normal tanpa adanya dorongan massa udara beku.",
+          "Aliran angin dari Belahan Bumi Utara stabil pada kecepatan normal tanpa adanya dorongan massa udara dingin kontinental.",
           "Risiko cuaca ekstrem berskala luas akibat faktor eksternal Siberia berada pada level rendah.",
         ],
       },
@@ -192,14 +192,14 @@ export const MonsoonScientificGuide: React.FC = () => {
       author: "Zhang et al. (2003) / Wang et al. (2008)",
       formula: "Geser angin musiman di Laut Cina Timur pada 20°N–40°N, 110°E–130°E",
       icon: Waves,
-      badgeText: "Asia Timur & Sabuk Meiyu",
+      badgeText: "Asia Timur & Front Meiyu-Baiu",
       positiveState: {
         title: "KONDISI POSITIF: Saat Monsun Musim Panas Asia Timur Kuat",
         badge: "Positif",
         badgeColor: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 font-bold",
         points: [
           "Aliran angin selatan membawa kelembapan dari Pasifik menuju daratan Tiongkok timur dan Jepang.",
-          "Sabuk konvergensi stasioner (Meiyu di Tiongkok, Baiu di Jepang) aktif menghasilkan hujan lebat musiman.",
+          "Front semi-stasioner (Meiyu di Tiongkok, Baiu di Jepang) aktif menghasilkan presipitasi lebat musiman.",
         ],
       },
       negativeState: {
@@ -207,7 +207,7 @@ export const MonsoonScientificGuide: React.FC = () => {
         badge: "Negatif",
         badgeColor: "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 font-bold",
         points: [
-          "Sabuk hujan subtropis tertahan di lintang selatan atau menghilang.",
+          "Zona konvergensi subtropis tertahan di lintang selatan atau melemah.",
         ],
       },
     },
@@ -224,7 +224,7 @@ export const MonsoonScientificGuide: React.FC = () => {
         badge: "Positif",
         badgeColor: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 font-bold",
         points: [
-          "Sabuk awan konvektif monsun merambat teratur ke arah utara (northward propagation) dari Samudra Hindia melintasi Selat Malaka, Laut Cina Selatan, dan Filipina.",
+          "Gugus awan konvektif monsun berpropagasi secara teratur ke arah utara (northward propagation) dari Samudra Hindia melintasi Selat Malaka, Laut Cina Selatan, dan Filipina.",
           "Fase 1–3: Peningkatan curah hujan signifikan di barat Sumatra, Riau, dan Kalimantan Barat.",
           "Fase 4–5: Puncak curah hujan monsun di Laut Cina Selatan, Kalimantan Utara, dan Sulawesi Utara.",
         ],
@@ -270,19 +270,19 @@ export const MonsoonScientificGuide: React.FC = () => {
   ];
 
   return (
-    <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-      <CardHeader className="pb-3 border-b dark:border-slate-800">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <Card className="border-none shadow-sm dark:bg-slate-900 bg-white rounded-2xl">
+      <CardHeader className="pb-4 border-b dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <CardTitle className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
               <BookOpen className="h-5 w-5 text-teal-500" /> Panduan &amp; Penjelasan Ilmiah 7 Indeks Monsun + 2 BSISO
             </CardTitle>
-            <CardDescription className="text-xs text-slate-500">
-              Format terstruktur per indeks dengan tata letak atas-bawah (Atas: Kondisi Positif vs Bawah: Kondisi Negatif / Netral)
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-normal leading-relaxed">
+              Analisis komprehensif mekanisme sirkulasi atmosfer regional, formula koordinat, dan dampak fisis terhadap pola hujan Indonesia
             </CardDescription>
           </div>
-          <Badge variant="outline" className="text-xs font-bold text-teal-600 dark:text-teal-400 border-teal-300 dark:border-teal-800 self-start sm:self-auto">
-            <ArrowRightLeft className="h-3 w-3 mr-1" /> Analisis Dual-Polaritas Atas-Bawah
+          <Badge variant="outline" className="text-xs font-semibold text-teal-700 dark:text-teal-300 border-teal-300 dark:border-teal-800/80 bg-teal-50/50 dark:bg-teal-950/40 self-start sm:self-auto py-1 px-3 rounded-full">
+            <ArrowRightLeft className="h-3 w-3 mr-1.5 text-teal-500" /> Dual Polaritas (Fase Aktif vs Pasif)
           </Badge>
         </div>
       </CardHeader>
@@ -293,68 +293,79 @@ export const MonsoonScientificGuide: React.FC = () => {
           return (
             <div
               key={item.id}
-              className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 space-y-4 hover:border-teal-300 dark:hover:border-teal-800 transition duration-200"
+              className="p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 space-y-4 hover:border-teal-300 dark:hover:border-teal-800/80 transition duration-200"
             >
               {/* Header Title Bar per Indeks */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 font-black text-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b dark:border-slate-800">
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 shrink-0">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <h4 className="text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                      <span>{item.number}.</span> {item.name}
-                    </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Rujukan Ilmiah: <strong>{item.author}</strong> | Wilayah: {item.formula}
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
+                        {item.name}
+                      </h4>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-teal-100/70 dark:bg-teal-950 text-teal-700 dark:text-teal-300 font-bold border border-teal-200/60 dark:border-teal-800/60">
+                        #{item.number}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1 font-normal">
+                      <span>Rujukan: <strong className="font-semibold text-slate-700 dark:text-slate-300">{item.author}</strong></span>
+                      <span className="text-slate-300 dark:text-slate-600">•</span>
+                      <span>Domain: <code className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">{item.formula}</code></span>
+                    </div>
                   </div>
                 </div>
-                <Badge className="text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 self-start sm:self-auto shrink-0">
+                <Badge className="text-[11px] font-semibold bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 self-start sm:self-auto shrink-0 py-0.5 px-2.5 rounded-full">
                   {item.badgeText}
                 </Badge>
               </div>
 
-              {/* SUSUNAN ATAS - BAWAH */}
+              {/* Susunan Polaritas: Fase Positif vs Fase Negatif */}
               <div className="space-y-3">
-                {/* 1. BAGIAN ATAS: KONDISI POSITIF */}
-                <div className="p-4 rounded-xl border border-teal-200 dark:border-teal-900/60 bg-teal-50/40 dark:bg-teal-950/20 space-y-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                    <span className="text-xs font-black text-teal-900 dark:text-teal-200 flex items-center gap-1.5">
-                      <span className="p-1 bg-teal-600 text-white rounded-md text-[10px] font-black leading-none">ATAS</span>
+                {/* 1. KONDISI POSITIF */}
+                <div className="p-4 rounded-xl border border-teal-200 dark:border-teal-900/60 bg-teal-50/40 dark:bg-teal-950/20 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-teal-950 dark:text-teal-100 flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-bold tracking-wider uppercase shadow-xs">
+                        Fase Positif (+)
+                      </span>
                       <CheckCircle2 className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                      {item.positiveState.title}
+                      <span>{item.positiveState.title}</span>
                     </span>
-                    <Badge variant="outline" className={`text-[10px] font-bold self-start sm:self-auto shrink-0 ${item.positiveState.badgeColor}`}>
+                    <Badge variant="outline" className={`text-[10px] font-semibold self-start sm:self-auto shrink-0 px-2 py-0.5 rounded-full ${item.positiveState.badgeColor}`}>
                       {item.positiveState.badge}
                     </Badge>
                   </div>
                   <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300 pl-1">
                     {item.positiveState.points.map((pt, pIdx) => (
-                      <li key={pIdx} className="flex items-start gap-2 leading-relaxed">
-                        <span className="text-teal-600 font-bold shrink-0 mt-0.5">•</span>
+                      <li key={pIdx} className="flex items-start gap-2 leading-relaxed font-normal">
+                        <span className="text-teal-600 dark:text-teal-400 font-bold shrink-0 mt-0.5">•</span>
                         <span>{pt}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                {/* 2. BAGIAN BAWAH: KONDISI NEGATIF / BERKEBALIKAN */}
-                <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 space-y-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                    <span className="text-xs font-black text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                      <span className="p-1 bg-amber-600 text-white rounded-md text-[10px] font-black leading-none">BAWAH</span>
+                {/* 2. KONDISI NEGATIF / BERKEBALIKAN */}
+                <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-amber-950 dark:text-amber-100 flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-amber-600 text-white rounded text-[10px] font-bold tracking-wider uppercase shadow-xs">
+                        Fase Negatif (-)
+                      </span>
                       <ArrowRightLeft className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                      {item.negativeState.title}
+                      <span>{item.negativeState.title}</span>
                     </span>
-                    <Badge variant="outline" className={`text-[10px] font-bold self-start sm:self-auto shrink-0 ${item.negativeState.badgeColor}`}>
+                    <Badge variant="outline" className={`text-[10px] font-semibold self-start sm:self-auto shrink-0 px-2 py-0.5 rounded-full ${item.negativeState.badgeColor}`}>
                       {item.negativeState.badge}
                     </Badge>
                   </div>
                   <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300 pl-1">
                     {item.negativeState.points.map((pt, pIdx) => (
-                      <li key={pIdx} className="flex items-start gap-2 leading-relaxed">
-                        <span className="text-amber-600 font-bold shrink-0 mt-0.5">•</span>
+                      <li key={pIdx} className="flex items-start gap-2 leading-relaxed font-normal">
+                        <span className="text-amber-600 dark:text-amber-400 font-bold shrink-0 mt-0.5">•</span>
                         <span>{pt}</span>
                       </li>
                     ))}

@@ -191,19 +191,19 @@ export const MJOCharts: React.FC<MJOChartsProps> = ({ data, isDarkMode = false }
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* RMM Phase Diagram */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white flex flex-col justify-between">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold flex items-center gap-2">
-              <Compass className="h-5 w-5 text-emerald-500" /> Diagram Fase RMM (Phase Wheel)
+          <CardHeader className="pb-3 border-b dark:border-slate-800">
+            <CardTitle className="text-base sm:text-lg font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <Compass className="h-5 w-5 text-emerald-500 shrink-0" /> Diagram Fase RMM (Phase Wheel)
             </CardTitle>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-normal">
               Lintasan posisi RMM1 vs RMM2. Lingkaran dalam (&lt;1.0) menunjukkan fase lemah / tidak aktif.
             </CardDescription>
           </CardHeader>
           <CardContent className="h-[340px] p-2">
             <ReactECharts option={rmmPhaseOption} style={{ height: "100%", width: "100%" }} />
           </CardContent>
-          <div className="px-4 pb-4 pt-1 flex items-center justify-around text-xs text-slate-500 border-t dark:border-slate-800">
-            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+          <div className="px-4 pb-4 pt-2 flex items-center justify-around text-xs text-slate-500 border-t dark:border-slate-800 font-medium">
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">
               🔴 Fase 4-5: Benua Maritim (Indonesia)
             </span>
             <span>Fase 2-3: Samudra Hindia</span>
@@ -213,31 +213,31 @@ export const MJOCharts: React.FC<MJOChartsProps> = ({ data, isDarkMode = false }
 
         {/* Amplitude Timeline */}
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white flex flex-col justify-between">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold flex items-center gap-2">
-              <Activity className="h-5 w-5 text-teal-500" /> Deret Waktu Amplitudo MJO
+          <CardHeader className="pb-3 border-b dark:border-slate-800">
+            <CardTitle className="text-base sm:text-lg font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <Activity className="h-5 w-5 text-teal-500 shrink-0" /> Deret Waktu Amplitudo MJO
             </CardTitle>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-normal">
               Kekuatan konveksi gelombang MJO. Amplitudo &ge; 1.0 mengonfirmasi fase aktif.
             </CardDescription>
           </CardHeader>
           <CardContent className="h-[340px] p-2">
             <ReactECharts option={amplitudeOption} style={{ height: "100%", width: "100%" }} />
           </CardContent>
-          <div className="px-4 pb-4 pt-1 flex items-center justify-between text-xs text-slate-500 border-t dark:border-slate-800">
-            <span>Amplitudo Saat Ini: <strong className="text-slate-900 dark:text-slate-100">{data.amplitude.toFixed(1)}</strong></span>
-            <span className="font-semibold text-emerald-600 dark:text-emerald-400">Status: {data.status}</span>
+          <div className="px-4 pb-4 pt-2 flex items-center justify-between text-xs text-slate-500 border-t dark:border-slate-800 font-medium">
+            <span>Amplitudo Saat Ini: <strong className="font-bold font-mono text-slate-900 dark:text-slate-100 tabular-nums">{data.amplitude.toFixed(2)}</strong></span>
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">Status: {data.status}</span>
           </div>
         </Card>
       </div>
 
       {/* Phase Timeline / Progression Overview */}
       <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-        <CardHeader>
-          <CardTitle className="text-base font-bold flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-indigo-500" /> Pergerakan Fase Konveksi MJO (8 Fase Tropis)
+        <CardHeader className="pb-3 border-b dark:border-slate-800">
+          <CardTitle className="text-base sm:text-lg font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
+            <Calendar className="h-5 w-5 text-indigo-500 shrink-0" /> Pergerakan Fase Konveksi MJO (8 Fase Tropis)
           </CardTitle>
-          <CardDescription className="text-xs">
+          <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-normal">
             Perambatan area basah konveksi dari Samudra Hindia Barat (Fase 1-3) ke Indonesia (Fase 4-5) lalu Pasifik (Fase 6-8)
           </CardDescription>
         </CardHeader>
@@ -263,7 +263,7 @@ export const MJOCharts: React.FC<MJOChartsProps> = ({ data, isDarkMode = false }
                     {item.date.split(" (")[1]?.replace(")", "") || ""}
                   </span>
                   {isCurrent && (
-                    <span className="mt-1 inline-block px-1.5 py-0.5 bg-white text-emerald-700 rounded text-[9px] font-black">
+                    <span className="mt-1 inline-block px-1.5 py-0.5 bg-white text-emerald-700 rounded text-[9px] font-bold tracking-tight">
                       Kini
                     </span>
                   )}

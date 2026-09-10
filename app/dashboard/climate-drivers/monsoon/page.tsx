@@ -19,19 +19,25 @@ export default function MonsoonSubpage() {
           <Sprout className="h-10 w-10" />
         </div>
 
-        <div className="space-y-2">
-          <CardTitle className="text-2xl font-black text-white">
-            Fitur Analisis Monsun Kini Hadir di Menu Agrometeorologi
+        <div className="space-y-2.5">
+          <CardTitle className="text-2xl font-extrabold tracking-tight text-white">
+            Fitur Analisis Monsun &amp; Agrometeorologi
           </CardTitle>
-          <CardDescription className="text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
-            Untuk mendukung pengambilan keputusan pertanian dan penentuan awal musim tanam (AMH / AMK), visualisasi deret waktu angin zonal, proyeksi transisi 7 bulan SEAS5, dan rekomendasi komoditas telah diintegrasikan ke halaman <strong>Agrometeorologi &amp; Indeks Pertanian</strong>.
+          <CardDescription className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto leading-relaxed font-normal">
+            Untuk mendukung riset dinamika atmosfer dan pengambilan keputusan pertanian, analisis <strong>9 Indeks Monsun &amp; Trajektori BSISO</strong> tersedia di menu <strong>Indeks Monsun</strong>, sedangkan visualisasi kalender pola tanam (AMH/AMK) terpusat di <strong>Agrometeorologi</strong>.
           </CardDescription>
         </div>
 
-        <div className="pt-2">
-          <Button asChild size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 px-6">
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Button asChild size="default" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs sm:text-sm gap-2 px-5 shadow-sm">
+            <Link href="/dashboard/indeks-monsun">
+              <Wind className="h-4 w-4" />
+              <span>Buka 9 Indeks Monsun &amp; BSISO</span>
+            </Link>
+          </Button>
+          <Button asChild size="default" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm gap-2 px-5 shadow-sm">
             <Link href="/dashboard/agromet">
-              <span>Buka Menu Agrometeorologi &amp; Kalender Tanam</span>
+              <span>Buka Kalender Pola Tanam Agromet</span>
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>

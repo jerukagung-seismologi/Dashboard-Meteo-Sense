@@ -280,11 +280,11 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
     <div className="space-y-6">
       {/* 4 Regions Comparison Chart */}
       <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-        <CardHeader>
-          <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-indigo-500" /> Perbandingan 4 Wilayah Pasifik Niño (Niño 1+2, 3, 3.4, 4)
+        <CardHeader className="pb-3 border-b dark:border-slate-800">
+          <CardTitle className="text-base sm:text-lg font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
+            <TrendingUp className="h-5 w-5 text-indigo-500 shrink-0" /> Perbandingan 4 Wilayah Pasifik Niño (Niño 1+2, 3, 3.4, 4)
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-normal">
             Dipantau dari pantai Amerika Selatan (Niño 1+2) hingga Pasifik Tengah-Barat (Niño 4) oleh NOAA CPC
           </CardDescription>
         </CardHeader>
@@ -295,11 +295,11 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
 
       {/* ONI Time Series */}
       <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-        <CardHeader>
-          <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <Waves className="h-5 w-5 text-blue-500" /> Deret Waktu Indeks ONI (Oceanic Niño Index)
+        <CardHeader className="pb-3 border-b dark:border-slate-800">
+          <CardTitle className="text-base sm:text-lg font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
+            <Waves className="h-5 w-5 text-blue-500 shrink-0" /> Deret Waktu Indeks ONI (Oceanic Niño Index)
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-normal">
             Batas ambang El Niño (+0.5°C) dan La Niña (-0.5°C) berdasarkan rata-rata berjalan 3 bulanan suhu permukaan laut Pasifik 3.4
           </CardDescription>
         </CardHeader>
@@ -311,11 +311,11 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
       {/* Grid for Niño 3.4 and SOI */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-          <CardHeader>
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <BarChart2 className="h-5 w-5 text-purple-500" /> Anomali Suhu Perairan Niño 3.4
+          <CardHeader className="pb-3 border-b dark:border-slate-800">
+            <CardTitle className="text-base font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <BarChart2 className="h-5 w-5 text-purple-500 shrink-0" /> Anomali Suhu Perairan Niño 3.4
             </CardTitle>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-normal">
               Suhu permukaan laut kawasan Pasifik Tengah (5°N-5°S, 170°W-120°W)
             </CardDescription>
           </CardHeader>
@@ -325,11 +325,11 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
         </Card>
 
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-          <CardHeader>
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <BarChart2 className="h-5 w-5 text-emerald-500" /> Indeks SOI (Southern Oscillation Index)
+          <CardHeader className="pb-3 border-b dark:border-slate-800">
+            <CardTitle className="text-base font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <BarChart2 className="h-5 w-5 text-emerald-500 shrink-0" /> Indeks SOI (Southern Oscillation Index)
             </CardTitle>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-normal">
               Perbedaan tekanan udara permukaan laut antara Tahiti dan Darwin (Australia)
             </CardDescription>
           </CardHeader>

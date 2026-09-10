@@ -38,7 +38,7 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
 
       {/* Main Banner Header Content */}
       <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <div className="flex items-center gap-2">
             {pathname !== "/dashboard/climate-drivers" && (
               <Button variant="ghost" size="icon" asChild className="h-7 w-7 text-white hover:bg-white/10 mr-1">
@@ -47,17 +47,22 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
                 </Link>
               </Button>
             )}
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 flex items-center gap-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 flex items-center gap-1">
               <Sparkles className="h-3 w-3 text-indigo-300" /> Climate Drivers &amp; Teleconnections Monitoring
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-3">
-            <Globe className="h-7 w-7 text-indigo-400" /> {title}
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-3 text-white">
+            <Globe className="h-7 w-7 text-indigo-400 shrink-0" /> {title}
           </h1>
+          {subtitle && (
+            <p className="text-xs sm:text-sm text-slate-300 font-normal leading-relaxed max-w-3xl">
+              {subtitle}
+            </p>
+          )}
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
           {onRefresh && (
             <Button
               variant="outline"
@@ -90,7 +95,7 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
                 key={tab.id}
                 href={tab.href}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 whitespace-nowrap border",
+                  "flex items-center gap-2 px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 whitespace-nowrap border tracking-tight",
                   isActive
                     ? "bg-indigo-600 text-white border-indigo-500 shadow-md scale-[1.02]"
                     : "bg-slate-900/70 text-slate-300 border-slate-800/80 hover:bg-slate-800 hover:text-white"
