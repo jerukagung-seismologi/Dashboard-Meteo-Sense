@@ -27,91 +27,31 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SelectGroup,
+  SelectLabel,
+} from "@/components/ui/select";
+import {
+  YEAR_DATASETS,
+  CLIMATOLOGY_LATS,
+  type YearConfig,
+} from "./itczHistoricalData";
+
 interface ItczTrackerSectionProps {
   isDarkMode?: boolean;
 }
-
-// Scientific 30-Year Climatological Mean (ERA5 1991-2020) for Indonesian Sector (95°E - 141°E)
-const CLIMATOLOGY_LATS = [-9.2, -9.8, -6.5, -0.8, 5.2, 10.4, 12.2, 11.5, 6.8, 0.4, -4.9, -8.3];
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
   "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
 ];
 
-interface YearConfig {
-  year: number;
-  label: string;
-  shortLabel: string;
-  climateDriver: "La Niña Kuat" | "El Niño Kuat" | "Netral / Normal" | "Tahun Berjalan";
-  onsetStatus: "Maju Lebih Cepat (Early)" | "Mundur / Terlambat (Delayed)" | "Normal / Tepat Waktu";
-  onsetDifferenceDays: number; // minus = faster/early, plus = slower/delayed
-  summaryText: string;
-  observedLats: number[];
-}
-
-const YEAR_DATASETS: Record<number, YearConfig> = {
-  2026: {
-    year: 2026,
-    label: "2026 (Tahun Berjalan - Riil ERA5 & SEAS5)",
-    shortLabel: "2026 (Tahun Berjalan)",
-    climateDriver: "Tahun Berjalan",
-    onsetStatus: "Normal / Tepat Waktu",
-    onsetDifferenceDays: -5,
-    summaryText: "Data riil ERA5 hingga bulan berjalan dan proyeksi model musiman ECMWF SEAS5 menunjukkan ITCZ bergerak mendekati garis normal siklus musiman.",
-    observedLats: [-9.0, -9.5, -6.0, -0.5, 5.5, 10.8, 12.0, 11.0, 6.2, -0.2, -5.3, -8.6],
-  },
-  2025: {
-    year: 2025,
-    label: "2025 (Kondisi Netral)",
-    shortLabel: "2025 (Netral)",
-    climateDriver: "Netral / Normal",
-    onsetStatus: "Normal / Tepat Waktu",
-    onsetDifferenceDays: 2,
-    summaryText: "Kondisi iklim netral tanpa gangguan ENSO ekstrem membuat pergerakan ITCZ sangat dekat dengan rata-rata normal historis.",
-    observedLats: [-9.1, -9.7, -6.4, -0.7, 5.1, 10.3, 12.1, 11.3, 6.7, 0.3, -5.0, -8.2],
-  },
-  2024: {
-    year: 2024,
-    label: "2024 (Transisi Pasca El Niño)",
-    shortLabel: "2024 (Transisi)",
-    climateDriver: "Netral / Normal",
-    onsetStatus: "Normal / Tepat Waktu",
-    onsetDifferenceDays: 7,
-    summaryText: "Awal tahun mengalami sedikit perlambatan akibat sisa El Niño, namun kembali normal pada musim hujan akhir tahun.",
-    observedLats: [-8.2, -8.9, -5.5, 0.2, 6.0, 11.0, 12.5, 11.8, 7.2, 1.0, -4.2, -7.8],
-  },
-  2023: {
-    year: 2023,
-    label: "2023 (El Niño Kuat & IOD Positif)",
-    shortLabel: "2023 (El Niño Kuat)",
-    climateDriver: "El Niño Kuat",
-    onsetStatus: "Mundur / Terlambat (Delayed)",
-    onsetDifferenceDays: 28,
-    summaryText: "Dampak El Niño kuat menahan zona konvergensi ITCZ di belahan bumi utara lebih lama. Musim hujan di Jawa & Nusa Tenggara terlambat hingga akhir Desember.",
-    observedLats: [-8.0, -8.5, -4.8, 1.5, 7.2, 12.0, 13.8, 13.2, 9.1, 3.8, 0.4, -4.8],
-  },
-  2022: {
-    year: 2022,
-    label: "2022 (Triple-Dip La Niña / Kemarau Basah)",
-    shortLabel: "2022 (La Niña Kuat)",
-    climateDriver: "La Niña Kuat",
-    onsetStatus: "Maju Lebih Cepat (Early)",
-    onsetDifferenceDays: -24,
-    summaryText: "La Niña memicu ITCZ turun ke selatan 3-4 minggu lebih awal dengan konvergensi sangat kuat, menyebabkan kemarau basah dan banjir awal musim.",
-    observedLats: [-10.8, -11.2, -8.2, -2.5, 3.2, 8.5, 10.0, 9.2, 4.0, -2.8, -7.5, -10.5],
-  },
-  2020: {
-    year: 2020,
-    label: "2020 (La Niña Moderat)",
-    shortLabel: "2020 (La Niña)",
-    climateDriver: "La Niña Kuat",
-    onsetStatus: "Maju Lebih Cepat (Early)",
-    onsetDifferenceDays: -18,
-    summaryText: "Zona konvergensi ITCZ bergeser lebih cepat ke selatan pada Oktober, memberikan pasokan air hujan melimpah sejak awal musim tanam padi.",
-    observedLats: [-10.2, -10.5, -7.8, -1.8, 4.0, 9.5, 11.2, 10.5, 5.2, -1.8, -6.8, -9.8],
-  },
-};
+const BENCHMARK_YEARS = [2026, 2023, 2022, 2020, 2015, 2010, 1997];
 
 export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
   isDarkMode = false,
@@ -119,6 +59,12 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
   const [selectedYear, setSelectedYear] = useState<number>(2026);
   const now = new Date();
   const currentMonthIdx = now.getMonth(); // 0 - 11
+
+  const availableYears = useMemo(() => {
+    return Object.keys(YEAR_DATASETS)
+      .map(Number)
+      .sort((a, b) => b - a);
+  }, []);
 
   const currentDataset = YEAR_DATASETS[selectedYear] || YEAR_DATASETS[2026];
 
@@ -166,9 +112,9 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
     // Series 2: Seasonal Forecast (SEAS5) for remaining months of current year
     const forecastSeriesData = isCurrentYear
       ? currentDataset.observedLats.map((v, i) => {
-          if (i < currentMonthIdx) return null;
-          return v;
-        })
+        if (i < currentMonthIdx) return null;
+        return v;
+      })
       : [];
 
     return {
@@ -193,8 +139,8 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
             diff < -0.5
               ? `<span class="text-emerald-500 font-bold">Turun Lebih Cepat (${Math.abs(diff)}° ke Selatan)</span>`
               : diff > 0.5
-              ? `<span class="text-rose-500 font-bold">Tertahan di Utara (+${diff}°)</span>`
-              : `<span class="text-sky-500 font-bold">Sesuai Normal (Deviasi ${diff}°)</span>`;
+                ? `<span class="text-rose-500 font-bold">Tertahan di Utara (+${diff}°)</span>`
+                : `<span class="text-sky-500 font-bold">Sesuai Normal (Deviasi ${diff}°)</span>`;
 
           const isFuture = isCurrentYear && monthIdx > currentMonthIdx;
 
@@ -309,13 +255,13 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
           markPoint: {
             data: isCurrentYear
               ? [
-                  {
-                    name: "Posisi Bulan Ini",
-                    coord: [MONTHS[currentMonthIdx], activeLat],
-                    value: `${activeLat >= 0 ? "+" : ""}${activeLat}°`,
-                    itemStyle: { color: "#ec4899" },
-                  },
-                ]
+                {
+                  name: "Posisi Bulan Ini",
+                  coord: [MONTHS[currentMonthIdx], activeLat],
+                  value: `${activeLat >= 0 ? "+" : ""}${activeLat}°`,
+                  itemStyle: { color: "#ec4899" },
+                },
+              ]
               : [],
           },
           z: 2,
@@ -323,22 +269,22 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
         // 3. Seasonal Forecast Line (for remaining months if current year)
         ...(isCurrentYear
           ? [
-              {
-                name: "Proyeksi Musiman (SEAS5)",
-                type: "line",
-                data: forecastSeriesData,
-                smooth: true,
-                showSymbol: true,
-                symbolSize: 6,
-                lineStyle: {
-                  color: "#f59e0b",
-                  width: 3,
-                  type: "dotted",
-                },
-                itemStyle: { color: "#f59e0b" },
-                z: 2,
+            {
+              name: "Proyeksi Musiman (SEAS5)",
+              type: "line",
+              data: forecastSeriesData,
+              smooth: true,
+              showSymbol: true,
+              symbolSize: 6,
+              lineStyle: {
+                color: "#f59e0b",
+                width: 3,
+                type: "dotted",
               },
-            ]
+              itemStyle: { color: "#f59e0b" },
+              z: 2,
+            },
+          ]
           : []),
       ],
     };
@@ -366,24 +312,80 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
             </CardDescription>
           </div>
 
-          {/* Year Selector Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border dark:border-slate-700">
-            {Object.values(YEAR_DATASETS).map((ds) => {
-              const isSelected = selectedYear === ds.year;
-              return (
-                <button
-                  key={ds.year}
-                  onClick={() => setSelectedYear(ds.year)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all tracking-tight ${
-                    isSelected
-                      ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
-                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                  }`}
-                >
-                  {ds.shortLabel}
-                </button>
-              );
-            })}
+          {/* Year Selector: Quick Pills + Full 1995-2026 Dropdown */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            {/* Quick Benchmark Pills for Fast Switching */}
+            <div className="hidden xl:flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+              {BENCHMARK_YEARS.map((yr) => {
+                const isSelected = selectedYear === yr;
+                return (
+                  <button
+                    key={yr}
+                    onClick={() => setSelectedYear(yr)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all tracking-tight ${
+                      isSelected
+                        ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
+                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    {yr === 2026 ? "2026 (Riil)" : yr}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Comprehensive Select Dropdown (1995 – 2026) */}
+            <div className="flex items-center gap-1.5 w-full sm:w-auto">
+              <Select
+                value={String(selectedYear)}
+                onValueChange={(val) => setSelectedYear(Number(val))}
+              >
+                <SelectTrigger className="w-full sm:w-[250px] h-9 text-xs font-semibold bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl shadow-sm focus:ring-indigo-500">
+                  <div className="flex items-center gap-2 truncate">
+                    <Calendar className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                    <SelectValue placeholder="Pilih Tahun (1995–2026)" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="max-h-[340px] rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 z-50">
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1.5">
+                      Pilih Tahun Observasi (1995 – 2026)
+                    </SelectLabel>
+                    {availableYears.map((yr) => {
+                      const ds = YEAR_DATASETS[yr];
+                      const isElNino = ds.climateDriver.includes("El Niño");
+                      const isLaNina = ds.climateDriver.includes("La Niña");
+                      return (
+                        <SelectItem
+                          key={yr}
+                          value={String(yr)}
+                          className="text-xs cursor-pointer py-1.5 focus:bg-indigo-50 dark:focus:bg-indigo-950/40"
+                        >
+                          <div className="flex items-center justify-between w-full gap-3">
+                            <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
+                              {yr}
+                            </span>
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                yr === 2026
+                                  ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
+                                  : isLaNina
+                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                  : isElNino
+                                  ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                                  : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                              }`}
+                            >
+                              {ds.climateDriver} ({ds.onsetStatus})
+                            </span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -405,13 +407,12 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
                 </Badge>
                 <Badge
                   variant="outline"
-                  className={`text-[10px] font-bold ${
-                    currentDataset.onsetDifferenceDays < -10
-                      ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                      : currentDataset.onsetDifferenceDays > 10
+                  className={`text-[10px] font-bold ${currentDataset.onsetDifferenceDays < -10
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                    : currentDataset.onsetDifferenceDays > 10
                       ? "bg-rose-100 text-rose-800 border-rose-200"
                       : "bg-sky-100 text-sky-800 border-sky-200"
-                  }`}
+                    }`}
                 >
                   {currentDataset.onsetStatus} ({currentDataset.onsetDifferenceDays > 0 ? `+${currentDataset.onsetDifferenceDays}` : currentDataset.onsetDifferenceDays} Hari)
                 </Badge>
@@ -487,8 +488,8 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
                 {isSouthernHemisphere
                   ? "Jawa, Bali, NTB, NTT"
                   : isNorthernHemisphere
-                  ? "Sumatra Bagian Utara"
-                  : "Sumatra & Kalimantan"}
+                    ? "Sumatra Bagian Utara"
+                    : "Sumatra & Kalimantan"}
               </span>
             </div>
             <Badge variant="outline" className="text-[10px] w-fit font-bold bg-emerald-100 text-emerald-800 border-emerald-200">
