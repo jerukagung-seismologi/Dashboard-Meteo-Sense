@@ -80,8 +80,7 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
 
   let itczStatusTitle = "Masa Transisi (Pancaroba)";
   let itczBadgeColor = "bg-amber-100 text-amber-800 border-amber-300";
-  let itczImpactDesc =
-    "Zona konvergensi (ITCZ/DKAT) berada di sekitar ekuator. Konveksi lokal dominan pada sore hari di Sumatra tengah, Kalimantan, dan Sulawesi.";
+  let itczImpactDesc = "Zona konvergensi (ITCZ) berada di sekitar ekuator. Konveksi lokal dominan pada sore hari di Sumatra tengah, Kalimantan, dan Sulawesi.";
 
   if (isSouthernHemisphere) {
     itczStatusTitle = "Musim Hujan (Wilayah Selatan)";
@@ -170,9 +169,9 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
         top: 0,
         textStyle: { color: textColor, fontSize: 11 },
         data: [
-          `Riil ERA5 (${selectedYear})`,
+          `ERA5 (${selectedYear})`,
           isCurrentYear ? "Proyeksi Musiman (SEAS5)" : null,
-          "Normal Klimatologis (30 Thn ERA5)",
+          "Normal Klimatologis",
         ].filter(Boolean),
       },
       grid: {
@@ -205,7 +204,7 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
       series: [
         // 1. Climatological Normal Baseline (Dashed Line)
         {
-          name: "Normal Klimatologis (30 Thn ERA5)",
+          name: "Normal Klimatologis",
           type: "line",
           data: CLIMATOLOGY_LATS,
           smooth: true,
@@ -220,7 +219,7 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
         },
         // 2. Real ERA5 Observed Line
         {
-          name: `Riil ERA5 (${selectedYear})`,
+          name: `ERA5 (${selectedYear})`,
           type: "line",
           data: observedSeriesData,
           smooth: true,
@@ -231,6 +230,75 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
           areaStyle: {
             color: isDarkMode ? "rgba(99, 102, 241, 0.15)" : "rgba(99, 102, 241, 0.08)",
           },
+          markArea: {
+            silent: true,
+            data: [
+              // 1. Zona Utara RI (Aceh, Sumut, Natuna)
+              [
+                {
+                  name: "Zona Utara RI (Aceh, Sumut, Natuna)",
+                  yAxis: 2,
+                  itemStyle: { color: isDarkMode ? "rgba(6, 182, 212, 0.10)" : "rgba(6, 182, 212, 0.06)" },
+                  label: {
+                    position: "insideTopLeft",
+                    color: isDarkMode ? "#38bdf8" : "#0284c7",
+                    fontSize: 9.5,
+                    fontWeight: "bold",
+                    offset: [8, 4],
+                  },
+                },
+                { yAxis: 6 },
+              ],
+              // 2. Sabuk Ekuatorial Bimodal (Riau, Kalbar, Kalteng, Sulsel, Papua Barat)
+              [
+                {
+                  name: "Sabuk Ekuator Bimodal (Riau, Kalbar, Kalteng)",
+                  yAxis: -2,
+                  itemStyle: { color: isDarkMode ? "rgba(245, 158, 11, 0.09)" : "rgba(245, 158, 11, 0.05)" },
+                  label: {
+                    position: "insideTopLeft",
+                    color: isDarkMode ? "#fbbf24" : "#d97706",
+                    fontSize: 9.5,
+                    fontWeight: "bold",
+                    offset: [8, 4],
+                  },
+                },
+                { yAxis: 2 },
+              ],
+              // 3. Sentra Jawa & Bali (Padi Sawah Utama)
+              [
+                {
+                  name: "Zona Sentra Padi Jawa & Bali",
+                  yAxis: -8.5,
+                  itemStyle: { color: isDarkMode ? "rgba(16, 185, 129, 0.11)" : "rgba(16, 185, 129, 0.06)" },
+                  label: {
+                    position: "insideTopLeft",
+                    color: isDarkMode ? "#34d399" : "#059669",
+                    fontSize: 9.5,
+                    fontWeight: "bold",
+                    offset: [8, 4],
+                  },
+                },
+                { yAxis: -6 },
+              ],
+              // 4. Zona Nusa Tenggara (NTB, NTT / Monsunal Kuat)
+              [
+                {
+                  name: "Zona Nusa Tenggara (NTB & NTT)",
+                  yAxis: -11,
+                  itemStyle: { color: isDarkMode ? "rgba(244, 63, 94, 0.10)" : "rgba(244, 63, 94, 0.06)" },
+                  label: {
+                    position: "insideTopLeft",
+                    color: isDarkMode ? "#fb7185" : "#e11d48",
+                    fontSize: 9.5,
+                    fontWeight: "bold",
+                    offset: [8, 4],
+                  },
+                },
+                { yAxis: -8.5 },
+              ],
+            ],
+          },
           markLine: {
             silent: true,
             symbol: "none",
@@ -238,17 +306,27 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
               {
                 yAxis: 0,
                 lineStyle: { color: "#f59e0b", width: 1.5, type: "dashed" },
-                label: { formatter: "Khatulistiwa (0°)", position: "insideEndTop", color: "#f59e0b" },
-              },
-              {
-                yAxis: -11,
-                lineStyle: { color: "#ef4444", width: 1, type: "dotted" },
-                label: { formatter: "Batas Selatan RI (11°LS)", position: "insideEndBottom", color: "#ef4444" },
+                label: { formatter: "Khatulistiwa (0°)", position: "insideEndTop", color: "#f59e0b", fontSize: 10 },
               },
               {
                 yAxis: 6,
                 lineStyle: { color: "#06b6d4", width: 1, type: "dotted" },
-                label: { formatter: "Batas Utara RI (6°LU)", position: "insideEndTop", color: "#06b6d4" },
+                label: { formatter: "Batas Utara RI (6°LU)", position: "insideEndTop", color: "#06b6d4", fontSize: 10 },
+              },
+              {
+                yAxis: -6,
+                lineStyle: { color: "#10b981", width: 1, type: "dotted" },
+                label: { formatter: "Masuk Jawa (6°LS)", position: "insideEndTop", color: "#10b981", fontSize: 10 },
+              },
+              {
+                yAxis: -8.5,
+                lineStyle: { color: "#14b8a6", width: 1, type: "dotted" },
+                label: { formatter: "Masuk Bali-NTB (8.5°LS)", position: "insideEndTop", color: "#14b8a6", fontSize: 10 },
+              },
+              {
+                yAxis: -11,
+                lineStyle: { color: "#ef4444", width: 1, type: "dotted" },
+                label: { formatter: "Batas Selatan RI (11°LS)", position: "insideEndBottom", color: "#ef4444", fontSize: 10 },
               },
             ],
           },
@@ -259,7 +337,7 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
                   name: "Posisi Bulan Ini",
                   coord: [MONTHS[currentMonthIdx], activeLat],
                   value: `${activeLat >= 0 ? "+" : ""}${activeLat}°`,
-                  itemStyle: { color: "#ec4899" },
+                  itemStyle: { color: "#9dd227" },
                 },
               ]
               : [],
@@ -305,7 +383,7 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
               </Badge>
             </div>
             <CardTitle className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
-              Pemantauan Posisi Lintang ITCZ / DKAT
+              Pemantauan Posisi Lintang ITCZ
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 font-normal">
               Analisis posisi lintang konvergensi angin zonal ERA5 terhadap garis normal klimatologis untuk memantau dinamika awal musim hujan
@@ -322,11 +400,10 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
                   <button
                     key={yr}
                     onClick={() => setSelectedYear(yr)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all tracking-tight ${
-                      isSelected
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all tracking-tight ${isSelected
                         ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
                         : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                    }`}
+                      }`}
                   >
                     {yr === 2026 ? "2026 (Riil)" : yr}
                   </button>
@@ -366,15 +443,14 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
                               {yr}
                             </span>
                             <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                                yr === 2026
+                              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${yr === 2026
                                   ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
                                   : isLaNina
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-                                  : isElNino
-                                  ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
-                                  : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                              }`}
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                    : isElNino
+                                      ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                                }`}
                             >
                               {ds.climateDriver} ({ds.onsetStatus})
                             </span>
@@ -517,6 +593,49 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
             <span>
               <strong>Interpretasi Dinamika Lintang ITCZ:</strong> Perhatikan saat kurva observasi memotong garis ekuator <strong>(0° Lintang)</strong> menuju Belahan Bumi Selatan (LS). Jika pergeseran ke selatan berlangsung lebih awal dibandingkan kurva klimatologis normal (seperti tahun 2022), awal musim hujan (onset) datang lebih awal. Sebaliknya, jika tertahan di belahan utara (seperti tahun 2023), awal musim hujan mengalami keterlambatan.
             </span>
+          </div>
+
+          {/* 4 Regional Latitude Zones of Indonesia */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+            <div className="p-2.5 rounded-xl border border-sky-200/70 dark:border-sky-900/40 bg-sky-50/40 dark:bg-sky-950/20">
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <span className="text-[11px] font-bold text-sky-900 dark:text-sky-200">1. Wilayah Utara (+2° s.d. +6°LU)</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-300 font-mono font-bold">Mei–Agt</span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                Aceh, Sumut, Natuna. Hujan aktif saat BBU panas, sementara wilayah Jawa kemarau.
+              </p>
+            </div>
+
+            <div className="p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20">
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <span className="text-[11px] font-bold text-amber-900 dark:text-amber-200">2. Sabuk Ekuator (-2° s.d. +2°LU)</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 font-mono font-bold">2x Setahun</span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                Riau, Sumbar, Kalbar, Kalteng. Dua puncak hujan (bimodal) saat ITCZ melintas di Mar &amp; Okt.
+              </p>
+            </div>
+
+            <div className="p-2.5 rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/20">
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200">3. Sentra Jawa-Bali (-6° s.d. -8.5°LS)</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 font-mono font-bold">Nov–Feb</span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                Pemicu Onset Musim Hujan sentra pangan padi sawah nasional saat ITCZ menembus 6°LS.
+              </p>
+            </div>
+
+            <div className="p-2.5 rounded-xl border border-rose-200/70 dark:border-rose-900/40 bg-rose-50/40 dark:bg-rose-950/20">
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <span className="text-[11px] font-bold text-rose-900 dark:text-rose-200">4. Nusa Tenggara (-8.5° s.d. -11°LS)</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-300 font-mono font-bold">Des–Feb</span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                Lombok, Sumbawa, Flores, Timor. Tipe monsunal ekstrem dengan kemarau paling panjang.
+              </p>
+            </div>
           </div>
         </div>
 
