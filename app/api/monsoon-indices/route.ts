@@ -16,6 +16,28 @@ export interface MonsoonDailyPoint {
   bsiso2: number; // normalized index (10-23 days)
 }
 
+async function fetchJsonWithRetry(url: string, retries = 2, timeoutMs = 12000): Promise<any> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const res = await fetch(url, {
+        signal: controller.signal,
+        next: { revalidate: 21600 },
+        headers: { "User-Agent": "MeteoSense-Dashboard/1.0" },
+      });
+      clearTimeout(timer);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      return await res.json();
+    } catch (err) {
+      if (attempt === retries) throw err;
+      await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+    }
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const coords = {
@@ -29,18 +51,21 @@ export async function GET(req: NextRequest) {
     };
 
     const urls = [
-      `https://api.open-meteo.com/v1/forecast?latitude=${coords.ausmi.lat}&longitude=${coords.ausmi.lon}&daily=wind_speed_10m_max,wind_direction_10m_dominant&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
-      `https://api.open-meteo.com/v1/forecast?latitude=${coords.wnpmiTrop.lat}&longitude=${coords.wnpmiTrop.lon}&daily=wind_speed_10m_max,wind_direction_10m_dominant&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
-      `https://api.open-meteo.com/v1/forecast?latitude=${coords.wnpmiSub.lat}&longitude=${coords.wnpmiSub.lon}&daily=wind_speed_10m_max,wind_direction_10m_dominant&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
-      `https://api.open-meteo.com/v1/forecast?latitude=${coords.csi.lat}&longitude=${coords.csi.lon}&daily=wind_speed_10m_max,wind_direction_10m_dominant&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
-      `https://api.open-meteo.com/v1/forecast?latitude=${coords.wyi.lat}&longitude=${coords.wyi.lon}&daily=wind_speed_10m_max,wind_direction_10m_dominant&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
-      `https://api.open-meteo.com/v1/forecast?latitude=${coords.sasmi.lat}&longitude=${coords.sasmi.lon}&daily=wind_speed_10m_max,wind_direction_10m_dominant&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
-      `https://api.open-meteo.com/v1/forecast?latitude=${coords.easmi.lat}&longitude=${coords.easmi.lon}&daily=wind_speed_10m_max,wind_direction_10m_dominant&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
+      // 1. AUSMI: U850 in Southern Hemisphere
+      `https://api.open-meteo.com/v1/forecast?latitude=${coords.ausmi.lat}&longitude=${coords.ausmi.lon}&hourly=wind_speed_850hPa,wind_direction_850hPa&wind_speed_unit=ms&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
+      // 2. WNPMI Tropics: U850
+      `https://api.open-meteo.com/v1/forecast?latitude=${coords.wnpmiTrop.lat}&longitude=${coords.wnpmiTrop.lon}&hourly=wind_speed_850hPa,wind_direction_850hPa&wind_speed_unit=ms&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
+      // 3. WNPMI Subtropics: U850
+      `https://api.open-meteo.com/v1/forecast?latitude=${coords.wnpmiSub.lat}&longitude=${coords.wnpmiSub.lon}&hourly=wind_speed_850hPa,wind_direction_850hPa&wind_speed_unit=ms&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
+      // 4. CSI: V925 in South China Sea (Chang et al. 2005 / BMKG standard)
+      `https://api.open-meteo.com/v1/forecast?latitude=${coords.csi.lat}&longitude=${coords.csi.lon}&hourly=wind_speed_925hPa,wind_direction_925hPa&wind_speed_unit=ms&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
+      // 5. WYI: Webster-Yang vertical shear (U850 - U200)
+      `https://api.open-meteo.com/v1/forecast?latitude=${coords.wyi.lat}&longitude=${coords.wyi.lon}&hourly=wind_speed_850hPa,wind_direction_850hPa,wind_speed_200hPa,wind_direction_200hPa&wind_speed_unit=ms&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
+      // 6. SASMI: South Asian vertical shear (V850 - V200, Goswami et al. 1999)
+      `https://api.open-meteo.com/v1/forecast?latitude=${coords.sasmi.lat}&longitude=${coords.sasmi.lon}&hourly=wind_speed_850hPa,wind_direction_850hPa,wind_speed_200hPa,wind_direction_200hPa&wind_speed_unit=ms&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
+      // 7. EASMI: East Asian V850
+      `https://api.open-meteo.com/v1/forecast?latitude=${coords.easmi.lat}&longitude=${coords.easmi.lon}&hourly=wind_speed_850hPa,wind_direction_850hPa&wind_speed_unit=ms&past_days=30&forecast_days=16&timezone=Asia%2FJakarta`,
     ];
-
-    const responses = await Promise.all(
-      urls.map((u) => fetch(u, { next: { revalidate: 21600 }, headers: { "User-Agent": "MeteoSense-Dashboard/1.0" } }))
-    );
 
     const [
       jsonAus,
@@ -50,77 +75,126 @@ export async function GET(req: NextRequest) {
       jsonWyi,
       jsonSasmi,
       jsonEasmi,
-    ] = await Promise.all(responses.map((r) => r.json()));
+    ] = await Promise.all(urls.map((u) => fetchJsonWithRetry(u)));
 
-    const dailyAus = jsonAus.daily;
-    const dailyWnpTrop = jsonWnpTrop.daily;
-    const dailyWnpSub = jsonWnpSub.daily;
-    const dailyCsi = jsonCsi.daily;
-    const dailyWyi = jsonWyi.daily;
-    const dailySasmi = jsonSasmi.daily;
-    const dailyEasmi = jsonEasmi.daily;
+    const hourlyAus = jsonAus?.hourly;
+    const hourlyWnpTrop = jsonWnpTrop?.hourly;
+    const hourlyWnpSub = jsonWnpSub?.hourly;
+    const hourlyCsi = jsonCsi?.hourly;
+    const hourlyWyi = jsonWyi?.hourly;
+    const hourlySasmi = jsonSasmi?.hourly;
+    const hourlyEasmi = jsonEasmi?.hourly;
 
-    if (!dailyAus?.time || !dailyWnpTrop?.time) {
+    if (!hourlyAus?.time || !hourlyWnpTrop?.time) {
       throw new Error("Data deret waktu angin monsun Open-Meteo tidak tersedia");
     }
 
-    const len = Math.min(
-      dailyAus.time.length,
-      dailyWnpTrop.time.length,
-      dailyWnpSub.time.length,
-      dailyCsi.time.length,
-      dailyWyi.time.length,
-      dailySasmi.time.length,
-      dailyEasmi.time.length
-    );
+    const times = hourlyAus.time;
+    const totalHours = times.length;
+
+    // Agregasi Vektor Harian Sejati (True Daily Vector Mean) dari 24 jam observasi
+    const dailyBuckets = new Map<string, {
+      uAus: number[];
+      uWnpTrop: number[];
+      uWnpSub: number[];
+      vCsi: number[];
+      wyiShear: number[];
+      sasmiShear: number[];
+      vEasmi: number[];
+    }>();
+
+    for (let i = 0; i < totalHours; i++) {
+      const day = times[i].slice(0, 10);
+      if (!dailyBuckets.has(day)) {
+        dailyBuckets.set(day, {
+          uAus: [],
+          uWnpTrop: [],
+          uWnpSub: [],
+          vCsi: [],
+          wyiShear: [],
+          sasmiShear: [],
+          vEasmi: [],
+        });
+      }
+      const b = dailyBuckets.get(day)!;
+
+      // 1. AUSMI U850: -spd * sin(dir)
+      const spdAus = hourlyAus.wind_speed_850hPa?.[i];
+      if (spdAus != null && Number.isFinite(spdAus)) {
+        const dirAus = (hourlyAus.wind_direction_850hPa?.[i] || 0) * (Math.PI / 180);
+        b.uAus.push(-spdAus * Math.sin(dirAus));
+      }
+
+      // 2. WNPMI Trop U850 & Sub U850
+      const spdWnpTrop = hourlyWnpTrop.wind_speed_850hPa?.[i];
+      if (spdWnpTrop != null && Number.isFinite(spdWnpTrop)) {
+        const dirWnpTrop = (hourlyWnpTrop.wind_direction_850hPa?.[i] || 0) * (Math.PI / 180);
+        b.uWnpTrop.push(-spdWnpTrop * Math.sin(dirWnpTrop));
+      }
+
+      const spdWnpSub = hourlyWnpSub.wind_speed_850hPa?.[i];
+      if (spdWnpSub != null && Number.isFinite(spdWnpSub)) {
+        const dirWnpSub = (hourlyWnpSub.wind_direction_850hPa?.[i] || 0) * (Math.PI / 180);
+        b.uWnpSub.push(-spdWnpSub * Math.sin(dirWnpSub));
+      }
+
+      // 4. CSI V925: -spd * cos(dir) (Cold Surge Index BMKG & Chang et al. 2005)
+      const spdCsi = hourlyCsi.wind_speed_925hPa?.[i];
+      if (spdCsi != null && Number.isFinite(spdCsi)) {
+        const dirCsi = (hourlyCsi.wind_direction_925hPa?.[i] || 0) * (Math.PI / 180);
+        b.vCsi.push(-spdCsi * Math.cos(dirCsi));
+      }
+
+      // 5. WYI: Webster-Yang vertical zonal shear U850 - U200 (Webster & Yang 1992)
+      const spdWyi850 = hourlyWyi.wind_speed_850hPa?.[i];
+      const spdWyi200 = hourlyWyi.wind_speed_200hPa?.[i];
+      if (spdWyi850 != null && spdWyi200 != null && Number.isFinite(spdWyi850) && Number.isFinite(spdWyi200)) {
+        const dirWyi850 = (hourlyWyi.wind_direction_850hPa?.[i] || 0) * (Math.PI / 180);
+        const uWyi850 = -spdWyi850 * Math.sin(dirWyi850);
+        const dirWyi200 = (hourlyWyi.wind_direction_200hPa?.[i] || 0) * (Math.PI / 180);
+        const uWyi200 = -spdWyi200 * Math.sin(dirWyi200);
+        b.wyiShear.push(uWyi850 - uWyi200);
+      }
+
+      // 6. SASMI: South Asian vertical meridional shear V850 - V200 (Goswami et al. 1999)
+      const spdSasmi850 = hourlySasmi.wind_speed_850hPa?.[i];
+      const spdSasmi200 = hourlySasmi.wind_speed_200hPa?.[i];
+      if (spdSasmi850 != null && spdSasmi200 != null && Number.isFinite(spdSasmi850) && Number.isFinite(spdSasmi200)) {
+        const dirSasmi850 = (hourlySasmi.wind_direction_850hPa?.[i] || 0) * (Math.PI / 180);
+        const vSasmi850 = -spdSasmi850 * Math.cos(dirSasmi850);
+        const dirSasmi200 = (hourlySasmi.wind_direction_200hPa?.[i] || 0) * (Math.PI / 180);
+        const vSasmi200 = -spdSasmi200 * Math.cos(dirSasmi200);
+        b.sasmiShear.push(vSasmi850 - vSasmi200);
+      }
+
+      // 7. EASMI: East Asian Summer Monsoon V850 (Zhang et al. 2003)
+      const spdEasmi = hourlyEasmi.wind_speed_850hPa?.[i];
+      if (spdEasmi != null && Number.isFinite(spdEasmi)) {
+        const dirEasmi = (hourlyEasmi.wind_direction_850hPa?.[i] || 0) * (Math.PI / 180);
+        b.vEasmi.push(-spdEasmi * Math.cos(dirEasmi));
+      }
+    }
+
+    const mean = (arr: number[]) => (arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
 
     const timePoints: MonsoonDailyPoint[] = [];
 
-    for (let i = 0; i < len; i++) {
-      const date = dailyAus.time[i];
+    for (const [date, b] of dailyBuckets.entries()) {
+      if (b.uAus.length < 12 || b.uWnpTrop.length < 12) continue; // Skip days without sufficient valid observations
 
-      // 1. AUSMI Zonal U: -spd * sin(dir)
-      const spdAus = (dailyAus.wind_speed_10m_max[i] || 0) / 3.6;
-      const dirAus = (dailyAus.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
-      const uAus = Number((-spdAus * Math.sin(dirAus)).toFixed(2));
+      const uAus = Number(mean(b.uAus).toFixed(2));
+      const uTrop = mean(b.uWnpTrop);
+      const uSub = mean(b.uWnpSub);
+      const wnpmi = Number((uTrop - uSub).toFixed(2));
+      const scsmi = Number(uTrop.toFixed(2));
+      const vCsi = Number(mean(b.vCsi).toFixed(2));
+      const wyi = Number(mean(b.wyiShear).toFixed(2));
+      const sasmi = Number(mean(b.sasmiShear).toFixed(2));
+      const easmi = Number(mean(b.vEasmi).toFixed(2));
 
-      // 2. WNPMI: U_trop - U_sub
-      const spdWnpTrop = (dailyWnpTrop.wind_speed_10m_max[i] || 0) / 3.6;
-      const dirWnpTrop = (dailyWnpTrop.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
-      const uWnpTrop = -spdWnpTrop * Math.sin(dirWnpTrop);
-
-      const spdWnpSub = (dailyWnpSub.wind_speed_10m_max[i] || 0) / 3.6;
-      const dirWnpSub = (dailyWnpSub.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
-      const uWnpSub = -spdWnpSub * Math.sin(dirWnpSub);
-
-      const wnpmi = Number((uWnpTrop - uWnpSub).toFixed(2));
-
-      // 3. SCSMI: Zonal U in South China Sea
-      const scsmi = Number(uWnpTrop.toFixed(2));
-
-      // 4. CSI: Meridional V = -spd * cos(dir)
-      const spdCsi = (dailyCsi.wind_speed_10m_max[i] || 0) / 3.6;
-      const dirCsi = (dailyCsi.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
-      const vCsi = Number((-spdCsi * Math.cos(dirCsi)).toFixed(2));
-
-      // 5. WYI: Webster-Yang Broadscale Asian Monsoon
-      const spdWyi = (dailyWyi.wind_speed_10m_max[i] || 0) / 3.6;
-      const dirWyi = (dailyWyi.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
-      const uWyi = Number((-spdWyi * Math.sin(dirWyi)).toFixed(2));
-
-      // 6. SASMI: South Asian / Indian Monsoon (Meridional component)
-      const spdSasmi = (dailySasmi.wind_speed_10m_max[i] || 0) / 3.6;
-      const dirSasmi = (dailySasmi.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
-      const vSasmi = Number((-spdSasmi * Math.cos(dirSasmi)).toFixed(2));
-
-      // 7. EASMI: East Asian Summer Monsoon
-      const spdEasmi = (dailyEasmi.wind_speed_10m_max[i] || 0) / 3.6;
-      const dirEasmi = (dailyEasmi.wind_direction_10m_dominant[i] || 0) * (Math.PI / 180);
-      const vEasmi = Number((-spdEasmi * Math.cos(dirEasmi)).toFixed(2));
-
-      // 8. BSISO1 (30-60 days mode) & 9. BSISO2 (10-23 days mode)
-      const b1 = Number((scsmi * 0.45 - uAus * 0.35).toFixed(2));
-      const b2 = Number((wnpmi * 0.30 - vCsi * 0.25).toFixed(2));
+      // 8. BSISO1 (30-60 days mode) & 9. BSISO2 (10-23 days mode) - Normalized Circulation Projection
+      const b1 = Number((scsmi * 0.35 - uAus * 0.25).toFixed(2));
+      const b2 = Number((wnpmi * 0.25 - vCsi * 0.20).toFixed(2));
 
       timePoints.push({
         date,
@@ -128,9 +202,9 @@ export async function GET(req: NextRequest) {
         wnpmi,
         scsmi,
         csi: vCsi,
-        wyi: uWyi,
-        sasmi: vSasmi,
-        easmi: vEasmi,
+        wyi,
+        sasmi,
+        easmi,
         bsiso1: b1,
         bsiso2: b2,
       });
