@@ -25,6 +25,20 @@ export interface SensorValue {
   volt: number;
   lux: number;
   soil_temp: number;
+  windSpeed?: number;
+  windDirection?: number;
+  // WMO AWS Extrema (Instantaneous peaks/troughs per aggregation period)
+  tempMax?: number;
+  tempMin?: number;
+  humMax?: number;
+  humMin?: number;
+  pressMax?: number;
+  pressMin?: number;
+  dewMax?: number;
+  dewMin?: number;
+  luxMax?: number;
+  luxMin?: number;
+  windSpeedMax?: number; // WMO Wind Gust
 }
 
 export interface SensorDate extends SensorValue {
@@ -170,15 +184,21 @@ export async function fetchSensorDataByDateRange(
     if (resolution === "hourly") {
       const buckets = new Map<number, {
         tempSum: number; tempCount: number;
+        tempMax: number; tempMin: number;
         humSum: number; humCount: number;
+        humMax: number; humMin: number;
         pressSum: number; pressCount: number;
+        pressMax: number; pressMin: number;
         dewSum: number; dewCount: number;
+        dewMax: number; dewMin: number;
         voltSum: number; voltCount: number;
         rainTotal: number;
         rainRateMax: number;
         luxSum: number; luxCount: number;
+        luxMax: number; luxMin: number;
         soilTempSum: number; soilTempCount: number;
         windSpeedSum: number; windSpeedCount: number;
+        windSpeedMax: number;
         windSinSum: number; windCosSum: number; windDirCount: number;
       }>();
 
@@ -193,36 +213,54 @@ export async function fetchSensorDataByDateRange(
         if (!b) {
           b = {
             tempSum: 0, tempCount: 0,
+            tempMax: -Infinity, tempMin: Infinity,
             humSum: 0, humCount: 0,
+            humMax: -Infinity, humMin: Infinity,
             pressSum: 0, pressCount: 0,
+            pressMax: -Infinity, pressMin: Infinity,
             dewSum: 0, dewCount: 0,
+            dewMax: -Infinity, dewMin: Infinity,
             voltSum: 0, voltCount: 0,
             rainTotal: 0,
             rainRateMax: 0,
             luxSum: 0, luxCount: 0,
+            luxMax: -Infinity, luxMin: Infinity,
             soilTempSum: 0, soilTempCount: 0,
             windSpeedSum: 0, windSpeedCount: 0,
+            windSpeedMax: 0,
             windSinSum: 0, windCosSum: 0, windDirCount: 0,
           };
           buckets.set(hourTs, b);
         }
 
         if (data.temperature != null && Number.isFinite(Number(data.temperature))) {
-          b.tempSum += Number(data.temperature);
+          const t = Number(data.temperature);
+          b.tempSum += t;
           b.tempCount++;
+          if (t > b.tempMax) b.tempMax = t;
+          if (t < b.tempMin) b.tempMin = t;
         }
         if (data.humidity != null && Number.isFinite(Number(data.humidity))) {
-          b.humSum += Number(data.humidity);
+          const h = Number(data.humidity);
+          b.humSum += h;
           b.humCount++;
+          if (h > b.humMax) b.humMax = h;
+          if (h < b.humMin) b.humMin = h;
         }
         if (data.pressure != null && Number.isFinite(Number(data.pressure))) {
-          b.pressSum += Number(data.pressure);
+          const p = Number(data.pressure);
+          b.pressSum += p;
           b.pressCount++;
+          if (p > b.pressMax) b.pressMax = p;
+          if (p < b.pressMin) b.pressMin = p;
         }
         const dew = data.dew ?? (data.temperature != null && data.humidity != null ? Number(data.temperature) - ((100 - Number(data.humidity)) / 5) : null);
         if (dew != null && Number.isFinite(Number(dew))) {
-          b.dewSum += Number(dew);
+          const d = Number(dew);
+          b.dewSum += d;
           b.dewCount++;
+          if (d > b.dewMax) b.dewMax = d;
+          if (d < b.dewMin) b.dewMin = d;
         }
         if (data.volt != null && Number.isFinite(Number(data.volt))) {
           b.voltSum += Number(data.volt);
@@ -235,8 +273,11 @@ export async function fetchSensorDataByDateRange(
           if (Number(data.rainrate) > b.rainRateMax) b.rainRateMax = Number(data.rainrate);
         }
         if (data.lux != null && Number.isFinite(Number(data.lux))) {
-          b.luxSum += Number(data.lux);
+          const l = Number(data.lux);
+          b.luxSum += l;
           b.luxCount++;
+          if (l > b.luxMax) b.luxMax = l;
+          if (l < b.luxMin) b.luxMin = l;
         }
         if (data.soil_temp != null && Number.isFinite(Number(data.soil_temp))) {
           b.soilTempSum += Number(data.soil_temp);
@@ -244,8 +285,10 @@ export async function fetchSensorDataByDateRange(
         }
         const ws = (data as any).wind_speed ?? (data as any).windSpeed;
         if (ws != null && Number.isFinite(Number(ws))) {
-          b.windSpeedSum += Number(ws);
+          const w = Number(ws);
+          b.windSpeedSum += w;
           b.windSpeedCount++;
+          if (w > b.windSpeedMax) b.windSpeedMax = w;
         }
         const wd = (data as any).wind_dir ?? (data as any).windDirection;
         if (wd != null && Number.isFinite(Number(wd))) {
@@ -273,15 +316,26 @@ export async function fetchSensorDataByDateRange(
         return {
           timestamp: ts,
           temperature: b.tempCount > 0 ? Number((b.tempSum / b.tempCount).toFixed(2)) : 0,
+          tempMax: b.tempCount > 0 && b.tempMax !== -Infinity ? Number(b.tempMax.toFixed(2)) : undefined,
+          tempMin: b.tempCount > 0 && b.tempMin !== Infinity ? Number(b.tempMin.toFixed(2)) : undefined,
           humidity: b.humCount > 0 ? Number((b.humSum / b.humCount).toFixed(1)) : 0,
+          humMax: b.humCount > 0 && b.humMax !== -Infinity ? Number(b.humMax.toFixed(1)) : undefined,
+          humMin: b.humCount > 0 && b.humMin !== Infinity ? Number(b.humMin.toFixed(1)) : undefined,
           pressure: b.pressCount > 0 ? Number((b.pressSum / b.pressCount).toFixed(2)) : 0,
+          pressMax: b.pressCount > 0 && b.pressMax !== -Infinity ? Number(b.pressMax.toFixed(2)) : undefined,
+          pressMin: b.pressCount > 0 && b.pressMin !== Infinity ? Number(b.pressMin.toFixed(2)) : undefined,
           dew: b.dewCount > 0 ? Number((b.dewSum / b.dewCount).toFixed(2)) : 0,
+          dewMax: b.dewCount > 0 && b.dewMax !== -Infinity ? Number(b.dewMax.toFixed(2)) : undefined,
+          dewMin: b.dewCount > 0 && b.dewMin !== Infinity ? Number(b.dewMin.toFixed(2)) : undefined,
           volt: b.voltCount > 0 ? Number((b.voltSum / b.voltCount).toFixed(2)) : 0,
           rainfall: Number(b.rainTotal.toFixed(2)),
           rainrate: Number(b.rainRateMax.toFixed(2)),
           lux: b.luxCount > 0 ? Number((b.luxSum / b.luxCount).toFixed(1)) : 0,
+          luxMax: b.luxCount > 0 && b.luxMax !== -Infinity ? Number(b.luxMax.toFixed(1)) : undefined,
+          luxMin: b.luxCount > 0 && b.luxMin !== Infinity ? Number(b.luxMin.toFixed(1)) : undefined,
           soil_temp: b.soilTempCount > 0 ? Number((b.soilTempSum / b.soilTempCount).toFixed(2)) : 0,
           windSpeed: b.windSpeedCount > 0 ? Number((b.windSpeedSum / b.windSpeedCount).toFixed(2)) : 0,
+          windSpeedMax: Number(b.windSpeedMax.toFixed(2)),
           windDirection: windDir,
           dateFormatted,
           timeFormatted,

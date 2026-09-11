@@ -54,39 +54,47 @@ export function aggregateDaily(rawPoints: SensorDate[]): AggregatedPoint[] {
     for (const item of items) {
       // Temperature
       const t = Number(item.temperature);
+      const tMax = (item as any).tempMax != null && Number.isFinite((item as any).tempMax) ? (item as any).tempMax : t;
+      const tMin = (item as any).tempMin != null && Number.isFinite((item as any).tempMin) ? (item as any).tempMin : t;
       if (Number.isFinite(t)) {
         tempSum += t;
         tempCount++;
-        if (t < tempMin) tempMin = t;
-        if (t > tempMax) tempMax = t;
       }
+      if (Number.isFinite(tMin) && tMin < tempMin) tempMin = tMin;
+      if (Number.isFinite(tMax) && tMax > tempMax) tempMax = tMax;
 
       // Humidity
       const h = Number(item.humidity);
+      const hMax = (item as any).humMax != null && Number.isFinite((item as any).humMax) ? (item as any).humMax : h;
+      const hMin = (item as any).humMin != null && Number.isFinite((item as any).humMin) ? (item as any).humMin : h;
       if (Number.isFinite(h)) {
         humSum += h;
         humCount++;
-        if (h < humMin) humMin = h;
-        if (h > humMax) humMax = h;
       }
+      if (Number.isFinite(hMin) && hMin < humMin) humMin = hMin;
+      if (Number.isFinite(hMax) && hMax > humMax) humMax = hMax;
 
       // Pressure
       const p = Number(item.pressure);
+      const pMax = (item as any).pressMax != null && Number.isFinite((item as any).pressMax) ? (item as any).pressMax : p;
+      const pMin = (item as any).pressMin != null && Number.isFinite((item as any).pressMin) ? (item as any).pressMin : p;
       if (Number.isFinite(p)) {
         pressSum += p;
         pressCount++;
-        if (p < pressMin) pressMin = p;
-        if (p > pressMax) pressMax = p;
       }
+      if (Number.isFinite(pMin) && pMin < pressMin) pressMin = pMin;
+      if (Number.isFinite(pMax) && pMax > pressMax) pressMax = pMax;
 
       // Dew Point
       const d = Number(item.dew);
+      const dMax = (item as any).dewMax != null && Number.isFinite((item as any).dewMax) ? (item as any).dewMax : d;
+      const dMin = (item as any).dewMin != null && Number.isFinite((item as any).dewMin) ? (item as any).dewMin : d;
       if (Number.isFinite(d)) {
         dewSum += d;
         dewCount++;
-        if (d < dewMin) dewMin = d;
-        if (d > dewMax) dewMax = d;
       }
+      if (Number.isFinite(dMin) && dMin < dewMin) dewMin = dMin;
+      if (Number.isFinite(dMax) && dMax > dewMax) dewMax = dMax;
 
       // Rain
       const r = Number(item.rainDelta);

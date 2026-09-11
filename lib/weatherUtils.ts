@@ -15,6 +15,7 @@ export type WeatherRecord = {
   pressureMax: number;
   dewPointAvg: number;
   windSpeedAvg: number;
+  windSpeedMax?: number; // WMO AWS Wind Gust
   rainfallTot: number;
   luxAvg?: number;
   luxMin?: number;
@@ -166,10 +167,22 @@ export function aggregateDaily(rows: SensorDate[]): WeatherRecord[] {
       items.reduce((acc, it) => acc + pick(it) * it.sampleCount, 0);
 
     const rawData = byDayRaw.get(date) || [];
-    const temps = rawData.map(r => r.temperature).filter(Number.isFinite);
-    const humis = rawData.map(r => r.humidity).filter(Number.isFinite);
-    const press = rawData.map(r => r.pressure).filter(Number.isFinite);
-    const luxes = rawData.map(r => r.lux ?? 0).filter(Number.isFinite);
+    // WMO AWS Standard: Prioritize true instantaneous extrema if available in hourly records,
+    // otherwise fallback to instantaneous sample point (for raw resolution)
+    const tempsMax = rawData.map(r => (r.tempMax != null && Number.isFinite(r.tempMax)) ? r.tempMax : r.temperature).filter(Number.isFinite);
+    const tempsMin = rawData.map(r => (r.tempMin != null && Number.isFinite(r.tempMin)) ? r.tempMin : r.temperature).filter(Number.isFinite);
+    const humisMax = rawData.map(r => (r.humMax != null && Number.isFinite(r.humMax)) ? r.humMax : r.humidity).filter(Number.isFinite);
+    const humisMin = rawData.map(r => (r.humMin != null && Number.isFinite(r.humMin)) ? r.humMin : r.humidity).filter(Number.isFinite);
+    const pressMax = rawData.map(r => (r.pressMax != null && Number.isFinite(r.pressMax)) ? r.pressMax : r.pressure).filter(Number.isFinite);
+    const pressMin = rawData.map(r => (r.pressMin != null && Number.isFinite(r.pressMin)) ? r.pressMin : r.pressure).filter(Number.isFinite);
+    const luxesMax = rawData.map(r => (r.luxMax != null && Number.isFinite(r.luxMax)) ? r.luxMax : (r.lux ?? 0)).filter(Number.isFinite);
+    const luxesMin = rawData.map(r => (r.luxMin != null && Number.isFinite(r.luxMin)) ? r.luxMin : (r.lux ?? 0)).filter(Number.isFinite);
+    const windSpeedsMax = rawData.map(r => {
+      const wsMax = (r as any).windSpeedMax ?? (r as any).wind_speed_max;
+      if (wsMax != null && Number.isFinite(wsMax)) return wsMax;
+      const ws = (r as any).windSpeed ?? (r as any).wind_speed;
+      return (ws != null && Number.isFinite(ws)) ? ws : 0;
+    }).filter(Number.isFinite);
     
     // Sum hourly rain deltas (already computed via delta logic in aggregateHourly)
     const rainfallTot = items.reduce((acc, it) => acc + (Number.isFinite(it.rainfallTot) ? it.rainfallTot : 0), 0);
@@ -178,19 +191,20 @@ export function aggregateDaily(rows: SensorDate[]): WeatherRecord[] {
       date,
       sampleCount: totalSamples,
       temperatureAvg: wsum(i => i.temperatureAvg) / totalSamples,
-      temperatureMin: temps.length ? Math.min(...temps) : 0,
-      temperatureMax: temps.length ? Math.max(...temps) : 0,
+      temperatureMin: tempsMin.length ? Math.min(...tempsMin) : 0,
+      temperatureMax: tempsMax.length ? Math.max(...tempsMax) : 0,
       humidityAvg: wsum(i => i.humidityAvg) / totalSamples,
-      humidityMin: humis.length ? Math.min(...humis) : 0,
-      humidityMax: humis.length ? Math.max(...humis) : 0,
+      humidityMin: humisMin.length ? Math.min(...humisMin) : 0,
+      humidityMax: humisMax.length ? Math.max(...humisMax) : 0,
       pressureAvg: wsum(i => i.pressureAvg) / totalSamples,
-      pressureMin: press.length ? Math.min(...press) : 0,
-      pressureMax: press.length ? Math.max(...press) : 0,
+      pressureMin: pressMin.length ? Math.min(...pressMin) : 0,
+      pressureMax: pressMax.length ? Math.max(...pressMax) : 0,
       dewPointAvg: wsum(i => i.dewPointAvg) / totalSamples,
       windSpeedAvg: 0,
+      windSpeedMax: windSpeedsMax.length ? Math.max(...windSpeedsMax) : 0,
       luxAvg: wsum(i => i.luxAvg) / totalSamples,
-      luxMin: luxes.length ? Math.min(...luxes) : 0,
-      luxMax: luxes.length ? Math.max(...luxes) : 0,
+      luxMin: luxesMin.length ? Math.min(...luxesMin) : 0,
+      luxMax: luxesMax.length ? Math.max(...luxesMax) : 0,
       rainfallTot: Math.round(rainfallTot * 100) / 100,
     });
   }
@@ -221,27 +235,42 @@ export function calculatePeriodStats(dailyData: WeatherRecord[], rawData: Sensor
   const rains = dailyData.map(w => w.rainfallTot);
   const luxes = dailyData.map(w => w.luxAvg ?? 0);
 
-  const rawTemps = rawData.map(r => r.temperature).filter(Number.isFinite);
-  const rawHumi = rawData.map(r => r.humidity).filter(Number.isFinite);
-  const rawPres = rawData.map(r => r.pressure).filter(Number.isFinite);
-  const rawLuxes = rawData.map(r => r.lux ?? 0).filter(Number.isFinite);
+  // WMO AWS Standard: Compute period extremes from daily records (which include true extrema & any ERA5 corrections)
+  // with fallback to rawData
+  const dailyTempMax = dailyData.map(w => w.temperatureMax).filter(Number.isFinite);
+  const dailyTempMin = dailyData.map(w => w.temperatureMin).filter(Number.isFinite);
+  const dailyHumMax = dailyData.map(w => w.humidityMax).filter(Number.isFinite);
+  const dailyHumMin = dailyData.map(w => w.humidityMin).filter(Number.isFinite);
+  const dailyPresMax = dailyData.map(w => w.pressureMax).filter(Number.isFinite);
+  const dailyPresMin = dailyData.map(w => w.pressureMin).filter(Number.isFinite);
+  const dailyLuxMax = dailyData.map(w => w.luxMax ?? 0).filter(Number.isFinite);
+  const dailyLuxMin = dailyData.map(w => w.luxMin ?? 0).filter(Number.isFinite);
+
+  const rawTempsMax = rawData.map(r => (r.tempMax != null && Number.isFinite(r.tempMax)) ? r.tempMax : r.temperature).filter(Number.isFinite);
+  const rawTempsMin = rawData.map(r => (r.tempMin != null && Number.isFinite(r.tempMin)) ? r.tempMin : r.temperature).filter(Number.isFinite);
+  const rawHumiMax = rawData.map(r => (r.humMax != null && Number.isFinite(r.humMax)) ? r.humMax : r.humidity).filter(Number.isFinite);
+  const rawHumiMin = rawData.map(r => (r.humMin != null && Number.isFinite(r.humMin)) ? r.humMin : r.humidity).filter(Number.isFinite);
+  const rawPresMax = rawData.map(r => (r.pressMax != null && Number.isFinite(r.pressMax)) ? r.pressMax : r.pressure).filter(Number.isFinite);
+  const rawPresMin = rawData.map(r => (r.pressMin != null && Number.isFinite(r.pressMin)) ? r.pressMin : r.pressure).filter(Number.isFinite);
+  const rawLuxesMax = rawData.map(r => (r.luxMax != null && Number.isFinite(r.luxMax)) ? r.luxMax : (r.lux ?? 0)).filter(Number.isFinite);
+  const rawLuxesMin = rawData.map(r => (r.luxMin != null && Number.isFinite(r.luxMin)) ? r.luxMin : (r.lux ?? 0)).filter(Number.isFinite);
 
   return {
     avgTemp: temps.length ? round(sum(temps) / temps.length) : 0,
-    minTemp: rawTemps.length ? Math.min(...rawTemps) : 0,
-    maxTemp: rawTemps.length ? Math.max(...rawTemps) : 0,
+    minTemp: dailyTempMin.length ? Math.min(...dailyTempMin) : (rawTempsMin.length ? Math.min(...rawTempsMin) : 0),
+    maxTemp: dailyTempMax.length ? Math.max(...dailyTempMax) : (rawTempsMax.length ? Math.max(...rawTempsMax) : 0),
     
     avgHum: humi.length ? round(sum(humi) / humi.length) : 0,
-    minHum: rawHumi.length ? Math.min(...rawHumi) : 0,
-    maxHum: rawHumi.length ? Math.max(...rawHumi) : 0,
+    minHum: dailyHumMin.length ? Math.min(...dailyHumMin) : (rawHumiMin.length ? Math.min(...rawHumiMin) : 0),
+    maxHum: dailyHumMax.length ? Math.max(...dailyHumMax) : (rawHumiMax.length ? Math.max(...rawHumiMax) : 0),
 
     avgPres: pres.length ? round(sum(pres) / pres.length) : 0,
-    minPres: rawPres.length ? Math.min(...rawPres) : 0,
-    maxPres: rawPres.length ? Math.max(...rawPres) : 0,
+    minPres: dailyPresMin.length ? Math.min(...dailyPresMin) : (rawPresMin.length ? Math.min(...rawPresMin) : 0),
+    maxPres: dailyPresMax.length ? Math.max(...dailyPresMax) : (rawPresMax.length ? Math.max(...rawPresMax) : 0),
 
     avgLux: luxes.length ? round(sum(luxes) / luxes.length) : 0,
-    minLux: rawLuxes.length ? Math.min(...rawLuxes) : 0,
-    maxLux: rawLuxes.length ? Math.max(...rawLuxes) : 0,
+    minLux: dailyLuxMin.length ? Math.min(...dailyLuxMin) : (rawLuxesMin.length ? Math.min(...rawLuxesMin) : 0),
+    maxLux: dailyLuxMax.length ? Math.max(...dailyLuxMax) : (rawLuxesMax.length ? Math.max(...rawLuxesMax) : 0),
 
     totalRain: rains.length ? round(sum(rains)) : 0,
     avgRain: rains.length ? round(sum(rains) / rains.length) : 0,
@@ -337,11 +366,11 @@ export function findWeatherExtremes(dailyData: WeatherRecord[], rawData: SensorD
   };
 
   return {
-    hottestDay: getExtremeRaw(r => r.temperature, true),
-    coldestDay: getExtremeRaw(r => r.temperature, false),
+    hottestDay: getExtremeRaw(r => (r.tempMax != null && Number.isFinite(r.tempMax)) ? r.tempMax : r.temperature, true),
+    coldestDay: getExtremeRaw(r => (r.tempMin != null && Number.isFinite(r.tempMin)) ? r.tempMin : r.temperature, false),
     wettestDay: getExtremeDaily(d => d.rainfallTot, true),
-    mostHumidDay: getExtremeRaw(r => r.humidity, true),
-    lowestPressureEvent: getExtremeRaw(r => r.pressure, false),
+    mostHumidDay: getExtremeRaw(r => (r.humMax != null && Number.isFinite(r.humMax)) ? r.humMax : r.humidity, true),
+    lowestPressureEvent: getExtremeRaw(r => (r.pressMin != null && Number.isFinite(r.pressMin)) ? r.pressMin : r.pressure, false),
     highestRadiationDay: getExtremeDaily(d => d.luxMax ?? 0, true),
   };
 }
@@ -518,10 +547,22 @@ export function aggregateDailyUTC(rows: SensorDate[]): WeatherRecord[] {
       items.reduce((acc, it) => acc + pick(it) * it.sampleCount, 0);
 
     const rawData = byDayRaw.get(date) || [];
-    const temps = rawData.map(r => r.temperature).filter(Number.isFinite);
-    const humis = rawData.map(r => r.humidity).filter(Number.isFinite);
-    const press = rawData.map(r => r.pressure).filter(Number.isFinite);
-    const luxes = rawData.map(r => r.lux ?? 0).filter(Number.isFinite);
+    // WMO AWS Standard: Prioritize true instantaneous extrema if available in hourly records,
+    // otherwise fallback to instantaneous sample point (for raw resolution)
+    const tempsMax = rawData.map(r => (r.tempMax != null && Number.isFinite(r.tempMax)) ? r.tempMax : r.temperature).filter(Number.isFinite);
+    const tempsMin = rawData.map(r => (r.tempMin != null && Number.isFinite(r.tempMin)) ? r.tempMin : r.temperature).filter(Number.isFinite);
+    const humisMax = rawData.map(r => (r.humMax != null && Number.isFinite(r.humMax)) ? r.humMax : r.humidity).filter(Number.isFinite);
+    const humisMin = rawData.map(r => (r.humMin != null && Number.isFinite(r.humMin)) ? r.humMin : r.humidity).filter(Number.isFinite);
+    const pressMax = rawData.map(r => (r.pressMax != null && Number.isFinite(r.pressMax)) ? r.pressMax : r.pressure).filter(Number.isFinite);
+    const pressMin = rawData.map(r => (r.pressMin != null && Number.isFinite(r.pressMin)) ? r.pressMin : r.pressure).filter(Number.isFinite);
+    const luxesMax = rawData.map(r => (r.luxMax != null && Number.isFinite(r.luxMax)) ? r.luxMax : (r.lux ?? 0)).filter(Number.isFinite);
+    const luxesMin = rawData.map(r => (r.luxMin != null && Number.isFinite(r.luxMin)) ? r.luxMin : (r.lux ?? 0)).filter(Number.isFinite);
+    const windSpeedsMax = rawData.map(r => {
+      const wsMax = (r as any).windSpeedMax ?? (r as any).wind_speed_max;
+      if (wsMax != null && Number.isFinite(wsMax)) return wsMax;
+      const ws = (r as any).windSpeed ?? (r as any).wind_speed;
+      return (ws != null && Number.isFinite(ws)) ? ws : 0;
+    }).filter(Number.isFinite);
 
     // Sum hourly rain deltas (already computed via delta logic in aggregateHourlyUTC)
     const rainfallTot = items.reduce((acc, it) => acc + (Number.isFinite(it.rainfallTot) ? it.rainfallTot : 0), 0);
@@ -530,19 +571,20 @@ export function aggregateDailyUTC(rows: SensorDate[]): WeatherRecord[] {
       date,
       sampleCount: totalSamples,
       temperatureAvg: wsum(i => i.temperatureAvg) / totalSamples,
-      temperatureMin: temps.length ? Math.min(...temps) : 0,
-      temperatureMax: temps.length ? Math.max(...temps) : 0,
+      temperatureMin: tempsMin.length ? Math.min(...tempsMin) : 0,
+      temperatureMax: tempsMax.length ? Math.max(...tempsMax) : 0,
       humidityAvg: wsum(i => i.humidityAvg) / totalSamples,
-      humidityMin: humis.length ? Math.min(...humis) : 0,
-      humidityMax: humis.length ? Math.max(...humis) : 0,
+      humidityMin: humisMin.length ? Math.min(...humisMin) : 0,
+      humidityMax: humisMax.length ? Math.max(...humisMax) : 0,
       pressureAvg: wsum(i => i.pressureAvg) / totalSamples,
-      pressureMin: press.length ? Math.min(...press) : 0,
-      pressureMax: press.length ? Math.max(...press) : 0,
+      pressureMin: pressMin.length ? Math.min(...pressMin) : 0,
+      pressureMax: pressMax.length ? Math.max(...pressMax) : 0,
       dewPointAvg: wsum(i => i.dewPointAvg) / totalSamples,
       windSpeedAvg: 0,
+      windSpeedMax: windSpeedsMax.length ? Math.max(...windSpeedsMax) : 0,
       luxAvg: wsum(i => i.luxAvg) / totalSamples,
-      luxMin: luxes.length ? Math.min(...luxes) : 0,
-      luxMax: luxes.length ? Math.max(...luxes) : 0,
+      luxMin: luxesMin.length ? Math.min(...luxesMin) : 0,
+      luxMax: luxesMax.length ? Math.max(...luxesMax) : 0,
       rainfallTot: Math.round(rainfallTot * 100) / 100,
     });
   }

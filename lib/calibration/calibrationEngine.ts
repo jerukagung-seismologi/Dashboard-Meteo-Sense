@@ -9,6 +9,20 @@ function isDataRecord(obj: any): boolean {
   return obj && typeof obj === "object" && ("temperature" in obj || "humidity" in obj);
 }
 
+const CALIBRATION_VARIABLE_ALIASES: Record<string, string> = {
+  tempMax: "temperature",
+  tempMin: "temperature",
+  humMax: "humidity",
+  humMin: "humidity",
+  pressMax: "pressure",
+  pressMin: "pressure",
+  dewMax: "dew",
+  dewMin: "dew",
+  luxMax: "lux",
+  luxMin: "lux",
+  windSpeedMax: "windSpeed",
+};
+
 /**
  * Applies calibration config to a single data record (SensorValue or SensorDate)
  * without modifying the original object (pure function).
@@ -24,11 +38,12 @@ export function applyCalibrationToRecord<T extends SensorValue | SensorDate>(
   for (const [key, value] of Object.entries(record)) {
     // Only process numerical values that have a corresponding config entry
     if (typeof value === "number") {
-      const varConfig = (config as any)[key] as SensorVariableCalibration | undefined;
+      const configKey = CALIBRATION_VARIABLE_ALIASES[key] || key;
+      const varConfig = ((config as any)[configKey] || (config as any)[key]) as SensorVariableCalibration | undefined;
       
       if (varConfig && varConfig.enabled) {
         let correctedValue = applyMathCorrection(value, varConfig);
-        correctedValue = enforceBoundaries(key, correctedValue);
+        correctedValue = enforceBoundaries(configKey, correctedValue);
         
         // Optional Configurable Logging (only log in dev or if explicit logging flag is true, omitted for perf)
         // console.log(`[Calibration] ${config.stationId} | ${key}: ${value} -> ${correctedValue} (${varConfig.method})`);
