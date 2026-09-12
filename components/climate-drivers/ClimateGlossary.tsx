@@ -49,6 +49,22 @@ export const GLOSSARY_DATA: GlossaryTerm[] = [
     impactOrUse: "Niño 3.4 adalah indikator paling representatif untuk dampak ENSO global dan Indonesia."
   },
   {
+    term: "El Niño Modoki Index",
+    abbreviation: "EMI",
+    category: "enso",
+    categoryLabel: "ENSO & Pasifik",
+    definition: "Indeks ENSO Modoki (Ashok et al., 2007) dengan formula: EMI = [SSTA]A - 0.5*[SSTA]B - 0.5*[SSTA]C, di mana Region A (165°E–140°W, 10°S–10°N), B (110°W–70°W, 15°S–5°N), dan C (125°E–145°E, 10°S–20°N).",
+    impactOrUse: "Membedakan peristiwa El Niño tradisional (pemanasan di Pasifik timur) dengan El Niño Modoki / Central Pacific (pemanasan terpusat di Pasifik tengah) yang memiliki telekoneksi berbeda terhadap kekeringan di Indonesia."
+  },
+  {
+    term: "Trans-Niño Index",
+    abbreviation: "TNI",
+    category: "enso",
+    categoryLabel: "ENSO & Pasifik",
+    definition: "Indeks gradien evolusi ENSO (Trenberth & Stepaniak, 2001) yang dihitung dari selisih anomali SST ternormalisasi antara wilayah Niño 1+2 dan Niño 4.",
+    impactOrUse: "Menggambarkan perambatan spasial anomali suhu muka laut sepanjang ekuator selama fase transisi pembentukan dan peluruhan peristiwa El Niño / La Niña."
+  },
+  {
     term: "Madden-Julian Oscillation",
     abbreviation: "MJO",
     category: "mjo",
@@ -113,12 +129,20 @@ export const GLOSSARY_DATA: GlossaryTerm[] = [
     impactOrUse: "Mengukur intensitas pemanasan termal benua Asia versus samudra dan sirkulasi musim panas Asia secara keseluruhan."
   },
   {
-    term: "South Asian Summer Monsoon Index",
-    abbreviation: "SASMI / IMI",
+    term: "South Asian Monsoon Index (SASMI)",
+    abbreviation: "SAMI / SASMI",
     category: "monsoon",
     categoryLabel: "Monsun & Sirkulasi Angin",
-    definition: "Indeks geser angin meridional utara-selatan (V850 - V200) di atas anak benua India dan Teluk Benggala (Goswami et al., 1999).",
-    impactOrUse: "Mengukur sirkulasi Hadley lokal dan pasokan konvektif yang memengaruhi curah hujan di Sumatra bagian utara dan Selat Malaka."
+    definition: "Indeks geser angin meridional vertikal (V850 - V200) di atas kawasan Teluk Benggala dan India (10°N–30°N, 70°E–110°E) menurut Goswami et al. (1999).",
+    impactOrUse: "Mengukur sirkulasi Hadley lokal dan konveksi di Teluk Benggala yang memengaruhi pasokan uap air ke Sumatra bagian utara dan Selat Malaka."
+  },
+  {
+    term: "Indian Monsoon Index",
+    abbreviation: "IMI",
+    category: "monsoon",
+    categoryLabel: "Monsun & Sirkulasi Angin",
+    definition: "Indeks geser angin zonal horizontal U850 tropis (5°N–15°N, 40°E–80°E) dikurangi subtropis (20°N–30°N, 70°E–90°E) menurut Wang, Wu, & Lau (2001).",
+    impactOrUse: "Mengukur intensitas palung monsun dan sirkulasi siklonik musim panas di atas daratan anak benua India dan Laut Arab."
   },
   {
     term: "Seruakan Dingin (Northerly Cold Surge)",

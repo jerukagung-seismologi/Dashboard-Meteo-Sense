@@ -27,7 +27,7 @@ const REGIONS: Record<string, RegionConfig> = {
   nino4: {
     name: "Niño 4 (Pasifik Barat-Tengah: 5°N-5°S, 160°E-150°W)",
     lat: 0.0,
-    lon: 160.0,
+    lon: -175.0, // Titik tengah spasial 160°E - 150°W (185°E / 175°W) sesuai Trenberth & Stepaniak (2001)
     baseSst: 28.5,
   },
   nino12: {
