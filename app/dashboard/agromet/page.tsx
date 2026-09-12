@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/select";
 import { MonsoonAgrometSection } from "@/components/agromet/MonsoonAgrometSection";
 import { EnsembleAgrometSection } from "@/components/agromet/EnsembleAgrometSection";
+import { WaterBalanceDualChart } from "@/components/agromet/WaterBalanceDualChart";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 
@@ -184,29 +185,6 @@ export default function AgrometPage() {
   // Chart Colors
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
   const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
-
-  // Water Balance Option (Dynamic scale)
-  const waterBalanceOption = useMemo(
-    () => ({
-      backgroundColor: "transparent",
-      tooltip: { trigger: "axis" },
-      legend: { data: ["Curah Hujan", "Evapotranspirasi (ET0)"], textStyle: { color: textColor } },
-      grid: { left: "4%", right: "4%", bottom: "10%", containLabel: true },
-      xAxis: { type: "category", data: daily.time?.slice(0, 7), axisLabel: { color: textColor } },
-      yAxis: {
-        type: "value",
-        name: "mm",
-        scale: true,
-        axisLabel: { color: textColor },
-        splitLine: { lineStyle: { color: gridColor } },
-      },
-      series: [
-        { name: "Curah Hujan", type: "bar", data: daily.precipitation_sum?.slice(0, 7), itemStyle: { color: "#3b82f6" } },
-        { name: "Evapotranspirasi (ET0)", type: "line", data: daily.et0_fao_evapotranspiration_sum?.slice(0, 7), itemStyle: { color: "#f59e0b" }, smooth: true },
-      ],
-    }),
-    [daily, textColor, gridColor]
-  );
 
   // Soil Moisture Option (Dynamic scale, not starting at 0)
   const soilMoistureOption = useMemo(
@@ -715,21 +693,11 @@ export default function AgrometPage() {
 
             {/* 4B. Visualisasi Neraca Air & Kelembapan Tanah (Right Column) */}
             <div className="lg:col-span-2 space-y-6">
-              <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-                <CardHeader className="pb-2 border-b dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base font-bold">Neraca Air Lahan: Hujan vs Evapotranspirasi (7 Hari)</CardTitle>
-                      <CardDescription className="text-xs text-slate-500">
-                        Perbandingan input air hujan dengan output evapotranspirasi potensial Penman-Monteith
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-3 h-[290px]">
-                  <ReactECharts option={waterBalanceOption} style={{ height: "100%", width: "100%" }} notMerge={true} lazyUpdate={true} />
-                </CardContent>
-              </Card>
+              <WaterBalanceDualChart
+                hourly={hourly}
+                daily={daily}
+                isDarkMode={isDarkMode}
+              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="border-none shadow-sm dark:bg-slate-900 bg-white flex flex-col">
