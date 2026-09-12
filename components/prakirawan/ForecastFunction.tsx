@@ -20,6 +20,8 @@ import { ForecastHistoryList } from "./ForecastHistoryList"
 import { ForecastDetailModal } from "./ForecastDetailModal"
 import { getLucideIconForCondition } from "./WeatherIcons"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useTheme } from "next-themes"
+import { EnsembleProbabilityChart, EnsembleHourlyItem } from "./EnsembleProbabilityChart"
 import { 
   Plus, 
   Trash2, 
@@ -411,6 +413,15 @@ export default function ForecastForm() {
   const [activeTab, setActiveTab] = React.useState<string>("input")
 
   const { user, profile } = useAuth()
+  const { resolvedTheme } = useTheme()
+  const isDarkMode = resolvedTheme === "dark"
+
+  const [consensusData, setConsensusData] = React.useState<{
+    location: string
+    forecastDate: string
+    modelsUsed: { id: string; name: string; country: string; category: string }[]
+    rows: EnsembleHourlyItem[]
+  } | null>(null)
   
   const [loadingFetch, setLoadingFetch] = React.useState<boolean>(false)
 
@@ -818,8 +829,14 @@ export default function ForecastForm() {
           } as ForecastRow
         })
       )
-
       setForecastSource("Multi-Model Consensus")
+
+      setConsensusData({
+        location: data.location || locationName,
+        forecastDate: data.forecastDate || forecastDisplayDateStr,
+        modelsUsed: data.modelsUsed || (GLOBAL_NWP_MODELS as any),
+        rows: data.rows,
+      })
 
       toast({ 
         title: "✓ Konsensus Multi-Model Selesai", 
@@ -1344,6 +1361,21 @@ export default function ForecastForm() {
           </TableBody>
         </Table>
       </div>
+
+      {/* --- VISUALISASI PROBABILITAS ENSEMBLE MULTI-MODEL --- */}
+      {activeTab === "input" && (
+        <div className="mt-5">
+          <EnsembleProbabilityChart
+            data={consensusData?.rows || null}
+            modelsUsed={consensusData?.modelsUsed || (GLOBAL_NWP_MODELS as any)}
+            locationName={currentLocationName}
+            forecastDateStr={forecastDisplayDateStr}
+            isLoading={loadingFetch}
+            onRefresh={fetchForecast}
+            isDarkMode={isDarkMode}
+          />
+        </div>
+      )}
 
       {/* --- HIDDEN AREA (OUTPUT IMAGE) --- */}
       <div style={{ position: "fixed", left: "-9999px", top: 0, zIndex: -10 }}>
