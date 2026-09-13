@@ -103,13 +103,16 @@ const KEBUMEN_LON = 109.6458
 
 // --- GLOBAL NWP & AI ENSEMBLE MODELS FOR CONSENSUS VOTING ---
 export const GLOBAL_NWP_MODELS = [
-  { id: "ecmwf_ifs", name: "ECMWF IFS", country: "Eropa", category: "Physics NWP" },
-  { id: "gfs_seamless", name: "GFS Seamless", country: "Amerika Serikat", category: "Physics NWP" },
-  { id: "icon_seamless", name: "ICON Seamless", country: "Jerman", category: "Physics NWP" },
-  { id: "gem_seamless", name: "GEM Seamless", country: "Kanada", category: "Physics NWP" },
-  { id: "jma_seamless", name: "JMA Seamless", country: "Jepang", category: "Physics NWP" },
-  { id: "gfs_graphcast025", name: "Google WeatherNext 2 / GraphCast", country: "Google DeepMind", category: "AI Ensemble" },
-  { id: "ecmwf_aifs025", name: "ECMWF AIFS", country: "Eropa (AI)", category: "AI Model" },
+  { id: "ecmwf_ifs", name: "ECMWF IFS HRES 9km", country: "Eropa", category: "Physics NWP" },
+  { id: "ecmwf_aifs025_single", name: "ECMWF AIFS 0.25°", country: "Eropa (AI)", category: "AI Model" },
+  { id: "ukmo_global_deterministic_10km", name: "UKMO Global 10km", country: "Inggris", category: "Physics NWP" },
+  { id: "meteofrance_arpege_world025", name: "Météo-France ARPEGE", country: "Prancis", category: "Physics NWP" },
+  { id: "icon_seamless", name: "DWD ICON", country: "Jerman", category: "Physics NWP" },
+  { id: "gfs_seamless", name: "NOAA GFS 0.11°", country: "Amerika Serikat", category: "Physics NWP" },
+  { id: "ncep_aigfs025", name: "NOAA AIGFS 0.25°", country: "Amerika Serikat (AI)", category: "AI Model" },
+  { id: "jma_seamless", name: "JMA GSM", country: "Jepang", category: "Physics NWP" },
+  { id: "gem_seamless", name: "CMC GEM GDPS", country: "Kanada", category: "Physics NWP" },
+  { id: "cma_grapes_global", name: "CMA Grapes 0.125°", country: "China", category: "Physics NWP" },
 ] as const
 
 // --- HELPER: WMO CODE & PRECIPITATION TRANSLATOR ---
@@ -426,9 +429,11 @@ export default function ForecastForm() {
   const [loadingFetch, setLoadingFetch] = React.useState<boolean>(false)
 
   const printRef = React.useRef<HTMLDivElement>(null)
+  const isEditingHistoryRef = React.useRef<boolean>(false)
 
   // Handler CRUD: Edit / Muat Data Riwayat ke Form
   const handleEditFromHistory = (forecast: Forecast) => {
+    isEditingHistoryRef.current = true
     if (forecast.deviceName) setLocation(forecast.deviceName)
     if (forecast.forecastSource) setForecastSource(forecast.forecastSource)
     if (forecast.notes !== undefined) setNotes(forecast.notes || "")
@@ -496,6 +501,10 @@ export default function ForecastForm() {
       d.setDate(d.getDate() + 2)
       return d
     } else if (targetDateMode === "custom" && customTargetDate) {
+      const parts = customTargetDate.split("-").map(Number)
+      if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+        return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0)
+      }
       const parsed = new Date(customTargetDate)
       return isNaN(parsed.getTime()) ? d : parsed
     }
@@ -504,8 +513,11 @@ export default function ForecastForm() {
   }, [targetDateMode, customTargetDate])
 
   const targetDateIsoStr = React.useMemo(() => {
+    if (targetDateMode === "custom" && customTargetDate) {
+      return customTargetDate
+    }
     return selectedDateObj.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })
-  }, [selectedDateObj])
+  }, [selectedDateObj, targetDateMode, customTargetDate])
 
   const forecastDisplayDateStr = React.useMemo(() => {
     return selectedDateObj.toLocaleDateString("id-ID", {
@@ -746,19 +758,23 @@ export default function ForecastForm() {
   };
 
   // --- FETCH FORECAST VIA EDGE ROUTE HANDLER (/api/weather/consensus) ---
-  const fetchForecast = async () => {
+  const fetchForecast = async (isManual = false) => {
     if (!currentLocationName || currentLocationName.trim() === "") {
-      toast({ title: "Lokasi kosong", description: "Masukkan nama lokasi terlebih dahulu.", variant: "destructive" })
+      if (isManual) {
+        toast({ title: "Lokasi kosong", description: "Masukkan nama lokasi terlebih dahulu.", variant: "destructive" })
+      }
       return
     }
   
     setLoadingFetch(true)
   
     try {
-      toast({ 
-        title: "Menghubungi Edge Server...", 
-        description: `Mengambil konsensus 7 model global untuk ${forecastDisplayDateStr}...` 
-      })
+      if (isManual) {
+        toast({ 
+          title: "Menghubungi Edge Server...", 
+          description: `Mengambil konsensus 10 model global NWP & AI untuk ${forecastDisplayDateStr}...` 
+        })
+      }
 
       let lat = KEBUMEN_LAT
       let lon = KEBUMEN_LON
@@ -781,11 +797,13 @@ export default function ForecastForm() {
             console.log(`✓ Lokasi ditemukan: ${place.name}, ${place.admin1 || place.country}`)
           } else {
             console.warn(`✗ Lokasi "${locQuery}" tidak ditemukan. Menggunakan Kebumen default.`)
-            toast({ 
-              title: "Lokasi tidak ditemukan", 
-              description: `"${locQuery}" tidak ditemukan. Menggunakan Kebumen sebagai default.`, 
-              variant: "destructive" 
-            })
+            if (isManual) {
+              toast({ 
+                title: "Lokasi tidak ditemukan", 
+                description: `"${locQuery}" tidak ditemukan. Menggunakan Kebumen sebagai default.`, 
+                variant: "destructive" 
+              })
+            }
           }
         } catch (geoErr) {
           console.error("Geocoding error:", geoErr)
@@ -809,10 +827,10 @@ export default function ForecastForm() {
 
       console.log(`✓ Data Konsensus Edge Diterima untuk ${data.location} (${data.forecastDate}):`, data)
 
-      // 3) Update rows form dengan data konsensus yang sudah matang dari Edge
+      // 3) Update rows form dengan data konsensus yang sudah matang dari Edge (cocokkan jam)
       setRows((prev) =>
         prev.map((r, i) => {
-          const f = data.rows[i] || {}
+          const f = data.rows.find((row: any) => row.time === r.time) || data.rows[i] || {}
           return {
             ...r,
             time: f.time ?? r.time,
@@ -838,23 +856,36 @@ export default function ForecastForm() {
         rows: data.rows,
       })
 
-      toast({ 
-        title: "✓ Konsensus Multi-Model Selesai", 
-        description: `Probabilitas dan parameter cuaca untuk ${forecastDisplayDateStr} berhasil dihitung via Edge Route Handler (7 model global).` 
-      })
+      if (isManual) {
+        toast({ 
+          title: "✓ Konsensus Multi-Model Selesai", 
+          description: `Probabilitas dan parameter cuaca untuk ${forecastDisplayDateStr} berhasil dihitung via Edge Route Handler (${data.modelsUsed?.length || 10} model global).` 
+        })
+      }
 
     } catch (err) {
       console.error("❌ fetchForecast error:", err)
       const errorMsg = err instanceof Error ? err.message : "Terjadi kesalahan"
-      toast({ 
-        title: "Gagal mengambil data", 
-        description: `${errorMsg}. Periksa konsol untuk detail.`, 
-        variant: "destructive" 
-      })
+      if (isManual) {
+        toast({ 
+          title: "Gagal mengambil data", 
+          description: `${errorMsg}. Periksa konsol untuk detail.`, 
+          variant: "destructive" 
+        })
+      }
     } finally {
       setLoadingFetch(false)
     }
   }
+
+  // Auto-fetch forecast consensus whenever target date or location changes
+  React.useEffect(() => {
+    if (isEditingHistoryRef.current) {
+      isEditingHistoryRef.current = false
+      return
+    }
+    fetchForecast(false)
+  }, [targetDateIsoStr, currentLocationName])
 
   // Helper render dropdown untuk probability dengan kelipatan 10 + custom
   const ProbabilitySelectItems = ({ currentVal }: { currentVal?: string }) => {
@@ -1107,7 +1138,7 @@ export default function ForecastForm() {
             
             <div className="flex flex-col gap-2 md:max-w-[200px]">
                 <Button variant="default" size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700 w-full"><Plus className="w-4 h-4 mr-1"/> Tambah Jam</Button>
-                <Button variant="default" size="sm" onClick={fetchForecast} className="bg-indigo-600 hover:bg-indigo-700 w-full" disabled={loadingFetch}>
+                <Button variant="default" size="sm" onClick={() => fetchForecast(true)} className="bg-indigo-600 hover:bg-indigo-700 w-full" disabled={loadingFetch}>
                   <DatabaseZap className="w-4 h-4 mr-1"/> {loadingFetch ? "Mengambil..." : "Ambil Otomatis"}
                 </Button>
                 <Button variant="default" size="sm" onClick={onSaveAsImage} className="bg-green-600 hover:bg-green-700 w-full">
@@ -1371,7 +1402,7 @@ export default function ForecastForm() {
             locationName={currentLocationName}
             forecastDateStr={forecastDisplayDateStr}
             isLoading={loadingFetch}
-            onRefresh={fetchForecast}
+            onRefresh={() => fetchForecast(true)}
             isDarkMode={isDarkMode}
           />
         </div>

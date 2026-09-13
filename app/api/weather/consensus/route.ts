@@ -6,13 +6,16 @@ export const revalidate = 300 // Cache 5 menit di level server / CDN Edge
 
 // --- GLOBAL NWP & AI ENSEMBLE MODELS ---
 export const GLOBAL_NWP_MODELS = [
-  { id: "ecmwf_ifs", name: "ECMWF IFS", country: "Eropa", category: "Physics NWP" },
-  { id: "gfs_seamless", name: "GFS Seamless", country: "Amerika Serikat", category: "Physics NWP" },
-  { id: "icon_seamless", name: "ICON Seamless", country: "Jerman", category: "Physics NWP" },
-  { id: "gem_seamless", name: "GEM Seamless", country: "Kanada", category: "Physics NWP" },
-  { id: "jma_seamless", name: "JMA Seamless", country: "Jepang", category: "Physics NWP" },
-  { id: "gfs_graphcast025", name: "Google WeatherNext 2 / GraphCast", country: "Google DeepMind", category: "AI Ensemble" },
-  { id: "ecmwf_aifs025", name: "ECMWF AIFS", country: "Eropa (AI)", category: "AI Model" },
+  { id: "ecmwf_ifs", name: "ECMWF IFS HRES 9km", country: "Eropa", category: "Physics NWP" },
+  { id: "ecmwf_aifs025_single", name: "ECMWF AIFS 0.25°", country: "Eropa (AI)", category: "AI Model" },
+  { id: "ukmo_global_deterministic_10km", name: "UKMO Global 10km", country: "Inggris", category: "Physics NWP" },
+  { id: "meteofrance_arpege_world025", name: "Météo-France ARPEGE", country: "Prancis", category: "Physics NWP" },
+  { id: "icon_seamless", name: "DWD ICON", country: "Jerman", category: "Physics NWP" },
+  { id: "gfs_seamless", name: "NOAA GFS 0.11°", country: "Amerika Serikat", category: "Physics NWP" },
+  { id: "ncep_aigfs025", name: "NOAA AIGFS 0.25°", country: "Amerika Serikat (AI)", category: "AI Model" },
+  { id: "jma_seamless", name: "JMA GSM", country: "Jepang", category: "Physics NWP" },
+  { id: "gem_seamless", name: "CMC GEM GDPS", country: "Kanada", category: "Physics NWP" },
+  { id: "cma_grapes_global", name: "CMA Grapes 0.125°", country: "China", category: "Physics NWP" },
 ] as const
 
 export type WeatherCondition =
@@ -247,9 +250,13 @@ export async function GET(request: Request) {
       targetDateStr = tomorrow.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })
     } else if (targetDateStr === "today") {
       targetDateStr = todayWibStr
+    } else if (targetDateStr === "dayAfter") {
+      const dayAfter = new Date()
+      dayAfter.setDate(dayAfter.getDate() + 2)
+      targetDateStr = dayAfter.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })
     }
 
-    // 2. Fetch Multi-Model Forecast dari Open-Meteo
+    // 2. Fetch Multi-Model Forecast dari Open-Meteo dengan start_date & end_date spesifik
     const modelIds = GLOBAL_NWP_MODELS.map((m) => m.id).join(",")
     const params = new URLSearchParams({
       latitude: lat.toString(),
@@ -257,8 +264,8 @@ export async function GET(request: Request) {
       hourly: "temperature_2m,relative_humidity_2m,weather_code,precipitation_probability,precipitation",
       models: modelIds,
       timezone: "Asia/Bangkok",
-      past_days: "1",
-      forecast_days: "3",
+      start_date: targetDateStr,
+      end_date: targetDateStr,
     })
 
     const refresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
@@ -270,7 +277,14 @@ export async function GET(request: Request) {
 
     if (!response.ok) {
       const errText = await response.text()
-      throw new Error(`Open-Meteo API status ${response.status}: ${errText}`)
+      let friendlyMsg = `Open-Meteo API status ${response.status}: ${errText}`
+      try {
+        const parsedErr = JSON.parse(errText)
+        if (parsedErr.reason && parsedErr.reason.includes("out of allowed range")) {
+          friendlyMsg = `Data prakiraan cuaca hanya tersedia hingga 15 hari ke depan. Tanggal ${targetDateStr} berada di luar jangkauan model prediksi.`
+        }
+      } catch {}
+      throw new Error(friendlyMsg)
     }
 
     const fcJson = await response.json()
@@ -327,30 +341,41 @@ export async function GET(request: Request) {
       }
 
       const modelPredictions: SingleModelPrediction[] = GLOBAL_NWP_MODELS.map((m) => {
-        const rawTemp = fcJson.hourly[`temperature_2m_${m.id}`]?.[idx] ?? fcJson.hourly.temperature_2m?.[idx]
-        const rawHum = fcJson.hourly[`relative_humidity_2m_${m.id}`]?.[idx] ?? fcJson.hourly.relative_humidity_2m?.[idx]
-        const rawCode = fcJson.hourly[`weather_code_${m.id}`]?.[idx] ?? fcJson.hourly.weather_code?.[idx] ?? 0
-        const rawPrecip = fcJson.hourly[`precipitation_${m.id}`]?.[idx] ?? fcJson.hourly.precipitation?.[idx] ?? 0
-        const rawRainProb = fcJson.hourly[`precipitation_probability_${m.id}`]?.[idx] ?? null
+        const rawTemp = fcJson.hourly[`temperature_2m_${m.id}`]?.[idx] ?? 
+                        (m.id === "ecmwf_aifs025_single" ? fcJson.hourly[`temperature_2m_ecmwf_aifs025`]?.[idx] : undefined) ??
+                        fcJson.hourly.temperature_2m?.[idx]
+        const rawHum = fcJson.hourly[`relative_humidity_2m_${m.id}`]?.[idx] ?? 
+                       (m.id === "ecmwf_aifs025_single" ? fcJson.hourly[`relative_humidity_2m_ecmwf_aifs025`]?.[idx] : undefined) ??
+                       fcJson.hourly.relative_humidity_2m?.[idx]
+        const rawCode = fcJson.hourly[`weather_code_${m.id}`]?.[idx] ?? 
+                        (m.id === "ecmwf_aifs025_single" ? fcJson.hourly[`weather_code_ecmwf_aifs025`]?.[idx] : undefined) ??
+                        fcJson.hourly.weather_code?.[idx]
+        const rawPrecip = fcJson.hourly[`precipitation_${m.id}`]?.[idx] ?? 
+                          (m.id === "ecmwf_aifs025_single" ? fcJson.hourly[`precipitation_ecmwf_aifs025`]?.[idx] : undefined) ??
+                          fcJson.hourly.precipitation?.[idx] ?? 0
+        const rawRainProb = fcJson.hourly[`precipitation_probability_${m.id}`]?.[idx] ?? 
+                            (m.id === "ecmwf_aifs025_single" ? fcJson.hourly[`precipitation_probability_ecmwf_aifs025`]?.[idx] : undefined) ??
+                            null
 
-        const temp = typeof rawTemp === "number" ? rawTemp : null
-        const hum = typeof rawHum === "number" ? rawHum : null
-        const code = typeof rawCode === "number" ? rawCode : 0
-        const precip = typeof rawPrecip === "number" ? rawPrecip : 0
-        const rainProb = typeof rawRainProb === "number" ? rawRainProb : null
+        const temp = typeof rawTemp === "number" && !isNaN(rawTemp) ? rawTemp : null
+        const hum = typeof rawHum === "number" && !isNaN(rawHum) ? rawHum : null
+        const code = typeof rawCode === "number" && !isNaN(rawCode) ? rawCode : null
+        const precip = typeof rawPrecip === "number" && !isNaN(rawPrecip) ? rawPrecip : 0
+        const rainProb = typeof rawRainProb === "number" && !isNaN(rawRainProb) ? rawRainProb : null
 
-        const condition = translateModelToCondition(code, precip, rainProb)
+        // Hanya hitung kondisi cuaca jika kode cuaca model valid (bukan null)
+        const condition = code !== null ? translateModelToCondition(code, precip, rainProb) : null
 
         return {
           modelId: m.id,
           modelName: `${m.name} (${m.country})`,
-          condition,
+          condition: condition as WeatherCondition,
           temperature: temp,
           humidity: hum,
           precipitation: precip,
           rainProb,
         }
-      })
+      }).filter((p) => p.condition !== null && p.temperature !== null)
 
       const consensus = calculateMultiModelConsensus(modelPredictions)
 
