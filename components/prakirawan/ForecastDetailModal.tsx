@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { getLucideIconForCondition } from "./WeatherIcons"
+import { getLucideIconForCondition } from "@/components/prakirawan/WeatherIcons"
 import { 
   FileEdit, 
   X, 

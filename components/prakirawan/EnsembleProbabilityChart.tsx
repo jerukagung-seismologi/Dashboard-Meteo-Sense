@@ -18,7 +18,7 @@ import {
   Info,
   Table as TableIcon
 } from "lucide-react"
-import { WeatherCondition } from "./ForecastFunction"
+import { WeatherCondition } from "@/components/prakirawan/ForecastFunction"
 import { cn } from "@/lib/utils"
 
 // Palet warna standar BMKG / Meteo Sense untuk kondisi cuaca
@@ -298,11 +298,10 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
                   </span>
                   <span style="font-weight: 700; color: ${color};">${pct}% <span style="font-size: 10px; opacity: 0.8;">(${count}/${totalModels})</span></span>
                 </div>
-                ${
-                  modelNames
-                    ? `<div style="font-size: 10px; color: #94A3B8; margin-top: 2px; padding-left: 16px;">Model: ${modelNames}</div>`
-                    : ""
-                }
+                ${modelNames
+                ? `<div style="font-size: 10px; color: #94A3B8; margin-top: 2px; padding-left: 16px;">Model: ${modelNames}</div>`
+                : ""
+              }
               </div>
             `
           })

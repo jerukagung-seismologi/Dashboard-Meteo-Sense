@@ -16,17 +16,17 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/useAuth"
 import { saveForecast, Forecast, ForecastRowData } from "@/lib/forecastService"
-import { ForecastHistoryList } from "./ForecastHistoryList"
-import { ForecastDetailModal } from "./ForecastDetailModal"
-import { getLucideIconForCondition } from "./WeatherIcons"
+import { ForecastHistoryList } from "@/components/prakirawan/ForecastHistoryList"
+import { ForecastDetailModal } from "@/components/prakirawan/ForecastDetailModal"
+import { getLucideIconForCondition } from "@/components/prakirawan/WeatherIcons"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTheme } from "next-themes"
-import { EnsembleProbabilityChart, EnsembleHourlyItem } from "./EnsembleProbabilityChart"
-import { 
-  Plus, 
-  Trash2, 
-  Save, 
-  Download, 
+import { EnsembleProbabilityChart, EnsembleHourlyItem } from "@/components/prakirawan/EnsembleProbabilityChart"
+import {
+  Plus,
+  Trash2,
+  Save,
+  Download,
   Calendar,
   Clock,
   Copy,
@@ -50,19 +50,19 @@ import {
 import html2canvas from "html2canvas"
 
 // --- IMPORT ERIK FLOWERS WEATHER ICONS ---
-import { 
-  WiDaySunny, 
-  WiNightClear, 
-  WiDayCloudy, 
-  WiNightAltCloudy, 
-  WiCloudy, 
-  WiFog, 
-  WiDayShowers, 
-  WiNightAltShowers, 
-  WiRain, 
-  WiRainWind, 
-  WiThunderstorm, 
-  WiStrongWind, 
+import {
+  WiDaySunny,
+  WiNightClear,
+  WiDayCloudy,
+  WiNightAltCloudy,
+  WiCloudy,
+  WiFog,
+  WiDayShowers,
+  WiNightAltShowers,
+  WiRain,
+  WiRainWind,
+  WiThunderstorm,
+  WiStrongWind,
   WiNa
 } from "react-icons/wi";
 import { cn } from "@/lib/utils"
@@ -306,7 +306,7 @@ const getRowStyles = (condition: string, time: string) => {
   const isNight = hour >= 18 || hour < 6
 
   // Default: Abu-abu Netral
-  let styles = { 
+  let styles = {
     bg: "#F8FAFC",      // Slate 50
     accent: "#64748B",  // Slate 500
     text: "#334155",    // Slate 700
@@ -425,7 +425,7 @@ export default function ForecastForm() {
     modelsUsed: { id: string; name: string; country: string; category: string }[]
     rows: EnsembleHourlyItem[]
   } | null>(null)
-  
+
   const [loadingFetch, setLoadingFetch] = React.useState<boolean>(false)
 
   const printRef = React.useRef<HTMLDivElement>(null)
@@ -485,11 +485,11 @@ export default function ForecastForm() {
       description: "Form input prakiraan telah direset untuk pembuatan data baru.",
     })
   }
-  
+
   // Target Tanggal Prakiraan: 'today' | 'tomorrow' | 'dayAfter' | 'custom'
   const [targetDateMode, setTargetDateMode] = React.useState<"today" | "tomorrow" | "dayAfter" | "custom">("tomorrow")
   const [customTargetDate, setCustomTargetDate] = React.useState<string>("")
-  
+
   const selectedDateObj = React.useMemo(() => {
     const d = new Date()
     if (targetDateMode === "today") {
@@ -521,9 +521,9 @@ export default function ForecastForm() {
 
   const forecastDisplayDateStr = React.useMemo(() => {
     return selectedDateObj.toLocaleDateString("id-ID", {
-      weekday: "long", 
-      day: "numeric", 
-      month: "long", 
+      weekday: "long",
+      day: "numeric",
+      month: "long",
       year: "numeric"
     })
   }, [selectedDateObj])
@@ -533,7 +533,7 @@ export default function ForecastForm() {
   // Generator Ringkasan Prospek Cuaca
   const autoNarrative = React.useMemo(() => {
     const loc = currentLocationName.trim() || "Kebumen"
-    
+
     // Extract temperatures
     const temps = rows
       .map(r => r.temperature)
@@ -559,7 +559,7 @@ export default function ForecastForm() {
     const dominantCond = sortedConds.length > 0 ? sortedConds[0][0] : "Cerah Berawan"
 
     // Check for rain or thunder events
-    const rainRows = rows.filter(r => 
+    const rainRows = rows.filter(r =>
       (r.conditionMain && (r.conditionMain.includes("Hujan") || r.conditionMain.includes("Petir"))) ||
       (r.conditionSub && (r.conditionSub.includes("Hujan") || r.conditionSub.includes("Petir")))
     )
@@ -733,18 +733,18 @@ export default function ForecastForm() {
       await new Promise(resolve => setTimeout(resolve, 200));
 
       const canvas = await html2canvas(printRef.current, {
-        scale: 4, 
+        scale: 4,
         backgroundColor: "#ffffff",
         logging: false,
         useCORS: true,
-        width: 800, 
-        windowWidth: 1200 
+        width: 800,
+        windowWidth: 1200
       });
 
       const image = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       const fileName = `Outlook_${currentLocationName || "Kota"}_${targetDateIsoStr}.png`;
-      
+
       link.href = image;
       link.download = fileName;
       link.click();
@@ -897,14 +897,14 @@ export default function ForecastForm() {
       }
       return
     }
-  
+
     setLoadingFetch(true)
-  
+
     try {
       if (isManual) {
-        toast({ 
-          title: "Menghubungi Server...", 
-          description: `Mengambil konsensus model global untuk ${forecastDisplayDateStr}...` 
+        toast({
+          title: "Menghubungi Server...",
+          description: `Mengambil konsensus model global untuk ${forecastDisplayDateStr}...`
         })
       }
 
@@ -920,7 +920,7 @@ export default function ForecastForm() {
             `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locQuery)}&count=1&language=id`
           )
           const geoJson = await geoRes.json()
-          
+
           if (geoJson?.results && geoJson.results.length > 0) {
             const place = geoJson.results[0]
             lat = place.latitude
@@ -930,10 +930,10 @@ export default function ForecastForm() {
           } else {
             console.warn(`✗ Lokasi "${locQuery}" tidak ditemukan. Menggunakan Kebumen default.`)
             if (isManual) {
-              toast({ 
-                title: "Lokasi tidak ditemukan", 
-                description: `"${locQuery}" tidak ditemukan. Menggunakan Kebumen sebagai default.`, 
-                variant: "destructive" 
+              toast({
+                title: "Lokasi tidak ditemukan",
+                description: `"${locQuery}" tidak ditemukan. Menggunakan Kebumen sebagai default.`,
+                variant: "destructive"
               })
             }
           }
@@ -997,19 +997,19 @@ export default function ForecastForm() {
       })
 
       if (isManual || isFallback) {
-        toast({ 
-          title: isFallback ? "✓ Konsensus Dimuat (Koneksi Langsung)" : "✓ Konsensus Multi-Model Selesai", 
-          description: `Probabilitas dan parameter cuaca untuk ${forecastDisplayDateStr} berhasil dihitung (${data.modelsUsed?.length || 10} model global).` 
+        toast({
+          title: isFallback ? "✓ Konsensus Dimuat (Koneksi Langsung)" : "✓ Konsensus Multi-Model Selesai",
+          description: `Probabilitas dan parameter cuaca untuk ${forecastDisplayDateStr} berhasil dihitung (${data.modelsUsed?.length || 10} model global).`
         })
       }
 
     } catch (err) {
       console.error("❌ fetchForecast error:", err)
       const errorMsg = err instanceof Error ? err.message : "Terjadi kesalahan"
-      toast({ 
-        title: "Gagal memuat konsensus cuaca", 
-        description: `${errorMsg}. Silakan tekan tombol 'Ambil Otomatis' untuk mencoba kembali.`, 
-        variant: "destructive" 
+      toast({
+        title: "Gagal memuat konsensus cuaca",
+        description: `${errorMsg}. Silakan tekan tombol 'Ambil Otomatis' untuk mencoba kembali.`,
+        variant: "destructive"
       })
     } finally {
       setLoadingFetch(false)
@@ -1029,7 +1029,7 @@ export default function ForecastForm() {
   const ProbabilitySelectItems = ({ currentVal }: { currentVal?: string }) => {
     const STANDARD_PROBS = ["0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"]
     const hasCustom = currentVal && currentVal !== "" && currentVal !== "__empty__" && !STANDARD_PROBS.includes(currentVal)
-    
+
     return (
       <>
         <SelectItem value="__empty__">-</SelectItem>
@@ -1146,14 +1146,14 @@ export default function ForecastForm() {
                 <h2 className="text-xl font-bold">Input Prakiraan Cuaca</h2>
                 <p className="text-muted-foreground">Isi data di bawah untuk menghasilkan tabel outlook grafis.</p>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border">
                 <div className="space-y-1">
                   <label className="text-sm font-semibold">Lokasi / Kota</label>
-                  <Input 
-                    value={location} 
-                    onChange={(e) => setLocation(e.target.value)} 
-                    placeholder="Contoh: Kebumen" 
+                  <Input
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Contoh: Kebumen"
                   />
                 </div>
 
@@ -1231,10 +1231,10 @@ export default function ForecastForm() {
 
                 <div className="space-y-1 lg:col-span-4">
                   <label className="text-sm font-semibold">Catatan / Diskusi Prakirawan</label>
-                  <Textarea 
-                    value={notes} 
-                    onChange={(e) => setNotes(e.target.value)} 
-                    placeholder="Tuliskan analisis cuaca di sini..." 
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Tuliskan analisis cuaca di sini..."
                     className="h-10 resize-none"
                   />
                 </div>
@@ -1273,33 +1273,33 @@ export default function ForecastForm() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex flex-col gap-2 md:max-w-[200px]">
-                <Button variant="default" size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700 w-full"><Plus className="w-4 h-4 mr-1"/> Tambah Jam</Button>
-                <Button variant="default" size="sm" onClick={() => fetchForecast(true)} className="bg-indigo-600 hover:bg-indigo-700 w-full" disabled={loadingFetch}>
-                  <DatabaseZap className="w-4 h-4 mr-1"/> {loadingFetch ? "Mengambil..." : "Ambil Otomatis"}
-                </Button>
-                <Button variant="default" size="sm" onClick={onSaveAsImage} className="bg-green-600 hover:bg-green-700 w-full">
-                  <Download className="w-4 h-4 mr-1"/> Unduh Gambar
-                </Button>
-                <Button onClick={onSaveForecast} disabled={saving} className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700">
-                  <Save className="w-4 h-4 mr-1"/> {saving ? "Menyimpan..." : "Simpan Prakiraan"}
-                </Button>
+              <Button variant="default" size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700 w-full"><Plus className="w-4 h-4 mr-1" /> Tambah Jam</Button>
+              <Button variant="default" size="sm" onClick={() => fetchForecast(true)} className="bg-indigo-600 hover:bg-indigo-700 w-full" disabled={loadingFetch}>
+                <DatabaseZap className="w-4 h-4 mr-1" /> {loadingFetch ? "Mengambil..." : "Ambil Otomatis"}
+              </Button>
+              <Button variant="default" size="sm" onClick={onSaveAsImage} className="bg-green-600 hover:bg-green-700 w-full">
+                <Download className="w-4 h-4 mr-1" /> Unduh Gambar
+              </Button>
+              <Button onClick={onSaveForecast} disabled={saving} className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700">
+                <Save className="w-4 h-4 mr-1" /> {saving ? "Menyimpan..." : "Simpan Prakiraan"}
+              </Button>
             </div>
           </div>
         </TabsContent>
 
         <TabsContent value="history">
-          <ForecastHistoryList 
+          <ForecastHistoryList
             onViewDetail={setSelectedForecast}
             onEditForecast={handleEditFromHistory}
             onCreateNew={handleCreateNew}
           />
         </TabsContent>
       </Tabs>
-      
-      <ForecastDetailModal 
-        forecast={selectedForecast} 
+
+      <ForecastDetailModal
+        forecast={selectedForecast}
         onClose={() => setSelectedForecast(null)}
         onEdit={handleEditFromHistory}
       />
@@ -1661,7 +1661,7 @@ export default function ForecastForm() {
             </div>
             {/* Logo */}
             <div style={{ width: "80px", height: "80px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                 <img src="/img/logo.webp" alt="Logo" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+              <img src="/img/logo.webp" alt="Logo" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
             </div>
           </div>
 
