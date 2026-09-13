@@ -585,7 +585,7 @@ export const ItczTrackerSection: React.FC<ItczTrackerSectionProps> = ({
               Garis Putus-Putus: Rerata Normal • Garis Solid: Realisasi Riil
             </span>
           </div>
-          <div className="h-[340px] w-full bg-slate-50/50 dark:bg-slate-800/40 rounded-2xl p-2 border dark:border-slate-800">
+          <div className="h-[280px] sm:h-[340px] w-full bg-slate-50/50 dark:bg-slate-800/40 rounded-2xl p-2 border dark:border-slate-800">
             <ReactECharts option={itczChartOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
           </div>
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">

@@ -404,8 +404,8 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
     <div className="space-y-6">
       {/* Control Panel */}
       <Card className="no-print shadow-sm border-slate-200 dark:border-slate-800">
-        <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-          <div className="flex flex-col gap-2 flex-grow">
+        <CardContent className="p-4 flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+          <div className="flex flex-col gap-2 flex-grow w-full lg:w-auto">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <CalendarIcon className="w-4 h-4 text-blue-600" />
@@ -418,19 +418,21 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
                   variant={viewMode === 'web' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('web')}
-                  className={cn("h-7 text-xs px-3 font-medium", viewMode === 'web' && "bg-white dark:bg-slate-900 text-blue-600 shadow-sm")}
+                  className={cn("h-7 text-xs px-2 sm:px-3 font-medium", viewMode === 'web' && "bg-white dark:bg-slate-900 text-blue-600 shadow-sm")}
                 >
-                  <LayoutDashboard className="w-3.5 h-3.5 mr-1.5" />
-                  Dashboard Web
+                  <LayoutDashboard className="w-3.5 h-3.5 mr-1 sm:mr-1.5" />
+                  <span className="hidden min-[400px]:inline">Dashboard Web</span>
+                  <span className="min-[400px]:hidden">Web</span>
                 </Button>
                 <Button
                   variant={viewMode === 'print' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('print')}
-                  className={cn("h-7 text-xs px-3 font-medium", viewMode === 'print' && "bg-white dark:bg-slate-900 text-indigo-600 shadow-sm")}
+                  className={cn("h-7 text-xs px-2 sm:px-3 font-medium", viewMode === 'print' && "bg-white dark:bg-slate-900 text-indigo-600 shadow-sm")}
                 >
-                  <Eye className="w-3.5 h-3.5 mr-1.5" />
-                  Pratinjau Cetak (A4)
+                  <Eye className="w-3.5 h-3.5 mr-1 sm:mr-1.5" />
+                  <span className="hidden min-[400px]:inline">Pratinjau Cetak (A4)</span>
+                  <span className="min-[400px]:hidden">Cetak</span>
                 </Button>
               </div>
             </div>
@@ -440,14 +442,16 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className={cn("w-[280px] justify-start text-left font-normal", !dateRange && "text-muted-foreground")}
+                    className={cn("w-full sm:w-[280px] justify-start text-left font-normal text-xs sm:text-sm", !dateRange && "text-muted-foreground")}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>{format(dateRange.from, 'dd LLL y', { locale: id })} – {format(dateRange.to, 'dd LLL y', { locale: id })}</>
-                      ) : format(dateRange.from, 'dd LLL y', { locale: id })
-                    ) : <span>Pilih Rentang Tanggal</span>}
+                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          <>{format(dateRange.from, 'dd LLL y', { locale: id })} – {format(dateRange.to, 'dd LLL y', { locale: id })}</>
+                        ) : format(dateRange.from, 'dd LLL y', { locale: id })
+                      ) : "Pilih Rentang Tanggal"}
+                    </span>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -461,23 +465,23 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
                   />
                 </PopoverContent>
               </Popover>
-              <Button onClick={generateReport} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+              <Button onClick={generateReport} disabled={loading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm">
                 {loading ? "Memproses..." : "Proses Laporan"}
               </Button>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={handleDownloadCSV} disabled={weatherData.length === 0} className="h-9">
+          <div className="flex flex-wrap gap-2 w-full lg:w-auto shrink-0 justify-start sm:justify-end">
+            <Button variant="outline" size="sm" onClick={handleDownloadCSV} disabled={weatherData.length === 0} className="h-9 text-xs flex-1 sm:flex-none">
               <Download className="mr-1.5 h-4 w-4 text-emerald-600" /> CSV
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('png')} disabled={weatherData.length === 0 || isExporting} className="h-9">
+            <Button variant="outline" size="sm" onClick={() => handleExport('png')} disabled={weatherData.length === 0 || isExporting} className="h-9 text-xs flex-1 sm:flex-none">
               <FileImage className="mr-1.5 h-4 w-4 text-green-600" /> PNG
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={weatherData.length === 0 || isExporting} className="h-9">
+            <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={weatherData.length === 0 || isExporting} className="h-9 text-xs flex-1 sm:flex-none">
               <FileType className="mr-1.5 h-4 w-4 text-red-600" /> PDF
             </Button>
-            <Button className="bg-slate-800 hover:bg-slate-900 text-white h-9" size="sm" onClick={() => handleExport('print')} disabled={weatherData.length === 0 || isExporting}>
+            <Button className="bg-slate-800 hover:bg-slate-900 text-white h-9 text-xs flex-1 sm:flex-none" size="sm" onClick={() => handleExport('print')} disabled={weatherData.length === 0 || isExporting}>
               <Printer className="mr-1.5 h-4 w-4" /> Cetak
             </Button>
           </div>

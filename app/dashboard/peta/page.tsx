@@ -229,7 +229,7 @@ export default function PetaPage() {
   );
 
   return (
-    <div className="h-full w-full p-4 sm:p-6 space-y-4 max-w-7xl mx-auto">
+    <div className="h-full w-full p-3 sm:p-6 space-y-4 max-w-7xl mx-auto">
       {/* Top Header & Metrics Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -241,7 +241,7 @@ export default function PetaPage() {
               Sistem Informasi Geografis (SIG)
             </Badge>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="text-xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">
             Peta Persebaran Stasiun Cuaca
           </h1>
           <p className="text-xs text-slate-500 max-w-2xl">
@@ -250,15 +250,15 @@ export default function PetaPage() {
         </div>
 
         {/* Quick Refresh & Search */}
-        <div className="flex items-center gap-2 self-start md:self-auto">
-          <div className="relative">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-initial">
             <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
             <input
               type="text"
               placeholder="Cari stasiun/lokasi..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 w-44 sm:w-56 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              className="pl-8 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 w-full sm:w-56 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -267,7 +267,7 @@ export default function PetaPage() {
             size="sm"
             onClick={loadData}
             disabled={loading}
-            className="rounded-xl text-xs gap-1.5 border-slate-200 dark:border-slate-700"
+            className="rounded-xl text-xs gap-1.5 border-slate-200 dark:border-slate-700 shrink-0"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Segarkan</span>
@@ -355,7 +355,7 @@ export default function PetaPage() {
       </div>
 
       {/* Main Map Container */}
-      <div className="h-[calc(100vh-210px)] min-h-[550px] w-full rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden relative bg-slate-100 dark:bg-slate-950">
+      <div className="h-[52vh] sm:h-[calc(100dvh-220px)] min-h-[380px] sm:min-h-[500px] w-full rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden relative bg-slate-100 dark:bg-slate-950">
         {loading && (
           <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-white/70 dark:bg-slate-950/70 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-2">

@@ -480,7 +480,7 @@ export const WaterBalanceDualChart: React.FC<WaterBalanceDualChartProps> = ({
 
       <CardContent className="p-3 sm:p-4">
         {/* Dual Linked ECharts Container */}
-        <div className="h-[430px] w-full bg-slate-50/50 dark:bg-slate-950/40 rounded-2xl p-1.5 border dark:border-slate-800">
+        <div className="h-[340px] sm:h-[400px] md:h-[440px] w-full bg-slate-50/50 dark:bg-slate-950/40 rounded-2xl p-1.5 border dark:border-slate-800">
           <ReactECharts option={chartOption} style={{ height: "100%", width: "100%" }} notMerge={true} lazyUpdate={true} />
         </div>
 

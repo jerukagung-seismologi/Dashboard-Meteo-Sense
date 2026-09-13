@@ -237,7 +237,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Beranda</h2>
           <p className="text-muted-foreground dark:text-gray-400">Ringkasan sistem monitoring cuaca</p>

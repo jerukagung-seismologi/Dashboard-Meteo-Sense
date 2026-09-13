@@ -326,33 +326,33 @@ export default function DeviceDetailPage() {
   return (
     <div className="space-y-6 pb-10">
       {/* Header Page */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <Button 
           variant="outline" 
           size="icon" 
           onClick={() => router.back()}
-          className="dark:text-white dark:border-white"
+          className="dark:text-white dark:border-white flex-shrink-0"
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="flex flex-col">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">{device.name}</h1>
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-50 truncate">{device.name}</h1>
             <Badge variant={isOnline ? "default" : "destructive"} className={isOnline ? "bg-green-600 hover:bg-green-700" : ""}>
               {isOnline ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
               {isOnline ? "Online" : "Offline"}
             </Badge>
           </div>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1"><HardDrive className="h-3 w-3" /> {device.id}</span>
-            <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {device.location}</span>
-            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {device.registrationDate}</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground mt-0.5">
+            <span className="flex items-center gap-1"><HardDrive className="h-3 w-3 flex-shrink-0" /> <span className="truncate max-w-[120px] sm:max-w-none">{device.id}</span></span>
+            <span className="flex items-center gap-1"><MapPin className="h-3 w-3 flex-shrink-0" /> <span className="truncate max-w-[150px] sm:max-w-none">{device.location}</span></span>
+            <span className="flex items-center gap-1"><Calendar className="h-3 w-3 flex-shrink-0" /> {device.registrationDate}</span>
           </div>
         </div>
       </div>
 
       {/* 1. Basic Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 min-[450px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {basicCards.map((card, index) => (
           <Card key={index} className={cn("overflow-hidden border-2 shadow-sm hover:shadow-md transition-shadow duration-300", card.borderColor)}>
             <CardContent className="p-5">

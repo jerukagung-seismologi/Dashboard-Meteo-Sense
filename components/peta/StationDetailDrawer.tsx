@@ -45,7 +45,7 @@ export const StationDetailDrawer: React.FC<StationDetailDrawerProps> = ({
   const history = station.history1h || [];
 
   return (
-    <div className="absolute top-4 right-4 z-[1000] w-[340px] sm:w-[400px] max-h-[calc(100%-32px)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800 flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
+    <div className="absolute inset-x-2 top-2 sm:inset-auto sm:top-4 sm:right-4 z-[1000] w-auto sm:w-[400px] max-w-[calc(100vw-16px)] sm:max-w-md max-h-[calc(100%-16px)] sm:max-h-[calc(100%-32px)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800 flex flex-col overflow-hidden animate-in slide-in-from-right-5 duration-200">
       {/* Drawer Header */}
       <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-3 bg-gradient-to-r from-indigo-50/50 via-transparent to-sky-50/50 dark:from-indigo-950/20 dark:to-transparent">
         <div>

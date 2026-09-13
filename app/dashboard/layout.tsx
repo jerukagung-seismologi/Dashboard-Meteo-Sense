@@ -72,23 +72,30 @@ export default function DashboardLayout({
         navigation={navigation} // Pass navigation to Topbar
       />
 
-      {/* Content area with sidebar and main content */}
-      <div className="flex h-[calc(100vh-4rem)]">
-        {/* Sidebar - fixed position on desktop */}
-        <div className={`lg:block ${sidebarOpen ? "block" : "hidden"} lg:w-64 flex-shrink-0`}>
-          <div className="lg:h-[calc(100vh-4rem)] overflow-hidden">
-            <Sidebar 
-              navigation={navigation}
-              sidebarOpen={sidebarOpen}
-              setSidebarOpen={setSidebarOpen}
-            />
-          </div>
-        </div>
+      {/* Mobile Drawer (active on small screens) */}
+      <div className="lg:hidden">
+        <Sidebar 
+          navigation={navigation}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+        />
+      </div>
 
-        {/* Main content - scrollable */}
-        <div className="flex-1 overflow-y-auto">
-          <main className="py-6">
-            <div className="px-4 sm:px-6 lg:px-8">{children}</div>
+      {/* Content area with sidebar and main content */}
+      <div className="flex h-[calc(100dvh-4rem)]">
+        {/* Sidebar - fixed position on desktop only */}
+        <aside className="hidden lg:block lg:w-64 flex-shrink-0 h-[calc(100dvh-4rem)] overflow-hidden">
+          <Sidebar 
+            navigation={navigation}
+            sidebarOpen={false}
+            setSidebarOpen={setSidebarOpen}
+          />
+        </aside>
+
+        {/* Main content - scrollable with min-w-0 to prevent flex blowout */}
+        <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+          <main className="py-4 sm:py-6">
+            <div className="px-3 sm:px-6 lg:px-8 max-w-full">{children}</div>
           </main>
         </div>
       </div>

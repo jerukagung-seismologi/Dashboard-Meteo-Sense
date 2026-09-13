@@ -1010,7 +1010,7 @@ export default function ForecastForm() {
 
                 {/* TARGET TANGGAL PRAKIRAAN (HARI INI / BESOK / LUSA / KUSTOM) */}
                 <div className="space-y-1.5 lg:col-span-2">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-wrap justify-between items-center gap-1.5">
                     <label className="text-sm font-semibold flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
                       <Calendar className="w-4 h-4 text-blue-600" /> Target Tanggal Prakiraan
                     </label>
@@ -1137,7 +1137,7 @@ export default function ForecastForm() {
 
       {/* --- FORM INPUT TABEL --- */}
       <div className="rounded-md border overflow-x-auto">
-        <Table>
+        <Table className="min-w-[850px]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[70px] text-center">Jam</TableHead>

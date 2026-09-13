@@ -473,10 +473,10 @@ export default function PerangkatPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Perangkat</h2>
-          <p className="text-muted-foreground dark:text-gray-400">Daftar perangkat yang terhubung dengan sistem</p>
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-50">Perangkat</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400">Daftar perangkat yang terhubung dengan sistem</p>
         </div>
         <AddDeviceDialog
           open={showAddDialog}
@@ -485,7 +485,7 @@ export default function PerangkatPage() {
           onTokenGenerated={(token) => { setToken(token); setShowTokenDialog(true) }}
           trigger={
             <Button
-              className="px-4 py-2 rounded flex items-center bg-blue-600 hover:bg-blue-600/50 text-white"
+              className="w-full sm:w-auto px-4 py-2 rounded flex items-center justify-center bg-blue-600 hover:bg-blue-600/50 text-white text-sm"
               onClick={() => setShowAddDialog(true)}
             >
               <Plus className="h-4 w-4 mr-2" />

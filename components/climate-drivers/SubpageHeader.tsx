@@ -37,7 +37,7 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
       <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main Banner Header Content */}
-      <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+      <div className="p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             {pathname !== "/dashboard/climate-drivers" && (
@@ -51,8 +51,8 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
               <Sparkles className="h-3 w-3 text-indigo-300" /> Climate Drivers &amp; Teleconnections Monitoring
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-3 text-white">
-            <Globe className="h-7 w-7 text-indigo-400 shrink-0" /> {title}
+          <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-3 text-white">
+            <Globe className="h-6 w-6 sm:h-7 sm:w-7 text-indigo-400 shrink-0" /> {title}
           </h1>
           {subtitle && (
             <p className="text-xs sm:text-sm text-slate-300 font-normal leading-relaxed max-w-3xl">
@@ -62,7 +62,7 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0">
           {onRefresh && (
             <Button
               variant="outline"

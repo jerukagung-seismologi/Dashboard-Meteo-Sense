@@ -270,7 +270,7 @@ export const EcmwfAerosolViewer: React.FC = () => {
                 setSelectedProduct(val);
               }}
             >
-              <SelectTrigger className="w-[210px] h-9 bg-slate-800 border-slate-700 text-white text-xs font-semibold focus:ring-1 focus:ring-sky-500">
+              <SelectTrigger className="w-full sm:w-[210px] h-9 bg-slate-800 border-slate-700 text-white text-xs font-semibold focus:ring-1 focus:ring-sky-500">
                 <Layers className="h-3.5 w-3.5 mr-1.5 text-sky-400 shrink-0" />
                 <SelectValue placeholder="Pilih Cemaran CAMS" />
               </SelectTrigger>
@@ -291,7 +291,7 @@ export const EcmwfAerosolViewer: React.FC = () => {
                 setProjection(val);
               }}
             >
-              <SelectTrigger className="w-[180px] h-9 bg-slate-800 border-slate-700 text-white text-xs focus:ring-1 focus:ring-sky-500">
+              <SelectTrigger className="w-full sm:w-[180px] h-9 bg-slate-800 border-slate-700 text-white text-xs focus:ring-1 focus:ring-sky-500">
                 <Globe className="h-3.5 w-3.5 mr-1.5 text-sky-400 shrink-0" />
                 <SelectValue placeholder="Pilih Wilayah" />
               </SelectTrigger>
@@ -312,7 +312,7 @@ export const EcmwfAerosolViewer: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 px-3 bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white text-xs"
+              className="w-full sm:w-auto h-9 px-3 bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white text-xs"
               onClick={handleManualRefresh}
               disabled={isLoading || isValidating}
             >

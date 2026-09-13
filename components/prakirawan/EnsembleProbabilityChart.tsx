@@ -378,7 +378,7 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
                 <BarChart3 className="w-5 h-5" />
               </span>
               <div>
-                <CardTitle className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <CardTitle className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex flex-wrap items-center gap-2">
                   Probabilitas Model Ensemble Cuaca
                   {locationName && (
                     <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
@@ -554,7 +554,7 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
           ) : (
             /* MATRIKS MODEL VIEW */
             <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-              <table className="w-full text-xs text-left border-collapse">
+              <table className="w-full min-w-[550px] text-xs text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
                     <th className="p-2.5 text-center w-24">Jam</th>

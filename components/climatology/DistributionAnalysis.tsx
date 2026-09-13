@@ -140,7 +140,7 @@ const SingleHistogram: React.FC<{
         </div>
 
         {/* Statistical Summary Panel */}
-        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
           <div className="bg-slate-50 dark:bg-slate-950 p-2 rounded">
             <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Mean (Rata-rata)</p>
             <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100">

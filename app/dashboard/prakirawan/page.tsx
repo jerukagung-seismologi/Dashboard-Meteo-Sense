@@ -24,7 +24,7 @@ export default function Page() {
 
             {/* Main Area: DIPERLEBAR (Hapus max-w-210mm, ganti max-w-full atau container-2xl) */}
             <main className="mx-auto my-0 mb-6 min-h-[500px] w-full max-w-7xl rounded-lg overflow-hidden border border-gray-100 bg-white text-gray-900 shadow-md shadow-slate-200/70 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:shadow-black/40 print:border-0 print:bg-white print:text-black">
-                <header className="mb-2 border-b border-gray-300 px-8 py-6 bg-gray-50 dark:bg-slate-800/70 dark:border-slate-700 print:bg-white">
+                <header className="mb-2 border-b border-gray-300 dark:border-slate-700 px-4 sm:px-8 py-4 sm:py-6 bg-gray-50 dark:bg-slate-800/70 print:bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                                 Form Prakiraan Cuaca
@@ -33,7 +33,7 @@ export default function Page() {
                                 Silakan isi data di bawah untuk menghasilkan gambar outlook.
                             </p>
                         </div>
-                        <div className="text-right text-sm text-gray-500 dark:text-slate-300">
+                        <div className="text-left sm:text-right text-xs sm:text-sm text-gray-500 dark:text-slate-300">
                             <div>
                                 <strong className="text-gray-700 dark:text-slate-100">Tanggal Akses:</strong>{" "}
                                 {printedAt.toLocaleDateString("id-ID", {
@@ -47,7 +47,7 @@ export default function Page() {
                         </div>
                 </header>
 
-                <div className="p-8 print:p-2 dark:bg-slate-900">
+                <div className="p-3 sm:p-6 lg:p-8 print:p-2 dark:bg-slate-900">
                     <Tabs defaultValue="prakiraan_bmkg" className="w-full">
                         <TabsList className="mb-4">
                             <TabsTrigger value="prakiraan_bmkg">Prakiraan Cuaca BMKG</TabsTrigger>

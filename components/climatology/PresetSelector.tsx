@@ -139,12 +139,12 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
         </div>
       )}
 
-      <div className="flex items-end mt-auto">
+      <div className="flex items-end mt-auto w-full sm:w-auto">
         <Button
           variant="outline"
           onClick={onRefresh}
           disabled={isLoading}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 h-10 px-4"
+          className="w-full sm:w-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 h-10 px-4"
         >
           <RefreshCw className={cn("h-4 w-4 mr-2 text-indigo-500", isLoading && "animate-spin")} />
           Perbarui Data

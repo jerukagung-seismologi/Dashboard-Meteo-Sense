@@ -333,7 +333,7 @@ export default function AgrometPage() {
               <span className="text-xs text-slate-400">Pembaruan: Real-Time</span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+            <div className="grid grid-cols-1 min-[380px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
               {/* 1. Suhu Udara */}
               <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
                 <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">

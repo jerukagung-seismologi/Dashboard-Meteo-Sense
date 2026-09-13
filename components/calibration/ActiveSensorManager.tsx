@@ -503,7 +503,7 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
                   {/* Polynomial: a*x^2 + b*x + c */}
                   {watchMethod === "polynomial" && (
                     <div className="space-y-2">
-                      <div className="grid grid-cols-3 gap-1.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-1.5">
                         <div className="space-y-1">
                           <Label className="text-[10px] text-slate-500">Koef a (x²)</Label>
                           <Controller

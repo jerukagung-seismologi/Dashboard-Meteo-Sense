@@ -560,7 +560,7 @@ export default function BackupSqlitePage() {
                       <div className="mt-1 font-mono text-[11px]">
                         Total Data Baru: <b>{syncResult.totalSynced} baris</b>
                         {syncResult.details && (
-                          <div className="grid grid-cols-3 gap-1 mt-1 text-[10px]">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1 mt-1 text-[10px]">
                             {Object.entries(syncResult.details).map(([k, v]) => (
                               <span key={k}>{k}: +{String(v)}</span>
                             ))}

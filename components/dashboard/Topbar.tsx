@@ -61,7 +61,7 @@ export function Topbar({ user, profile, setSidebarOpen, handleLogout, navigation
               <h1 className="text-lg font-semibold text-gray-900 dark:text-white leading-none">
                 Meteo Sense
               </h1>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px] sm:max-w-[200px] md:max-w-none">
                 {currentPage} {/* Display current page name */}
               </span>
             </div>

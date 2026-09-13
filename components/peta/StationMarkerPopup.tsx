@@ -63,7 +63,7 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
   const historyData = station.history1h || [];
 
   return (
-    <div className="w-[310px] sm:w-[340px] text-slate-800 dark:text-slate-100 p-0 font-sans space-y-3">
+    <div className="w-[280px] sm:w-[320px] max-w-[calc(100vw-48px)] text-slate-800 dark:text-slate-100 p-0 font-sans space-y-3">
       {/* Header */}
       <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-200/80 dark:border-slate-700/80">
         <div>
