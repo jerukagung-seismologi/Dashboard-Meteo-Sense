@@ -757,7 +757,139 @@ export default function ForecastForm() {
     }
   };
 
-  // --- FETCH FORECAST VIA EDGE ROUTE HANDLER (/api/weather/consensus) ---
+  // --- FALLBACK LANGSUNG DARI BROWSER (JIKA SERVER API GAGAL/TERBLOKIR DI DEPLOY SERVERLESS) ---
+  const fetchDirectOpenMeteoFallback = async (
+    lat: number,
+    lon: number,
+    locName: string,
+    targetDateStr: string
+  ) => {
+    console.log(`[Fallback] Memulai fetch langsung dari browser ke Open-Meteo untuk ${locName} (${targetDateStr})...`)
+    const coreModelIds = "ecmwf_ifs,gfs_seamless,icon_seamless,jma_seamless,cma_grapes_global"
+    const params = new URLSearchParams({
+      latitude: lat.toString(),
+      longitude: lon.toString(),
+      hourly: "temperature_2m,relative_humidity_2m,weather_code,precipitation_probability,precipitation",
+      models: coreModelIds,
+      timezone: "Asia/Bangkok",
+      start_date: targetDateStr,
+      end_date: targetDateStr,
+    })
+
+    const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`
+    const res = await fetch(url)
+    if (!res.ok) {
+      throw new Error(`Open-Meteo Direct API status ${res.status}`)
+    }
+
+    const fcJson = await res.json()
+    if (!fcJson?.hourly?.time) {
+      throw new Error("Format respons Open-Meteo tidak valid.")
+    }
+
+    const times: string[] = fcJson.hourly.time || []
+    const TARGET_HOURS = ["07:00", "10:00", "13:00", "16:00", "19:00"]
+    const usedModels = GLOBAL_NWP_MODELS.filter((m) =>
+      ["ecmwf_ifs", "gfs_seamless", "icon_seamless", "jma_seamless", "cma_grapes_global"].includes(m.id)
+    )
+
+    const findIndexFor = (targetTime: string): number => {
+      const targetPrefix = `${targetDateStr}T${targetTime}`
+      const exactIdx = times.findIndex((t) => t === targetPrefix || t.startsWith(targetPrefix))
+      if (exactIdx !== -1) return exactIdx
+
+      const targetDateTime = new Date(`${targetDateStr}T${targetTime}:00`)
+      let bestIdx = -1
+      let bestDiff = Infinity
+
+      for (let i = 0; i < times.length; i++) {
+        const forecastDateTime = new Date(times[i])
+        const forecastDate = times[i].split("T")[0]
+        const diff = Math.abs(forecastDateTime.getTime() - targetDateTime.getTime())
+
+        if (diff < bestDiff && forecastDate === targetDateStr) {
+          bestDiff = diff
+          bestIdx = i
+        }
+      }
+      return bestIdx
+    }
+
+    const rows = TARGET_HOURS.map((targetTime) => {
+      const idx = findIndexFor(targetTime)
+      if (idx === -1) {
+        return {
+          time: targetTime,
+          conditionMain: "Berawan" as WeatherCondition,
+          probMain: "80",
+          conditionSub: "" as WeatherCondition | "",
+          probSub: "",
+          temperature: "" as number | "",
+          temperatureError: 2,
+          humidity: "" as number | "",
+          humidityError: 5,
+          heatIndex: "" as number | "",
+          heatIndexError: 2,
+          modelPredictions: [],
+          votingBreakdown: [],
+        }
+      }
+
+      const modelPredictions: SingleModelPrediction[] = usedModels.map((m) => {
+        const rawTemp = fcJson.hourly[`temperature_2m_${m.id}`]?.[idx] ?? fcJson.hourly.temperature_2m?.[idx]
+        const rawHum = fcJson.hourly[`relative_humidity_2m_${m.id}`]?.[idx] ?? fcJson.hourly.relative_humidity_2m?.[idx]
+        const rawCode = fcJson.hourly[`weather_code_${m.id}`]?.[idx] ?? fcJson.hourly.weather_code?.[idx]
+        const rawPrecip = fcJson.hourly[`precipitation_${m.id}`]?.[idx] ?? fcJson.hourly.precipitation?.[idx] ?? 0
+        const rawRainProb = fcJson.hourly[`precipitation_probability_${m.id}`]?.[idx] ?? null
+
+        const temp = typeof rawTemp === "number" && !isNaN(rawTemp) ? rawTemp : null
+        const hum = typeof rawHum === "number" && !isNaN(rawHum) ? rawHum : null
+        const code = typeof rawCode === "number" && !isNaN(rawCode) ? rawCode : null
+        const precip = typeof rawPrecip === "number" && !isNaN(rawPrecip) ? rawPrecip : 0
+        const rainProb = typeof rawRainProb === "number" && !isNaN(rawRainProb) ? rawRainProb : null
+        const condition = code !== null ? translateModelToCondition(code, precip, rainProb) : null
+
+        return {
+          modelId: m.id,
+          modelName: `${m.name} (${m.country})`,
+          condition: condition as WeatherCondition,
+          temperature: temp,
+          humidity: hum,
+          precipitation: precip,
+          rainProb,
+        }
+      }).filter((p) => p.condition !== null && p.temperature !== null)
+
+      const consensus = calculateMultiModelConsensus(modelPredictions)
+
+      return {
+        time: targetTime,
+        conditionMain: consensus.conditionMain,
+        probMain: consensus.probMain,
+        conditionSub: consensus.conditionSub,
+        probSub: consensus.probSub,
+        temperature: consensus.temperature,
+        temperatureError: consensus.temperatureError,
+        humidity: consensus.humidity,
+        humidityError: consensus.humidityError,
+        heatIndex: consensus.heatIndex,
+        heatIndexError: consensus.heatIndexError,
+        modelPredictions,
+        votingBreakdown: consensus.breakdown,
+      }
+    })
+
+    return {
+      success: true,
+      location: locName,
+      forecastDate: targetDateStr,
+      modelsUsed: usedModels,
+      rows,
+      isFallback: true,
+    }
+  }
+
+  // --- FETCH FORECAST VIA EDGE ROUTE HANDLER DENGAN DIRECT FALLBACK ---
   const fetchForecast = async (isManual = false) => {
     if (!currentLocationName || currentLocationName.trim() === "") {
       if (isManual) {
@@ -771,8 +903,8 @@ export default function ForecastForm() {
     try {
       if (isManual) {
         toast({ 
-          title: "Menghubungi Edge Server...", 
-          description: `Mengambil konsensus 10 model global NWP & AI untuk ${forecastDisplayDateStr}...` 
+          title: "Menghubungi Server...", 
+          description: `Mengambil konsensus model global untuk ${forecastDisplayDateStr}...` 
         })
       }
 
@@ -810,24 +942,32 @@ export default function ForecastForm() {
         }
       }
 
-      // 2) Panggil Edge Route Handler terpusat dengan tanggal target spesifik
+      // 2) Panggil Route Handler terpusat dengan tanggal target spesifik
       const edgeUrl = `/api/weather/consensus?lat=${lat}&lon=${lon}&location=${encodeURIComponent(locationName)}&date=${targetDateIsoStr}`
-      console.log("Fetching consensus from Edge API:", edgeUrl)
+      console.log("Fetching consensus from API:", edgeUrl)
 
-      const response = await fetch(edgeUrl)
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}))
-        throw new Error(errJson.error || `HTTP ${response.status}: ${response.statusText}`)
+      let data: any = null
+      let isFallback = false
+
+      try {
+        const response = await fetch(edgeUrl)
+        if (!response.ok) {
+          const errJson = await response.json().catch(() => ({}))
+          throw new Error(errJson.error || `HTTP ${response.status}: ${response.statusText}`)
+        }
+        data = await response.json()
+        if (!data?.rows || !Array.isArray(data.rows)) {
+          throw new Error("Format respon konsensus API tidak valid.")
+        }
+      } catch (apiErr: any) {
+        console.warn("⚠️ API internal gagal di environment deploy/serverless. Mengaktifkan fallback langsung browser ke Open-Meteo:", apiErr?.message)
+        data = await fetchDirectOpenMeteoFallback(lat, lon, locationName, targetDateIsoStr)
+        isFallback = true
       }
 
-      const data = await response.json()
-      if (!data?.rows || !Array.isArray(data.rows)) {
-        throw new Error("Format respon konsensus Edge tidak valid.")
-      }
+      console.log(`✓ Data Konsensus Diterima untuk ${data.location} (${data.forecastDate}):`, data)
 
-      console.log(`✓ Data Konsensus Edge Diterima untuk ${data.location} (${data.forecastDate}):`, data)
-
-      // 3) Update rows form dengan data konsensus yang sudah matang dari Edge (cocokkan jam)
+      // 3) Update rows form dengan data konsensus yang sudah matang (cocokkan jam)
       setRows((prev) =>
         prev.map((r, i) => {
           const f = data.rows.find((row: any) => row.time === r.time) || data.rows[i] || {}
@@ -847,7 +987,7 @@ export default function ForecastForm() {
           } as ForecastRow
         })
       )
-      setForecastSource("Multi-Model Consensus")
+      setForecastSource(isFallback ? "Multi-Model Consensus (Direct)" : "Multi-Model Consensus")
 
       setConsensusData({
         location: data.location || locationName,
@@ -856,23 +996,21 @@ export default function ForecastForm() {
         rows: data.rows,
       })
 
-      if (isManual) {
+      if (isManual || isFallback) {
         toast({ 
-          title: "✓ Konsensus Multi-Model Selesai", 
-          description: `Probabilitas dan parameter cuaca untuk ${forecastDisplayDateStr} berhasil dihitung via Edge Route Handler (${data.modelsUsed?.length || 10} model global).` 
+          title: isFallback ? "✓ Konsensus Dimuat (Koneksi Langsung)" : "✓ Konsensus Multi-Model Selesai", 
+          description: `Probabilitas dan parameter cuaca untuk ${forecastDisplayDateStr} berhasil dihitung (${data.modelsUsed?.length || 10} model global).` 
         })
       }
 
     } catch (err) {
       console.error("❌ fetchForecast error:", err)
       const errorMsg = err instanceof Error ? err.message : "Terjadi kesalahan"
-      if (isManual) {
-        toast({ 
-          title: "Gagal mengambil data", 
-          description: `${errorMsg}. Periksa konsol untuk detail.`, 
-          variant: "destructive" 
-        })
-      }
+      toast({ 
+        title: "Gagal memuat konsensus cuaca", 
+        description: `${errorMsg}. Silakan tekan tombol 'Ambil Otomatis' untuk mencoba kembali.`, 
+        variant: "destructive" 
+      })
     } finally {
       setLoadingFetch(false)
     }

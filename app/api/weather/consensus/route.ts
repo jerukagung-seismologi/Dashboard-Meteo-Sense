@@ -1,8 +1,8 @@
 // app/api/weather/consensus/route.ts
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
-export const revalidate = 300 // Cache 5 menit di level server / CDN Edge
+export const dynamic = "force-dynamic"
+export const revalidate = 300 // Cache 5 menit di level server / CDN
 
 // --- GLOBAL NWP & AI ENSEMBLE MODELS ---
 export const GLOBAL_NWP_MODELS = [
@@ -270,10 +270,48 @@ export async function GET(request: Request) {
 
     const refresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
 
+    // Header resmi untuk menghindari rate-limit / DDoS block di cloud serverless (Vercel/AWS)
+    const fetchHeaders = {
+      "User-Agent": "MeteoSense-Dashboard/4.0 (https://github.com/evanalif113/Dashboard-Meteo-Sense)",
+      "Accept": "application/json",
+    }
+
     const forecastUrl = `https://api.open-meteo.com/v1/forecast?${params.toString()}`
-    const response = await fetch(forecastUrl, refresh ? { cache: "no-store" } : {
-      next: { revalidate: 300 }, // Cache 5 menit di Edge
-    })
+    let response: Response | null = null
+    let usedModels = [...GLOBAL_NWP_MODELS]
+
+    try {
+      response = await fetch(forecastUrl, {
+        headers: fetchHeaders,
+        cache: refresh ? "no-store" : "default",
+        next: { revalidate: 300 },
+      })
+    } catch (fetchErr: any) {
+      console.warn("Primary 10-model fetch failed on cloud worker:", fetchErr?.message)
+    }
+
+    // Fallback otomatis ke 5 model inti jika 10 model diblokir/gagal di platform serverless
+    if (!response || !response.ok) {
+      console.warn("Retrying with core 5 NWP models fallback...")
+      const coreModelIds = "ecmwf_ifs,gfs_seamless,icon_seamless,jma_seamless,cma_grapes_global"
+      const fallbackParams = new URLSearchParams({
+        latitude: lat.toString(),
+        longitude: lon.toString(),
+        hourly: "temperature_2m,relative_humidity_2m,weather_code,precipitation_probability,precipitation",
+        models: coreModelIds,
+        timezone: "Asia/Bangkok",
+        start_date: targetDateStr,
+        end_date: targetDateStr,
+      })
+      const fallbackUrl = `https://api.open-meteo.com/v1/forecast?${fallbackParams.toString()}`
+      response = await fetch(fallbackUrl, {
+        headers: fetchHeaders,
+        cache: "no-store",
+      })
+      usedModels = GLOBAL_NWP_MODELS.filter((m) =>
+        ["ecmwf_ifs", "gfs_seamless", "icon_seamless", "jma_seamless", "cma_grapes_global"].includes(m.id)
+      )
+    }
 
     if (!response.ok) {
       const errText = await response.text()
@@ -340,7 +378,7 @@ export async function GET(request: Request) {
         }
       }
 
-      const modelPredictions: SingleModelPrediction[] = GLOBAL_NWP_MODELS.map((m) => {
+      const modelPredictions: SingleModelPrediction[] = usedModels.map((m) => {
         const rawTemp = fcJson.hourly[`temperature_2m_${m.id}`]?.[idx] ?? 
                         (m.id === "ecmwf_aifs025_single" ? fcJson.hourly[`temperature_2m_ecmwf_aifs025`]?.[idx] : undefined) ??
                         fcJson.hourly.temperature_2m?.[idx]
@@ -403,7 +441,7 @@ export async function GET(request: Request) {
         coordinates: { latitude: lat, longitude: lon },
         forecastDate: targetDateStr,
         generatedAt: new Date().toISOString(),
-        modelsUsed: GLOBAL_NWP_MODELS,
+        modelsUsed: usedModels,
         rows: hourlyResults,
       },
       {
