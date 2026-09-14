@@ -1,13 +1,15 @@
 // components/reanalysis/ForecastDiagnostics.tsx
+"use client";
+
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Sun, Zap, Compass, Info, AlertTriangle } from "lucide-react";
 import dynamic from "next/dynamic";
 
-const Plot = dynamic(() => import("react-plotly.js"), {
+const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
   loading: () => (
-    <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
+    <div className="h-[300px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
       Membuat grafik diagnostik...
     </div>
   ),
@@ -47,177 +49,230 @@ export const ForecastDiagnostics: React.FC<ForecastDiagnosticsProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<"scatter" | "radiation" | "diagnostics">("scatter");
 
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
-  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
+  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.25)";
 
-  // Scatter plot 1 layout (Temp vs Humidity)
-  const scatterTempHumTraces = useMemo(() => {
-    const x = scatter.tempVsHumidity.map(p => p[0]);
-    const y = scatter.tempVsHumidity.map(p => p[1]);
-    return [
+  const hoursArray = useMemo(() => Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`), []);
+
+  // Scatter plot 1 option (Temp vs Humidity)
+  const scatterTempHumOption = useMemo(() => ({
+    backgroundColor: "transparent",
+    title: {
+      text: "Korelasi Suhu vs Kelembaban Udara",
+      textStyle: { color: textColor, fontSize: 12, fontWeight: "bold" },
+      top: 5,
+      left: 10,
+    },
+    tooltip: {
+      trigger: "item",
+      formatter: (params: any) => `Suhu: ${params.value[0]?.toFixed(1)} °C<br/>Kelembaban: ${params.value[1]?.toFixed(1)} %`,
+    },
+    grid: {
+      top: 45,
+      right: 20,
+      bottom: 40,
+      left: 55,
+      containLabel: true,
+    },
+    xAxis: {
+      type: "value",
+      scale: true,
+      name: "Suhu (°C)",
+      nameTextStyle: { color: textColor, fontSize: 10 },
+      axisLine: { lineStyle: { color: gridColor } },
+      axisLabel: { color: textColor, fontSize: 10 },
+      splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
+    },
+    yAxis: {
+      type: "value",
+      scale: true,
+      name: "RH (%)",
+      nameTextStyle: { color: textColor, fontSize: 10 },
+      axisLine: { show: false },
+      axisLabel: { color: textColor, fontSize: 10 },
+      splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
+    },
+    series: [
       {
-        x,
-        y,
-        mode: "markers" as const,
-        type: "scatter" as const,
         name: "Rata-rata Harian",
-        marker: {
+        type: "scatter",
+        data: scatter.tempVsHumidity,
+        symbolSize: 6,
+        itemStyle: {
           color: "#f87171",
-          size: 6,
-          opacity: 0.7,
-          line: {
-            color: isDarkMode ? "#ef4444" : "#dc2626",
-            width: 0.5
-          }
-        }
-      }
-    ];
-  }, [scatter.tempVsHumidity, isDarkMode]);
+          borderColor: isDarkMode ? "#ef4444" : "#dc2626",
+          borderWidth: 0.5,
+          opacity: 0.8,
+        },
+      },
+    ],
+  }), [scatter.tempVsHumidity, textColor, gridColor, isDarkMode]);
 
-  // Scatter plot 2 layout (Pressure vs Rainfall)
-  const scatterPressRainTraces = useMemo(() => {
-    const x = scatter.pressureVsRainfall.map(p => p[0]);
-    const y = scatter.pressureVsRainfall.map(p => p[1]);
-    return [
+  // Scatter plot 2 option (Pressure vs Rainfall)
+  const scatterPressRainOption = useMemo(() => ({
+    backgroundColor: "transparent",
+    title: {
+      text: "Korelasi Tekanan MSL vs Curah Hujan",
+      textStyle: { color: textColor, fontSize: 12, fontWeight: "bold" },
+      top: 5,
+      left: 10,
+    },
+    tooltip: {
+      trigger: "item",
+      formatter: (params: any) => `Tekanan: ${params.value[0]?.toFixed(1)} hPa<br/>Curah Hujan: ${params.value[1]?.toFixed(1)} mm`,
+    },
+    grid: {
+      top: 45,
+      right: 20,
+      bottom: 40,
+      left: 55,
+      containLabel: true,
+    },
+    xAxis: {
+      type: "value",
+      scale: true,
+      name: "Tekanan (hPa)",
+      nameTextStyle: { color: textColor, fontSize: 10 },
+      axisLine: { lineStyle: { color: gridColor } },
+      axisLabel: { color: textColor, fontSize: 10 },
+      splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
+    },
+    yAxis: {
+      type: "value",
+      name: "Hujan (mm)",
+      nameTextStyle: { color: textColor, fontSize: 10 },
+      axisLine: { show: false },
+      axisLabel: { color: textColor, fontSize: 10 },
+      splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
+    },
+    series: [
       {
-        x,
-        y,
-        mode: "markers" as const,
-        type: "scatter" as const,
         name: "Rata-rata Harian",
-        marker: {
+        type: "scatter",
+        data: scatter.pressureVsRainfall,
+        symbolSize: 6,
+        itemStyle: {
           color: "#60a5fa",
-          size: 6,
-          opacity: 0.7,
-          line: {
-            color: isDarkMode ? "#3b82f6" : "#2563eb",
-            width: 0.5
-          }
-        }
-      }
-    ];
-  }, [scatter.pressureVsRainfall, isDarkMode]);
+          borderColor: isDarkMode ? "#3b82f6" : "#2563eb",
+          borderWidth: 0.5,
+          opacity: 0.8,
+        },
+      },
+    ],
+  }), [scatter.pressureVsRainfall, textColor, gridColor, isDarkMode]);
 
-  // Diurnal Solar & Dew Point Depression charts layout
-  const radiationTraces = useMemo(() => {
-    return [
+  // Diurnal Solar radiation chart option
+  const radiationOption = useMemo(() => ({
+    backgroundColor: "transparent",
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "cross" },
+      valueFormatter: (val: any) => `${val?.toFixed(1) || 0} W/m²`,
+    },
+    grid: {
+      top: 25,
+      right: 20,
+      bottom: 35,
+      left: 55,
+      containLabel: true,
+    },
+    xAxis: {
+      type: "category",
+      data: hoursArray,
+      axisLine: { lineStyle: { color: gridColor } },
+      axisLabel: { color: textColor, fontSize: 10, interval: 2 },
+      splitLine: { show: false },
+    },
+    yAxis: {
+      type: "value",
+      name: "(W/m²)",
+      nameTextStyle: { color: textColor, fontSize: 10 },
+      axisLine: { show: false },
+      axisLabel: { color: textColor, fontSize: 10 },
+      splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
+    },
+    series: [
       {
-        x: Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`),
-        y: radiation.diurnalCycle,
-        type: "scatter" as const,
-        mode: "lines+markers" as const,
-        name: "Radiasi Gelombang Pendek (W/m²)",
-        line: { color: "#fbbf24", width: 3 },
-        marker: { size: 6, color: "#f59e0b" }
-      }
-    ];
-  }, [radiation.diurnalCycle]);
+        name: "Radiasi Gelombang Pendek",
+        type: "line",
+        data: radiation.diurnalCycle,
+        smooth: true,
+        showSymbol: true,
+        symbolSize: 5,
+        lineStyle: { width: 3, color: "#fbbf24" },
+        itemStyle: { color: "#f59e0b" },
+        areaStyle: {
+          color: {
+            type: "linear",
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: "rgba(251, 191, 36, 0.25)" },
+              { offset: 1, color: "rgba(251, 191, 36, 0.0)" },
+            ],
+          },
+        },
+      },
+    ],
+  }), [radiation.diurnalCycle, hoursArray, textColor, gridColor]);
 
-  const dewPointDepressionTraces = useMemo(() => {
-    return [
+  // Dew point depression chart option
+  const dewPointDepressionOption = useMemo(() => ({
+    backgroundColor: "transparent",
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "cross" },
+      valueFormatter: (val: any) => `${val?.toFixed(1) || 0} °C`,
+    },
+    grid: {
+      top: 25,
+      right: 20,
+      bottom: 35,
+      left: 55,
+      containLabel: true,
+    },
+    xAxis: {
+      type: "category",
+      data: hoursArray,
+      axisLine: { lineStyle: { color: gridColor } },
+      axisLabel: { color: textColor, fontSize: 10, interval: 2 },
+      splitLine: { show: false },
+    },
+    yAxis: {
+      type: "value",
+      name: "(°C)",
+      nameTextStyle: { color: textColor, fontSize: 10 },
+      axisLine: { show: false },
+      axisLabel: { color: textColor, fontSize: 10 },
+      splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
+    },
+    series: [
       {
-        x: Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`),
-        y: diagnostics.diurnalDewPointDepression,
-        type: "scatter" as const,
-        mode: "lines+markers" as const,
-        name: "Depresi Titik Embun (T - Td) (°C)",
-        line: { color: "#06b6d4", width: 3 },
-        marker: { size: 6, color: "#0891b2" }
-      }
-    ];
-  }, [diagnostics.diurnalDewPointDepression]);
-
-  // Plotly layouts
-  const layoutScatter1 = useMemo(() => ({
-    autosize: true,
-    height: 300,
-    margin: { l: 50, r: 20, t: 30, b: 40 },
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    font: { color: textColor, family: "Inter, sans-serif", size: 10 },
-    title: { text: "Korelasi Suhu vs Kelembaban Udara", font: { size: 12, bold: true } },
-    xaxis: {
-      title: { text: "Suhu Udara (°C)", font: { size: 10 } },
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor
-    },
-    yaxis: {
-      title: { text: "Kelembaban Relatif (%)", font: { size: 10 } },
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-      fixedrange: true
-    },
-    showlegend: false
-  }), [textColor, gridColor]);
-
-  const layoutScatter2 = useMemo(() => ({
-    autosize: true,
-    height: 300,
-    margin: { l: 50, r: 20, t: 30, b: 40 },
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    font: { color: textColor, family: "Inter, sans-serif", size: 10 },
-    title: { text: "Korelasi Tekanan MSL vs Curah Hujan", font: { size: 12, bold: true } },
-    xaxis: {
-      title: { text: "Tekanan MSL (hPa)", font: { size: 10 } },
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor
-    },
-    yaxis: {
-      title: { text: "Curah Hujan (mm)", font: { size: 10 } },
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-      fixedrange: true
-    },
-    showlegend: false
-  }), [textColor, gridColor]);
-
-  const layoutRadiation = useMemo(() => ({
-    autosize: true,
-    height: 320,
-    margin: { l: 50, r: 20, t: 20, b: 40 },
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    font: { color: textColor, family: "Inter, sans-serif", size: 10 },
-    xaxis: {
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor
-    },
-    yaxis: {
-      title: { text: "Radiasi Gelombang Pendek (W/m²)", font: { size: 10 } },
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-      fixedrange: true
-    },
-    showlegend: false
-  }), [textColor, gridColor]);
-
-  const layoutDewPointDepression = useMemo(() => ({
-    autosize: true,
-    height: 320,
-    margin: { l: 50, r: 20, t: 20, b: 40 },
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    font: { color: textColor, family: "Inter, sans-serif", size: 10 },
-    xaxis: {
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor
-    },
-    yaxis: {
-      title: { text: "Selisih Suhu-Titik Embun (°C)", font: { size: 10 } },
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-      fixedrange: true
-    },
-    showlegend: false
-  }), [textColor, gridColor]);
+        name: "Depresi Titik Embun (T - Td)",
+        type: "line",
+        data: diagnostics.diurnalDewPointDepression,
+        smooth: true,
+        showSymbol: true,
+        symbolSize: 5,
+        lineStyle: { width: 3, color: "#06b6d4" },
+        itemStyle: { color: "#0891b2" },
+        areaStyle: {
+          color: {
+            type: "linear",
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: "rgba(6, 182, 212, 0.25)" },
+              { offset: 1, color: "rgba(6, 182, 212, 0.0)" },
+            ],
+          },
+        },
+      },
+    ],
+  }), [diagnostics.diurnalDewPointDepression, hoursArray, textColor, gridColor]);
 
   return (
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
@@ -265,24 +320,28 @@ export const ForecastDiagnostics: React.FC<ForecastDiagnosticsProps> = ({
         {activeSubTab === "scatter" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-slate-50/50 dark:bg-slate-950/20 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
-              <Plot
-                data={scatterTempHumTraces}
-                layout={layoutScatter1}
-                config={{ responsive: true, displayModeBar: false }}
-                style={{ width: "100%", height: "300px" }}
-              />
+              <div className="w-full h-[300px]">
+                <ReactECharts
+                  option={scatterTempHumOption}
+                  style={{ width: "100%", height: "100%" }}
+                  opts={{ renderer: "canvas" }}
+                  notMerge={true}
+                />
+              </div>
               <div className="text-[10px] text-slate-400 p-2">
                 *Diagram pencaran di atas menunjukkan hubungan terbalik antara suhu dan kelembaban udara (RH) harian. Korelasi negatif yang kuat adalah tipikal untuk iklim tropis.
               </div>
             </div>
 
             <div className="bg-slate-50/50 dark:bg-slate-950/20 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
-              <Plot
-                data={scatterPressRainTraces}
-                layout={layoutScatter2}
-                config={{ responsive: true, displayModeBar: false }}
-                style={{ width: "100%", height: "300px" }}
-              />
+              <div className="w-full h-[300px]">
+                <ReactECharts
+                  option={scatterPressRainOption}
+                  style={{ width: "100%", height: "100%" }}
+                  opts={{ renderer: "canvas" }}
+                  notMerge={true}
+                />
+              </div>
               <div className="text-[10px] text-slate-400 p-2">
                 *Menggambarkan korelasi tekanan udara MSL terhadap curah hujan. Secara sinoptik, kejadian curah hujan lebat cenderung berkorelasi dengan area tekanan rendah (palung tekanan rendah).
               </div>
@@ -300,12 +359,14 @@ export const ForecastDiagnostics: React.FC<ForecastDiagnosticsProps> = ({
               <p className="text-xs text-slate-500">
                 Profil rata-rata insolasi matahari harian yang sampai ke permukaan bumi (W/m²).
               </p>
-              <Plot
-                data={radiationTraces}
-                layout={layoutRadiation}
-                config={{ responsive: true, displayModeBar: false }}
-                style={{ width: "100%", height: "320px" }}
-              />
+              <div className="w-full h-[320px]">
+                <ReactECharts
+                  option={radiationOption}
+                  style={{ width: "100%", height: "100%" }}
+                  opts={{ renderer: "canvas" }}
+                  notMerge={true}
+                />
+              </div>
             </div>
 
             {/* Dew Point Depression */}
@@ -316,12 +377,14 @@ export const ForecastDiagnostics: React.FC<ForecastDiagnosticsProps> = ({
               <p className="text-xs text-slate-500">
                 Menunjukkan kejenuhan parsel udara. Nilai yang mendekati 0°C menandakan kejenuhan penuh (potensi kondensasi/kabut/hujan tinggi).
               </p>
-              <Plot
-                data={dewPointDepressionTraces}
-                layout={layoutDewPointDepression}
-                config={{ responsive: true, displayModeBar: false }}
-                style={{ width: "100%", height: "320px" }}
-              />
+              <div className="w-full h-[320px]">
+                <ReactECharts
+                  option={dewPointDepressionOption}
+                  style={{ width: "100%", height: "100%" }}
+                  opts={{ renderer: "canvas" }}
+                  notMerge={true}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -408,7 +471,7 @@ export const ForecastDiagnostics: React.FC<ForecastDiagnosticsProps> = ({
                 <Activity className="h-5 w-5" /> Pasang Surut & Tendensi Barometrik
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Mengukur perubahan absolut tekanan udara dalam rentang 3 jam ($\Delta P / \Delta t$). Fluktuasi yang drastis dikaitkan dengan kedatangan sistem cuaca frontal.
+                Mengukur perubahan absolut tekanan udara dalam rentang 3 jam (ΔP / Δt). Fluktuasi yang drastis dikaitkan dengan kedatangan sistem cuaca frontal.
               </p>
 
               <div className="grid grid-cols-2 gap-4 border-t dark:border-slate-800 pt-4">

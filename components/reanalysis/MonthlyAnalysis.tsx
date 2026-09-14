@@ -1,10 +1,12 @@
 // components/reanalysis/MonthlyAnalysis.tsx
+"use client";
+
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarDays, Thermometer, Droplets, Gauge, CloudRain } from "lucide-react";
 import dynamic from "next/dynamic";
 
-const Plot = dynamic(() => import("react-plotly.js"), {
+const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
   loading: () => (
     <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
@@ -39,7 +41,7 @@ export const MonthlyAnalysis: React.FC<MonthlyAnalysisProps> = ({
   const [activeTab, setActiveTab] = useState<"temperature" | "humidity" | "pressure" | "rain">("temperature");
 
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
-  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
+  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.25)";
 
   const activeInfo = useMemo(() => {
     switch (activeTab) {
@@ -47,149 +49,161 @@ export const MonthlyAnalysis: React.FC<MonthlyAnalysisProps> = ({
         return {
           title: "Suhu Udara Bulanan",
           desc: "Klimatologi suhu maksimum, rata-rata, dan minimum bulanan",
-          unit: "Suhu (°C)",
+          unit: "°C",
           icon: <Thermometer className="h-5 w-5 text-orange-500" />,
-          traces: [
-            {
-              x: months,
-              y: temperature.max,
-              name: "Maksimum",
-              type: "scatter" as const,
-              mode: "lines+markers" as const,
-              line: { color: "#f87171", width: 2, dash: "dash" as const },
-            },
-            {
-              x: months,
-              y: temperature.mean,
-              name: "Rata-rata",
-              type: "scatter" as const,
-              mode: "lines+markers" as const,
-              line: { color: "#ef4444", width: 3 },
-            },
-            {
-              x: months,
-              y: temperature.min,
-              name: "Minimum",
-              type: "scatter" as const,
-              mode: "lines+markers" as const,
-              line: { color: "#60a5fa", width: 2, dash: "dash" as const },
-            }
-          ]
+          data: temperature,
+          colors: { max: "#f87171", mean: "#ef4444", min: "#60a5fa" }
         };
       case "humidity":
         return {
           title: "Kelembaban Bulanan",
           desc: "Klimatologi kelembaban maksimum, rata-rata, dan minimum bulanan",
-          unit: "Kelembaban (%)",
+          unit: "%",
           icon: <Droplets className="h-5 w-5 text-blue-500" />,
-          traces: [
-            {
-              x: months,
-              y: humidity.max,
-              name: "Maksimum",
-              type: "scatter" as const,
-              mode: "lines+markers" as const,
-              line: { color: "#34d399", width: 2, dash: "dash" as const },
-            },
-            {
-              x: months,
-              y: humidity.mean,
-              name: "Rata-rata",
-              type: "scatter" as const,
-              mode: "lines+markers" as const,
-              line: { color: "#3b82f6", width: 3 },
-            },
-            {
-              x: months,
-              y: humidity.min,
-              name: "Minimum",
-              type: "scatter" as const,
-              mode: "lines+markers" as const,
-              line: { color: "#f59e0b", width: 2, dash: "dash" as const },
-            }
-          ]
+          data: humidity,
+          colors: { max: "#34d399", mean: "#3b82f6", min: "#f59e0b" }
         };
       case "pressure":
         return {
           title: "Tekanan MSL Bulanan",
           desc: "Klimatologi tekanan MSL maksimum, rata-rata, dan minimum bulanan",
-          unit: "Tekanan MSL (hPa)",
+          unit: "hPa",
           icon: <Gauge className="h-5 w-5 text-pink-500" />,
-          traces: [
-            {
-              x: months,
-              y: pressure.max,
-              name: "Maksimum",
-              type: "scatter" as const,
-              mode: "lines+markers" as const,
-              line: { color: "#f43f5e", width: 2, dash: "dash" as const },
-            },
-            {
-              x: months,
-              y: pressure.mean,
-              name: "Rata-rata",
-              type: "scatter" as const,
-              mode: "lines+markers" as const,
-              line: { color: "#ec4899", width: 3 },
-            },
-            {
-              x: months,
-              y: pressure.min,
-              name: "Minimum",
-              type: "scatter" as const,
-              mode: "lines+markers" as const,
-              line: { color: "#818cf8", width: 2, dash: "dash" as const },
-            }
-          ]
+          data: pressure,
+          colors: { max: "#f43f5e", mean: "#ec4899", min: "#818cf8" }
         };
       case "rain":
         return {
           title: "Akumulasi Curah Hujan Bulanan",
           desc: "Akumulasi curah hujan kumulatif bulanan (mm) hasil reanalisis",
-          unit: "Curah Hujan (mm)",
+          unit: "mm",
           icon: <CloudRain className="h-5 w-5 text-purple-500" />,
-          traces: [
-            {
-              x: months,
-              y: rain,
-              name: "Akumulasi Hujan",
-              type: "bar" as const,
-              marker: { color: "#8b5cf6" },
-            }
-          ]
+          data: { min: [], mean: rain, max: [] },
+          colors: { max: "#a855f7", mean: "#8b5cf6", min: "#7c3aed" }
         };
     }
-  }, [activeTab, months, temperature, humidity, pressure, rain]);
+  }, [activeTab, temperature, humidity, pressure, rain]);
 
-  const layout = useMemo(() => ({
-    autosize: true,
-    height: 350,
-    margin: { l: 50, r: 20, t: 25, b: 50 },
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    font: { color: textColor, family: "Inter, sans-serif" },
-    xaxis: {
-      type: "category" as const,
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-    },
-    yaxis: {
-      title: { text: activeInfo.unit },
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-      fixedrange: true,
-    },
-    legend: {
-      orientation: "h" as const,
-      yanchor: "bottom" as const,
-      y: 1.05,
-      xanchor: "right" as const,
-      x: 1,
-      font: { color: textColor }
-    },
-  }), [textColor, gridColor, activeInfo.unit]);
+  const option = useMemo(() => {
+    if (!months || months.length === 0) return {};
+
+    const isRain = activeTab === "rain";
+
+    const series = isRain
+      ? [
+          {
+            name: "Akumulasi Hujan",
+            type: "bar",
+            data: rain,
+            itemStyle: {
+              color: {
+                type: "linear",
+                x: 0,
+                y: 0,
+                x2: 0,
+                y2: 1,
+                colorStops: [
+                  { offset: 0, color: "#a855f7" },
+                  { offset: 1, color: "#7c3aed" },
+                ],
+              },
+              borderRadius: [4, 4, 0, 0],
+            },
+          },
+        ]
+      : [
+          {
+            name: "Maksimum",
+            type: "line",
+            data: (activeInfo.data as MonthlyDataField).max,
+            smooth: true,
+            showSymbol: true,
+            symbolSize: 6,
+            lineStyle: { width: 1.5, type: "dashed", color: activeInfo.colors.max },
+            itemStyle: { color: activeInfo.colors.max },
+          },
+          {
+            name: "Rata-rata",
+            type: "line",
+            data: (activeInfo.data as MonthlyDataField).mean,
+            smooth: true,
+            showSymbol: true,
+            symbolSize: 6,
+            lineStyle: { width: 2.5, color: activeInfo.colors.mean },
+            itemStyle: { color: activeInfo.colors.mean },
+            areaStyle: {
+              color: {
+                type: "linear",
+                x: 0,
+                y: 0,
+                x2: 0,
+                y2: 1,
+                colorStops: [
+                  { offset: 0, color: `${activeInfo.colors.mean}26` },
+                  { offset: 1, color: `${activeInfo.colors.mean}00` },
+                ],
+              },
+            },
+          },
+          {
+            name: "Minimum",
+            type: "line",
+            data: (activeInfo.data as MonthlyDataField).min,
+            smooth: true,
+            showSymbol: true,
+            symbolSize: 6,
+            lineStyle: { width: 1.5, type: "dashed", color: activeInfo.colors.min },
+            itemStyle: { color: activeInfo.colors.min },
+          },
+        ];
+
+    return {
+      backgroundColor: "transparent",
+      tooltip: {
+        trigger: "axis",
+        axisPointer: {
+          type: "cross",
+          label: { backgroundColor: isDarkMode ? "#334155" : "#64748b" },
+        },
+        valueFormatter: (val: any) => (typeof val === "number" ? `${val.toFixed(1)} ${activeInfo.unit}` : "—"),
+      },
+      legend: !isRain
+        ? {
+            top: 0,
+            right: 10,
+            textStyle: { color: textColor, fontSize: 11 },
+            data: ["Maksimum", "Rata-rata", "Minimum"],
+          }
+        : undefined,
+      grid: {
+        top: 35,
+        right: 20,
+        bottom: 35,
+        left: 55,
+        containLabel: true,
+      },
+      xAxis: {
+        type: "category",
+        data: months,
+        boundaryGap: isRain,
+        axisLine: { lineStyle: { color: gridColor } },
+        axisLabel: { color: textColor, fontSize: 11 },
+        splitLine: { show: false },
+      },
+      yAxis: {
+        type: "value",
+        min: activeTab === "humidity" ? 0 : isRain ? 0 : undefined,
+        max: activeTab === "humidity" ? 100 : undefined,
+        scale: !isRain && activeTab !== "humidity",
+        name: `(${activeInfo.unit})`,
+        nameTextStyle: { color: textColor, fontSize: 11 },
+        axisLabel: { color: textColor, fontSize: 11 },
+        axisLine: { show: false },
+        splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
+      },
+      series,
+    };
+  }, [months, activeTab, activeInfo, rain, textColor, gridColor, isDarkMode]);
 
   return (
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
@@ -240,12 +254,14 @@ export const MonthlyAnalysis: React.FC<MonthlyAnalysisProps> = ({
       
       <CardContent className="p-2">
         {months.length > 0 && (
-          <Plot
-            data={activeInfo.traces}
-            layout={layout}
-            config={{ responsive: true, displayModeBar: false }}
-            style={{ width: "100%", height: "350px" }}
-          />
+          <div className="w-full h-[350px]">
+            <ReactECharts
+              option={option}
+              style={{ width: "100%", height: "100%" }}
+              opts={{ renderer: "canvas" }}
+              notMerge={true}
+            />
+          </div>
         )}
       </CardContent>
     </Card>

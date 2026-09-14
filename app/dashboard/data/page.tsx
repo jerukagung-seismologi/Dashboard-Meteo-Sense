@@ -673,39 +673,6 @@ export default function DataPage() {
   // Komponen Card untuk setiap grafik
   const ChartCard = ({ title, data, color, Icon, unit = "" }: 
     { title: string; data: number[]; color: string; Icon: React.FC<any>; unit?: string; }) => {
-    const yDomain = getYAxisDomain(data);
-    const chartData = [{
-      x: timestamps,
-      y: data,
-      type: "scatter",
-      mode: "lines+markers",
-      marker: { color },
-      name: title,
-      line: { color, width: 3 },
-    }];
-    const layout = {
-      ...commonLayout,
-      paper_bgcolor: isDarkMode ? "#1e293b" : "transparent",
-      plot_bgcolor: isDarkMode ? "#1e293b" : "transparent",
-      font: {
-        family: "Roboto, sans-serif",
-        color: isDarkMode ? "#cbd5e1" : "#64748b",
-      },
-      xaxis: {
-        ...commonLayout.xaxis,
-        gridcolor: isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)",
-        title: {
-          font: { size: 14, color: isDarkMode ? "#cbd5e1" : "#475569" },
-        },
-      },
-      yaxis: {
-        ...commonLayout.yaxis,
-        title: { text: unit, font: { size: 14, color: isDarkMode ? "#cbd5e1" : "#475569" } },
-        gridcolor: isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)",
-        range: yDomain,
-      },
-    };
-
     return (
       <Card>
         <CardHeader className={`flex flex-row items-center gap-3 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"} border-b py-3 px-6`}>
@@ -713,7 +680,14 @@ export default function DataPage() {
           <CardTitle className="text-lg">{title}</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <ChartComponent data={chartData} layout={layout} />
+          <ChartComponent
+            title={title}
+            unit={unit}
+            color={color}
+            timestamps={timestamps}
+            seriesData={data}
+            isDarkMode={isDarkMode}
+          />
         </CardContent>
       </Card>
     );
