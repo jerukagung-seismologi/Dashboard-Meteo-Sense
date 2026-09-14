@@ -66,8 +66,6 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
             <SelectValue placeholder="Pilih Periode" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="daily">Harian (UTC)</SelectItem>
-            <SelectItem value="weekly">Mingguan (7 Hari)</SelectItem>
             <SelectItem value="dasarian">10 Harian (Dasarian)</SelectItem>
             <SelectItem value="monthly">Bulanan Kalender</SelectItem>
             <SelectItem value="yearly">Tahunan Kalender</SelectItem>
