@@ -53,17 +53,17 @@ function DeviceCard({ device, onEdit, onDelete, onGenerateToken }: {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
           <div className="flex items-center text-sm">
-            <Calendar className="h-4 w-4 mr-2 text-purple-600 dark:text-purple-400" />
-            <div>
-                <div className="font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">Tanggal Registrasi</div>
+            <Calendar className="h-4 w-4 mr-2 text-purple-600 dark:text-purple-400 shrink-0" />
+            <div className="min-w-0">
+              <div className="font-medium text-gray-800 dark:text-gray-200 truncate">Tanggal Registrasi</div>
               <div className="text-xs text-gray-600 dark:text-gray-400">{device.registrationDate}</div>
             </div>
           </div>
-          <div className="col-span-2 flex items-center text-sm">
-            <MapPin className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
-            <div>
+          <div className="sm:col-span-2 flex items-center text-sm">
+            <MapPin className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400 shrink-0" />
+            <div className="min-w-0">
               <div className="font-medium text-gray-800 dark:text-gray-200">Koordinat</div>
               <div className="text-xs text-gray-600 dark:text-gray-400">
                 {device.coordinates.lat.toFixed(4)}, 
@@ -155,7 +155,7 @@ function AddDeviceDialog({ open, onOpenChange, onAddDevice, onTokenGenerated, tr
             <Label htmlFor="location">Lokasi</Label>
             <Input id="location" placeholder="Lokasi Stasiun" value={newDevice.location} onChange={(e) => setNewDevice({ ...newDevice, location: e.target.value })} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="grid gap-2">
               <Label htmlFor="latitude">Latitude</Label>
               <Input id="latitude" placeholder="Garis Lintang" type="number" value={newDevice.latitude} onChange={(e) => setNewDevice({ ...newDevice, latitude: e.target.value })} />
@@ -288,7 +288,7 @@ function EditDeviceDialog({ open, onOpenChange, device, onEditDevice, setEditing
             <Label htmlFor="edit-location">Lokasi</Label>
             <Input id="edit-location" value={device.location} onChange={(e) => setEditingDevice({ ...device, location: e.target.value })} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-lat">Latitude</Label>
               <Input id="edit-lat" type="number" step="0.0001" value={device.coordinates.lat} onChange={(e) => setEditingDevice({ ...device, coordinates: { ...device.coordinates, lat: Number.parseFloat(e.target.value) } })} />

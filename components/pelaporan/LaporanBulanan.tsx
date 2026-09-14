@@ -700,22 +700,22 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
       {/* --- VIEW MODE 2: PRATINJAU LEMBAR CETAK (A4 LAYOUT) --- */}
       {viewMode === 'print' && weatherData.length > 0 && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-800 p-3 rounded-lg border">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-slate-100 dark:bg-slate-800 p-3 rounded-lg border">
             <span className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-              <Eye className="w-4 h-4 text-blue-600" />
+              <Eye className="w-4 h-4 text-blue-600 shrink-0" />
               Menampilkan pratinjau lembar cetak standar dokumen A4.
             </span>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => handleExport('pdf')} disabled={isExporting} className="h-8 text-xs">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <Button size="sm" variant="outline" onClick={() => handleExport('pdf')} disabled={isExporting} className="h-8 text-xs flex-1 sm:flex-none">
                 <FileType className="w-3.5 h-3.5 mr-1 text-red-600" /> Export PDF
               </Button>
-              <Button size="sm" onClick={() => handleExport('print')} disabled={isExporting} className="h-8 text-xs bg-slate-900 text-white">
+              <Button size="sm" onClick={() => handleExport('print')} disabled={isExporting} className="h-8 text-xs bg-slate-900 text-white flex-1 sm:flex-none">
                 <Printer className="w-3.5 h-3.5 mr-1" /> Cetak Lembar Ini
               </Button>
             </div>
           </div>
 
-          <div className="border rounded-xl p-6 bg-slate-200 dark:bg-slate-950 flex justify-center overflow-x-auto shadow-inner">
+          <div className="border rounded-xl p-2 sm:p-6 bg-slate-200 dark:bg-slate-950 flex justify-center overflow-x-auto shadow-inner">
             <div className="scale-[0.85] origin-top shadow-2xl rounded-md overflow-hidden bg-white">
               <PrintLayout 
                 id="visible-bulanan-preview"

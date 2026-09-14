@@ -282,9 +282,11 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`
             <div className="flex items-center gap-2 flex-wrap">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-[240px] justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, 'EEEE, dd MMMM yyyy', { locale: id }) : <span>Pilih Tanggal</span>}
+                  <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal text-xs sm:text-sm", !selectedDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">
+                      {selectedDate ? format(selectedDate, 'EEEE, dd MMMM yyyy', { locale: id }) : <span>Pilih Tanggal</span>}
+                    </span>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -302,7 +304,7 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`
                   />
                 </PopoverContent>
               </Popover>
-              <Button onClick={() => generateReport(selectedDate)} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2">
+              <Button onClick={() => generateReport(selectedDate)} disabled={loading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center justify-center gap-2 text-xs sm:text-sm">
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -312,20 +314,20 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`
                   'Proses Laporan'
                 )}
               </Button>
-              <Button variant="outline" onClick={() => { const y = getYesterday(); setSelectedDate(y); generateReport(y); }}>
+              <Button variant="outline" onClick={() => { const y = getYesterday(); setSelectedDate(y); generateReport(y); }} className="w-full sm:w-auto text-xs sm:text-sm">
                 Kemarin
               </Button>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 shrink-0">
-            <Button variant="outline" onClick={() => handleExport('png')} disabled={!dayRecord || isExporting} className="font-medium h-9">
+          <div className="flex flex-wrap gap-2 w-full md:w-auto shrink-0 justify-start sm:justify-end">
+            <Button variant="outline" onClick={() => handleExport('png')} disabled={!dayRecord || isExporting} className="font-medium h-9 text-xs flex-1 sm:flex-none">
               <FileImage className="mr-1.5 h-4 w-4 text-green-600" /> PNG
             </Button>
-            <Button variant="outline" onClick={() => handleExport('pdf')} disabled={!dayRecord || isExporting} className="font-medium h-9">
+            <Button variant="outline" onClick={() => handleExport('pdf')} disabled={!dayRecord || isExporting} className="font-medium h-9 text-xs flex-1 sm:flex-none">
               <FileType className="mr-1.5 h-4 w-4 text-red-600" /> PDF
             </Button>
-            <Button className="bg-slate-800 hover:bg-slate-900 text-white h-9 font-medium" onClick={() => handleExport('print')} disabled={!dayRecord || isExporting}>
+            <Button className="bg-slate-800 hover:bg-slate-900 text-white h-9 font-medium text-xs flex-1 sm:flex-none" onClick={() => handleExport('print')} disabled={!dayRecord || isExporting}>
               <Printer className="mr-1.5 h-4 w-4" /> Cetak
             </Button>
           </div>

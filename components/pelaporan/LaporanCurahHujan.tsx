@@ -251,7 +251,7 @@ Durasi Hujan: ${rainStats.rainDurationHours} Jam`;
           </p>
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -259,8 +259,10 @@ Durasi Hujan: ${rainStats.rainDurationHours} Jam`;
                 variant={"outline"}
                 className={cn("w-full sm:w-[220px] justify-start text-left font-normal h-9 text-xs", !selectedDate && "text-muted-foreground")}
               >
-                <CalendarIcon className="mr-2 h-3.5 w-3.5 text-slate-500" />
-                {selectedDate ? formatIdDateDash(selectedDate) : <span>Pilih tanggal</span>}
+                <CalendarIcon className="mr-2 h-3.5 w-3.5 text-slate-500 shrink-0" />
+                <span className="truncate">
+                  {selectedDate ? formatIdDateDash(selectedDate) : <span>Pilih tanggal</span>}
+                </span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
@@ -274,7 +276,7 @@ Durasi Hujan: ${rainStats.rainDurationHours} Jam`;
             </PopoverContent>
           </Popover>
 
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white h-9 text-xs font-semibold" onClick={handleDownloadImage} disabled={loading}>
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white h-9 text-xs font-semibold w-full sm:w-auto" onClick={handleDownloadImage} disabled={loading}>
             <Download className="mr-1.5 h-3.5 w-3.5" /> Unduh Gambar
           </Button>
         </div>

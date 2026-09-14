@@ -90,11 +90,20 @@ export async function GET(request: Request) {
       solarRadiation: calculateParameterStats(rawPoints.map((p) => p.lux ?? 0)),
     };
 
-    // 3. Compute histogram bins
+    // 3. Compute histogram bins & stats
     const histograms = {
-      temperature: calculateHistogramBins(rawPoints.map((p) => p.temperature)),
-      humidity: calculateHistogramBins(rawPoints.map((p) => p.humidity)),
-      pressure: calculateHistogramBins(rawPoints.map((p) => p.pressure)),
+      temperature: {
+        bins: calculateHistogramBins(rawPoints.map((p) => p.temperature)),
+        stats: stats.temperature,
+      },
+      humidity: {
+        bins: calculateHistogramBins(rawPoints.map((p) => p.humidity)),
+        stats: stats.humidity,
+      },
+      pressure: {
+        bins: calculateHistogramBins(rawPoints.map((p) => p.pressure)),
+        stats: stats.pressure,
+      },
     };
 
     // 4. Generate diurnal heatmap matrices (24 hours x Days)

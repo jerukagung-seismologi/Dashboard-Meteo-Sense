@@ -360,8 +360,8 @@ export default function DeviceDetailPage() {
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">{card.title}</p>
                   <div className="flex items-baseline gap-1">
-                    <h3 className="text-3xl font-bold text-foreground">{card.value}</h3>
-                    <span className="text-lg font-medium text-muted-foreground">{card.unit}</span>
+                    <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{card.value}</h3>
+                    <span className="text-base sm:text-lg font-medium text-muted-foreground">{card.unit}</span>
                     <div className="ml-1">{card.trend}</div>
                   </div>
                 </div>
@@ -391,8 +391,8 @@ export default function DeviceDetailPage() {
           <CardContent className="flex flex-col items-center pt-0">
             <div className="flex flex-col items-center w-full mb-4">
                <div className="flex items-baseline gap-1">
-                 <span className="text-4xl font-bold">{values.windSpeed.toFixed(1)}</span>
-                 <span className="text-xl font-medium text-muted-foreground">km/j</span>
+                 <span className="text-3xl sm:text-4xl font-bold">{values.windSpeed.toFixed(1)}</span>
+                 <span className="text-lg sm:text-xl font-medium text-muted-foreground">km/j</span>
                </div>
                <Badge variant="secondary" className="mt-2 bg-sky-100 text-sky-700 hover:bg-sky-100 dark:bg-sky-900 dark:text-sky-300">
                  {getWindDescription(values.windSpeed)}
@@ -422,8 +422,8 @@ export default function DeviceDetailPage() {
           <CardContent>
              <div className="flex flex-col items-center text-center mb-4">
                <div className="flex items-baseline gap-1">
-                 <span className="text-4xl font-bold">{values.rainRate.toFixed(1)}</span>
-                 <span className="text-xl font-medium text-muted-foreground">mm/h</span>
+                 <span className="text-3xl sm:text-4xl font-bold">{values.rainRate.toFixed(1)}</span>
+                 <span className="text-lg sm:text-xl font-medium text-muted-foreground">mm/h</span>
                </div>
                <Badge variant="outline" className="mt-2 border-cyan-200 text-cyan-700 dark:border-cyan-800 dark:text-cyan-300">
                  {getHourlyRainfallCategory(values.rainRate)}
@@ -451,8 +451,8 @@ export default function DeviceDetailPage() {
           <CardContent>
              <div className="flex flex-col items-center text-center mb-4">
                <div className="flex items-baseline gap-1">
-                 <span className="text-4xl font-bold">{values.rainTotal.toFixed(2)}</span>
-                 <span className="text-xl font-medium text-muted-foreground">mm</span>
+                 <span className="text-3xl sm:text-4xl font-bold">{values.rainTotal.toFixed(2)}</span>
+                 <span className="text-lg sm:text-xl font-medium text-muted-foreground">mm</span>
                </div>
                <Badge variant="outline" className="mt-2 border-indigo-200 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300">
                  {getDailyRainfallCategory(values.rainTotal)}
@@ -480,8 +480,8 @@ export default function DeviceDetailPage() {
           <CardContent>
              <div className="flex flex-col items-center text-center mb-4">
                <div className="flex items-baseline gap-1">
-                 <span className="text-4xl font-bold">{values.sunlight.toLocaleString()}</span>
-                 <span className="text-xl font-medium text-muted-foreground">lux</span>
+                 <span className="text-3xl sm:text-4xl font-bold">{values.sunlight.toLocaleString()}</span>
+                 <span className="text-lg sm:text-xl font-medium text-muted-foreground">lux</span>
                </div>
                <Badge variant="outline" className="mt-2 border-yellow-200 text-yellow-700 dark:border-yellow-800 dark:text-yellow-300">
                  {getSunlightCategory(values.sunlight)}

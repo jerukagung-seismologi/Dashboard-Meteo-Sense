@@ -2,7 +2,7 @@
 import React, { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Thermometer, Droplets, Gauge } from "lucide-react";
-import { HistogramBin, ParameterStats } from "@/lib/climatology/analysisTypes";
+import { HistogramBin, ParameterStats, AnalysisStats } from "@/lib/climatology/analysisTypes";
 import dynamic from "next/dynamic";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), {
@@ -14,36 +14,23 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ),
 });
 
-interface HistogramProps {
-  bins: HistogramBin[];
-  stats: ParameterStats;
-  isDarkMode: boolean;
-}
-
-interface DistributionAnalysisProps {
-  histograms: {
-    temperature: { bins: HistogramBin[]; stats: ParameterStats };
-    humidity: { bins: HistogramBin[]; stats: ParameterStats };
-    pressure: { bins: HistogramBin[]; stats: ParameterStats };
-  };
-  isDarkMode: boolean;
-}
-
-const SingleHistogram: React.FC<{
+interface SingleHistogramProps {
   title: string;
   description: string;
   icon: React.ReactNode;
-  bins: HistogramBin[];
-  stats: ParameterStats;
+  bins?: HistogramBin[];
+  stats?: ParameterStats;
   isDarkMode: boolean;
   colorGradient: [string, string];
   yAxisName: string;
   unit: string;
-}> = ({
+}
+
+const SingleHistogram: React.FC<SingleHistogramProps> = ({
   title,
   description,
   icon,
-  bins,
+  bins = [],
   stats,
   isDarkMode,
   colorGradient,
@@ -65,10 +52,11 @@ const SingleHistogram: React.FC<{
         trigger: "axis",
         axisPointer: { type: "shadow" },
         formatter: (params: any) => {
-          const item = params[0];
-          return `<div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
-            Rentang: <span className="font-bold">${item.name} ${unit}</span><br/>
-            Frekuensi: <span className="font-bold">${item.value} sampel</span>
+          const item = Array.isArray(params) ? params[0] : params;
+          if (!item) return "";
+          return `<div style="font-size: 12px; font-weight: 600; line-height: 1.5; color: ${isDarkMode ? "#f1f5f9" : "#1e293b"};">
+            Rentang: <span style="font-weight: 700;">${item.name} ${unit}</span><br/>
+            Frekuensi: <span style="font-weight: 700; color: ${colorGradient[0]};">${item.value} sampel</span>
           </div>`;
         },
       },
@@ -114,7 +102,12 @@ const SingleHistogram: React.FC<{
         },
       ],
     };
-  }, [bins, textColor, gridColor, colorGradient, yAxisName, unit]);
+  }, [bins, textColor, gridColor, colorGradient, yAxisName, unit, isDarkMode]);
+
+  const formatStat = (val: number | undefined | null) => {
+    if (val === undefined || val === null || isNaN(val)) return "—";
+    return val.toFixed(1);
+  };
 
   return (
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white flex flex-col justify-between">
@@ -133,7 +126,7 @@ const SingleHistogram: React.FC<{
               theme={chartTheme}
             />
           ) : (
-            <div className="h-full flex items-center justify-center text-sm text-slate-400">
+            <div className="h-full flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">
               Tidak ada data distribusi
             </div>
           )}
@@ -144,19 +137,19 @@ const SingleHistogram: React.FC<{
           <div className="bg-slate-50 dark:bg-slate-950 p-2 rounded">
             <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Mean (Rata-rata)</p>
             <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-              {stats.mean.toFixed(1)}{unit}
+              {formatStat(stats?.mean)}{stats?.mean !== undefined && !isNaN(stats.mean) ? unit : ""}
             </p>
           </div>
           <div className="bg-slate-50 dark:bg-slate-950 p-2 rounded">
             <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Median</p>
             <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-              {stats.median.toFixed(1)}{unit}
+              {formatStat(stats?.median)}{stats?.median !== undefined && !isNaN(stats.median) ? unit : ""}
             </p>
           </div>
           <div className="bg-slate-50 dark:bg-slate-950 p-2 rounded">
             <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Std Deviasi</p>
             <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-              ±{stats.stdDev.toFixed(1)}{unit}
+              {stats?.stdDev !== undefined && !isNaN(stats.stdDev) ? `±${formatStat(stats.stdDev)}${unit}` : "—"}
             </p>
           </div>
         </div>
@@ -165,19 +158,53 @@ const SingleHistogram: React.FC<{
   );
 };
 
+export interface DistributionAnalysisProps {
+  histograms?: {
+    temperature?: { bins: HistogramBin[]; stats?: ParameterStats } | HistogramBin[];
+    humidity?: { bins: HistogramBin[]; stats?: ParameterStats } | HistogramBin[];
+    pressure?: { bins: HistogramBin[]; stats?: ParameterStats } | HistogramBin[];
+  };
+  stats?: AnalysisStats;
+  periodLabel?: string;
+  isDarkMode: boolean;
+}
+
 export const DistributionAnalysis: React.FC<DistributionAnalysisProps> = ({
   histograms,
+  stats,
+  periodLabel = "periode terpilih",
   isDarkMode,
 }) => {
+  // Helper to extract bins & stats regardless of payload structure (nested or direct array)
+  const extractData = (
+    paramData?: { bins: HistogramBin[]; stats?: ParameterStats } | HistogramBin[],
+    fallbackStat?: ParameterStats
+  ) => {
+    if (!paramData) {
+      return { bins: [], stats: fallbackStat };
+    }
+    if (Array.isArray(paramData)) {
+      return { bins: paramData, stats: fallbackStat };
+    }
+    return {
+      bins: paramData.bins || [],
+      stats: paramData.stats || fallbackStat,
+    };
+  };
+
+  const temp = extractData(histograms?.temperature, stats?.temperature);
+  const hum = extractData(histograms?.humidity, stats?.humidity);
+  const press = extractData(histograms?.pressure, stats?.pressure);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* 1. Temperature Distribution */}
       <SingleHistogram
         title="Distribusi Suhu Udara"
-        description="Frekuensi kemunculan suhu udara selama 7 hari"
+        description={`Frekuensi kemunculan suhu udara selama ${periodLabel}`}
         icon={<Thermometer className="h-5 w-5 text-orange-500" />}
-        bins={histograms.temperature.bins}
-        stats={histograms.temperature.stats}
+        bins={temp.bins}
+        stats={temp.stats}
         isDarkMode={isDarkMode}
         colorGradient={["#f87171", "#ef4444"]}
         yAxisName="Jumlah Sampel"
@@ -187,10 +214,10 @@ export const DistributionAnalysis: React.FC<DistributionAnalysisProps> = ({
       {/* 2. Humidity Distribution */}
       <SingleHistogram
         title="Distribusi Kelembaban"
-        description="Frekuensi kemunculan kelembaban relatif selama 7 hari"
+        description={`Frekuensi kemunculan kelembaban relatif selama ${periodLabel}`}
         icon={<Droplets className="h-5 w-5 text-blue-500" />}
-        bins={histograms.humidity.bins}
-        stats={histograms.humidity.stats}
+        bins={hum.bins}
+        stats={hum.stats}
         isDarkMode={isDarkMode}
         colorGradient={["#60a5fa", "#3b82f6"]}
         yAxisName="Jumlah Sampel"
@@ -200,10 +227,10 @@ export const DistributionAnalysis: React.FC<DistributionAnalysisProps> = ({
       {/* 3. Pressure Distribution */}
       <SingleHistogram
         title="Distribusi Tekanan Udara"
-        description="Frekuensi kemunculan tekanan udara selama 7 hari"
+        description={`Frekuensi kemunculan tekanan udara selama ${periodLabel}`}
         icon={<Gauge className="h-5 w-5 text-pink-500" />}
-        bins={histograms.pressure.bins}
-        stats={histograms.pressure.stats}
+        bins={press.bins}
+        stats={press.stats}
         isDarkMode={isDarkMode}
         colorGradient={["#f472b6", "#ec4899"]}
         yAxisName="Jumlah Sampel"

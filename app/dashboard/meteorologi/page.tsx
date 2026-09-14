@@ -590,6 +590,8 @@ export default function AnalisisDashboardPage() {
                     </h3>
                     <DistributionAnalysis
                       histograms={weeklyData.histograms}
+                      stats={weeklyData.stats}
+                      periodLabel={periodScopeLabel}
                       isDarkMode={isDarkMode}
                     />
                   </div>
