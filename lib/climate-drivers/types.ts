@@ -253,5 +253,23 @@ export interface MonsoonData {
   };
 }
 
+export interface EcmwfMjoTimeOption {
+  value: string; // misal: "202609130000"
+  iso: string;   // misal: "2026-09-13T00:00:00Z"
+  label: string; // misal: "Sun 13 Sep 2026"
+}
 
-
+export interface EcmwfMjoData {
+  success: boolean;
+  product: string;
+  title: string;
+  description: string;
+  imageUrl: string | null;
+  baseTime: string;
+  availableTimes: EcmwfMjoTimeOption[];
+  copyright: string;
+  licence: string;
+  sourceUrl: string;
+  isFallback?: boolean;
+  error?: string;
+}

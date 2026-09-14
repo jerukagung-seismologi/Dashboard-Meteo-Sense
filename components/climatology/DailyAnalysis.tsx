@@ -16,6 +16,15 @@ const Plot = dynamic(() => import("react-plotly.js"), {
   ),
 });
 
+const ReactECharts = dynamic(() => import("echarts-for-react"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[480px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+      Membuat visualisasi heatmap harian...
+    </div>
+  ),
+});
+
 interface DailyAnalysisProps {
   points: AnalysisPoint[];
   heatmaps?: {
@@ -167,104 +176,140 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
     return heatmaps?.[activeParam];
   }, [heatmaps, activeParam]);
 
-  const heatmapTrace = useMemo(() => {
-    if (!currentHeatmapData) return [];
+  const dailyHeatmapOption = useMemo(() => {
+    if (!currentHeatmapData?.z) return {};
 
-    const colorscales = {
+    const dataPoints: [number, number, number | null][] = [];
+    for (let h = 0; h < currentHeatmapData.hours.length; h++) {
+      for (let m = 0; m < currentHeatmapData.minutes.length; m++) {
+        const val = currentHeatmapData.z[h]?.[m];
+        dataPoints.push([m, h, val !== null && Number.isFinite(val) ? val : null]);
+      }
+    }
+
+    const flatVals = currentHeatmapData.z
+      .flat()
+      .filter((v): v is number => v !== null && Number.isFinite(v));
+    const zmin = flatVals.length > 0 ? Math.floor(Math.min(...flatVals)) : 0;
+    const zmax = flatVals.length > 0 ? Math.ceil(Math.max(...flatVals)) : 100;
+
+    const colorPalettes = {
       temperature: [
-        [0, "#313695"],
-        [0.1, "#4575b4"],
-        [0.2, "#74add1"],
-        [0.3, "#abd9e9"],
-        [0.4, "#e0f3f8"],
-        [0.5, "#ffffbf"],
-        [0.6, "#fee090"],
-        [0.7, "#fdae61"],
-        [0.8, "#f46d43"],
-        [0.9, "#d73027"],
-        [1.0, "#a50026"]
+        "#313695", "#4575b4", "#74add1", "#abd9e9", "#e0f3f8",
+        "#ffffbf", "#fee090", "#fdae61", "#f46d43", "#d73027", "#a50026"
       ],
       humidity: [
-        [0, "#eff6ff"],
-        [0.25, "#bfdbfe"],
-        [0.5, "#60a5fa"],
-        [0.75, "#2563eb"],
-        [1.0, "#1e3a8a"]
+        "#eff6ff", "#bfdbfe", "#60a5fa", "#3b82f6", "#2563eb", "#1d4ed8", "#172554"
       ],
       pressure: [
-        [0, "#440154"],
-        [0.2, "#414487"],
-        [0.4, "#2a788e"],
-        [0.6, "#22a884"],
-        [0.8, "#7ad151"],
-        [1.0, "#fde725"]
+        "#440154", "#482878", "#3e4989", "#31688e", "#26828e",
+        "#1f9e89", "#35b779", "#6ece58", "#b5de2b", "#fde725"
       ]
     };
 
-    const textMatrix = currentHeatmapData.z.map((row) =>
-      row.map((val) => (val !== null ? `<b>${val.toFixed(1)}</b>` : ""))
-    );
+    const unit = activeParam === "temperature" ? "°C" : activeParam === "humidity" ? "%" : "hPa";
+    const paramName =
+      activeParam === "temperature"
+        ? "Suhu Udara"
+        : activeParam === "humidity"
+        ? "Kelembaban"
+        : "Tekanan Udara";
 
-    const flatVals = currentHeatmapData.z.flat().filter((v) => v !== null && Number.isFinite(v)) as number[];
-    const zmin = flatVals.length > 0 ? Math.min(...flatVals) : undefined;
-    const zmax = flatVals.length > 0 ? Math.max(...flatVals) : undefined;
-
-    return [
-      {
-        x: currentHeatmapData.minutes,
-        y: currentHeatmapData.hours,
-        z: currentHeatmapData.z,
-        type: "heatmap" as const,
-        colorscale: colorscales[activeParam],
-        showscale: true,
-        zmin,
-        zmax,
-        xgap: 2,
-        ygap: 2,
-        text: textMatrix as any,
-        texttemplate: "%{text}",
-        textfont: {
-          size: 9,
-          color: isDarkMode ? "#ffffff" : "#1e293b",
-          family: "Inter, sans-serif"
+    return {
+      backgroundColor: "transparent",
+      animation: false,
+      grid: {
+        top: 30,
+        right: 80,
+        bottom: 50,
+        left: 65,
+        containLabel: false,
+      },
+      tooltip: {
+        position: "top",
+        backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.94)" : "rgba(255, 255, 255, 0.96)",
+        borderColor: isDarkMode ? "#334155" : "#e2e8f0",
+        borderWidth: 1,
+        textStyle: {
+          color: isDarkMode ? "#f8fafc" : "#0f172a",
+          fontSize: 12,
         },
-        colorbar: {
-          tickfont: { color: textColor },
-          title: {
-            text: activeParam === "temperature" ? "°C" : activeParam === "humidity" ? "%" : "hPa",
-            font: { color: textColor }
-          }
-        }
-      } as any
-    ];
+        formatter: (p: any) => {
+          if (!p || !p.data) return "";
+          const mIdx = p.data[0];
+          const hIdx = p.data[1];
+          const rawVal = p.data[2];
+          const hStr = currentHeatmapData.hours[hIdx] || "00";
+          const mStr = currentHeatmapData.minutes[mIdx] || "00";
+          const valText =
+            rawVal !== null && rawVal !== undefined
+              ? `<b>${Number(rawVal).toFixed(1)} ${unit}</b>`
+              : `<span style="color:#94a3b8">Tidak Ada Data</span>`;
+          return `
+            <div style="font-weight:700; margin-bottom:2px;">Pukul ${hStr}:${mStr} WIB</div>
+            <div>${paramName}: ${valText}</div>
+          `;
+        },
+      },
+      xAxis: {
+        type: "category",
+        data: currentHeatmapData.minutes,
+        axisLine: { lineStyle: { color: isDarkMode ? "#334155" : "#cbd5e1" } },
+        axisLabel: {
+          color: textColor,
+          fontSize: 10,
+          interval: 4,
+          formatter: (val: string) => `${val}'`,
+        },
+        name: "Menit",
+        nameLocation: "middle",
+        nameGap: 28,
+        nameTextStyle: { color: textColor, fontSize: 11, fontWeight: 600 },
+      },
+      yAxis: {
+        type: "category",
+        data: currentHeatmapData.hours.map((h) => `${h}:00`),
+        axisLine: { lineStyle: { color: isDarkMode ? "#334155" : "#cbd5e1" } },
+        axisLabel: { color: textColor, fontSize: 10 },
+        name: "Jam (WIB)",
+        nameLocation: "middle",
+        nameGap: 45,
+        nameTextStyle: { color: textColor, fontSize: 11, fontWeight: 600 },
+      },
+      visualMap: {
+        min: zmin,
+        max: zmax,
+        calculable: true,
+        orient: "vertical",
+        right: 10,
+        top: "middle",
+        inRange: {
+          color: colorPalettes[activeParam],
+        },
+        textStyle: { color: textColor, fontSize: 10 },
+        formatter: (val: number) => `${val.toFixed(0)}${unit}`,
+      },
+      series: [
+        {
+          name: paramName,
+          type: "heatmap",
+          data: dataPoints,
+          itemStyle: {
+            borderColor: isDarkMode ? "#0f172a" : "#ffffff",
+            borderWidth: 0.5,
+          },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 8,
+              shadowColor: "rgba(0, 0, 0, 0.5)",
+              borderColor: "#ffffff",
+              borderWidth: 1.5,
+            },
+          },
+        },
+      ],
+    };
   }, [currentHeatmapData, activeParam, isDarkMode, textColor]);
-
-  const heatmapLayout = useMemo(() => ({
-    autosize: true,
-    height: 380,
-    margin: { l: 50, r: 20, t: 20, b: 50 },
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    font: { color: textColor, family: "Inter, sans-serif" },
-    xaxis: {
-      title: { text: "Menit" },
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-      type: "category" as const,
-      tickmode: "array" as const,
-      tickvals: Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0")),
-    },
-    yaxis: {
-      title: { text: "Jam (WIB)" },
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-      type: "category" as const,
-      tickmode: "array" as const,
-      tickvals: Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0")),
-    }
-  }), [textColor, gridColor]);
 
   return (
     <div className="space-y-6">
@@ -380,7 +425,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
         </CardContent>
       </Card>
 
-      {/* 4. Daily Heatmap Chart (Plotly) */}
+      {/* 4. Daily Heatmap Chart (ECharts) */}
       {heatmaps && currentHeatmapData && (
         <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
           <CardHeader className="flex flex-col md:flex-row md:items-center justify-between pb-4 gap-4">
@@ -389,7 +434,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
                 <Grid className="h-5 w-5 text-indigo-500" /> Heatmap Diurnal Harian
               </CardTitle>
               <CardDescription>
-                Distribusi nilai parameter cuaca menit-demi-menit terhadap jam WIB (Plotly)
+                Distribusi nilai parameter cuaca menit-demi-menit terhadap jam WIB (ECharts)
               </CardDescription>
             </div>
             
@@ -428,13 +473,15 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
             </div>
           </CardHeader>
           <CardContent className="p-2 overflow-x-auto">
-            <div className="min-w-[700px]">
-              <Plot
-                data={heatmapTrace}
-                layout={heatmapLayout}
-                config={{ responsive: true, displayModeBar: false }}
-                style={{ width: "100%", height: "380px" }}
-              />
+            <div className="min-w-[760px]">
+              {dailyHeatmapOption && (
+                <ReactECharts
+                  option={dailyHeatmapOption}
+                  style={{ width: "100%", height: "460px" }}
+                  notMerge={true}
+                  lazyUpdate={true}
+                />
+              )}
             </div>
           </CardContent>
         </Card>

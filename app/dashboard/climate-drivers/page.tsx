@@ -10,6 +10,7 @@ import { SummaryCards } from "@/components/climate-drivers/SummaryCards";
 import { getClimateDriversSummary, getEnsoData, getMjoData, getIodData, getMonsoonData } from "@/lib/climate-drivers/climateData";
 import { ENSOCharts } from "@/components/climate-drivers/ENSOCharts";
 import { MJOCharts } from "@/components/climate-drivers/MJOCharts";
+import { EcmwfMjoViewer } from "@/components/climate-drivers/EcmwfMjoViewer";
 import { IODCharts } from "@/components/climate-drivers/IODCharts";
 import { MonsoonCharts } from "@/components/climate-drivers/MonsoonCharts";
 import { NcicsMapViewer } from "@/components/climate-drivers/NcicsMapViewer";
@@ -151,8 +152,9 @@ export default function ClimateDriversPage() {
               <ENSOCharts data={ensoData} isDarkMode={isDarkMode} />
             </TabsContent>
 
-            <TabsContent value="mjo" className="mt-0">
+            <TabsContent value="mjo" className="mt-0 space-y-6">
               <MJOCharts data={mjoData} isDarkMode={isDarkMode} />
+              <EcmwfMjoViewer />
             </TabsContent>
 
             <TabsContent value="iod" className="mt-0">
