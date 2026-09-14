@@ -19,7 +19,7 @@ const Plot = dynamic(() => import("react-plotly.js"), {
 const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
   loading: () => (
-    <div className="h-[480px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+    <div className="h-[460px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
       Membuat visualisasi heatmap harian...
     </div>
   ),
@@ -58,10 +58,20 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
   // Format x-axis categories: WIB hours "HH:MM"
   const xData = useMemo(() => points.map((p) => p.timeKeyWib), [points]);
 
-  // Common Plotly Layout parameters
+  // Common Plotly Layout parameters with unified hover across all 3 lines
   const commonLayout = useMemo(() => ({
     autosize: true,
     height: 350,
+    hovermode: "x unified" as const,
+    hoverlabel: {
+      bgcolor: isDarkMode ? "#0f172a" : "#ffffff",
+      bordercolor: isDarkMode ? "#334155" : "#cbd5e1",
+      font: {
+        family: "Inter, sans-serif",
+        size: 12,
+        color: isDarkMode ? "#f8fafc" : "#0f172a",
+      },
+    },
     margin: { l: 50, r: 20, t: 30, b: 50 },
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
@@ -70,6 +80,12 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       gridcolor: gridColor,
       zerolinecolor: gridColor,
       tickcolor: textColor,
+      showspikes: true,
+      spikemode: "across" as const,
+      spikesnap: "cursor" as const,
+      spikethickness: 1,
+      spikedash: "dot" as const,
+      spikecolor: isDarkMode ? "#64748b" : "#94a3b8",
     },
     yaxis: {
       gridcolor: gridColor,
@@ -85,7 +101,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       x: 1,
       font: { color: textColor },
     },
-  }), [textColor, gridColor]);
+  }), [textColor, gridColor, isDarkMode]);
 
   // Suhu Udara Trace Data
   const tempTraces = useMemo(() => [
@@ -96,6 +112,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       type: "scatter" as const,
       mode: "lines" as const,
       line: { color: "#f87171", width: 2, dash: "dash" as const },
+      hovertemplate: "%{y:.1f} °C<extra></extra>",
     },
     {
       x: xData,
@@ -104,6 +121,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       type: "scatter" as const,
       mode: "lines" as const,
       line: { color: "#ef4444", width: 3 },
+      hovertemplate: "%{y:.1f} °C<extra></extra>",
     },
     {
       x: xData,
@@ -112,6 +130,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       type: "scatter" as const,
       mode: "lines" as const,
       line: { color: "#60a5fa", width: 2, dash: "dash" as const },
+      hovertemplate: "%{y:.1f} °C<extra></extra>",
     },
   ], [xData, points]);
 
@@ -124,6 +143,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       type: "scatter" as const,
       mode: "lines" as const,
       line: { color: "#34d399", width: 2, dash: "dash" as const },
+      hovertemplate: "%{y:.1f} %<extra></extra>",
     },
     {
       x: xData,
@@ -132,6 +152,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       type: "scatter" as const,
       mode: "lines" as const,
       line: { color: "#059669", width: 3 },
+      hovertemplate: "%{y:.1f} %<extra></extra>",
     },
     {
       x: xData,
@@ -140,6 +161,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       type: "scatter" as const,
       mode: "lines" as const,
       line: { color: "#f59e0b", width: 2, dash: "dash" as const },
+      hovertemplate: "%{y:.1f} %<extra></extra>",
     },
   ], [xData, points]);
 
@@ -152,6 +174,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       type: "scatter" as const,
       mode: "lines" as const,
       line: { color: "#f43f5e", width: 2, dash: "dash" as const },
+      hovertemplate: "%{y:.1f} hPa<extra></extra>",
     },
     {
       x: xData,
@@ -160,6 +183,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       type: "scatter" as const,
       mode: "lines" as const,
       line: { color: "#db2777", width: 3 },
+      hovertemplate: "%{y:.1f} hPa<extra></extra>",
     },
     {
       x: xData,
@@ -168,6 +192,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       type: "scatter" as const,
       mode: "lines" as const,
       line: { color: "#818cf8", width: 2, dash: "dash" as const },
+      hovertemplate: "%{y:.1f} hPa<extra></extra>",
     },
   ], [xData, points]);
 
@@ -371,16 +396,20 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
           <CardTitle className="text-lg font-bold flex items-center gap-2">
             <Thermometer className="h-5 w-5 text-orange-500" /> Analisis Suhu Udara Harian
           </CardTitle>
-          <CardDescription>Suhu maksimum, rata-rata, dan minimum setiap jam (WIB)</CardDescription>
+          <CardDescription>Suhu maksimum, rata-rata, dan minimum setiap jam (WIB) — sorot untuk melihat ketiga nilai</CardDescription>
         </CardHeader>
         <CardContent className="p-2">
-          {points.length > 0 && (
+          {points.length > 0 ? (
             <Plot
               data={tempTraces}
               layout={{ ...commonLayout, yaxis: { ...commonLayout.yaxis, title: { text: "Suhu (°C)" } } }}
-              config={{ responsive: true, displayModeBar: false }}
+              config={{ responsive: true, displayModeBar: true, displaylogo: false }}
               style={{ width: "100%", height: "350px" }}
             />
+          ) : (
+            <div className="h-[350px] flex items-center justify-center text-muted-foreground border border-dashed rounded-lg">
+              Tidak ada data observasi suhu
+            </div>
           )}
         </CardContent>
       </Card>
@@ -391,16 +420,20 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
           <CardTitle className="text-lg font-bold flex items-center gap-2">
             <Droplets className="h-5 w-5 text-blue-500" /> Analisis Kelembaban Relatif Harian
           </CardTitle>
-          <CardDescription>Kelembaban maksimum, rata-rata, dan minimum setiap jam (WIB)</CardDescription>
+          <CardDescription>Kelembaban maksimum, rata-rata, dan minimum setiap jam (WIB) — sorot untuk melihat ketiga nilai</CardDescription>
         </CardHeader>
         <CardContent className="p-2">
-          {points.length > 0 && (
+          {points.length > 0 ? (
             <Plot
               data={humTraces}
               layout={{ ...commonLayout, yaxis: { ...commonLayout.yaxis, title: { text: "Kelembaban (%)" }, max: 100, min: 0 } as any }}
-              config={{ responsive: true, displayModeBar: false }}
+              config={{ responsive: true, displayModeBar: true, displaylogo: false }}
               style={{ width: "100%", height: "350px" }}
             />
+          ) : (
+            <div className="h-[350px] flex items-center justify-center text-muted-foreground border border-dashed rounded-lg">
+              Tidak ada data observasi kelembaban
+            </div>
           )}
         </CardContent>
       </Card>
@@ -411,16 +444,20 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
           <CardTitle className="text-lg font-bold flex items-center gap-2">
             <Gauge className="h-5 w-5 text-pink-500" /> Analisis Tekanan Udara Harian
           </CardTitle>
-          <CardDescription>Tekanan maksimum, rata-rata, dan minimum setiap jam (WIB)</CardDescription>
+          <CardDescription>Tekanan maksimum, rata-rata, dan minimum setiap jam (WIB) — sorot untuk melihat ketiga nilai</CardDescription>
         </CardHeader>
         <CardContent className="p-2">
-          {points.length > 0 && (
+          {points.length > 0 ? (
             <Plot
               data={pressTraces}
               layout={{ ...commonLayout, yaxis: { ...commonLayout.yaxis, title: { text: "Tekanan (hPa)" } } }}
-              config={{ responsive: true, displayModeBar: false }}
+              config={{ responsive: true, displayModeBar: true, displaylogo: false }}
               style={{ width: "100%", height: "350px" }}
             />
+          ) : (
+            <div className="h-[350px] flex items-center justify-center text-muted-foreground border border-dashed rounded-lg">
+              Tidak ada data observasi tekanan
+            </div>
           )}
         </CardContent>
       </Card>

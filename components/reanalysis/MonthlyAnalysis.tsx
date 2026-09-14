@@ -164,6 +164,7 @@ export const MonthlyAnalysis: React.FC<MonthlyAnalysisProps> = ({
   const layout = useMemo(() => ({
     autosize: true,
     height: 350,
+    hovermode: "x unified" as const,
     margin: { l: 50, r: 20, t: 25, b: 50 },
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
