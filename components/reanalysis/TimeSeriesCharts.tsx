@@ -184,6 +184,24 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
   }, [activeTab, times, temperature, humidity, pressure, windSpeed, windGust, rain, radiation]);
 
   const chartOption = useMemo(() => {
+    const allVals = (activeInfo.series || [])
+      .flatMap((s: any) => (s.data || []).map((d: any) => d.value?.[1]))
+      .filter((v: any) => typeof v === "number" && Number.isFinite(v));
+    let yMin: number | undefined = undefined;
+    let yMax: number | undefined = undefined;
+    if (allVals.length > 0) {
+      if (activeTab === "rain" || activeTab === "radiation") {
+        yMin = 0;
+        yMax = Math.ceil(Math.max(...allVals));
+      } else if (activeTab === "wind") {
+        yMin = Math.max(0, Math.floor(Math.min(...allVals)));
+        yMax = Math.ceil(Math.max(...allVals));
+      } else {
+        yMin = Math.floor(Math.min(...allVals));
+        yMax = Math.ceil(Math.max(...allVals));
+      }
+    }
+
     return {
       backgroundColor: "transparent",
       animation: true,
@@ -228,7 +246,7 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
             <div style="display:flex; flex-direction:column; gap:4px;">
           `;
           params.forEach((item: any) => {
-            const val = typeof item.value[1] === "number" ? item.value[1].toFixed(1) : item.value[1];
+            const val = typeof item.value[1] === "number" ? item.value[1].toFixed(2) : item.value[1];
             html += `
               <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
                 <span style="display:flex; align-items:center; gap:6px;">
@@ -268,6 +286,8 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
         type: "value",
         scale: true,
         name: activeInfo.unit,
+        min: yMin,
+        max: yMax,
         nameTextStyle: {
           color: textColor,
           fontSize: 11,

@@ -62,12 +62,30 @@ const TripleLineChart = ({ data, dataKeyMax, dataKeyMin, dataKeyAvg, name, color
     return d.date;
   });
 
+  const allVals = data
+    .flatMap((d: any) => [d[dataKeyMax], d[dataKeyAvg], d[dataKeyMin]])
+    .filter((v: any) => typeof v === 'number' && Number.isFinite(v));
+  const minVal = allVals.length > 0 ? (unit === '%' ? Math.max(0, Math.floor(Math.min(...allVals))) : Math.floor(Math.min(...allVals))) : undefined;
+  const maxVal = allVals.length > 0 ? (unit === '%' ? Math.min(100, Math.ceil(Math.max(...allVals))) : Math.ceil(Math.max(...allVals))) : undefined;
+
   const option = {
     tooltip: { 
       trigger: 'axis',
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
       borderColor: '#e2e8f0',
       textStyle: { color: '#1e293b', fontSize: 12 },
+      formatter: (params: any[]) => {
+        if (!params?.length) return '';
+        let html = `<div style="font-weight:600;margin-bottom:4px;font-size:11px">${params[0].axisValue}</div>`;
+        params.forEach((p: any) => {
+          const val = p.value != null ? Number(p.value).toFixed(2) : '—';
+          html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>
+            <span>${p.seriesName}: <b>${val} ${unit}</b></span>
+          </div>`;
+        });
+        return html;
+      }
     },
     legend: { 
       data: ['Maksimum', 'Rata-rata', 'Minimum'], 
@@ -85,6 +103,8 @@ const TripleLineChart = ({ data, dataKeyMax, dataKeyMin, dataKeyAvg, name, color
       type: 'value', 
       name: unit, 
       scale: true,
+      min: minVal,
+      max: maxVal,
       splitLine: { lineStyle: { color: '#f1f5f9' } } 
     },
     dataZoom: [
@@ -114,10 +134,18 @@ const PrecipitationBarChart = ({ data, height = "260px" }: { data: WeatherRecord
     return d.date;
   });
 
+  const rainVals = data.map((d) => d.rainfallTot || 0).filter(Number.isFinite);
+  const maxRain = rainVals.length > 0 ? Math.ceil(Math.max(...rainVals)) : undefined;
+
   const option = {
     tooltip: { 
       trigger: 'axis',
-      formatter: '{b}: <strong>{c} mm</strong>',
+      formatter: (params: any[]) => {
+        if (!params?.length) return '';
+        const p = params[0];
+        const val = p.value != null ? Number(p.value).toFixed(2) : '0.00';
+        return `${p.axisValue}: <strong>${val} mm</strong>`;
+      },
     },
     grid: { left: '3%', right: '3%', bottom: '8%', top: '30px', containLabel: true },
     xAxis: { 
@@ -128,6 +156,8 @@ const PrecipitationBarChart = ({ data, height = "260px" }: { data: WeatherRecord
     yAxis: { 
       type: 'value', 
       name: 'mm',
+      min: 0,
+      max: maxRain,
       splitLine: { lineStyle: { color: '#f1f5f9' } } 
     },
     series: [

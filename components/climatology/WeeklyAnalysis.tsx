@@ -93,7 +93,7 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
                 if (param.axisDimension === "x" && typeof param.value === "number") {
                   return formatEpochTime(param.value);
                 }
-                return typeof param.value === "number" ? param.value.toFixed(1) : param.value;
+                return typeof param.value === "number" ? param.value.toFixed(2) : param.value;
               },
             },
           },
@@ -108,7 +108,7 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
               <div style="display:flex; flex-direction:column; gap:4px;">
             `;
             params.forEach((item: any) => {
-              const val = typeof item.value[1] === "number" ? item.value[1].toFixed(1) : item.value[1];
+              const val = typeof item.value[1] === "number" ? item.value[1].toFixed(2) : item.value[1];
               html += `
                 <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
                   <span style="display:flex; align-items:center; gap:6px;">
@@ -236,6 +236,10 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
 
   // 1. Opsi Suhu Berkala ECharts
   const tempChartOption = useMemo(() => {
+    const validTemps = points.flatMap((p) => [p.temperatureMax, p.temperatureMean, p.temperatureMin]).filter(Number.isFinite);
+    const tempMin = validTemps.length > 0 ? Math.floor(Math.min(...validTemps)) : undefined;
+    const tempMax = validTemps.length > 0 ? Math.ceil(Math.max(...validTemps)) : undefined;
+
     const maxData: DataItem[] = points.map((p) => ({
       name: formatEpochTime(p.timestamp),
       value: [p.timestamp, p.temperatureMax],
@@ -252,12 +256,17 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
     return createWeeklyLineOption(
       "°C",
       { max: maxData, mean: meanData, min: minData },
-      { max: "#f87171", mean: "#ef4444", min: "#60a5fa" }
+      { max: "#f87171", mean: "#ef4444", min: "#60a5fa" },
+      { min: tempMin, max: tempMax }
     );
   }, [points, formatEpochTime, createWeeklyLineOption]);
 
   // 2. Opsi Kelembaban Berkala ECharts
   const humChartOption = useMemo(() => {
+    const validHums = points.flatMap((p) => [p.humidityMax, p.humidityMean, p.humidityMin]).filter(Number.isFinite);
+    const humMin = validHums.length > 0 ? Math.max(0, Math.floor(Math.min(...validHums))) : 0;
+    const humMax = validHums.length > 0 ? Math.min(100, Math.ceil(Math.max(...validHums))) : 100;
+
     const maxData: DataItem[] = points.map((p) => ({
       name: formatEpochTime(p.timestamp),
       value: [p.timestamp, p.humidityMax],
@@ -275,12 +284,16 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
       "%",
       { max: maxData, mean: meanData, min: minData },
       { max: "#34d399", mean: "#059669", min: "#f59e0b" },
-      { min: 0, max: 100 }
+      { min: humMin, max: humMax }
     );
   }, [points, formatEpochTime, createWeeklyLineOption]);
 
   // 3. Opsi Tekanan Berkala ECharts
   const pressChartOption = useMemo(() => {
+    const validPresses = points.flatMap((p) => [p.pressureMax, p.pressureMean, p.pressureMin]).filter(Number.isFinite);
+    const pressMin = validPresses.length > 0 ? Math.floor(Math.min(...validPresses)) : undefined;
+    const pressMax = validPresses.length > 0 ? Math.ceil(Math.max(...validPresses)) : undefined;
+
     const maxData: DataItem[] = points.map((p) => ({
       name: formatEpochTime(p.timestamp),
       value: [p.timestamp, p.pressureMax],
@@ -297,7 +310,8 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
     return createWeeklyLineOption(
       "hPa",
       { max: maxData, mean: meanData, min: minData },
-      { max: "#f43f5e", mean: "#db2777", min: "#818cf8" }
+      { max: "#f43f5e", mean: "#db2777", min: "#818cf8" },
+      { min: pressMin, max: pressMax }
     );
   }, [points, formatEpochTime, createWeeklyLineOption]);
 
@@ -363,58 +377,6 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
           </CardTitle>
           <CardDescription>
             Tren tekanan udara resolusi tinggi (Maksimum, Rata-rata, Minimum) dalam {timezone === "WIB" ? "WIB (Lokal)" : "UTC (Standar WMO)"} — sorot untuk melihat ketiga nilai
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-2">
-          {points.length > 0 ? (
-            <ReactECharts
-              option={tempChartOption}
-              style={{ width: "100%", height: "350px" }}
-              notMerge={false}
-              lazyUpdate={true}
-            />
-          ) : (
-            <div className="h-[350px] flex items-center justify-center text-muted-foreground border border-dashed rounded-lg">
-              Tidak ada data observasi suhu
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* 2. Weekly Humidity */}
-      <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <Droplets className="h-5 w-5 text-blue-500" /> Analisis Kelembaban Relatif Berkala
-          </CardTitle>
-          <CardDescription>
-            Tren kelembaban udara resolusi tinggi (Maksimum, Rata-rata, Minimum) — sorot untuk melihat ketiga nilai
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-2">
-          {points.length > 0 ? (
-            <ReactECharts
-              option={humChartOption}
-              style={{ width: "100%", height: "350px" }}
-              notMerge={false}
-              lazyUpdate={true}
-            />
-          ) : (
-            <div className="h-[350px] flex items-center justify-center text-muted-foreground border border-dashed rounded-lg">
-              Tidak ada data observasi kelembaban
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* 3. Weekly Pressure */}
-      <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <Gauge className="h-5 w-5 text-pink-500" /> Analisis Tekanan Udara Permukaan Berkala
-          </CardTitle>
-          <CardDescription>
-            Tren tekanan udara resolusi tinggi (Maksimum, Rata-rata, Minimum) — sorot untuk melihat ketiga nilai
           </CardDescription>
         </CardHeader>
         <CardContent className="p-2">

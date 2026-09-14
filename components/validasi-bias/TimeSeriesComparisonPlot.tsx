@@ -77,12 +77,10 @@ export const TimeSeriesComparisonPlot: React.FC<TimeSeriesComparisonPlotProps> =
         scale: true, // Sangat penting: jangan pernah paksa minimum 0 untuk tekanan, suhu, dll.
         min: (val: { min: number; max: number }) => {
           if (unit === "mm" || (unit === "m/s" && val.min >= 0)) return 0;
-          const pad = (val.max - val.min) * 0.1 || 1;
-          return Number((val.min - pad).toFixed(1));
+          return Math.floor(val.min);
         },
         max: (val: { min: number; max: number }) => {
-          const pad = (val.max - val.min) * 0.1 || 1;
-          return Number((val.max + pad).toFixed(1));
+          return Math.ceil(val.max);
         },
         name: unit,
         nameTextStyle: { color: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 11 },

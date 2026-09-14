@@ -134,7 +134,35 @@ export default function LaporanKlimatologi({ sensorId, sensorName, displayName }
     return {
       tooltip: {
         trigger: "axis",
-        axisPointer: { type: "cross" },
+        axisPointer: {
+          type: "cross",
+          label: {
+            backgroundColor: "#334155",
+            formatter: (params: any) => {
+              if (params.axisDimension === "y") {
+                const val = Number(params.value);
+                return Number.isFinite(val) ? val.toFixed(2) : params.value;
+              }
+              return params.value;
+            },
+          },
+        },
+        formatter: (params: any) => {
+          if (!Array.isArray(params) || params.length === 0) return "";
+          let html = `<div class="text-xs font-sans"><div class="font-bold mb-1 border-b pb-1 text-slate-500">${params[0].axisValue}</div>`;
+          params.forEach((item: any) => {
+            let unit = "°C";
+            if (item.seriesName === "Curah Hujan") unit = "mm";
+            else if (item.seriesName === "Kelembapan") unit = "%";
+            const val = item.value != null ? `${Number(item.value).toFixed(2)} ${unit}` : "—";
+            html += `<div class="flex items-center justify-between gap-4 py-0.5">
+              <span>${item.marker} ${item.seriesName}:</span>
+              <strong class="font-mono">${val}</strong>
+            </div>`;
+          });
+          html += "</div>";
+          return html;
+        },
       },
       legend: {
         data: ["Suhu Rata²", "Suhu Maks", "Suhu Min", "Curah Hujan", "Kelembapan"],

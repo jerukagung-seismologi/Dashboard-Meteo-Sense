@@ -49,20 +49,65 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
   const bsiso1Vals = timeSeries.map((t) => t.bsiso1 ?? 0);
   const bsiso2Vals = timeSeries.map((t) => t.bsiso2 ?? 0);
 
+  // Helper to compute rounded integer min bound that auto-adapts dynamically to visible series upon legend toggles
+  const calculateDynamicMin = (extent: { min: number; max: number }, thresholdCheck?: number) => {
+    if (extent.min == null || !Number.isFinite(extent.min) || extent.min === Infinity || extent.min === -Infinity) {
+      return undefined;
+    }
+    const floorMin = Math.floor(extent.min);
+    const ceilMax = Math.ceil(extent.max);
+    // When cold surge index is visible (reaching negative values <= -4), ensure the active surge markLine (-8.0) is visible
+    if (thresholdCheck != null && floorMin <= -4) {
+      return Math.min(floorMin, thresholdCheck);
+    }
+    if (floorMin === ceilMax) return floorMin - 1;
+    return floorMin;
+  };
+
+  // Helper to compute rounded integer max bound that auto-adapts dynamically to visible series upon legend toggles
+  const calculateDynamicMax = (extent: { min: number; max: number }) => {
+    if (extent.max == null || !Number.isFinite(extent.max) || extent.max === Infinity || extent.max === -Infinity) {
+      return undefined;
+    }
+    const floorMin = Math.floor(extent.min);
+    const ceilMax = Math.ceil(extent.max);
+    if (floorMin === ceilMax) return ceilMax + 1;
+    return ceilMax;
+  };
+
   // 1. Dual Dipole Chart Option (AUSMI vs WNPMI)
   const dipoleChartOption = useMemo(() => {
     return {
       backgroundColor: "transparent",
+      animation: true,
+      animationDuration: 750,
+      animationDurationUpdate: 750,
+      animationEasing: "cubicOut",
+      animationEasingUpdate: "cubicInOut",
       tooltip: {
         trigger: "axis",
         backgroundColor: isDarkMode ? "#0f172a" : "#ffffff",
         borderColor: isDarkMode ? "#334155" : "#e2e8f0",
         textStyle: { color: isDarkMode ? "#f8fafc" : "#0f172a", fontSize: 12 },
+        formatter: (params: any) => {
+          if (!Array.isArray(params) || params.length === 0) return "";
+          let html = `<div class="text-xs font-sans"><div class="font-bold mb-1 border-b pb-1 text-slate-500">${params[0].axisValue}</div>`;
+          params.forEach((item: any) => {
+            const val = item.value != null ? `${Number(item.value).toFixed(2)} m/s` : "—";
+            html += `<div class="flex items-center justify-between gap-4 py-0.5">
+              <span>${item.marker} ${item.seriesName}:</span>
+              <strong class="font-mono">${val}</strong>
+            </div>`;
+          });
+          html += "</div>";
+          return html;
+        },
       },
       legend: {
         top: 0,
         textStyle: { color: isDarkMode ? "#cbd5e1" : "#475569", fontSize: 11 },
         data: ["AUSMI (Belahan Selatan / Hujan)", "WNPMI (Belahan Utara / Kemarau)"],
+        selectedMode: true,
       },
       grid: {
         top: 40,
@@ -83,13 +128,16 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
       },
       yAxis: {
         type: "value",
+        scale: true,
+        min: (val: { min: number; max: number }) => calculateDynamicMin(val),
+        max: (val: { min: number; max: number }) => calculateDynamicMax(val),
         name: "Indeks (m/s)",
         nameTextStyle: { color: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 11 },
         splitLine: { lineStyle: { color: isDarkMode ? "#1e293b" : "#f1f5f9" } },
         axisLabel: {
           color: isDarkMode ? "#94a3b8" : "#64748b",
           fontSize: 10,
-          formatter: (v: number) => (v > 0 ? `+${v}` : `${v}`),
+          formatter: (v: number) => (v > 0 ? `+${v.toFixed(2)}` : `${v.toFixed(2)}`),
         },
       },
       series: [
@@ -127,16 +175,36 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
   const surgeChartOption = useMemo(() => {
     return {
       backgroundColor: "transparent",
+      animation: true,
+      animationDuration: 750,
+      animationDurationUpdate: 750,
+      animationEasing: "cubicOut",
+      animationEasingUpdate: "cubicInOut",
       tooltip: {
         trigger: "axis",
         backgroundColor: isDarkMode ? "#0f172a" : "#ffffff",
         borderColor: isDarkMode ? "#334155" : "#e2e8f0",
         textStyle: { color: isDarkMode ? "#f8fafc" : "#0f172a", fontSize: 12 },
+        formatter: (params: any) => {
+          if (!Array.isArray(params) || params.length === 0) return "";
+          let html = `<div class="text-xs font-sans"><div class="font-bold mb-1 border-b pb-1 text-slate-500">${params[0].axisValue}</div>`;
+          params.forEach((item: any) => {
+            const raw = typeof item.value === "object" && item.value !== null ? item.value.value : item.value;
+            const val = raw != null ? `${Number(raw).toFixed(2)} m/s` : "—";
+            html += `<div class="flex items-center justify-between gap-4 py-0.5">
+              <span>${item.marker} ${item.seriesName}:</span>
+              <strong class="font-mono">${val}</strong>
+            </div>`;
+          });
+          html += "</div>";
+          return html;
+        },
       },
       legend: {
         top: 0,
         textStyle: { color: isDarkMode ? "#cbd5e1" : "#475569", fontSize: 11 },
         data: ["SCSMI (Angin Baratan LCS)", "CSI (Angin Meridional V Seruakan)"],
+        selectedMode: true,
       },
       grid: {
         top: 40,
@@ -157,13 +225,16 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
       },
       yAxis: {
         type: "value",
+        scale: true,
+        min: (val: { min: number; max: number }) => calculateDynamicMin(val, -8),
+        max: (val: { min: number; max: number }) => calculateDynamicMax(val),
         name: "Kecepatan (m/s)",
         nameTextStyle: { color: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 11 },
         splitLine: { lineStyle: { color: isDarkMode ? "#1e293b" : "#f1f5f9" } },
         axisLabel: {
           color: isDarkMode ? "#94a3b8" : "#64748b",
           fontSize: 10,
-          formatter: (v: number) => (v > 0 ? `+${v}` : `${v}`),
+          formatter: (v: number) => (v > 0 ? `+${v.toFixed(2)}` : `${v.toFixed(2)}`),
         },
       },
       series: [
@@ -204,16 +275,35 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
   const broadscaleChartOption = useMemo(() => {
     return {
       backgroundColor: "transparent",
+      animation: true,
+      animationDuration: 750,
+      animationDurationUpdate: 750,
+      animationEasing: "cubicOut",
+      animationEasingUpdate: "cubicInOut",
       tooltip: {
         trigger: "axis",
         backgroundColor: isDarkMode ? "#0f172a" : "#ffffff",
         borderColor: isDarkMode ? "#334155" : "#e2e8f0",
         textStyle: { color: isDarkMode ? "#f8fafc" : "#0f172a", fontSize: 12 },
+        formatter: (params: any) => {
+          if (!Array.isArray(params) || params.length === 0) return "";
+          let html = `<div class="text-xs font-sans"><div class="font-bold mb-1 border-b pb-1 text-slate-500">${params[0].axisValue}</div>`;
+          params.forEach((item: any) => {
+            const val = item.value != null ? `${Number(item.value).toFixed(2)} m/s` : "—";
+            html += `<div class="flex items-center justify-between gap-4 py-0.5">
+              <span>${item.marker} ${item.seriesName}:</span>
+              <strong class="font-mono">${val}</strong>
+            </div>`;
+          });
+          html += "</div>";
+          return html;
+        },
       },
       legend: {
         top: 0,
         textStyle: { color: isDarkMode ? "#cbd5e1" : "#475569", fontSize: 11 },
         data: ["WYI (Webster-Yang)", "SASMI (India / Teluk Benggala)", "EASMI (Asia Timur / Meiyu)"],
+        selectedMode: true,
       },
       grid: {
         top: 40,
@@ -234,13 +324,16 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
       },
       yAxis: {
         type: "value",
+        scale: true,
+        min: (val: { min: number; max: number }) => calculateDynamicMin(val),
+        max: (val: { min: number; max: number }) => calculateDynamicMax(val),
         name: "Kecepatan (m/s)",
         nameTextStyle: { color: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 11 },
         splitLine: { lineStyle: { color: isDarkMode ? "#1e293b" : "#f1f5f9" } },
         axisLabel: {
           color: isDarkMode ? "#94a3b8" : "#64748b",
           fontSize: 10,
-          formatter: (v: number) => (v > 0 ? `+${v}` : `${v}`),
+          formatter: (v: number) => (v > 0 ? `+${v.toFixed(2)}` : `${v.toFixed(2)}`),
         },
       },
       series: [
@@ -276,16 +369,35 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
   const bsisoTimeSeriesOption = useMemo(() => {
     return {
       backgroundColor: "transparent",
+      animation: true,
+      animationDuration: 750,
+      animationDurationUpdate: 750,
+      animationEasing: "cubicOut",
+      animationEasingUpdate: "cubicInOut",
       tooltip: {
         trigger: "axis",
         backgroundColor: isDarkMode ? "#0f172a" : "#ffffff",
         borderColor: isDarkMode ? "#334155" : "#e2e8f0",
         textStyle: { color: isDarkMode ? "#f8fafc" : "#0f172a", fontSize: 12 },
+        formatter: (params: any) => {
+          if (!Array.isArray(params) || params.length === 0) return "";
+          let html = `<div class="text-xs font-sans"><div class="font-bold mb-1 border-b pb-1 text-slate-500">${params[0].axisValue}</div>`;
+          params.forEach((item: any) => {
+            const val = item.value != null ? Number(item.value).toFixed(2) : "—";
+            html += `<div class="flex items-center justify-between gap-4 py-0.5">
+              <span>${item.marker} ${item.seriesName}:</span>
+              <strong class="font-mono">${val}</strong>
+            </div>`;
+          });
+          html += "</div>";
+          return html;
+        },
       },
       legend: {
         top: 0,
         textStyle: { color: isDarkMode ? "#cbd5e1" : "#475569", fontSize: 11 },
         data: ["BSISO1 (30–60 Hari / Propagasi Utara)", "BSISO2 (10–23 Hari / Kuasi Dua-Mingguan)"],
+        selectedMode: true,
       },
       grid: {
         top: 40,
@@ -306,13 +418,16 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
       },
       yAxis: {
         type: "value",
+        scale: true,
+        min: (val: { min: number; max: number }) => calculateDynamicMin(val),
+        max: (val: { min: number; max: number }) => calculateDynamicMax(val),
         name: "Amplitudo Indeks",
         nameTextStyle: { color: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 11 },
         splitLine: { lineStyle: { color: isDarkMode ? "#1e293b" : "#f1f5f9" } },
         axisLabel: {
           color: isDarkMode ? "#94a3b8" : "#64748b",
           fontSize: 10,
-          formatter: (v: number) => (v > 0 ? `+${v.toFixed(1)}` : `${v.toFixed(1)}`),
+          formatter: (v: number) => (v > 0 ? `+${v.toFixed(2)}` : `${v.toFixed(2)}`),
         },
       },
       series: [
@@ -480,7 +595,7 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
               <Activity className="h-5 w-5 text-teal-500" /> Analisis Visualisasi 7 Indeks Monsun &amp; 2 Modus BSISO
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed font-normal">
-              Eksplorasi deret waktu sirkulasi monsun lintas ekuator, deteksi seruakan dingin, monsun skala luas Asia, serta grafik &amp; diagram fase 2D BSISO
+              Eksplorasi deret waktu sirkulasi monsun lintas ekuator, deteksi seruakan dingin, monsun skala luas Asia, serta grafik &amp; diagram fase 2D BSISO. Klik nama indeks pada legenda untuk menyembunyikan/menampilkan data dengan animasi sumbu Y otomatis.
             </CardDescription>
           </div>
         </div>
@@ -511,8 +626,12 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
               </span>
               <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">Rentang: 30 Hari Terakhir &amp; 16 Hari Prakiraan</span>
             </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-cyan-500 shrink-0" />
+              <span>Klik legenda di atas grafik untuk menyembunyikan/menampilkan salah satu indeks — skala sumbu Y akan bertransisi dan menyesuaikan nilainya secara otomatis.</span>
+            </p>
             <div className="h-[340px] w-full">
-              <ReactECharts option={dipoleChartOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
+              <ReactECharts option={dipoleChartOption} notMerge={false} lazyUpdate={false} style={{ height: "100%", width: "100%" }} />
             </div>
           </TabsContent>
 
@@ -526,8 +645,12 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
                 Ambang Batas Seruakan: V ≤ -8.0 m/s
               </Badge>
             </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+              <span>Klik legenda di atas grafik untuk menyembunyikan/menampilkan salah satu indeks — skala sumbu Y akan bertransisi dan menyesuaikan nilainya secara otomatis.</span>
+            </p>
             <div className="h-[340px] w-full">
-              <ReactECharts option={surgeChartOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
+              <ReactECharts option={surgeChartOption} notMerge={false} lazyUpdate={false} style={{ height: "100%", width: "100%" }} />
             </div>
           </TabsContent>
 
@@ -539,8 +662,12 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
               </span>
               <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">Rentang: 30 Hari Terakhir &amp; 16 Hari Prakiraan</span>
             </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+              <span>Klik legenda di atas grafik untuk menyembunyikan/menampilkan salah satu indeks — skala sumbu Y akan bertransisi dan menyesuaikan nilainya secara otomatis.</span>
+            </p>
             <div className="h-[340px] w-full">
-              <ReactECharts option={broadscaleChartOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
+              <ReactECharts option={broadscaleChartOption} notMerge={false} lazyUpdate={false} style={{ height: "100%", width: "100%" }} />
             </div>
           </TabsContent>
 
@@ -554,8 +681,12 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
                 </span>
                 <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">Rentang: 30 Hari Terakhir &amp; 16 Hari Prakiraan</span>
               </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                <span>Klik legenda di atas grafik untuk menyembunyikan/menampilkan mode BSISO — skala sumbu Y akan bertransisi dan menyesuaikan nilainya secara otomatis.</span>
+              </p>
               <div className="h-[280px] w-full">
-                <ReactECharts option={bsisoTimeSeriesOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
+                <ReactECharts option={bsisoTimeSeriesOption} notMerge={false} lazyUpdate={false} style={{ height: "100%", width: "100%" }} />
               </div>
             </div>
 

@@ -58,13 +58,17 @@ export const HumidityCharts: React.FC<HumidityChartsProps> = ({
       }
     });
 
+    const validHums = points.flatMap((p) => [p.humidityMax, p.humidityMean, p.humidityMin]).filter(Number.isFinite);
+    const humMin = validHums.length > 0 ? Math.max(0, Math.floor(Math.min(...validHums))) : undefined;
+    const humMax = validHums.length > 0 ? Math.min(100, Math.ceil(Math.max(...validHums))) : undefined;
+
     return {
       tooltip: {
         trigger: "axis",
         formatter: (params: any) => {
           let res = `<div class="font-semibold">${params[0].name}</div>`;
           params.forEach((item: any) => {
-            const val = item.value != null ? Number(item.value).toFixed(1) : '–';
+            const val = item.value != null ? Number(item.value).toFixed(2) : '–';
             res += `<div class="flex justify-between gap-4" style="font-size:12px;margin-top:4px">
               <span>${item.marker} ${item.seriesName}:</span>
               <span style="font-weight:700">${val} %</span>
@@ -91,6 +95,8 @@ export const HumidityCharts: React.FC<HumidityChartsProps> = ({
         axisLabel: { color: textColor },
         splitLine: { lineStyle: { color: gridColor } },
         scale: true,
+        min: humMin,
+        max: humMax,
       },
       series: [
         {

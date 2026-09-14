@@ -102,6 +102,14 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
       value: [d, activeInfo.data.min[idx] ?? 0],
     }));
 
+    const allVals = [
+      ...(activeInfo.data?.max || []),
+      ...(activeInfo.data?.mean || []),
+      ...(activeInfo.data?.min || []),
+    ].filter((v: any) => typeof v === "number" && Number.isFinite(v));
+    const yMin = allVals.length > 0 ? (activeTab === "wind" ? Math.max(0, Math.floor(Math.min(...allVals))) : Math.floor(Math.min(...allVals))) : undefined;
+    const yMax = allVals.length > 0 ? Math.ceil(Math.max(...allVals)) : undefined;
+
     return {
       backgroundColor: "transparent",
       animation: true,
@@ -141,7 +149,7 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
             <div style="display:flex; flex-direction:column; gap:4px;">
           `;
           params.forEach((item: any) => {
-            const val = typeof item.value[1] === "number" ? item.value[1].toFixed(1) : item.value[1];
+            const val = typeof item.value[1] === "number" ? item.value[1].toFixed(2) : item.value[1];
             html += `
               <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
                 <span style="display:flex; align-items:center; gap:6px;">
@@ -182,6 +190,8 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
         type: "value",
         scale: true,
         name: activeInfo.unit,
+        min: yMin,
+        max: yMax,
         nameTextStyle: {
           color: textColor,
           fontSize: 11,

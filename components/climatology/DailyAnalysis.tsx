@@ -158,7 +158,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
                 if (param.axisDimension === "x" && typeof param.value === "number") {
                   return formatEpochTime(param.value).label;
                 }
-                return typeof param.value === "number" ? param.value.toFixed(1) : param.value;
+                return typeof param.value === "number" ? param.value.toFixed(2) : param.value;
               },
             },
           },
@@ -174,9 +174,9 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
             `;
             params.forEach((item: any) => {
               const val = Array.isArray(item.value) && typeof item.value[1] === "number"
-                ? item.value[1].toFixed(1)
+                ? item.value[1].toFixed(2)
                 : typeof item.value === "number"
-                ? item.value.toFixed(1)
+                ? item.value.toFixed(2)
                 : "-";
               html += `
                 <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
@@ -280,8 +280,8 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
   // 1. Opsi Suhu ECharts — x = UTC epoch (p.timestamp), y = nilai suhu
   const tempChartOption = useMemo(() => {
     const validTemps = points.flatMap((p) => [p.temperatureMax, p.temperatureMean, p.temperatureMin]).filter(Number.isFinite);
-    const tempMin = validTemps.length > 0 ? Math.floor(Math.min(...validTemps)) - 1 : undefined;
-    const tempMax = validTemps.length > 0 ? Math.ceil(Math.max(...validTemps)) + 1 : undefined;
+    const tempMin = validTemps.length > 0 ? Math.floor(Math.min(...validTemps)) : undefined;
+    const tempMax = validTemps.length > 0 ? Math.ceil(Math.max(...validTemps)) : undefined;
 
     const maxData: DataItem[] = points.map((p) => ({
       name: formatEpochTime(p.timestamp).tooltipTitle,
@@ -308,8 +308,8 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
   // 2. Opsi Kelembaban ECharts — x = UTC epoch, y = kelembaban
   const humChartOption = useMemo(() => {
     const validHums = points.flatMap((p) => [p.humidityMax, p.humidityMean, p.humidityMin]).filter(Number.isFinite);
-    const humMin = validHums.length > 0 ? Math.max(0, Math.floor(Math.min(...validHums)) - 2) : 0;
-    const humMax = validHums.length > 0 ? Math.min(100, Math.ceil(Math.max(...validHums)) + 2) : 100;
+    const humMin = validHums.length > 0 ? Math.max(0, Math.floor(Math.min(...validHums))) : 0;
+    const humMax = validHums.length > 0 ? Math.min(100, Math.ceil(Math.max(...validHums))) : 100;
 
     const maxData: DataItem[] = points.map((p) => ({
       name: formatEpochTime(p.timestamp).tooltipTitle,
@@ -336,8 +336,8 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
   // 3. Opsi Tekanan ECharts — x = UTC epoch, y = tekanan
   const pressChartOption = useMemo(() => {
     const validPresses = points.flatMap((p) => [p.pressureMax, p.pressureMean, p.pressureMin]).filter(Number.isFinite);
-    const pressMin = validPresses.length > 0 ? Math.floor(Math.min(...validPresses)) - 1 : undefined;
-    const pressMax = validPresses.length > 0 ? Math.ceil(Math.max(...validPresses)) + 1 : undefined;
+    const pressMin = validPresses.length > 0 ? Math.floor(Math.min(...validPresses)) : undefined;
+    const pressMax = validPresses.length > 0 ? Math.ceil(Math.max(...validPresses)) : undefined;
 
     const maxData: DataItem[] = points.map((p) => ({
       name: formatEpochTime(p.timestamp).tooltipTitle,

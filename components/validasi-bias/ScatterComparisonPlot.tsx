@@ -46,9 +46,8 @@ export const ScatterComparisonPlot: React.FC<ScatterComparisonPlotProps> = ({
       min = 0;
       max = 100;
     } else {
-      const padding = (max - min) * 0.05 || 2;
-      min = Math.floor(min - padding);
-      max = Math.ceil(max + padding);
+      min = Math.floor(min);
+      max = Math.ceil(max);
     }
 
     return { rawScatterData: rawData, correctedScatterData: corrData, minVal: min, maxVal: max };

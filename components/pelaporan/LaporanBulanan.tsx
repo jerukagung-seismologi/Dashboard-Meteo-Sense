@@ -71,6 +71,9 @@ const formatDateLabel = (dateStr: string) => {
 // --- CHARTS ---
 const TemperatureTrendChart = ({ data }: { data: WeatherRecord[] }) => {
   const dates = data.map(d => formatDateLabel(d.date));
+  const allTemps = data.flatMap(d => [d.temperatureMax, d.temperatureAvg, d.temperatureMin]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+  const tempMin = allTemps.length > 0 ? Math.floor(Math.min(...allTemps)) : undefined;
+  const tempMax = allTemps.length > 0 ? Math.ceil(Math.max(...allTemps)) : undefined;
 
   const option = {
     tooltip: {
@@ -82,7 +85,7 @@ const TemperatureTrendChart = ({ data }: { data: WeatherRecord[] }) => {
         params.forEach((p: any) => {
           html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0">`;
           html += `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>`;
-          html += `<span>${p.seriesName}: <b>${p.value != null ? Number(p.value).toFixed(1) : '—'}°C</b></span></div>`;
+          html += `<span>${p.seriesName}: <b>${p.value != null ? Number(p.value).toFixed(2) : '—'}°C</b></span></div>`;
         });
         return html;
       }
@@ -94,6 +97,8 @@ const TemperatureTrendChart = ({ data }: { data: WeatherRecord[] }) => {
       type: 'value', 
       name: '°C', 
       scale: true,
+      min: tempMin,
+      max: tempMax,
       splitLine: { lineStyle: { color: '#f3f4f6' } },
       axisLabel: { fontSize: 10 }
     },
@@ -113,6 +118,9 @@ const TemperatureTrendChart = ({ data }: { data: WeatherRecord[] }) => {
 
 const HumidityTrendChart = ({ data }: { data: WeatherRecord[] }) => {
   const dates = data.map(d => formatDateLabel(d.date));
+  const allHums = data.flatMap(d => [d.humidityMax, d.humidityAvg, d.humidityMin]).filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+  const humMin = allHums.length > 0 ? Math.max(0, Math.floor(Math.min(...allHums))) : 0;
+  const humMax = allHums.length > 0 ? Math.min(100, Math.ceil(Math.max(...allHums))) : 100;
 
   const option = {
     tooltip: {
@@ -124,7 +132,7 @@ const HumidityTrendChart = ({ data }: { data: WeatherRecord[] }) => {
         params.forEach((p: any) => {
           html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0">`;
           html += `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>`;
-          html += `<span>${p.seriesName}: <b>${p.value != null ? Math.round(Number(p.value)) : '—'}%</b></span></div>`;
+          html += `<span>${p.seriesName}: <b>${p.value != null ? Number(p.value).toFixed(2) : '—'}%</b></span></div>`;
         });
         return html;
       }
@@ -135,8 +143,8 @@ const HumidityTrendChart = ({ data }: { data: WeatherRecord[] }) => {
     yAxis: {
       type: 'value',
       name: '%',
-      min: 30,
-      max: 100,
+      min: humMin,
+      max: humMax,
       splitLine: { lineStyle: { color: '#f3f4f6' } },
       axisLabel: { fontSize: 10 }
     },
@@ -163,7 +171,7 @@ const RainfallChart = ({ data }: { data: WeatherRecord[] }) => {
   let cum = 0;
   for (const r of dailyRain) {
     cum += r;
-    accumulation.push(Number(cum.toFixed(1)));
+    accumulation.push(Number(cum.toFixed(2)));
   }
 
   const option = {
@@ -176,7 +184,7 @@ const RainfallChart = ({ data }: { data: WeatherRecord[] }) => {
         params.forEach((p: any) => {
           html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0">`;
           html += `<span style="display:inline-block;width:8px;height:8px;border-radius:${p.seriesType === 'bar' ? '2px' : '50%'};background:${p.color}"></span>`;
-          html += `<span>${p.seriesName}: <b>${p.value != null ? Number(p.value).toFixed(1) : '0'} mm</b></span></div>`;
+          html += `<span>${p.seriesName}: <b>${p.value != null ? Number(p.value).toFixed(2) : '0'} mm</b></span></div>`;
         });
         return html;
       }

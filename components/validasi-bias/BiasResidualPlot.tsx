@@ -41,7 +41,7 @@ export const BiasResidualPlot: React.FC<BiasResidualPlotProps> = ({
 
     for (let i = 0; i < binCount; i++) {
       const center = -maxAbs + (i + 0.5) * binWidth;
-      binLabels.push(center.toFixed(1));
+      binLabels.push(center.toFixed(2));
     }
 
     rawResiduals.forEach(r => {
@@ -61,6 +61,19 @@ export const BiasResidualPlot: React.FC<BiasResidualPlotProps> = ({
         backgroundColor: isDarkMode ? "#1e293b" : "#ffffff",
         borderColor: isDarkMode ? "#334155" : "#e2e8f0",
         textStyle: { color: isDarkMode ? "#f8fafc" : "#0f172a", fontSize: 11 },
+        formatter: (params: any) => {
+          if (!Array.isArray(params) || params.length === 0) return "";
+          let html = `<div class="text-xs font-sans"><div class="font-bold mb-1 border-b pb-1 text-slate-500">Residual: ${params[0].axisValue} ${unit}</div>`;
+          params.forEach((item: any) => {
+            const count = item.value != null ? `${item.value} sampel` : "—";
+            html += `<div class="flex items-center justify-between gap-3 py-0.5">
+              <span>${item.marker} ${item.seriesName}:</span>
+              <strong class="font-mono">${count}</strong>
+            </div>`;
+          });
+          html += "</div>";
+          return html;
+        },
       },
       legend: {
         top: 0,

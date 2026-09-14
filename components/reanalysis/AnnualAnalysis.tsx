@@ -95,6 +95,10 @@ export const AnnualAnalysis: React.FC<AnnualAnalysisProps> = ({
   const chartOption = useMemo(() => {
     if (!days || days.length === 0) return {};
 
+    const validData = (activeInfo.data || []).filter((v: any) => typeof v === "number" && Number.isFinite(v));
+    const yMin = validData.length > 0 ? (activeTab === "rain" ? 0 : Math.floor(Math.min(...validData))) : undefined;
+    const yMax = validData.length > 0 ? Math.ceil(Math.max(...validData)) : undefined;
+
     return {
       backgroundColor: "transparent",
       animation: true,
@@ -125,7 +129,7 @@ export const AnnualAnalysis: React.FC<AnnualAnalysisProps> = ({
         formatter: (params: any) => {
           if (!params || !params.length) return "";
           const p = params[0];
-          const val = typeof p.value === "number" ? p.value.toFixed(1) : p.value;
+          const val = typeof p.value === "number" ? p.value.toFixed(2) : p.value;
           return `
             <div style="font-weight:600; margin-bottom:4px; font-size:11px; opacity:0.8;">Tanggal: ${p.axisValue}</div>
             <div style="display:flex; align-items:center; gap:8px;">
@@ -157,10 +161,12 @@ export const AnnualAnalysis: React.FC<AnnualAnalysisProps> = ({
           },
         },
       },
-      yaxis: {
+      yAxis: {
         type: "value",
         scale: activeInfo.scale,
         name: activeInfo.axisName,
+        min: yMin,
+        max: yMax,
         nameTextStyle: {
           color: textColor,
           fontSize: 11,

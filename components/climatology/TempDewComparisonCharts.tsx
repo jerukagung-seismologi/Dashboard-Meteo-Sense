@@ -55,13 +55,17 @@ export const TempDewComparisonCharts: React.FC<TempDewComparisonChartsProps> = (
       }
     });
 
+    const validVals = points.flatMap((p) => [p.temperatureMean, p.dewPointMean]).filter(Number.isFinite);
+    const minVal = validVals.length > 0 ? Math.floor(Math.min(...validVals)) : undefined;
+    const maxVal = validVals.length > 0 ? Math.ceil(Math.max(...validVals)) : undefined;
+
     return {
       tooltip: {
         trigger: "axis",
         formatter: (params: any) => {
           let res = `<div class="font-semibold">${params[0].name}</div>`;
           params.forEach((item: any) => {
-            const val = item.value != null ? Number(item.value).toFixed(1) : '–';
+            const val = item.value != null ? Number(item.value).toFixed(2) : '–';
             res += `<div class="flex justify-between gap-4" style="font-size:12px;margin-top:4px">
               <span>${item.marker} ${item.seriesName}:</span>
               <span style="font-weight:700">${val} °C</span>
@@ -75,7 +79,7 @@ export const TempDewComparisonCharts: React.FC<TempDewComparisonChartsProps> = (
              const depression = tempValue - dewValue;
              res += `<div style="font-size:12px;margin-top:6px;padding-top:4px;border-top:1px solid rgba(100,116,139,0.3);display:flex;justify-content:space-between;gap:16px">
               <span style="color:#94a3b8">Dew Point Depression:</span>
-              <span style="font-weight:700;color:#fb923c">${depression.toFixed(1)} °C</span>
+              <span style="font-weight:700;color:#fb923c">${depression.toFixed(2)} °C</span>
             </div>`;
           }
 
@@ -100,6 +104,8 @@ export const TempDewComparisonCharts: React.FC<TempDewComparisonChartsProps> = (
         axisLabel: { color: textColor },
         splitLine: { lineStyle: { color: gridColor } },
         scale: true,
+        min: minVal,
+        max: maxVal,
       },
       series: [
         {

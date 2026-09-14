@@ -54,10 +54,63 @@ const ChartComponent: React.FC<ChartComponentProps> = ({ data, layout, style }) 
     title: layout.title?.text ? { text: layout.title.text, left: "center", top: 0, textStyle: { color: textColor, fontSize: 12, fontWeight: 700 } } : undefined,
     tooltip: {
       trigger: isHeatmap ? "item" : layout.hovermode === "x unified" ? "axis" : "axis",
-      axisPointer: { type: "cross" },
+      axisPointer: {
+        type: "cross",
+        label: {
+          backgroundColor: "#334155",
+          formatter: (params: any) => {
+            if (params.axisDimension === 'y') {
+              const val = Number(params.value);
+              return Number.isFinite(val) ? val.toFixed(2) : params.value;
+            }
+            return params.value;
+          },
+        },
+      },
       backgroundColor: "rgba(15, 23, 42, 0.92)",
       borderColor: "#475569",
       textStyle: { color: "#f8fafc" },
+      formatter: (params: any) => {
+        if (isHeatmap) {
+          const val = params?.value?.[2];
+          const num = Number(val);
+          const valStr = Number.isFinite(num) ? num.toFixed(2) : "–";
+          const xName = heatmapTrace?.x?.[params.value[0]] ?? params.value[0];
+          const yName = heatmapTrace?.y?.[params.value[1]] ?? params.value[1];
+          return `<div style="font-size:12px">
+            <div style="font-weight:600;margin-bottom:2px">${xName} - ${yName}</div>
+            <div>${params.marker} ${heatmapTrace?.name ?? "Nilai"}: <b>${valStr}</b></div>
+          </div>`;
+        }
+
+        const unit = layout.yaxis?.title?.text ? ` ${layout.yaxis.title.text}` : "";
+        if (Array.isArray(params)) {
+          if (params.length === 0) return "";
+          const header = params[0].name || params[0].axisValueLabel || "";
+          let res = `<div style="font-weight:600;margin-bottom:4px;font-size:12px">${header}</div>`;
+          params.forEach((item: any) => {
+            const rawVal = Array.isArray(item.value) ? item.value[1] : item.value;
+            const num = Number(rawVal);
+            const valStr = Number.isFinite(num) ? num.toFixed(2) : "–";
+            res += `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:12px;margin-top:2px">
+              <span>${item.marker} ${item.seriesName || "Nilai"}:</span>
+              <span style="font-weight:700;font-variant-numeric:tabular-nums">${valStr}${unit}</span>
+            </div>`;
+          });
+          return res;
+        } else if (params) {
+          const rawVal = Array.isArray(params.value) ? params.value[1] : params.value;
+          const num = Number(rawVal);
+          const valStr = Number.isFinite(num) ? num.toFixed(2) : "–";
+          return `<div style="font-size:12px">
+            <div style="font-weight:600;margin-bottom:2px">${params.name || params.axisValueLabel || ""}</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              ${params.marker} <span>${params.seriesName || "Nilai"}: <b>${valStr}${unit}</b></span>
+            </div>
+          </div>`;
+        }
+        return "";
+      },
     },
     legend: data.length > 1 || data[0]?.name ? { show: !isHeatmap, bottom: 0, textStyle: { color: textColor } } : undefined,
     grid: {
@@ -86,7 +139,12 @@ const ChartComponent: React.FC<ChartComponentProps> = ({ data, layout, style }) 
       inverse: isHeatmap && layout.yaxis?.autorange === "reversed",
       min: layout.yaxis?.range?.[0],
       max: layout.yaxis?.range?.[1],
-      axisLabel: { color: textColor },
+      axisLabel: {
+        color: textColor,
+        formatter: (val: number) => {
+          return Number.isFinite(val) ? Number(val.toFixed(2)).toString() : val;
+        },
+      },
       axisLine: { lineStyle: { color: gridColor } },
       splitLine: { show: !isHeatmap, lineStyle: { color: gridColor } },
     },

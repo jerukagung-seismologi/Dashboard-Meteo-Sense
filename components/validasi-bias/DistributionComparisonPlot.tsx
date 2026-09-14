@@ -44,9 +44,11 @@ export const DistributionComparisonPlot: React.FC<DistributionComparisonPlotProp
           textStyle: { color: isDarkMode ? "#f8fafc" : "#0f172a", fontSize: 11 },
           formatter: (params: any) => {
             if (!Array.isArray(params)) return "";
-            let html = `<div class="text-xs font-sans"><div class="font-bold mb-1 border-b pb-1 text-slate-500">Nilai: ${params[0].axisValue} ${unit}</div>`;
+            const axisVal = Number(params[0].axisValue);
+            const axisValStr = Number.isFinite(axisVal) ? axisVal.toFixed(2) : params[0].axisValue;
+            let html = `<div class="text-xs font-sans"><div class="font-bold mb-1 border-b pb-1 text-slate-500">Nilai: ${axisValStr} ${unit}</div>`;
             params.forEach((item: any) => {
-              const prob = item.data ? `${(item.data[1] * 100).toFixed(1)}%` : "—";
+              const prob = item.data ? `${(item.data[1] * 100).toFixed(2)}%` : "—";
               html += `<div class="flex items-center justify-between gap-3 py-0.5">
                 <span style="color:${item.color}">${item.seriesName}:</span>
                 <strong class="font-mono">F(x) = ${prob}</strong>
@@ -123,7 +125,7 @@ export const DistributionComparisonPlot: React.FC<DistributionComparisonPlotProp
       for (let i = 0; i < binCount; i++) {
         const bMin = min + i * binWidth;
         const bMax = bMin + binWidth;
-        binLabels.push(`${bMin.toFixed(1)}`);
+        binLabels.push(`${bMin.toFixed(2)}`);
       }
 
       awsVals.forEach(v => {
