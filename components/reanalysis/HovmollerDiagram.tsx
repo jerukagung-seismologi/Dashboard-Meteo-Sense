@@ -1,12 +1,10 @@
 // components/reanalysis/HovmollerDiagram.tsx
-"use client";
-
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Layers, Thermometer, Droplets, Gauge, CloudRain } from "lucide-react";
 import dynamic from "next/dynamic";
 
-const ReactECharts = dynamic(() => import("echarts-for-react"), {
+const Plot = dynamic(() => import("react-plotly.js"), {
   ssr: false,
   loading: () => (
     <div className="h-[380px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
@@ -37,7 +35,7 @@ export const HovmollerDiagram: React.FC<HovmollerDiagramProps> = ({
   const [activeTab, setActiveTab] = useState<"temperature" | "humidity" | "pressure" | "rain">("temperature");
 
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
-  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.25)";
+  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
 
   // Format YYYY-MM-DD to cleaner display strings (e.g. DD/MM) for X axis ticks
   const formattedDays = useMemo(() => {
@@ -49,11 +47,22 @@ export const HovmollerDiagram: React.FC<HovmollerDiagramProps> = ({
   }, [days]);
 
   const activeInfo = useMemo(() => {
+    // Standard color palettes matching daily/weekly
     const colorscales = {
-      temperature: ["#313695", "#4575b4", "#74add1", "#abd9e9", "#e0f3f8", "#ffffbf", "#fee090", "#fdae61", "#f46d43", "#d73027", "#a50026"],
-      humidity: ["#eff6ff", "#bfdbfe", "#60a5fa", "#2563eb", "#1e3a8a"],
-      pressure: ["#440154", "#414487", "#2a788e", "#22a884", "#7ad151", "#fde725"],
-      rain: ["#30123b", "#4454c4", "#4490f5", "#1fced4", "#40f88a", "#a2fc3c", "#e5d321", "#f77f11", "#d82b0b"],
+      temperature: [
+        [0, "#313695"], [0.1, "#4575b4"], [0.2, "#74add1"], [0.3, "#abd9e9"], [0.4, "#e0f3f8"],
+        [0.5, "#ffffbf"], [0.6, "#fee090"], [0.7, "#fdae61"], [0.8, "#f46d43"], [0.9, "#d73027"], [1, "#a50026"]
+      ], // Coolwarm
+      humidity: [
+        [0, "#eff6ff"], [0.25, "#bfdbfe"], [0.5, "#60a5fa"], [0.75, "#2563eb"], [1, "#1e3a8a"]
+      ], // Blues
+      pressure: [
+        [0, "#440154"], [0.2, "#414487"], [0.4, "#2a788e"], [0.6, "#22a884"], [0.8, "#7ad151"], [1, "#fde725"]
+      ], // Viridis
+      rain: [
+        [0, "#30123b"], [0.125, "#4454c4"], [0.25, "#4490f5"], [0.375, "#1fced4"], [0.5, "#40f88a"],
+        [0.625, "#a2fc3c"], [0.75, "#e5d321"], [0.875, "#f77f11"], [1, "#d82b0b"]
+      ] // Turbo
     };
 
     switch (activeTab) {
@@ -61,155 +70,99 @@ export const HovmollerDiagram: React.FC<HovmollerDiagramProps> = ({
         return {
           title: "Hovmöller Suhu Udara",
           desc: "Fluktuasi suhu udara diurnal sepanjang tahun (Hari vs Jam WIB)",
-          unit: "°C",
+          unit: "Suhu (°C)",
           icon: <Thermometer className="h-5 w-5 text-orange-500" />,
           z: temperature,
-          colors: colorscales.temperature,
+          colorscale: colorscales.temperature
         };
       case "humidity":
         return {
           title: "Hovmöller Kelembaban",
           desc: "Fluktuasi kelembaban relatif diurnal sepanjang tahun (Hari vs Jam WIB)",
-          unit: "%",
+          unit: "Kelembaban (%)",
           icon: <Droplets className="h-5 w-5 text-blue-500" />,
           z: humidity,
-          colors: colorscales.humidity,
+          colorscale: colorscales.humidity
         };
       case "pressure":
         return {
           title: "Hovmöller Tekanan MSL",
           desc: "Fluktuasi tekanan permukaan laut diurnal sepanjang tahun (Hari vs Jam WIB)",
-          unit: "hPa",
+          unit: "Tekanan MSL (hPa)",
           icon: <Gauge className="h-5 w-5 text-pink-500" />,
           z: pressure,
-          colors: colorscales.pressure,
+          colorscale: colorscales.pressure
         };
       case "rain":
         return {
           title: "Hovmöller Curah Hujan",
           desc: "Intensitas laju curah hujan diurnal sepanjang tahun (Hari vs Jam WIB)",
-          unit: "mm",
+          unit: "Curah Hujan (mm)",
           icon: <CloudRain className="h-5 w-5 text-purple-500" />,
           z: rain,
-          colors: colorscales.rain,
+          colorscale: colorscales.rain
         };
     }
   }, [activeTab, temperature, humidity, pressure, rain]);
 
-  // Format matrix data [dayIdx, hourIdx, value]
-  const { chartData, zmin, zmax } = useMemo(() => {
-    if (!activeInfo.z || activeInfo.z.length === 0 || !days || days.length === 0) {
-      return { chartData: [], zmin: 0, zmax: 100 };
-    }
-
-    const flatVals: number[] = [];
-    const formatted: [number, number, number | null][] = [];
-
-    // activeInfo.z is [hourIdx][dayIdx]
-    activeInfo.z.forEach((row, hourIdx) => {
-      row.forEach((val, dayIdx) => {
-        if (val !== null && Number.isFinite(val)) {
-          flatVals.push(val);
-          formatted.push([dayIdx, hourIdx, Number(val.toFixed(2))]);
-        } else {
-          formatted.push([dayIdx, hourIdx, null]);
-        }
-      });
-    });
-
-    const min = flatVals.length > 0 ? Math.floor(Math.min(...flatVals)) : 0;
-    const max = flatVals.length > 0 ? Math.ceil(Math.max(...flatVals)) : 100;
-
-    return { chartData: formatted, zmin: min, zmax: max };
-  }, [activeInfo.z, days]);
-
-  const option = useMemo(() => {
-    if (chartData.length === 0) return {};
-
+  // Calculate local zmin and zmax to fit scale
+  const { zmin, zmax } = useMemo(() => {
+    if (!activeInfo.z || activeInfo.z.length === 0) return { zmin: undefined, zmax: undefined };
+    const flatVals = activeInfo.z.flat().filter(v => v !== null && Number.isFinite(v)) as number[];
+    if (flatVals.length === 0) return { zmin: undefined, zmax: undefined };
     return {
-      backgroundColor: "transparent",
-      tooltip: {
-        position: "top",
-        backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.95)",
-        borderColor: isDarkMode ? "#334155" : "#e2e8f0",
-        textStyle: { color: isDarkMode ? "#f8fafc" : "#0f172a", fontSize: 12 },
-        formatter: (params: any) => {
-          const day = days[params.value[0]];
-          const hour = hours[params.value[1]];
-          const val = params.value[2];
-          return `
-            <div style="font-size:12px;font-family:Inter,sans-serif;">
-              <div style="color:${isDarkMode ? '#94a3b8' : '#64748b'};margin-bottom:2px;">Tanggal: ${day} | Jam: ${hour}:00 WIB</div>
-              <div style="font-weight:600;color:${isDarkMode ? '#f8fafc' : '#0f172a'};">
-                ${activeInfo.title}: ${val !== null ? `${val} ${activeInfo.unit}` : "Tidak Ada Data"}
-              </div>
-            </div>
-          `;
-        },
-      },
-      grid: {
-        top: 20,
-        right: 20,
-        bottom: 60,
-        left: 55,
-        containLabel: true,
-      },
-      xAxis: {
-        type: "category",
-        data: formattedDays,
-        name: "Tanggal",
-        splitArea: { show: false },
-        axisLine: { lineStyle: { color: gridColor } },
-        axisLabel: { color: textColor, fontSize: 10, hideOverlap: true },
-      },
-      yAxis: {
-        type: "category",
-        data: hours.map(h => `${h}:00`),
-        name: "Jam (WIB)",
-        inverse: true, // Hour 00 at top
-        splitArea: { show: false },
-        axisLine: { lineStyle: { color: gridColor } },
-        axisLabel: { color: textColor, fontSize: 10 },
-      },
-      visualMap: {
-        min: zmin,
-        max: zmax,
-        calculable: true,
-        orient: "horizontal",
-        left: "center",
-        bottom: 5,
-        inRange: { color: activeInfo.colors },
-        textStyle: { color: textColor, fontSize: 10 },
-      },
-      dataZoom: [
-        { type: "inside", xAxisIndex: 0 },
-        {
-          type: "slider",
-          xAxisIndex: 0,
-          bottom: 30,
-          height: 16,
-          borderColor: "transparent",
-          backgroundColor: isDarkMode ? "rgba(30, 41, 59, 0.5)" : "rgba(241, 245, 249, 0.8)",
-          fillerColor: "rgba(99, 102, 241, 0.2)",
-          handleStyle: { color: "#6366f1" },
-          textStyle: { color: textColor, fontSize: 9 },
-        },
-      ],
-      series: [
-        {
-          name: activeInfo.title,
-          type: "heatmap",
-          data: chartData,
-          emphasis: {
-            itemStyle: {
-              shadowBlur: 10,
-              shadowColor: "rgba(0, 0, 0, 0.5)",
-            },
-          },
-        },
-      ],
+      zmin: Math.min(...flatVals),
+      zmax: Math.max(...flatVals)
     };
-  }, [chartData, zmin, zmax, activeInfo, days, hours, formattedDays, textColor, gridColor, isDarkMode]);
+  }, [activeInfo.z]);
+
+  const trace = useMemo(() => {
+    if (!days || days.length === 0) return [];
+    
+    return [
+      {
+        x: formattedDays,
+        y: hours,
+        z: activeInfo.z,
+        zmin,
+        zmax,
+        type: "heatmap" as const,
+        colorscale: activeInfo.colorscale,
+        showscale: true,
+        colorbar: {
+          tickfont: { color: textColor },
+          title: { text: activeInfo.unit, font: { color: textColor } }
+        }
+      } as any
+    ];
+  }, [days, hours, formattedDays, activeInfo, zmin, zmax, textColor]);
+
+  const layout = useMemo(() => ({
+    autosize: true,
+    height: 380,
+    margin: { l: 50, r: 20, t: 25, b: 50 },
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    font: { color: textColor, family: "Inter, sans-serif" },
+    xaxis: {
+      title: { text: "Tanggal (WIB)" },
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickcolor: textColor,
+      type: "category" as const,
+      // Thin out date labels dynamically to prevent overlaps
+      tickmode: "auto" as const,
+      nticks: 16,
+    },
+    yaxis: {
+      title: { text: "Jam (WIB)" },
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickcolor: textColor,
+      type: "category" as const,
+      autorange: "reversed" as const // Standard Hovmöller: hour 00 at top
+    }
+  }), [textColor, gridColor]);
 
   return (
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
@@ -260,12 +213,12 @@ export const HovmollerDiagram: React.FC<HovmollerDiagramProps> = ({
       
       <CardContent className="p-2 overflow-x-auto">
         {days.length > 0 && (
-          <div className="min-w-[700px] w-full h-[380px]">
-            <ReactECharts
-              option={option}
-              style={{ width: "100%", height: "100%" }}
-              opts={{ renderer: "canvas" }}
-              notMerge={true}
+          <div className="min-w-[700px]">
+            <Plot
+              data={trace}
+              layout={layout}
+              config={{ responsive: true, displayModeBar: false }}
+              style={{ width: "100%", height: "380px" }}
             />
           </div>
         )}

@@ -1,13 +1,11 @@
 // components/reanalysis/TimeSeriesCharts.tsx
-"use client";
-
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Thermometer, Droplets, Gauge, Wind, CloudRain, Sun, Download } from "lucide-react";
 import dynamic from "next/dynamic";
 
-const ReactECharts = dynamic(() => import("echarts-for-react"), {
+const Plot = dynamic(() => import("react-plotly.js"), {
   ssr: false,
   loading: () => (
     <div className="h-[400px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
@@ -42,7 +40,10 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
   const [activeTab, setActiveTab] = useState<"temperature" | "humidity" | "pressure" | "wind" | "rain" | "radiation">("temperature");
 
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
-  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.25)";
+  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
+
+  // Format dates for Plotly X-axis
+  const xData = useMemo(() => times.map(t => new Date(t)), [times]);
 
   const activeInfo = useMemo(() => {
     switch (activeTab) {
@@ -52,7 +53,16 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
           desc: "Fluktuasi suhu udara hasil reanalisis ERA5",
           unit: "°C",
           icon: <Thermometer className="h-5 w-5 text-orange-500" />,
-          color: "#ef4444",
+          traces: [
+            {
+              x: xData,
+              y: temperature,
+              name: "Suhu Udara",
+              type: "scatter" as const,
+              mode: "lines" as const,
+              line: { color: "#ef4444", width: 2.5 },
+            }
+          ]
         };
       case "humidity":
         return {
@@ -60,7 +70,16 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
           desc: "Persentase uap air di udara relatif terhadap saturasi",
           unit: "%",
           icon: <Droplets className="h-5 w-5 text-blue-500" />,
-          color: "#3b82f6",
+          traces: [
+            {
+              x: xData,
+              y: humidity,
+              name: "Kelembaban",
+              type: "scatter" as const,
+              mode: "lines" as const,
+              line: { color: "#3b82f6", width: 2.5 },
+            }
+          ]
         };
       case "pressure":
         return {
@@ -68,7 +87,16 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
           desc: "Tekanan udara yang disesuaikan dengan permukaan laut rata-rata",
           unit: "hPa",
           icon: <Gauge className="h-5 w-5 text-pink-500" />,
-          color: "#ec4899",
+          traces: [
+            {
+              x: xData,
+              y: pressure,
+              name: "Tekanan MSL",
+              type: "scatter" as const,
+              mode: "lines" as const,
+              line: { color: "#ec4899", width: 2.5 },
+            }
+          ]
         };
       case "wind":
         return {
@@ -76,7 +104,24 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
           desc: "Kecepatan angin rata-rata (10m) beserta hembusan maksimum (gust)",
           unit: "m/s",
           icon: <Wind className="h-5 w-5 text-emerald-500" />,
-          color: "#10b981",
+          traces: [
+            {
+              x: xData,
+              y: windSpeed,
+              name: "Kecepatan Rata-rata",
+              type: "scatter" as const,
+              mode: "lines" as const,
+              line: { color: "#10b981", width: 2.5 },
+            },
+            {
+              x: xData,
+              y: windGust,
+              name: "Hembusan Angin (Gust)",
+              type: "scatter" as const,
+              mode: "lines" as const,
+              line: { color: "#f59e0b", width: 1.5, dash: "dash" as const },
+            }
+          ]
         };
       case "rain":
         return {
@@ -84,7 +129,15 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
           desc: "Laju presipitasi curah hujan per jam",
           unit: "mm",
           icon: <CloudRain className="h-5 w-5 text-purple-500" />,
-          color: "#8b5cf6",
+          traces: [
+            {
+              x: xData,
+              y: rain,
+              name: "Curah Hujan",
+              type: "bar" as const,
+              marker: { color: "#8b5cf6" },
+            }
+          ]
         };
       case "radiation":
         return {
@@ -92,223 +145,51 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
           desc: "Energi radiasi matahari gelombang pendek yang diterima di permukaan bumi",
           unit: "W/m²",
           icon: <Sun className="h-5 w-5 text-amber-500" />,
-          color: "#f59e0b",
+          traces: [
+            {
+              x: xData,
+              y: radiation,
+              name: "Shortwave Rad",
+              type: "scatter" as const,
+              mode: "lines" as const,
+              line: { color: "#f59e0b", width: 2 },
+              fill: "tozeroy" as const,
+              fillcolor: "rgba(245, 158, 11, 0.1)"
+            }
+          ]
         };
     }
-  }, [activeTab]);
+  }, [activeTab, xData, temperature, humidity, pressure, windSpeed, windGust, rain, radiation]);
 
-  const option = useMemo(() => {
-    if (times.length === 0) return {};
-
-    let series: any[] = [];
-    let yMin: number | undefined = undefined;
-    let yMax: number | undefined = undefined;
-
-    if (activeTab === "temperature") {
-      series = [
-        {
-          name: "Suhu Udara",
-          type: "line",
-          data: temperature,
-          smooth: true,
-          showSymbol: times.length < 50,
-          itemStyle: { color: "#ef4444" },
-          lineStyle: { width: 2.5, color: "#ef4444" },
-          areaStyle: {
-            color: {
-              type: "linear",
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: "rgba(239, 68, 68, 0.2)" },
-                { offset: 1, color: "rgba(239, 68, 68, 0.0)" },
-              ],
-            },
-          },
-        },
-      ];
-    } else if (activeTab === "humidity") {
-      yMin = 0;
-      yMax = 100;
-      series = [
-        {
-          name: "Kelembaban",
-          type: "line",
-          data: humidity,
-          smooth: true,
-          showSymbol: times.length < 50,
-          itemStyle: { color: "#3b82f6" },
-          lineStyle: { width: 2.5, color: "#3b82f6" },
-          areaStyle: {
-            color: {
-              type: "linear",
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: "rgba(59, 130, 246, 0.2)" },
-                { offset: 1, color: "rgba(59, 130, 246, 0.0)" },
-              ],
-            },
-          },
-        },
-      ];
-    } else if (activeTab === "pressure") {
-      series = [
-        {
-          name: "Tekanan MSL",
-          type: "line",
-          data: pressure,
-          smooth: true,
-          showSymbol: times.length < 50,
-          itemStyle: { color: "#ec4899" },
-          lineStyle: { width: 2.5, color: "#ec4899" },
-          areaStyle: {
-            color: {
-              type: "linear",
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: "rgba(236, 72, 153, 0.15)" },
-                { offset: 1, color: "rgba(236, 72, 153, 0.0)" },
-              ],
-            },
-          },
-        },
-      ];
-    } else if (activeTab === "wind") {
-      series = [
-        {
-          name: "Kecepatan Rata-rata",
-          type: "line",
-          data: windSpeed,
-          smooth: true,
-          showSymbol: times.length < 50,
-          itemStyle: { color: "#10b981" },
-          lineStyle: { width: 2.5, color: "#10b981" },
-        },
-        {
-          name: "Hembusan Angin (Gust)",
-          type: "line",
-          data: windGust,
-          smooth: true,
-          showSymbol: times.length < 50,
-          itemStyle: { color: "#f59e0b" },
-          lineStyle: { width: 1.5, type: "dashed", color: "#f59e0b" },
-        },
-      ];
-    } else if (activeTab === "rain") {
-      yMin = 0;
-      series = [
-        {
-          name: "Curah Hujan",
-          type: "bar",
-          data: rain,
-          itemStyle: {
-            color: {
-              type: "linear",
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: "#a855f7" },
-                { offset: 1, color: "#7c3aed" },
-              ],
-            },
-            borderRadius: [3, 3, 0, 0],
-          },
-        },
-      ];
-    } else if (activeTab === "radiation") {
-      yMin = 0;
-      series = [
-        {
-          name: "Shortwave Rad",
-          type: "line",
-          data: radiation,
-          smooth: true,
-          showSymbol: times.length < 50,
-          itemStyle: { color: "#f59e0b" },
-          lineStyle: { width: 2, color: "#f59e0b" },
-          areaStyle: {
-            color: {
-              type: "linear",
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: "rgba(245, 158, 11, 0.25)" },
-                { offset: 1, color: "rgba(245, 158, 11, 0.0)" },
-              ],
-            },
-          },
-        },
-      ];
-    }
-
-    return {
-      backgroundColor: "transparent",
-      tooltip: {
-        trigger: "axis",
-        axisPointer: {
-          type: "cross",
-          label: { backgroundColor: isDarkMode ? "#334155" : "#64748b" },
-        },
-        valueFormatter: (val: any) => (typeof val === "number" ? `${val.toFixed(2)} ${activeInfo.unit}` : "—"),
-      },
-      legend: {
-        top: 0,
-        right: 10,
-        textStyle: { color: textColor, fontSize: 11 },
-      },
-      grid: {
-        top: 35,
-        right: 20,
-        bottom: 55,
-        left: 55,
-        containLabel: true,
-      },
-      xAxis: {
-        type: "category",
-        data: times,
-        boundaryGap: activeTab === "rain",
-        axisLine: { lineStyle: { color: gridColor } },
-        axisLabel: { color: textColor, fontSize: 11, hideOverlap: true },
-        splitLine: { show: false },
-      },
-      yAxis: {
-        type: "value",
-        min: yMin,
-        max: yMax,
-        name: `(${activeInfo.unit})`,
-        nameTextStyle: { color: textColor, fontSize: 11 },
-        axisLabel: { color: textColor, fontSize: 11 },
-        axisLine: { show: false },
-        splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
-      },
-      dataZoom: [
-        { type: "inside" },
-        {
-          type: "slider",
-          bottom: 5,
-          height: 18,
-          borderColor: "transparent",
-          backgroundColor: isDarkMode ? "rgba(30, 41, 59, 0.5)" : "rgba(241, 245, 249, 0.8)",
-          fillerColor: `${activeInfo.color}26`,
-          handleStyle: { color: activeInfo.color },
-          textStyle: { color: textColor, fontSize: 10 },
-        },
-      ],
-      series,
-    };
-  }, [times, activeTab, temperature, humidity, pressure, windSpeed, windGust, rain, radiation, activeInfo, textColor, gridColor, isDarkMode]);
+  const layout = useMemo(() => ({
+    autosize: true,
+    height: 400,
+    margin: { l: 50, r: 20, t: 25, b: 50 },
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    font: { color: textColor, family: "Inter, sans-serif" },
+    xaxis: {
+      type: "date" as const,
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickcolor: textColor,
+    },
+    yaxis: {
+      title: { text: activeInfo.unit },
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickcolor: textColor,
+      fixedrange: true,
+    },
+    legend: {
+      orientation: "h" as const,
+      yanchor: "bottom" as const,
+      y: 1.05,
+      xanchor: "right" as const,
+      x: 1,
+      font: { color: textColor }
+    },
+  }), [textColor, gridColor, activeInfo.unit]);
 
   const handleDownloadCsv = () => {
     const headers = ["Waktu", activeInfo.title + ` (${activeInfo.unit})`];
@@ -410,14 +291,12 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
       
       <CardContent className="p-2">
         {times.length > 0 && (
-          <div className="w-full h-[400px]">
-            <ReactECharts
-              option={option}
-              style={{ width: "100%", height: "100%" }}
-              opts={{ renderer: "canvas" }}
-              notMerge={true}
-            />
-          </div>
+          <Plot
+            data={activeInfo.traces}
+            layout={layout}
+            config={{ responsive: true, displayModeBar: true, toImageButtonOptions: { format: "png", filename: `era5_${activeTab}_series` } }}
+            style={{ width: "100%", height: "400px" }}
+          />
         )}
       </CardContent>
     </Card>

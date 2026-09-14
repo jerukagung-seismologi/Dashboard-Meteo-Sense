@@ -1,12 +1,10 @@
 // components/reanalysis/AnnualAnalysis.tsx
-"use client";
-
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarRange, Thermometer, Droplets, Gauge, CloudRain } from "lucide-react";
 import dynamic from "next/dynamic";
 
-const ReactECharts = dynamic(() => import("echarts-for-react"), {
+const Plot = dynamic(() => import("react-plotly.js"), {
   ssr: false,
   loading: () => (
     <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
@@ -35,7 +33,10 @@ export const AnnualAnalysis: React.FC<AnnualAnalysisProps> = ({
   const [activeTab, setActiveTab] = useState<"temperature" | "humidity" | "pressure" | "rain">("temperature");
 
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
-  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.25)";
+  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
+
+  // Parse days as Date objects for Plotly time scale axis
+  const xData = useMemo(() => days.map(d => new Date(d)), [days]);
 
   const activeInfo = useMemo(() => {
     switch (activeTab) {
@@ -43,123 +44,104 @@ export const AnnualAnalysis: React.FC<AnnualAnalysisProps> = ({
         return {
           title: "Variabilitas Suhu Tahunan",
           desc: "Suhu rata-rata harian sepanjang tahun untuk mengamati evolusi musiman",
-          unit: "°C",
+          unit: "Suhu (°C)",
           icon: <Thermometer className="h-5 w-5 text-orange-500" />,
-          color: "#ef4444",
-          data: temperatureMean,
-          name: "Suhu Harian",
+          traces: [
+            {
+              x: xData,
+              y: temperatureMean,
+              name: "Suhu Harian",
+              type: "scatter" as const,
+              mode: "lines" as const,
+              line: { color: "#ef4444", width: 2 },
+            }
+          ]
         };
       case "humidity":
         return {
           title: "Variabilitas Kelembaban Tahunan",
           desc: "Kelembaban relatif rata-rata harian sepanjang tahun",
-          unit: "%",
+          unit: "Kelembaban (%)",
           icon: <Droplets className="h-5 w-5 text-blue-500" />,
-          color: "#3b82f6",
-          data: humidityMean,
-          name: "Kelembaban Harian",
+          traces: [
+            {
+              x: xData,
+              y: humidityMean,
+              name: "Kelembaban Harian",
+              type: "scatter" as const,
+              mode: "lines" as const,
+              line: { color: "#3b82f6", width: 2 },
+            }
+          ]
         };
       case "pressure":
         return {
           title: "Variabilitas Tekanan Tahunan",
           desc: "Tekanan MSL rata-rata harian sepanjang tahun",
-          unit: "hPa",
+          unit: "Tekanan MSL (hPa)",
           icon: <Gauge className="h-5 w-5 text-pink-500" />,
-          color: "#ec4899",
-          data: pressureMean,
-          name: "Tekanan Harian",
+          traces: [
+            {
+              x: xData,
+              y: pressureMean,
+              name: "Tekanan Harian",
+              type: "scatter" as const,
+              mode: "lines" as const,
+              line: { color: "#ec4899", width: 2 },
+            }
+          ]
         };
       case "rain":
         return {
           title: "Kurva Akumulasi Hujan Tahunan",
           desc: "Kurva akumulasi curah hujan kumulatif sepanjang tahun (kurva massa)",
-          unit: "mm",
+          unit: "Akumulasi Hujan (mm)",
           icon: <CloudRain className="h-5 w-5 text-purple-500" />,
-          color: "#8b5cf6",
-          data: rainAccumulated,
-          name: "Hujan Akumulatif",
+          traces: [
+            {
+              x: xData,
+              y: rainAccumulated,
+              name: "Hujan Akumulatif",
+              type: "scatter" as const,
+              mode: "lines" as const,
+              line: { color: "#8b5cf6", width: 2.5 },
+              fill: "tozeroy" as const,
+              fillcolor: "rgba(139, 92, 246, 0.05)"
+            }
+          ]
         };
     }
-  }, [activeTab, temperatureMean, humidityMean, pressureMean, rainAccumulated]);
+  }, [activeTab, xData, temperatureMean, humidityMean, pressureMean, rainAccumulated]);
 
-  const option = useMemo(() => {
-    if (!days || days.length === 0) return {};
-
-    return {
-      backgroundColor: "transparent",
-      tooltip: {
-        trigger: "axis",
-        axisPointer: {
-          type: "cross",
-          label: { backgroundColor: isDarkMode ? "#334155" : "#64748b" },
-        },
-        valueFormatter: (val: any) => (typeof val === "number" ? `${val.toFixed(2)} ${activeInfo.unit}` : "—"),
-      },
-      grid: {
-        top: 25,
-        right: 20,
-        bottom: 50,
-        left: 55,
-        containLabel: true,
-      },
-      xAxis: {
-        type: "category",
-        data: days,
-        boundaryGap: false,
-        axisLine: { lineStyle: { color: gridColor } },
-        axisLabel: { color: textColor, fontSize: 11, hideOverlap: true },
-        splitLine: { show: false },
-      },
-      yAxis: {
-        type: "value",
-        min: activeTab === "humidity" ? 0 : activeTab === "rain" ? 0 : undefined,
-        max: activeTab === "humidity" ? 100 : undefined,
-        scale: activeTab !== "humidity" && activeTab !== "rain",
-        name: `(${activeInfo.unit})`,
-        nameTextStyle: { color: textColor, fontSize: 11 },
-        axisLabel: { color: textColor, fontSize: 11 },
-        axisLine: { show: false },
-        splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
-      },
-      dataZoom: [
-        { type: "inside" },
-        {
-          type: "slider",
-          bottom: 5,
-          height: 18,
-          borderColor: "transparent",
-          backgroundColor: isDarkMode ? "rgba(30, 41, 59, 0.5)" : "rgba(241, 245, 249, 0.8)",
-          fillerColor: `${activeInfo.color}26`,
-          handleStyle: { color: activeInfo.color },
-          textStyle: { color: textColor, fontSize: 10 },
-        },
-      ],
-      series: [
-        {
-          name: activeInfo.name,
-          type: "line",
-          data: activeInfo.data,
-          smooth: true,
-          showSymbol: false,
-          lineStyle: { width: 2.5, color: activeInfo.color },
-          itemStyle: { color: activeInfo.color },
-          areaStyle: {
-            color: {
-              type: "linear",
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: `${activeInfo.color}33` },
-                { offset: 1, color: `${activeInfo.color}00` },
-              ],
-            },
-          },
-        },
-      ],
-    };
-  }, [days, activeTab, activeInfo, textColor, gridColor, isDarkMode]);
+  const layout = useMemo(() => ({
+    autosize: true,
+    height: 350,
+    margin: { l: 50, r: 20, t: 25, b: 50 },
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    font: { color: textColor, family: "Inter, sans-serif" },
+    xaxis: {
+      type: "date" as const,
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickcolor: textColor,
+    },
+    yaxis: {
+      title: { text: activeInfo.unit },
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickcolor: textColor,
+      fixedrange: true,
+    },
+    legend: {
+      orientation: "h" as const,
+      yanchor: "bottom" as const,
+      y: 1.05,
+      xanchor: "right" as const,
+      x: 1,
+      font: { color: textColor }
+    },
+  }), [textColor, gridColor, activeInfo.unit]);
 
   return (
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
@@ -210,14 +192,12 @@ export const AnnualAnalysis: React.FC<AnnualAnalysisProps> = ({
       
       <CardContent className="p-2">
         {days.length > 0 && (
-          <div className="w-full h-[350px]">
-            <ReactECharts
-              option={option}
-              style={{ width: "100%", height: "100%" }}
-              opts={{ renderer: "canvas" }}
-              notMerge={true}
-            />
-          </div>
+          <Plot
+            data={activeInfo.traces}
+            layout={layout}
+            config={{ responsive: true, displayModeBar: false }}
+            style={{ width: "100%", height: "350px" }}
+          />
         )}
       </CardContent>
     </Card>

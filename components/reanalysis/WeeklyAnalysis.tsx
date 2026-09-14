@@ -1,12 +1,10 @@
 // components/reanalysis/WeeklyAnalysis.tsx
-"use client";
-
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarDays, Thermometer, Droplets, Gauge, Wind } from "lucide-react";
 import dynamic from "next/dynamic";
 
-const ReactECharts = dynamic(() => import("echarts-for-react"), {
+const Plot = dynamic(() => import("react-plotly.js"), {
   ssr: false,
   loading: () => (
     <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
@@ -41,7 +39,7 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
   const [activeTab, setActiveTab] = useState<"temperature" | "humidity" | "pressure" | "wind">("temperature");
 
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
-  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.25)";
+  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
 
   const activeInfo = useMemo(() => {
     switch (activeTab) {
@@ -49,7 +47,7 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
         return {
           title: "Tren Suhu Mingguan",
           desc: "Suhu maksimum, rata-rata, dan minimum harian selama 7 hari terakhir",
-          unit: "°C",
+          unit: "Suhu (°C)",
           icon: <Thermometer className="h-5 w-5 text-orange-500" />,
           data: temperature,
           colors: { max: "#f87171", mean: "#ef4444", min: "#60a5fa" }
@@ -58,7 +56,7 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
         return {
           title: "Tren Kelembaban Mingguan",
           desc: "Kelembaban maksimum, rata-rata, dan minimum harian selama 7 hari terakhir",
-          unit: "%",
+          unit: "Kelembaban (%)",
           icon: <Droplets className="h-5 w-5 text-blue-500" />,
           data: humidity,
           colors: { max: "#34d399", mean: "#3b82f6", min: "#f59e0b" }
@@ -67,7 +65,7 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
         return {
           title: "Tren Tekanan Mingguan",
           desc: "Tekanan maksimum, rata-rata, dan minimum harian selama 7 hari terakhir",
-          unit: "hPa",
+          unit: "Tekanan MSL (hPa)",
           icon: <Gauge className="h-5 w-5 text-pink-500" />,
           data: pressure,
           colors: { max: "#f43f5e", mean: "#ec4899", min: "#818cf8" }
@@ -76,7 +74,7 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
         return {
           title: "Tren Kecepatan Angin Mingguan",
           desc: "Kecepatan angin maksimum, rata-rata, dan minimum harian selama 7 hari terakhir",
-          unit: "m/s",
+          unit: "Kecepatan Angin (m/s)",
           icon: <Wind className="h-5 w-5 text-emerald-500" />,
           data: windSpeed,
           colors: { max: "#34d399", mean: "#10b981", min: "#a78bfa" }
@@ -84,98 +82,67 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
     }
   }, [activeTab, temperature, humidity, pressure, windSpeed]);
 
-  const option = useMemo(() => {
-    if (!days || days.length === 0) return {};
+  const traces = useMemo(() => {
+    if (!days || days.length === 0) return [];
+    
+    return [
+      {
+        x: days,
+        y: activeInfo.data.max,
+        name: "Maksimum",
+        type: "scatter" as const,
+        mode: "lines" as const,
+        line: { color: activeInfo.colors.max, width: 2, dash: "dash" as const },
+      },
+      {
+        x: days,
+        y: activeInfo.data.mean,
+        name: "Rata-rata",
+        type: "scatter" as const,
+        mode: "lines+markers" as const,
+        line: { color: activeInfo.colors.mean, width: 3 },
+        marker: { size: 6 }
+      },
+      {
+        x: days,
+        y: activeInfo.data.min,
+        name: "Minimum",
+        type: "scatter" as const,
+        mode: "lines" as const,
+        line: { color: activeInfo.colors.min, width: 2, dash: "dash" as const },
+      }
+    ];
+  }, [days, activeInfo]);
 
-    return {
-      backgroundColor: "transparent",
-      tooltip: {
-        trigger: "axis",
-        axisPointer: {
-          type: "cross",
-          label: { backgroundColor: isDarkMode ? "#334155" : "#64748b" },
-        },
-        valueFormatter: (val: any) => (typeof val === "number" ? `${val.toFixed(1)} ${activeInfo.unit}` : "—"),
-      },
-      legend: {
-        top: 0,
-        right: 10,
-        textStyle: { color: textColor, fontSize: 11 },
-        data: ["Maksimum", "Rata-rata", "Minimum"],
-      },
-      grid: {
-        top: 35,
-        right: 20,
-        bottom: 35,
-        left: 55,
-        containLabel: true,
-      },
-      xAxis: {
-        type: "category",
-        data: days,
-        boundaryGap: false,
-        axisLine: { lineStyle: { color: gridColor } },
-        axisLabel: { color: textColor, fontSize: 11 },
-        splitLine: { show: false },
-      },
-      yAxis: {
-        type: "value",
-        min: activeTab === "humidity" ? 0 : undefined,
-        max: activeTab === "humidity" ? 100 : undefined,
-        scale: activeTab !== "humidity",
-        name: `(${activeInfo.unit})`,
-        nameTextStyle: { color: textColor, fontSize: 11 },
-        axisLabel: { color: textColor, fontSize: 11 },
-        axisLine: { show: false },
-        splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
-      },
-      series: [
-        {
-          name: "Maksimum",
-          type: "line",
-          data: activeInfo.data.max,
-          smooth: true,
-          showSymbol: true,
-          symbolSize: 5,
-          lineStyle: { width: 1.5, type: "dashed", color: activeInfo.colors.max },
-          itemStyle: { color: activeInfo.colors.max },
-        },
-        {
-          name: "Rata-rata",
-          type: "line",
-          data: activeInfo.data.mean,
-          smooth: true,
-          showSymbol: true,
-          symbolSize: 6,
-          lineStyle: { width: 2.5, color: activeInfo.colors.mean },
-          itemStyle: { color: activeInfo.colors.mean },
-          areaStyle: {
-            color: {
-              type: "linear",
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: `${activeInfo.colors.mean}26` },
-                { offset: 1, color: `${activeInfo.colors.mean}00` },
-              ],
-            },
-          },
-        },
-        {
-          name: "Minimum",
-          type: "line",
-          data: activeInfo.data.min,
-          smooth: true,
-          showSymbol: true,
-          symbolSize: 5,
-          lineStyle: { width: 1.5, type: "dashed", color: activeInfo.colors.min },
-          itemStyle: { color: activeInfo.colors.min },
-        },
-      ],
-    };
-  }, [days, activeTab, activeInfo, textColor, gridColor, isDarkMode]);
+  const layout = useMemo(() => ({
+    autosize: true,
+    height: 350,
+    margin: { l: 50, r: 20, t: 25, b: 50 },
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    font: { color: textColor, family: "Inter, sans-serif" },
+    xaxis: {
+      type: "category" as const,
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickcolor: textColor,
+    },
+    yaxis: {
+      title: { text: activeInfo.unit },
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickcolor: textColor,
+      fixedrange: true,
+    },
+    legend: {
+      orientation: "h" as const,
+      yanchor: "bottom" as const,
+      y: 1.05,
+      xanchor: "right" as const,
+      x: 1,
+      font: { color: textColor }
+    },
+  }), [textColor, gridColor, activeInfo.unit]);
 
   return (
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
@@ -226,14 +193,12 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
       
       <CardContent className="p-2">
         {days.length > 0 && (
-          <div className="w-full h-[350px]">
-            <ReactECharts
-              option={option}
-              style={{ width: "100%", height: "100%" }}
-              opts={{ renderer: "canvas" }}
-              notMerge={true}
-            />
-          </div>
+          <Plot
+            data={traces}
+            layout={layout}
+            config={{ responsive: true, displayModeBar: false }}
+            style={{ width: "100%", height: "350px" }}
+          />
         )}
       </CardContent>
     </Card>

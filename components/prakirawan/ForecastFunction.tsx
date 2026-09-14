@@ -33,6 +33,7 @@ import {
   Sparkles,
   MessageSquare,
   Check,
+
   Thermometer,
   ThermometerSun,
   Droplets,

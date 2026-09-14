@@ -1,16 +1,14 @@
 // components/climatology/HeatmapAnalysis.tsx
-"use client";
-
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Thermometer, Droplets, Gauge } from "lucide-react";
+import { Thermometer, Droplets, Gauge, Grid } from "lucide-react";
 import { HeatmapData } from "@/lib/climatology/analysisTypes";
 import dynamic from "next/dynamic";
 
-const ReactECharts = dynamic(() => import("echarts-for-react"), {
+const Plot = dynamic(() => import("react-plotly.js"), {
   ssr: false,
   loading: () => (
-    <div className="h-[320px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
+    <div className="h-[500px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
       Membuat visualisasi heatmap mingguan...
     </div>
   ),
@@ -32,7 +30,7 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({
   const [activeParam, setActiveParam] = useState<"temperature" | "humidity" | "pressure">("temperature");
 
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
-  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.25)";
+  const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
 
   const labels = {
     temperature: {
@@ -40,21 +38,18 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({
       desc: "Pola distribusi suhu udara mingguan (Hari vs Jam WIB)",
       unit: "°C",
       icon: <Thermometer className="h-5 w-5 text-orange-500" />,
-      colors: ["#313695", "#4575b4", "#74add1", "#abd9e9", "#e0f3f8", "#ffffbf", "#fee090", "#fdae61", "#f46d43", "#d73027", "#a50026"],
     },
     humidity: {
       title: "Heatmap Kelembaban Relatif",
       desc: "Pola distribusi kelembaban relatif mingguan (Hari vs Jam WIB)",
       unit: "%",
       icon: <Droplets className="h-5 w-5 text-blue-500" />,
-      colors: ["#eff6ff", "#bfdbfe", "#60a5fa", "#2563eb", "#1e3a8a"],
     },
     pressure: {
       title: "Heatmap Tekanan Udara",
       desc: "Pola distribusi tekanan udara mingguan (Hari vs Jam WIB)",
       unit: "hPa",
       icon: <Gauge className="h-5 w-5 text-pink-500" />,
-      colors: ["#440154", "#414487", "#2a788e", "#22a884", "#7ad151", "#fde725"],
     },
   };
 
@@ -62,8 +57,8 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({
     return heatmaps?.[activeParam];
   }, [heatmaps, activeParam]);
 
-  // Format YYYY-MM-DD to DD/MM labels for Y-axis
-  const dayLabels = useMemo(() => {
+  // Format YYYY-MM-DD to DD/MM labels for X-axis
+  const xData = useMemo(() => {
     if (!currentHeatmapData?.days) return [];
     return currentHeatmapData.days.map((d) => {
       const parts = d.split("-");
@@ -72,114 +67,100 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({
     });
   }, [currentHeatmapData]);
 
-  const hoursData = useMemo(() => {
-    return currentHeatmapData?.hours || Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
-  }, [currentHeatmapData]);
+  const heatmapTrace = useMemo(() => {
+    if (!currentHeatmapData || !currentHeatmapData.z || currentHeatmapData.z.length === 0) return [];
 
-  // Format matrix data into [hourIdx, dayIdx, value]
-  const { chartData, zmin, zmax } = useMemo(() => {
-    if (!currentHeatmapData || !currentHeatmapData.z || currentHeatmapData.z.length === 0) {
-      return { chartData: [], zmin: 0, zmax: 100 };
-    }
-
-    const dataPoints: [number, number, number | null][] = [];
-    const flatVals: number[] = [];
-
-    // currentHeatmapData.z is typically [dayIdx][hourIdx]
-    currentHeatmapData.z.forEach((row, dayIdx) => {
-      row.forEach((val, hourIdx) => {
-        if (val !== null && Number.isFinite(val)) {
-          flatVals.push(val);
-          dataPoints.push([hourIdx, dayIdx, Number(val.toFixed(1))]);
-        } else {
-          dataPoints.push([hourIdx, dayIdx, null]);
-        }
-      });
-    });
-
-    const min = flatVals.length > 0 ? Math.floor(Math.min(...flatVals)) : 0;
-    const max = flatVals.length > 0 ? Math.ceil(Math.max(...flatVals)) : 100;
-
-    return { chartData: dataPoints, zmin: min, zmax: max };
-  }, [currentHeatmapData]);
-
-  const option = useMemo(() => {
-    if (chartData.length === 0) return {};
-    const info = labels[activeParam];
-
-    return {
-      backgroundColor: "transparent",
-      tooltip: {
-        position: "top",
-        backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.95)",
-        borderColor: isDarkMode ? "#334155" : "#e2e8f0",
-        textStyle: { color: isDarkMode ? "#f8fafc" : "#0f172a", fontSize: 12 },
-        formatter: (params: any) => {
-          const hour = hoursData[params.value[0]];
-          const day = dayLabels[params.value[1]];
-          const val = params.value[2];
-          return `
-            <div style="font-size:12px;font-family:Inter,sans-serif;">
-              <div style="color:${isDarkMode ? '#94a3b8' : '#64748b'};margin-bottom:2px;">Hari: ${day} | Jam: ${hour}:00 WIB</div>
-              <div style="font-weight:600;color:${isDarkMode ? '#f8fafc' : '#0f172a'};">
-                ${info.title}: ${val !== null ? `${val} ${info.unit}` : "Tidak Ada Data"}
-              </div>
-            </div>
-          `;
-        },
-      },
-      grid: {
-        top: 20,
-        right: 20,
-        bottom: 55,
-        left: 55,
-        containLabel: true,
-      },
-      xAxis: {
-        type: "category",
-        data: hoursData.map(h => `${h}:00`),
-        splitArea: { show: true },
-        axisLine: { lineStyle: { color: gridColor } },
-        axisLabel: { color: textColor, fontSize: 10, interval: 1 },
-      },
-      yAxis: {
-        type: "category",
-        data: dayLabels,
-        splitArea: { show: true },
-        axisLine: { lineStyle: { color: gridColor } },
-        axisLabel: { color: textColor, fontSize: 11 },
-      },
-      visualMap: {
-        min: zmin,
-        max: zmax,
-        calculable: true,
-        orient: "horizontal",
-        left: "center",
-        bottom: 5,
-        inRange: { color: info.colors },
-        textStyle: { color: textColor, fontSize: 10 },
-      },
-      series: [
-        {
-          name: info.title,
-          type: "heatmap",
-          data: chartData,
-          label: {
-            show: true,
-            fontSize: 8,
-            color: isDarkMode ? "#f8fafc" : "#0f172a",
-            formatter: (p: any) => (p.data[2] !== null ? p.data[2] : ""),
-          },
-          emphasis: {
-            itemStyle: {
-              shadowBlur: 10,
-              shadowColor: "rgba(0, 0, 0, 0.5)",
-            },
-          },
-        },
+    const colorscales = {
+      temperature: [
+        [0, "#313695"],
+        [0.1, "#4575b4"],
+        [0.2, "#74add1"],
+        [0.3, "#abd9e9"],
+        [0.4, "#e0f3f8"],
+        [0.5, "#ffffbf"],
+        [0.6, "#fee090"],
+        [0.7, "#fdae61"],
+        [0.8, "#f46d43"],
+        [0.9, "#d73027"],
+        [1.0, "#a50026"]
       ],
+      humidity: [
+        [0, "#eff6ff"],
+        [0.25, "#bfdbfe"],
+        [0.5, "#60a5fa"],
+        [0.75, "#2563eb"],
+        [1.0, "#1e3a8a"]
+      ],
+      pressure: [
+        [0, "#440154"],
+        [0.2, "#414487"],
+        [0.4, "#2a788e"],
+        [0.6, "#22a884"],
+        [0.8, "#7ad151"],
+        [1.0, "#fde725"]
+      ]
     };
-  }, [chartData, zmin, zmax, activeParam, dayLabels, hoursData, textColor, gridColor, isDarkMode]);
+
+    const textMatrix = currentHeatmapData.z.map((row) =>
+      row.map((val) => (val !== null ? `<b>${val.toFixed(1)}</b>` : ""))
+    );
+
+    const flatVals = currentHeatmapData.z.flat().filter((v) => v !== null && Number.isFinite(v)) as number[];
+    const zmin = flatVals.length > 0 ? Math.min(...flatVals) : undefined;
+    const zmax = flatVals.length > 0 ? Math.max(...flatVals) : undefined;
+
+    return [
+      {
+        x: currentHeatmapData.hours,
+        y: xData,
+        z: currentHeatmapData.z,
+        type: "heatmap" as const,
+        colorscale: colorscales[activeParam],
+        showscale: true,
+        zmin,
+        zmax,
+        xgap: 2,
+        ygap: 2,
+        text: textMatrix as any,
+        texttemplate: "%{text}",
+        textfont: {
+          size: 9,
+          color: isDarkMode ? "#ffffff" : "#1e293b",
+          family: "Inter, sans-serif"
+        },
+        colorbar: {
+          tickfont: { color: textColor },
+          title: {
+            text: labels[activeParam].unit,
+            font: { color: textColor }
+          }
+        }
+      } as any
+    ];
+  }, [currentHeatmapData, activeParam, xData, isDarkMode, textColor]);
+
+  const heatmapLayout = useMemo(() => ({
+    autosize: true,
+    height: 280,
+    margin: { l: 50, r: 20, t: 20, b: 50 },
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    font: { color: textColor, family: "Inter, sans-serif" },
+    xaxis: {
+      title: { text: "Jam (WIB)" },
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickcolor: textColor,
+      type: "category" as const,
+    },
+    yaxis: {
+      title: { text: "Hari" },
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickcolor: textColor,
+      type: "category" as const,
+    }
+  }), [textColor, gridColor]);
 
   const activeInfo = labels[activeParam];
 
@@ -230,12 +211,12 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({
 
       <CardContent className="p-2 overflow-x-auto">
         {currentHeatmapData && currentHeatmapData.z && currentHeatmapData.z.length > 0 ? (
-          <div className="min-w-[650px] w-full h-[320px]">
-            <ReactECharts
-              option={option}
-              style={{ width: "100%", height: "100%" }}
-              opts={{ renderer: "canvas" }}
-              notMerge={true}
+          <div className="min-w-[650px]">
+            <Plot
+              data={heatmapTrace}
+              layout={heatmapLayout}
+              config={{ responsive: true, displayModeBar: false }}
+              style={{ width: "100%", height: "280px" }}
             />
           </div>
         ) : (
