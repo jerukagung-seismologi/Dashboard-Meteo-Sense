@@ -2,16 +2,7 @@
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Layers, Thermometer, Droplets, Gauge, CloudRain } from "lucide-react";
-import dynamic from "next/dynamic";
-
-const Plot = dynamic(() => import("react-plotly.js"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[380px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
-      Membuat diagram Hovmöller...
-    </div>
-  ),
-});
+import ChartComponent from "@/components/ChartComponent";
 
 interface HovmollerDiagramProps {
   days: string[]; // YYYY-MM-DD
@@ -214,10 +205,9 @@ export const HovmollerDiagram: React.FC<HovmollerDiagramProps> = ({
       <CardContent className="p-2 overflow-x-auto">
         {days.length > 0 && (
           <div className="min-w-[700px]">
-            <Plot
+            <ChartComponent
               data={trace}
               layout={layout}
-              config={{ responsive: true, displayModeBar: false }}
               style={{ width: "100%", height: "380px" }}
             />
           </div>

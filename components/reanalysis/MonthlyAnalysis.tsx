@@ -2,16 +2,7 @@
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarDays, Thermometer, Droplets, Gauge, CloudRain } from "lucide-react";
-import dynamic from "next/dynamic";
-
-const Plot = dynamic(() => import("react-plotly.js"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
-      Membuat grafik analisis bulanan...
-    </div>
-  ),
-});
+import ChartComponent from "@/components/ChartComponent";
 
 interface MonthlyDataField {
   min: number[];
@@ -241,10 +232,9 @@ export const MonthlyAnalysis: React.FC<MonthlyAnalysisProps> = ({
       
       <CardContent className="p-2">
         {months.length > 0 && (
-          <Plot
+          <ChartComponent
             data={activeInfo.traces}
             layout={layout}
-            config={{ responsive: true, displayModeBar: false }}
             style={{ width: "100%", height: "350px" }}
           />
         )}

@@ -2,16 +2,7 @@
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Sun, Zap, Compass, Info, AlertTriangle } from "lucide-react";
-import dynamic from "next/dynamic";
-
-const Plot = dynamic(() => import("react-plotly.js"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
-      Membuat grafik diagnostik...
-    </div>
-  ),
-});
+import ChartComponent from "@/components/ChartComponent";
 
 interface ForecastDiagnosticsProps {
   scatter: {
@@ -265,10 +256,9 @@ export const ForecastDiagnostics: React.FC<ForecastDiagnosticsProps> = ({
         {activeSubTab === "scatter" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-slate-50/50 dark:bg-slate-950/20 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
-              <Plot
+              <ChartComponent
                 data={scatterTempHumTraces}
                 layout={layoutScatter1}
-                config={{ responsive: true, displayModeBar: false }}
                 style={{ width: "100%", height: "300px" }}
               />
               <div className="text-[10px] text-slate-400 p-2">
@@ -277,10 +267,9 @@ export const ForecastDiagnostics: React.FC<ForecastDiagnosticsProps> = ({
             </div>
 
             <div className="bg-slate-50/50 dark:bg-slate-950/20 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
-              <Plot
+              <ChartComponent
                 data={scatterPressRainTraces}
                 layout={layoutScatter2}
-                config={{ responsive: true, displayModeBar: false }}
                 style={{ width: "100%", height: "300px" }}
               />
               <div className="text-[10px] text-slate-400 p-2">
@@ -300,10 +289,9 @@ export const ForecastDiagnostics: React.FC<ForecastDiagnosticsProps> = ({
               <p className="text-xs text-slate-500">
                 Profil rata-rata insolasi matahari harian yang sampai ke permukaan bumi (W/m²).
               </p>
-              <Plot
+              <ChartComponent
                 data={radiationTraces}
                 layout={layoutRadiation}
-                config={{ responsive: true, displayModeBar: false }}
                 style={{ width: "100%", height: "320px" }}
               />
             </div>
@@ -316,10 +304,9 @@ export const ForecastDiagnostics: React.FC<ForecastDiagnosticsProps> = ({
               <p className="text-xs text-slate-500">
                 Menunjukkan kejenuhan parsel udara. Nilai yang mendekati 0°C menandakan kejenuhan penuh (potensi kondensasi/kabut/hujan tinggi).
               </p>
-              <Plot
+              <ChartComponent
                 data={dewPointDepressionTraces}
                 layout={layoutDewPointDepression}
-                config={{ responsive: true, displayModeBar: false }}
                 style={{ width: "100%", height: "320px" }}
               />
             </div>
