@@ -18,7 +18,7 @@ export default function PelaporanPage() {
   const { user, profile } = useAuth();
   const displayName = profile?.displayName || user?.displayName || "Pengamat Cuaca";
 
-  const [sensorOptions, setSensorOptions] = useState<{ label: string; value: string; }[]>([]);
+  const [sensorOptions, setSensorOptions] = useState<{ label: string; value: string; lat?: number; lng?: number }[]>([]);
   const [sensorId, setSensorId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +36,8 @@ export default function PelaporanPage() {
               .map((device) => ({
                 label: device.name,
                 value: device.authToken!,
+                lat: device.coordinates?.lat || -7.67,
+                lng: device.coordinates?.lng || 109.65,
               }));
 
             if (options.length > 0) {
@@ -63,7 +65,10 @@ export default function PelaporanPage() {
     }
   }, [user]);
 
-  const selectedSensorName = sensorOptions.find(opt => opt.value === sensorId)?.label || "Tidak Diketahui";
+  const selectedSensor = sensorOptions.find(opt => opt.value === sensorId);
+  const selectedSensorName = selectedSensor?.label || "Tidak Diketahui";
+  const selectedLat = selectedSensor?.lat ?? -7.67;
+  const selectedLng = selectedSensor?.lng ?? 109.65;
 
   return (
     <ToastProvider>
@@ -108,7 +113,13 @@ export default function PelaporanPage() {
               <LaporanHarian sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />
             </TabsContent>
             <TabsContent value="bulanan" className="pt-4">
-              <LaporanBulanan sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />
+              <LaporanBulanan
+                sensorId={sensorId}
+                sensorName={selectedSensorName}
+                displayName={displayName}
+                lat={selectedLat}
+                lng={selectedLng}
+              />
             </TabsContent>
             <TabsContent value="hujan" className="pt-4">
               <LaporanCurahHujan sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />

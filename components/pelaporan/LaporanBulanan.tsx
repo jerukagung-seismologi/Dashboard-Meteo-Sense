@@ -14,13 +14,17 @@ import {
   LayoutDashboard,
   Eye,
   CheckCircle2,
+  AlertCircle,
   CloudRain,
-  Activity
+  Activity,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  Info
 } from "lucide-react"
-import { type DateRange } from "react-day-picker"
 import dynamic from "next/dynamic"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -46,7 +50,12 @@ import { id } from "date-fns/locale"
 import { PrintLayout } from "./PrintLayout"
 import { generateCanvasFromDOM, exportAsPNG, exportAsJPEG, exportAsPDF, printCanvas } from "@/lib/exportUtils"
 import { ERA5CorrectionPanel } from "./ERA5CorrectionPanel"
-import { CorrectionOffsets, applyCorrectionToDailyRecords } from "@/lib/reanalysis/era5Correction"
+import { 
+  CorrectionOffsets, 
+  applyCorrectionToDailyRecords,
+  imputeMonthlyWeatherRecords,
+  MonthlyImputationSummary
+} from "@/lib/reanalysis/era5Correction"
 import { ReportPublicationCard } from "./ReportPublicationCard"
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
@@ -203,25 +212,50 @@ interface LaporanBulananProps {
   sensorId: string;
   sensorName: string;
   displayName: string;
+  lat?: number;
+  lng?: number;
 }
 
-export default function LaporanBulanan({ sensorId, sensorName, displayName }: LaporanBulananProps) {
+const MONTH_OPTIONS = [
+  { value: 1, label: "Januari" },
+  { value: 2, label: "Februari" },
+  { value: 3, label: "Maret" },
+  { value: 4, label: "April" },
+  { value: 5, label: "Mei" },
+  { value: 6, label: "Juni" },
+  { value: 7, label: "Juli" },
+  { value: 8, label: "Agustus" },
+  { value: 9, label: "September" },
+  { value: 10, label: "Oktober" },
+  { value: 11, label: "November" },
+  { value: 12, label: "Desember" },
+];
+
+export default function LaporanBulanan({
+  sensorId,
+  sensorName,
+  displayName,
+  lat = -7.67,
+  lng = 109.65
+}: LaporanBulananProps) {
   const { toast } = useToast()
   
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    const end = getDayAtSeven(new Date().toISOString().split('T')[0]);
-    const start = new Date(end);
-    start.setDate(start.getDate() - 30);
-    return { from: start, to: end };
-  });
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => now.getMonth() + 1); // 1 - 12
+  const [selectedYear, setSelectedYear] = useState<number>(() => now.getFullYear());
 
   const [viewMode, setViewMode] = useState<'web' | 'print'>('web');
-  const [loading, setLoading] = useState(false)
-  const [rawSensorData, setRawSensorData] = useState<SensorDate[]>([])
-  const [rawWeatherData, setRawWeatherData] = useState<WeatherRecord[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [isExporting, setIsExporting] = useState(false)
+  const [loading, setLoading] = useState(false);
+  const [rawSensorData, setRawSensorData] = useState<SensorDate[]>([]);
+  const [rawWeatherData, setRawWeatherData] = useState<WeatherRecord[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const reportId = "bulanan-print-area";
+
+  // --- Imputation State ---
+  const [enableImputation, setEnableImputation] = useState<boolean>(true);
+  const [era5Data, setEra5Data] = useState<any | null>(null);
+  const [loadingEra5, setLoadingEra5] = useState<boolean>(false);
 
   // --- ERA5 Calibration & Correction State ---
   const [offsets, setOffsets] = useState<CorrectionOffsets>({
@@ -231,16 +265,56 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: La
     enabled: false,
   });
 
+  const daysInMonth = useMemo(() => {
+    return new Date(selectedYear, selectedMonth, 0).getDate();
+  }, [selectedYear, selectedMonth]);
+
+  const monthLabel = useMemo(() => {
+    return MONTH_OPTIONS.find(m => m.value === selectedMonth)?.label || "Bulan";
+  }, [selectedMonth]);
+
+  const startDateStr = useMemo(() => {
+    return `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
+  }, [selectedYear, selectedMonth]);
+
+  const endDateStr = useMemo(() => {
+    return `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+  }, [selectedYear, selectedMonth, daysInMonth]);
+
+  const yearsList = useMemo(() => {
+    const curr = new Date().getFullYear();
+    const arr: number[] = [];
+    for (let y = curr; y >= 2020; y--) {
+      arr.push(y);
+    }
+    return arr;
+  }, []);
+
+  // Merge AWS observed records with ERA5 imputation
+  const { imputedRecords, imputationSummary } = useMemo(() => {
+    const res = imputeMonthlyWeatherRecords(
+      rawWeatherData,
+      era5Data,
+      selectedYear,
+      selectedMonth,
+      enableImputation,
+      offsets
+    );
+    return {
+      imputedRecords: res.records,
+      imputationSummary: res.summary,
+    };
+  }, [rawWeatherData, era5Data, selectedYear, selectedMonth, enableImputation, offsets]);
+
   // Effective Weather Data (Raw vs Corrected)
   const weatherData = useMemo(() => {
-    return applyCorrectionToDailyRecords(rawWeatherData, offsets);
-  }, [rawWeatherData, offsets]);
+    return applyCorrectionToDailyRecords(imputedRecords, offsets);
+  }, [imputedRecords, offsets]);
 
   const stats = useMemo(() => calculatePeriodStats(weatherData, rawSensorData), [weatherData, rawSensorData]);
   const extremes = useMemo(() => findWeatherExtremes(weatherData, rawSensorData), [weatherData, rawSensorData]);
   const weeks = useMemo(() => splitIntoWeeks(weatherData), [weatherData]);
-  const daysCount = dateRange?.from && dateRange?.to ? Math.max(1, Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 3600 * 24))) : 30;
-  const quality = useMemo(() => calculateDataQuality(rawSensorData, daysCount), [rawSensorData, daysCount]);
+  const quality = useMemo(() => calculateDataQuality(rawSensorData, daysInMonth), [rawSensorData, daysInMonth]);
 
   const advancedStats = useMemo(() => {
     if (weatherData.length === 0) return null;
@@ -284,15 +358,8 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: La
   }, [weatherData]);
 
   const publicationCaption = useMemo(() => {
-    if (weatherData.length === 0 || !dateRange?.from || !dateRange?.to) return "";
-    const startFormatted = format(dateRange.from, "dd MMMM", { locale: id }).toUpperCase();
-    const endFormatted = format(dateRange.to, "dd MMMM yyyy", { locale: id }).toUpperCase();
-
-    const diffDays = Math.max(1, Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 3600 * 24)));
-    let headerTitle = `LAPORAN CUACA BULANAN (${startFormatted} - ${endFormatted})`;
-    if (diffDays <= 11) {
-      headerTitle = `LAPORAN METEOROLOGI PERIODIK (${startFormatted} - ${endFormatted})`;
-    }
+    if (weatherData.length === 0) return "";
+    const headerTitle = `LAPORAN CUACA BULANAN (${monthLabel.toUpperCase()} ${selectedYear})`;
 
     const rainTot = (stats.totalRain || 0).toFixed(1);
     const rainDays = stats.rainyDays || 0;
@@ -309,12 +376,17 @@ export default function LaporanBulanan({ sensorId, sensorName, displayName }: La
     const pressMin = stats.minPres != null ? stats.minPres.toFixed(1) : "—";
     const pressMax = stats.maxPres != null ? stats.maxPres.toFixed(1) : "—";
 
+    let provenanceNote = "";
+    if (imputationSummary.imputedDays > 0) {
+      provenanceNote = `\n(Integritas Data: ${imputationSummary.observedDays} hari AWS + ${imputationSummary.imputedDays} hari terimputasi ${imputationSummary.sourceModel})`;
+    }
+
     return `${headerTitle}
 Curah Hujan: ${rainTot} mm (${rainDesc})
 Suhu Udara Rata-Rata: ${tempAvg} (Min: ${tempMin}, Maks: ${tempMax})
 Kelembapan Udara Rata-Rata: ${humAvg} (Min: ${humMin}, Maks: ${humMax})
-Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
-  }, [weatherData, dateRange, stats, extremes]);
+Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa${provenanceNote}`;
+  }, [weatherData, monthLabel, selectedYear, stats, extremes, imputationSummary]);
 
   const handleExport = async (type: 'pdf' | 'png' | 'jpg' | 'print') => {
     if (weatherData.length === 0) return;
@@ -329,7 +401,7 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
         return;
       }
 
-      const filename = `Laporan_Bulanan_${sensorName.replace(/\s+/g, '_')}_${formatYMD(new Date())}`;
+      const filename = `Laporan_Bulanan_${sensorName.replace(/\s+/g, '_')}_${selectedYear}_${String(selectedMonth).padStart(2, '0')}`;
 
       if (type === 'png') exportAsPNG(canvas, filename);
       else if (type === 'jpg') exportAsJPEG(canvas, filename);
@@ -341,157 +413,306 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
     }, 100);
   };
 
+  const fetchEra5Data = async (sDate: string, eDate: string) => {
+    setLoadingEra5(true);
+    try {
+      const url = `/api/reanalysis/data?latitude=${lat}&longitude=${lng}&startDate=${sDate}&endDate=${eDate}&model=auto`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        setEra5Data(json);
+      }
+    } catch (e) {
+      console.warn("Gagal menarik data ERA5 untuk imputasi bulanan:", e);
+    } finally {
+      setLoadingEra5(false);
+    }
+  };
+
   const generateReport = async () => {
     if (!sensorId) {
-      toast({ title: "Peringatan", description: "Silakan pilih sensor terlebih dahulu", variant: "destructive" })
-      return
-    }
-    if (!dateRange?.from || !dateRange?.to) {
-      toast({ title: "Peringatan", description: "Pilih rentang tanggal yang valid", variant: "destructive" })
-      return
+      toast({ title: "Peringatan", description: "Silakan pilih sensor terlebih dahulu", variant: "destructive" });
+      return;
     }
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
-      const start = new Date(dateRange.from)
-      start.setHours(0, 0, 0, 0)
-      const end = new Date(dateRange.to)
-      end.setHours(23, 59, 59, 999)
+      const start = new Date(selectedYear, selectedMonth - 1, 1, 0, 0, 0, 0);
+      const end = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999);
 
       const raw = await fetchSensorDataByDateRange(sensorId, start.getTime(), end.getTime(), true, false, "hourly");
       
       if (!raw || raw.length === 0) {
-        setError("Tidak ada data pada periode tanggal tersebut.");
         setRawSensorData([]);
         setRawWeatherData([]);
-        setLoading(false);
-        return;
+      } else {
+        setRawSensorData(raw);
+        const records = aggregateDaily(raw);
+        records.sort((a, b) => a.date.localeCompare(b.date));
+        setRawWeatherData(records);
       }
 
-      setRawSensorData(raw);
-      const records = aggregateDaily(raw);
-      records.sort((a, b) => a.date.localeCompare(b.date));
-      setRawWeatherData(records);
+      // Fetch ERA5 reanalysis data for this month
+      await fetchEra5Data(startDateStr, endDateStr);
 
     } catch (err: any) {
-      console.error(err)
+      console.error(err);
       setError("Gagal menarik data dari server.");
-      toast({ title: "Error", description: err.message || "Gagal menarik data dari server", variant: "destructive" })
+      toast({ title: "Error", description: err.message || "Gagal menarik data dari server", variant: "destructive" });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleDownloadCSV = () => {
     if (weatherData.length === 0) return;
-    exportToCSV(weatherData, `Laporan_Bulanan_${sensorName.replace(/\s+/g, '_')}_${formatYMD(new Date())}.csv`);
-  }
+    exportToCSV(weatherData, `Laporan_Bulanan_${sensorName.replace(/\s+/g, '_')}_${selectedYear}_${String(selectedMonth).padStart(2, '0')}.csv`);
+  };
+
+  const handlePrevMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedMonth(12);
+      setSelectedYear(y => y - 1);
+    } else {
+      setSelectedMonth(m => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (selectedMonth === 12) {
+      setSelectedMonth(1);
+      setSelectedYear(y => y + 1);
+    } else {
+      setSelectedMonth(m => m + 1);
+    }
+  };
+
+  const handleCurrentMonth = () => {
+    const d = new Date();
+    setSelectedMonth(d.getMonth() + 1);
+    setSelectedYear(d.getFullYear());
+  };
 
   const hasInitRef = useRef(false);
   useEffect(() => {
-    if (sensorId && !hasInitRef.current) {
-      hasInitRef.current = true;
+    if (sensorId) {
       generateReport();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sensorId]);
-
-  const startDateStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '';
-  const endDateStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : '';
+  }, [sensorId, selectedMonth, selectedYear]);
 
   return (
     <div className="space-y-6">
       {/* Control Panel */}
       <Card className="no-print shadow-sm border-slate-200 dark:border-slate-800">
-        <CardContent className="p-4 flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-          <div className="flex flex-col gap-2 flex-grow w-full lg:w-auto">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4 text-blue-600" />
-                Periode Rekapitulasi Bulanan
-              </label>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            <div className="flex flex-col gap-2 flex-grow w-full lg:w-auto">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4 text-blue-600" />
+                  Periode Rekapitulasi Bulanan
+                </label>
 
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border">
+                {/* View Mode Toggle */}
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border">
+                  <Button
+                    variant={viewMode === 'web' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('web')}
+                    className={cn("h-7 text-xs px-2 sm:px-3 font-medium", viewMode === 'web' && "bg-white dark:bg-slate-900 text-blue-600 shadow-sm")}
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5 mr-1 sm:mr-1.5" />
+                    <span className="hidden min-[400px]:inline">Dashboard Web</span>
+                    <span className="min-[400px]:hidden">Web</span>
+                  </Button>
+                  <Button
+                    variant={viewMode === 'print' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('print')}
+                    className={cn("h-7 text-xs px-2 sm:px-3 font-medium", viewMode === 'print' && "bg-white dark:bg-slate-900 text-indigo-600 shadow-sm")}
+                  >
+                    <Eye className="w-3.5 h-3.5 mr-1 sm:mr-1.5" />
+                    <span className="hidden min-[400px]:inline">Pratinjau Cetak (A4)</span>
+                    <span className="min-[400px]:hidden">Cetak</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Month & Year Discretized Selector */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Month Dropdown */}
+                <div className="w-[140px] sm:w-[160px]">
+                  <Select
+                    value={String(selectedMonth)}
+                    onValueChange={(val) => setSelectedMonth(Number(val))}
+                  >
+                    <SelectTrigger className="h-9 bg-white dark:bg-slate-900 font-medium text-xs sm:text-sm">
+                      <SelectValue placeholder="Pilih Bulan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MONTH_OPTIONS.map((m) => (
+                        <SelectItem key={m.value} value={String(m.value)}>
+                          {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Year Dropdown */}
+                <div className="w-[95px] sm:w-[110px]">
+                  <Select
+                    value={String(selectedYear)}
+                    onValueChange={(val) => setSelectedYear(Number(val))}
+                  >
+                    <SelectTrigger className="h-9 bg-white dark:bg-slate-900 font-medium text-xs sm:text-sm">
+                      <SelectValue placeholder="Tahun" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {yearsList.map((y) => (
+                        <SelectItem key={y} value={String(y)}>
+                          {y}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Quick Prev / Next Month Steppers */}
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handlePrevMonth}
+                    title="Bulan Sebelumnya"
+                    className="h-9 w-9 shrink-0"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleNextMonth}
+                    title="Bulan Berikutnya"
+                    className="h-9 w-9 shrink-0"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCurrentMonth}
+                    className="h-9 text-xs px-2.5"
+                  >
+                    Bulan Ini
+                  </Button>
+                </div>
+
                 <Button
-                  variant={viewMode === 'web' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('web')}
-                  className={cn("h-7 text-xs px-2 sm:px-3 font-medium", viewMode === 'web' && "bg-white dark:bg-slate-900 text-blue-600 shadow-sm")}
+                  onClick={generateReport}
+                  disabled={loading}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm h-9 px-3"
                 >
-                  <LayoutDashboard className="w-3.5 h-3.5 mr-1 sm:mr-1.5" />
-                  <span className="hidden min-[400px]:inline">Dashboard Web</span>
-                  <span className="min-[400px]:hidden">Web</span>
-                </Button>
-                <Button
-                  variant={viewMode === 'print' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('print')}
-                  className={cn("h-7 text-xs px-2 sm:px-3 font-medium", viewMode === 'print' && "bg-white dark:bg-slate-900 text-indigo-600 shadow-sm")}
-                >
-                  <Eye className="w-3.5 h-3.5 mr-1 sm:mr-1.5" />
-                  <span className="hidden min-[400px]:inline">Pratinjau Cetak (A4)</span>
-                  <span className="min-[400px]:hidden">Cetak</span>
+                  {loading ? "Memproses..." : "Muat Laporan"}
                 </Button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn("w-full sm:w-[280px] justify-start text-left font-normal text-xs sm:text-sm", !dateRange && "text-muted-foreground")}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">
-                      {dateRange?.from ? (
-                        dateRange.to ? (
-                          <>{format(dateRange.from, 'dd LLL y', { locale: id })} – {format(dateRange.to, 'dd LLL y', { locale: id })}</>
-                        ) : format(dateRange.from, 'dd LLL y', { locale: id })
-                      ) : "Pilih Rentang Tanggal"}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={dateRange?.from}
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={2}
-                  />
-                </PopoverContent>
-              </Popover>
-              <Button onClick={generateReport} disabled={loading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm">
-                {loading ? "Memproses..." : "Proses Laporan"}
+            {/* Export Buttons */}
+            <div className="flex flex-wrap gap-2 w-full lg:w-auto shrink-0 justify-start sm:justify-end">
+              <Button variant="outline" size="sm" onClick={handleDownloadCSV} disabled={weatherData.length === 0} className="h-9 text-xs flex-1 sm:flex-none">
+                <Download className="mr-1.5 h-4 w-4 text-emerald-600" /> CSV
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => handleExport('png')} disabled={weatherData.length === 0 || isExporting} className="h-9 text-xs flex-1 sm:flex-none">
+                <FileImage className="mr-1.5 h-4 w-4 text-green-600" /> PNG
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={weatherData.length === 0 || isExporting} className="h-9 text-xs flex-1 sm:flex-none">
+                <FileType className="mr-1.5 h-4 w-4 text-red-600" /> PDF
+              </Button>
+              <Button className="bg-slate-800 hover:bg-slate-900 text-white h-9 text-xs flex-1 sm:flex-none" size="sm" onClick={() => handleExport('print')} disabled={weatherData.length === 0 || isExporting}>
+                <Printer className="mr-1.5 h-4 w-4" /> Cetak
               </Button>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 w-full lg:w-auto shrink-0 justify-start sm:justify-end">
-            <Button variant="outline" size="sm" onClick={handleDownloadCSV} disabled={weatherData.length === 0} className="h-9 text-xs flex-1 sm:flex-none">
-              <Download className="mr-1.5 h-4 w-4 text-emerald-600" /> CSV
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('png')} disabled={weatherData.length === 0 || isExporting} className="h-9 text-xs flex-1 sm:flex-none">
-              <FileImage className="mr-1.5 h-4 w-4 text-green-600" /> PNG
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={weatherData.length === 0 || isExporting} className="h-9 text-xs flex-1 sm:flex-none">
-              <FileType className="mr-1.5 h-4 w-4 text-red-600" /> PDF
-            </Button>
-            <Button className="bg-slate-800 hover:bg-slate-900 text-white h-9 text-xs flex-1 sm:flex-none" size="sm" onClick={() => handleExport('print')} disabled={weatherData.length === 0 || isExporting}>
-              <Printer className="mr-1.5 h-4 w-4" /> Cetak
-            </Button>
+          {/* Sub-bar: Periode Info & ERA5 Imputation Toggle */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className="bg-slate-50 dark:bg-slate-800/60 font-medium py-1">
+                Kalender: 1 – {daysInMonth} {monthLabel} {selectedYear} ({daysInMonth} Hari)
+              </Badge>
+              {loadingEra5 && (
+                <span className="text-[11px] text-slate-500 animate-pulse flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-500" /> Sinkronisasi data reanalisis ECMWF...
+                </span>
+              )}
+            </div>
+
+            {/* Imputation Toggle */}
+            <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700">
+              <Switch
+                id="impute-toggle"
+                checked={enableImputation}
+                onCheckedChange={setEnableImputation}
+              />
+              <label htmlFor="impute-toggle" className="text-xs font-medium cursor-pointer flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Imputasi Data Kosong (ECMWF ERA5)
+              </label>
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Banner Status Integritas & Imputasi Data */}
+      {weatherData.length > 0 && (
+        <div className={cn(
+          "p-3 rounded-lg border text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs",
+          imputationSummary.imputedDays > 0
+            ? "bg-amber-50/90 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200"
+            : "bg-blue-50/70 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200"
+        )}>
+          <div className="flex items-start sm:items-center gap-2.5">
+            {imputationSummary.imputedDays > 0 ? (
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5 sm:mt-0" />
+            )}
+            <div>
+              <span className="font-bold">Integritas Observasi Bulanan:</span>{" "}
+              {imputationSummary.observedDays} dari {imputationSummary.totalDays} hari kalender terobservasi AWS ({imputationSummary.completenessRawPercent}%).
+              {imputationSummary.imputedDays > 0 ? (
+                <span>
+                  {" "}Sebanyak <strong className="text-amber-700 dark:text-amber-300 font-bold">{imputationSummary.imputedDays} hari kosong berhasil diimputasi</strong> menggunakan reanalisis atmosferik {imputationSummary.sourceModel} (Total data kontinu: {imputationSummary.completenessFinalPercent}%).
+                </span>
+              ) : (
+                <span> Seluruh hari dalam bulan kalender ini terisi penuh oleh stasiun cuaca AWS tanpa celah data.</span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {imputationSummary.imputedDays > 0 ? (
+              <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-medium shadow-xs">
+                {imputationSummary.imputedDays} Hari Diimputasi ERA5
+              </Badge>
+            ) : (
+              <Badge className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-medium shadow-xs">
+                100% Observasi AWS
+              </Badge>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* --- PANEL VALIDASI & KOREKSI ERA5 --- */}
       <ERA5CorrectionPanel
         sensorId={sensorId}
         sensorName={sensorName}
+        lat={lat}
+        lon={lng}
         startDate={startDateStr}
         endDate={endDateStr}
         rawAwsData={rawWeatherData}
@@ -694,6 +915,89 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
               </CardContent>
             </Card>
           </div>
+
+          {/* Daily Calendar Summary Table */}
+          <Card className="border-slate-200 dark:border-slate-800 shadow-xs">
+            <CardHeader className="py-3 px-4 bg-slate-50/70 dark:bg-slate-800/40 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
+                <LayoutDashboard className="w-4 h-4 text-blue-600" />
+                Daftar Observasi & Imputasi Harian Kalender ({monthLabel} {selectedYear})
+              </CardTitle>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> Observasi AWS ({imputationSummary.observedDays} hari)
+                </span>
+                {imputationSummary.imputedDays > 0 && (
+                  <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" /> Imputasi ERA5 ({imputationSummary.imputedDays} hari)
+                  </span>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 sticky top-0 z-10">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Tanggal</th>
+                      <th className="px-3 py-2 text-center font-semibold">Suhu Rata-rata</th>
+                      <th className="px-3 py-2 text-center font-semibold">Suhu Min - Maks</th>
+                      <th className="px-3 py-2 text-center font-semibold">Kelembapan</th>
+                      <th className="px-3 py-2 text-center font-semibold">Tekanan</th>
+                      <th className="px-3 py-2 text-center font-semibold">Curah Hujan</th>
+                      <th className="px-3 py-2 text-center font-semibold">Sumber Data</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    {weatherData.map((d, idx) => (
+                      <tr 
+                        key={d.date} 
+                        className={cn(
+                          idx % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/60 dark:bg-slate-800/30",
+                          d.isImputed && "bg-amber-50/50 dark:bg-amber-950/20"
+                        )}
+                      >
+                        <td className="px-3 py-2 font-medium font-mono">
+                          {d.date}
+                        </td>
+                        <td className="px-3 py-2 text-center font-mono font-semibold">
+                          {d.temperatureAvg != null ? `${d.temperatureAvg.toFixed(1)}°C` : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-center font-mono text-slate-600 dark:text-slate-400">
+                          <span className="text-blue-600 font-semibold">{d.temperatureMin != null ? `${d.temperatureMin.toFixed(1)}` : "—"}</span>
+                          {" - "}
+                          <span className="text-red-600 font-semibold">{d.temperatureMax != null ? `${d.temperatureMax.toFixed(1)}` : "—"}</span>
+                          {" °C"}
+                        </td>
+                        <td className="px-3 py-2 text-center font-mono">
+                          {d.humidityAvg != null ? `${Math.round(d.humidityAvg)}%` : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-center font-mono">
+                          {d.pressureAvg != null ? `${d.pressureAvg.toFixed(1)} hPa` : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-center font-mono">
+                          <span className={d.rainfallTot > 0 ? "text-sky-600 font-bold" : "text-slate-400"}>
+                            {d.rainfallTot != null ? `${d.rainfallTot.toFixed(1)} mm` : "0 mm"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          {d.isImputed ? (
+                            <Badge variant="outline" className="text-[10px] bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 border-amber-300 font-medium">
+                              Imputasi {d.imputedSource?.includes("IFS") ? "ECMWF IFS" : "ERA5-Land"}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-300 font-medium">
+                              AWS Observasi
+                            </Badge>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -722,7 +1026,7 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
                 title="Laporan Cuaca Bulanan"
                 sensorName={sensorName}
                 generatedBy={displayName}
-                periodLabel={`${dateRange?.from ? formatIdDateShort(dateRange.from) : ''} - ${dateRange?.to ? formatIdDateShort(dateRange.to) : ''}`}
+                periodLabel={`Bulan ${monthLabel} ${selectedYear} (1 - ${daysInMonth} ${monthLabel} ${selectedYear})`}
                 orientation="portrait"
               >
                 <div className="space-y-6 mt-6">
@@ -812,6 +1116,16 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
                       </table>
                     </div>
                   </section>
+
+                  {/* Catatan Kaki Provenansi & Integritas Data (WMO No. 100) */}
+                  {imputationSummary.imputedDays > 0 && (
+                    <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded text-[10px] text-slate-600 break-inside-avoid">
+                      <div className="font-bold text-slate-800 mb-0.5">Catatan Provenansi & Integritas Data (WMO No. 100):</div>
+                      <p>
+                        Sebanyak {imputationSummary.imputedDays} hari data pada periode ini ({imputationSummary.imputedDates.slice(0, 10).join(", ")}{imputationSummary.imputedDates.length > 10 ? "..." : ""}) merupakan hasil estimasi imputasi saintifik berbasis reanalisis atmosferik {imputationSummary.sourceModel} untuk mengisi kekosongan telemetri sensor stasiun cuaca otomatis.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </PrintLayout>
             </div>
@@ -826,7 +1140,7 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
           title="Laporan Cuaca Bulanan"
           sensorName={sensorName}
           generatedBy={displayName}
-          periodLabel={`${dateRange?.from ? formatIdDateShort(dateRange.from) : ''} - ${dateRange?.to ? formatIdDateShort(dateRange.to) : ''}`}
+          periodLabel={`Bulan ${monthLabel} ${selectedYear} (1 - ${daysInMonth} ${monthLabel} ${selectedYear})`}
           orientation="portrait"
         >
           <div className="space-y-6 mt-6">
@@ -913,6 +1227,16 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`;
                 </table>
               </div>
             </section>
+
+            {/* Catatan Kaki Provenansi & Integritas Data (WMO No. 100) */}
+            {imputationSummary.imputedDays > 0 && (
+              <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded text-[10px] text-slate-600 break-inside-avoid">
+                <div className="font-bold text-slate-800 mb-0.5">Catatan Provenansi & Integritas Data (WMO No. 100):</div>
+                <p>
+                  Sebanyak {imputationSummary.imputedDays} hari data pada periode ini ({imputationSummary.imputedDates.slice(0, 10).join(", ")}{imputationSummary.imputedDates.length > 10 ? "..." : ""}) merupakan hasil estimasi imputasi saintifik berbasis reanalisis atmosferik {imputationSummary.sourceModel} untuk mengisi kekosongan telemetri sensor stasiun cuaca otomatis.
+                </p>
+              </div>
+            )}
           </div>
         </PrintLayout>
       </div>

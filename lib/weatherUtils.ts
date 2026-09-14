@@ -20,6 +20,8 @@ export type WeatherRecord = {
   luxAvg?: number;
   luxMin?: number;
   luxMax?: number;
+  isImputed?: boolean;
+  imputedSource?: string;
 };
 
 type HourlyRecord = {
