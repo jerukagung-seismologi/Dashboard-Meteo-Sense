@@ -18,7 +18,7 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), {
 
 interface DataItem {
   name: string;
-  value: [string, number];
+  value: [number | string, number];
 }
 
 interface DailyAnalysisProps {
@@ -53,18 +53,38 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
   const tooltipBg = isDarkMode ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.96)";
   const tooltipBorder = isDarkMode ? "#334155" : "#cbd5e1";
 
-  // Tanggal dasar untuk koordinat sumbu waktu continuous
-  const dateBaseStr = useMemo(() => {
-    if (selectedDate) {
-      return format(selectedDate, "yyyy-MM-dd");
-    }
-    if (points.length > 0 && points[0].timestamp) {
-      return new Date(points[0].timestamp).toISOString().slice(0, 10);
-    }
-    return format(new Date(), "yyyy-MM-dd");
-  }, [selectedDate, points]);
+  // Konversi UTC epoch ke string WIB untuk label tooltip
+  const epochToWibLabel = useCallback((ts: number): string => {
+    const wibMs = ts + 7 * 3600 * 1000;
+    const d = new Date(wibMs);
+    const hh = String(d.getUTCHours()).padStart(2, "0");
+    const mm = String(d.getUTCMinutes()).padStart(2, "0");
+    return `${hh}:${mm}`;
+  }, []);
 
-  // Factory generator opsi ECharts dinamis (dynamic-data2 pattern)
+  // Batas sumbu X: tengah malam WIB (00:00 WIB = 17:00 UTC hari sebelumnya)
+  const xAxisBounds = useMemo(() => {
+    // Gunakan timestamp point pertama/terakhir sebagai batas inklusif hari WIB
+    if (points.length === 0) {
+      // Fallback: hari ini WIB
+      const nowWib = Date.now() + 7 * 3600 * 1000;
+      const d = new Date(nowWib);
+      const startOfDayWib = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - 7 * 3600 * 1000;
+      return { min: startOfDayWib, max: startOfDayWib + 24 * 3600 * 1000 - 1 };
+    }
+    // Ambil tanggal WIB dari timeKeyWib point pertama (sudah diurutkan)
+    const firstTs = points[0].timestamp;
+    const firstWib = firstTs + 7 * 3600 * 1000;
+    const d = new Date(firstWib);
+    // Tengah malam WIB = jam 0 WIB = UTC hari D-1 jam 17:00
+    const startOfDayUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - 7 * 3600 * 1000;
+    return {
+      min: startOfDayUtc,
+      max: startOfDayUtc + 24 * 3600 * 1000 - 1,
+    };
+  }, [points]);
+
+  // Factory generator opsi ECharts — gunakan epoch UTC sebagai nilai x
   const createDailyLineOption = useCallback(
     (
       paramTitle: string,
@@ -103,11 +123,20 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
             animation: false,
             label: {
               backgroundColor: isDarkMode ? "#334155" : "#64748b",
+              formatter: (param: any) => {
+                if (param.axisDimension === "x" && typeof param.value === "number") {
+                  const wibMs = param.value + 7 * 3600 * 1000;
+                  const d = new Date(wibMs);
+                  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} WIB`;
+                }
+                return typeof param.value === "number" ? param.value.toFixed(1) : param.value;
+              },
             },
           },
           formatter: (params: any) => {
             if (!params || !params.length) return "";
             const first = params[0];
+            // Ambil label WIB dari name yang sudah disimpan
             const timeLabel = first.name || "";
             let html = `
               <div style="font-weight:700; margin-bottom:5px; font-size:11px; opacity:0.85;">
@@ -116,7 +145,11 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
               <div style="display:flex; flex-direction:column; gap:4px;">
             `;
             params.forEach((item: any) => {
-              const val = typeof item.value[1] === "number" ? item.value[1].toFixed(1) : item.value[1];
+              const val = Array.isArray(item.value) && typeof item.value[1] === "number"
+                ? item.value[1].toFixed(1)
+                : typeof item.value === "number"
+                ? item.value.toFixed(1)
+                : "-";
               html += `
                 <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
                   <span style="display:flex; align-items:center; gap:6px;">
@@ -143,23 +176,29 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
         },
         xAxis: {
           type: "time",
-          min: `${dateBaseStr} 00:00:00`,
-          max: `${dateBaseStr} 23:59:59`,
+          // Batas axis dalam UTC epoch (bukan string ambigu)
+          min: xAxisBounds.min,
+          max: xAxisBounds.max,
           splitLine: { show: false },
           axisLine: { lineStyle: { color: gridColor } },
           axisTick: { show: false },
           axisLabel: {
             color: textColor,
             fontSize: 11,
-            formatter: "{HH}:{mm}",
+            // Formatter ekplisit: konversi timestamp ke WIB
+            formatter: (val: number) => {
+              const wibMs = val + 7 * 3600 * 1000;
+              const d = new Date(wibMs);
+              return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+            },
           },
         },
         yAxis: {
           type: "value",
           scale: true,
           name: unit,
-          min: yRange?.min,
-          max: yRange?.max,
+          min: yRange?.min !== undefined ? yRange.min : undefined,
+          max: yRange?.max !== undefined ? yRange.max : undefined,
           nameTextStyle: {
             color: textColor,
             fontSize: 11,
@@ -208,45 +247,54 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
         ],
       };
     },
-    [dateBaseStr, textColor, gridColor, tooltipBg, tooltipBorder, isDarkMode]
+    [xAxisBounds, textColor, gridColor, tooltipBg, tooltipBorder, isDarkMode]
   );
 
-  // 1. Opsi Suhu ECharts
+  // 1. Opsi Suhu ECharts — x = UTC epoch (p.timestamp), y = nilai suhu
   const tempChartOption = useMemo(() => {
+    const validTemps = points.flatMap((p) => [p.temperatureMax, p.temperatureMean, p.temperatureMin]).filter(Number.isFinite);
+    const tempMin = validTemps.length > 0 ? Math.floor(Math.min(...validTemps)) - 1 : undefined;
+    const tempMax = validTemps.length > 0 ? Math.ceil(Math.max(...validTemps)) + 1 : undefined;
+
     const maxData: DataItem[] = points.map((p) => ({
-      name: `${p.timeKeyWib} WIB`,
-      value: [`${dateBaseStr} ${p.timeKeyWib}:00`, p.temperatureMax],
+      name: epochToWibLabel(p.timestamp) + " WIB",
+      value: [p.timestamp, p.temperatureMax],
     }));
     const meanData: DataItem[] = points.map((p) => ({
-      name: `${p.timeKeyWib} WIB`,
-      value: [`${dateBaseStr} ${p.timeKeyWib}:00`, p.temperatureMean],
+      name: epochToWibLabel(p.timestamp) + " WIB",
+      value: [p.timestamp, p.temperatureMean],
     }));
     const minData: DataItem[] = points.map((p) => ({
-      name: `${p.timeKeyWib} WIB`,
-      value: [`${dateBaseStr} ${p.timeKeyWib}:00`, p.temperatureMin],
+      name: epochToWibLabel(p.timestamp) + " WIB",
+      value: [p.timestamp, p.temperatureMin],
     }));
 
     return createDailyLineOption(
       "Suhu Udara",
       "°C",
       { max: maxData, mean: meanData, min: minData },
-      { max: "#f87171", mean: "#ef4444", min: "#60a5fa" }
+      { max: "#f87171", mean: "#ef4444", min: "#60a5fa" },
+      { min: tempMin, max: tempMax }
     );
-  }, [points, dateBaseStr, createDailyLineOption]);
+  }, [points, epochToWibLabel, createDailyLineOption]);
 
-  // 2. Opsi Kelembaban ECharts
+  // 2. Opsi Kelembaban ECharts — x = UTC epoch, y = kelembaban
   const humChartOption = useMemo(() => {
+    const validHums = points.flatMap((p) => [p.humidityMax, p.humidityMean, p.humidityMin]).filter(Number.isFinite);
+    const humMin = validHums.length > 0 ? Math.max(0, Math.floor(Math.min(...validHums)) - 2) : 0;
+    const humMax = validHums.length > 0 ? Math.min(100, Math.ceil(Math.max(...validHums)) + 2) : 100;
+
     const maxData: DataItem[] = points.map((p) => ({
-      name: `${p.timeKeyWib} WIB`,
-      value: [`${dateBaseStr} ${p.timeKeyWib}:00`, p.humidityMax],
+      name: epochToWibLabel(p.timestamp) + " WIB",
+      value: [p.timestamp, p.humidityMax],
     }));
     const meanData: DataItem[] = points.map((p) => ({
-      name: `${p.timeKeyWib} WIB`,
-      value: [`${dateBaseStr} ${p.timeKeyWib}:00`, p.humidityMean],
+      name: epochToWibLabel(p.timestamp) + " WIB",
+      value: [p.timestamp, p.humidityMean],
     }));
     const minData: DataItem[] = points.map((p) => ({
-      name: `${p.timeKeyWib} WIB`,
-      value: [`${dateBaseStr} ${p.timeKeyWib}:00`, p.humidityMin],
+      name: epochToWibLabel(p.timestamp) + " WIB",
+      value: [p.timestamp, p.humidityMin],
     }));
 
     return createDailyLineOption(
@@ -254,32 +302,37 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       "%",
       { max: maxData, mean: meanData, min: minData },
       { max: "#34d399", mean: "#059669", min: "#f59e0b" },
-      { min: 0, max: 100 }
+      { min: humMin, max: humMax }
     );
-  }, [points, dateBaseStr, createDailyLineOption]);
+  }, [points, epochToWibLabel, createDailyLineOption]);
 
-  // 3. Opsi Tekanan ECharts
+  // 3. Opsi Tekanan ECharts — x = UTC epoch, y = tekanan
   const pressChartOption = useMemo(() => {
+    const validPresses = points.flatMap((p) => [p.pressureMax, p.pressureMean, p.pressureMin]).filter(Number.isFinite);
+    const pressMin = validPresses.length > 0 ? Math.floor(Math.min(...validPresses)) - 1 : undefined;
+    const pressMax = validPresses.length > 0 ? Math.ceil(Math.max(...validPresses)) + 1 : undefined;
+
     const maxData: DataItem[] = points.map((p) => ({
-      name: `${p.timeKeyWib} WIB`,
-      value: [`${dateBaseStr} ${p.timeKeyWib}:00`, p.pressureMax],
+      name: epochToWibLabel(p.timestamp) + " WIB",
+      value: [p.timestamp, p.pressureMax],
     }));
     const meanData: DataItem[] = points.map((p) => ({
-      name: `${p.timeKeyWib} WIB`,
-      value: [`${dateBaseStr} ${p.timeKeyWib}:00`, p.pressureMean],
+      name: epochToWibLabel(p.timestamp) + " WIB",
+      value: [p.timestamp, p.pressureMean],
     }));
     const minData: DataItem[] = points.map((p) => ({
-      name: `${p.timeKeyWib} WIB`,
-      value: [`${dateBaseStr} ${p.timeKeyWib}:00`, p.pressureMin],
+      name: epochToWibLabel(p.timestamp) + " WIB",
+      value: [p.timestamp, p.pressureMin],
     }));
 
     return createDailyLineOption(
       "Tekanan",
       "hPa",
       { max: maxData, mean: meanData, min: minData },
-      { max: "#f43f5e", mean: "#db2777", min: "#818cf8" }
+      { max: "#f43f5e", mean: "#db2777", min: "#818cf8" },
+      { min: pressMin, max: pressMax }
     );
-  }, [points, dateBaseStr, createDailyLineOption]);
+  }, [points, epochToWibLabel, createDailyLineOption]);
 
   // Daily Heatmap Trace & Layout Data
   const currentHeatmapData = useMemo(() => {
