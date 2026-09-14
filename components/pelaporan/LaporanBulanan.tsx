@@ -8,15 +8,12 @@ import {
   Download, 
   Thermometer, 
   Droplets, 
-  Wind, 
-  Gauge, 
   CalendarIcon,
   LayoutDashboard,
   Eye,
   CheckCircle2,
   AlertCircle,
   CloudRain,
-  Activity,
   ChevronLeft,
   ChevronRight,
   Sparkles,
@@ -40,7 +37,6 @@ import {
   formatIdDateShort,
   formatYMD,
   getDayAtSeven,
-  splitIntoWeeks,
   findWeatherExtremes,
   calculateDataQuality,
   exportToCSV,
@@ -60,152 +56,165 @@ import { ReportPublicationCard } from "./ReportPublicationCard"
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
-const calculateBoxplotStats = (values: number[]) => {
-  if (values.length === 0) return [0, 0, 0, 0, 0];
-  const sorted = [...values].sort((a, b) => a - b);
-  const min = sorted[0];
-  const max = sorted[sorted.length - 1];
-  
-  const getPercentile = (p: number) => {
-    const idx = (sorted.length - 1) * p;
-    const low = Math.floor(idx);
-    const high = Math.ceil(idx);
-    return sorted[low] + (sorted[high] - sorted[low]) * (idx - low);
-  };
-  
-  const q1 = getPercentile(0.25);
-  const median = getPercentile(0.5);
-  const q3 = getPercentile(0.75);
-  
-  return [min, q1, median, q3, max];
+// --- HELPERS ---
+const formatDateLabel = (dateStr: string) => {
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      return dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+    }
+  } catch {}
+  return dateStr;
 };
 
 // --- CHARTS ---
 const TemperatureTrendChart = ({ data }: { data: WeatherRecord[] }) => {
-  const dates = data.map(d => {
-    try {
-      const parts = d.date.split('-');
-      if (parts.length === 3) {
-        const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-        return dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
-      }
-    } catch {}
-    return d.date;
-  });
+  const dates = data.map(d => formatDateLabel(d.date));
 
   const option = {
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['Maksimum', 'Rata-rata', 'Minimum'], top: 0 },
-    grid: { left: '3%', right: '3%', bottom: '8%', top: '40px', containLabel: true },
-    xAxis: { type: 'category', data: dates, splitLine: { show: false } },
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any[]) => {
+        if (!params?.length) return '';
+        const date = params[0].axisValue;
+        let html = `<div style="font-weight:600;margin-bottom:4px;font-size:11px">${date}</div>`;
+        params.forEach((p: any) => {
+          html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0">`;
+          html += `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>`;
+          html += `<span>${p.seriesName}: <b>${p.value != null ? Number(p.value).toFixed(1) : '—'}°C</b></span></div>`;
+        });
+        return html;
+      }
+    },
+    legend: { data: ['Maksimum', 'Rata-rata', 'Minimum'], top: 0, textStyle: { fontSize: 11 } },
+    grid: { left: '3%', right: '3%', bottom: '30px', top: '40px', containLabel: true },
+    xAxis: { type: 'category', data: dates, splitLine: { show: false }, axisLabel: { fontSize: 10 } },
     yAxis: { 
       type: 'value', 
       name: '°C', 
       scale: true,
-      splitLine: { lineStyle: { color: '#f3f4f6' } } 
+      splitLine: { lineStyle: { color: '#f3f4f6' } },
+      axisLabel: { fontSize: 10 }
     },
     dataZoom: [
       { type: 'inside', start: 0, end: 100 },
-      { type: 'slider', start: 0, end: 100, height: 16, bottom: 0 }
+      { type: 'slider', start: 0, end: 100, height: 16, bottom: 4 }
     ],
     series: [
-      { name: 'Maksimum', type: 'line', data: data.map(d => d.temperatureMax), itemStyle: { color: '#ef4444' }, smooth: true },
-      { name: 'Rata-rata', type: 'line', data: data.map(d => d.temperatureAvg), itemStyle: { color: '#f59e0b' }, lineStyle: { width: 3 }, smooth: true },
-      { name: 'Minimum', type: 'line', data: data.map(d => d.temperatureMin), itemStyle: { color: '#3b82f6' }, smooth: true }
+      { name: 'Maksimum', type: 'line', data: data.map(d => d.temperatureMax), itemStyle: { color: '#ef4444' }, lineStyle: { color: '#ef4444' }, showSymbol: false, smooth: true },
+      { name: 'Rata-rata', type: 'line', data: data.map(d => d.temperatureAvg), itemStyle: { color: '#f59e0b' }, lineStyle: { color: '#f59e0b', width: 2.5 }, showSymbol: false, smooth: true },
+      { name: 'Minimum', type: 'line', data: data.map(d => d.temperatureMin), itemStyle: { color: '#3b82f6' }, lineStyle: { color: '#3b82f6' }, showSymbol: false, smooth: true }
     ]
   };
 
-  return <ReactECharts option={option} style={{ width: '100%', height: '260px' }} />;
+  return <ReactECharts option={option} style={{ width: '100%', height: '270px' }} notMerge={false} />;
 };
 
-const TemperatureBoxPlot = ({ rawData }: { rawData: SensorDate[] }) => {
-  const temps = rawData.map(r => r.temperature).filter(Number.isFinite);
-  const stats = calculateBoxplotStats(temps);
+const HumidityTrendChart = ({ data }: { data: WeatherRecord[] }) => {
+  const dates = data.map(d => formatDateLabel(d.date));
 
   const option = {
-    tooltip: { trigger: 'item' },
-    grid: { left: '8%', right: '8%', bottom: '15%', top: '10%', containLabel: true },
-    xAxis: { type: 'category', data: ['Distribusi Suhu'] },
-    yAxis: { 
-      type: 'value', 
-      name: '°C', 
-      scale: true,
-      splitLine: { lineStyle: { color: '#f3f4f6' } } 
-    },
-    series: [
-      {
-        name: 'Suhu',
-        type: 'boxplot',
-        data: [stats],
-        itemStyle: { color: '#f59e0b', borderColor: '#d97706' }
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any[]) => {
+        if (!params?.length) return '';
+        const date = params[0].axisValue;
+        let html = `<div style="font-weight:600;margin-bottom:4px;font-size:11px">${date}</div>`;
+        params.forEach((p: any) => {
+          html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0">`;
+          html += `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>`;
+          html += `<span>${p.seriesName}: <b>${p.value != null ? Math.round(Number(p.value)) : '—'}%</b></span></div>`;
+        });
+        return html;
       }
+    },
+    legend: { data: ['Maks', 'Rata-rata', 'Min'], top: 0, textStyle: { fontSize: 11 } },
+    grid: { left: '3%', right: '3%', bottom: '30px', top: '40px', containLabel: true },
+    xAxis: { type: 'category', data: dates, splitLine: { show: false }, axisLabel: { fontSize: 10 } },
+    yAxis: {
+      type: 'value',
+      name: '%',
+      min: 30,
+      max: 100,
+      splitLine: { lineStyle: { color: '#f3f4f6' } },
+      axisLabel: { fontSize: 10 }
+    },
+    dataZoom: [
+      { type: 'inside', start: 0, end: 100 },
+      { type: 'slider', start: 0, end: 100, height: 16, bottom: 4 }
+    ],
+    series: [
+      { name: 'Maks', type: 'line', data: data.map(d => d.humidityMax), itemStyle: { color: '#06b6d4' }, lineStyle: { color: '#06b6d4' }, showSymbol: false, smooth: true },
+      { name: 'Rata-rata', type: 'line', data: data.map(d => d.humidityAvg), itemStyle: { color: '#0ea5e9' }, lineStyle: { color: '#0ea5e9', width: 2.5 }, showSymbol: false, smooth: true },
+      { name: 'Min', type: 'line', data: data.map(d => d.humidityMin), itemStyle: { color: '#6366f1' }, lineStyle: { color: '#6366f1' }, showSymbol: false, smooth: true }
     ]
   };
 
-  return <ReactECharts option={option} style={{ width: '100%', height: '260px' }} />;
+  return <ReactECharts option={option} style={{ width: '100%', height: '270px' }} notMerge={false} />;
 };
 
 const RainfallChart = ({ data }: { data: WeatherRecord[] }) => {
-  const dates = data.map(d => {
-    try {
-      const parts = d.date.split('-');
-      if (parts.length === 3) {
-        const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-        return dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
-      }
-    } catch {}
-    return d.date;
-  });
+  const dates = data.map(d => formatDateLabel(d.date));
+  const dailyRain = data.map(d => d.rainfallTot ?? 0);
+
+  // Build cumulative accumulation
+  const accumulation: number[] = [];
+  let cum = 0;
+  for (const r of dailyRain) {
+    cum += r;
+    accumulation.push(Number(cum.toFixed(1)));
+  }
 
   const option = {
-    tooltip: { trigger: 'axis' },
-    grid: { left: '3%', right: '3%', bottom: '8%', top: '20px', containLabel: true },
-    xAxis: { type: 'category', data: dates, splitLine: { show: false } },
-    yAxis: { type: 'value', name: 'mm', splitLine: { lineStyle: { color: '#f3f4f6' } } },
-    dataZoom: [
-      { type: 'inside', start: 0, end: 100 },
-      { type: 'slider', start: 0, end: 100, height: 16, bottom: 0 }
-    ],
-    series: [
-      { name: 'Curah Hujan', type: 'bar', data: data.map(d => d.rainfallTot), itemStyle: { color: '#0284C7', borderRadius: [4, 4, 0, 0] } }
-    ]
-  };
-
-  return <ReactECharts option={option} style={{ width: '100%', height: '240px' }} />;
-};
-
-const MetricTrendChart = ({ data, dataKey, name, color, unit }: { data: WeatherRecord[], dataKey: keyof WeatherRecord, name: string, color: string, unit: string }) => {
-  const dates = data.map(d => {
-    try {
-      const parts = d.date.split('-');
-      if (parts.length === 3) {
-        const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-        return dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any[]) => {
+        if (!params?.length) return '';
+        const date = params[0].axisValue;
+        let html = `<div style="font-weight:600;margin-bottom:4px;font-size:11px">${date}</div>`;
+        params.forEach((p: any) => {
+          html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0">`;
+          html += `<span style="display:inline-block;width:8px;height:8px;border-radius:${p.seriesType === 'bar' ? '2px' : '50%'};background:${p.color}"></span>`;
+          html += `<span>${p.seriesName}: <b>${p.value != null ? Number(p.value).toFixed(1) : '0'} mm</b></span></div>`;
+        });
+        return html;
       }
-    } catch {}
-    return d.date;
-  });
-
-  const option = {
-    tooltip: { trigger: 'axis' },
-    grid: { left: '3%', right: '3%', bottom: '8%', top: '20px', containLabel: true },
-    xAxis: { type: 'category', data: dates, splitLine: { show: false } },
-    yAxis: { 
-      type: 'value', 
-      name: unit, 
-      scale: true,
-      splitLine: { lineStyle: { color: '#f3f4f6' } } 
     },
+    legend: { data: ['Hujan Harian', 'Akumulasi'], top: 0, textStyle: { fontSize: 11 } },
+    grid: { left: '3%', right: '8%', bottom: '30px', top: '40px', containLabel: true },
+    xAxis: { type: 'category', data: dates, splitLine: { show: false }, axisLabel: { fontSize: 10 } },
+    yAxis: [
+      { type: 'value', name: 'Harian (mm)', splitLine: { lineStyle: { color: '#f3f4f6' } }, axisLabel: { fontSize: 10 } },
+      { type: 'value', name: 'Akum. (mm)', position: 'right', splitLine: { show: false }, axisLabel: { fontSize: 10 } }
+    ],
     dataZoom: [
       { type: 'inside', start: 0, end: 100 },
-      { type: 'slider', start: 0, end: 100, height: 16, bottom: 0 }
+      { type: 'slider', start: 0, end: 100, height: 16, bottom: 4 }
     ],
     series: [
-      { name, type: 'line', data: data.map(d => d[dataKey]), itemStyle: { color }, lineStyle: { width: 2.5 }, smooth: true }
+      {
+        name: 'Hujan Harian',
+        type: 'bar',
+        yAxisIndex: 0,
+        data: dailyRain,
+        itemStyle: { color: '#0ea5e9', borderRadius: [3, 3, 0, 0] }
+      },
+      {
+        name: 'Akumulasi',
+        type: 'line',
+        yAxisIndex: 1,
+        data: accumulation,
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { color: '#7c3aed', width: 2 },
+        itemStyle: { color: '#7c3aed' },
+        areaStyle: { color: 'rgba(124,58,237,0.08)' }
+      }
     ]
   };
 
-  return <ReactECharts option={option} style={{ width: '100%', height: '240px' }} />;
+  return <ReactECharts option={option} style={{ width: '100%', height: '270px' }} notMerge={false} />;
 };
 
 interface LaporanBulananProps {
@@ -313,7 +322,6 @@ export default function LaporanBulanan({
 
   const stats = useMemo(() => calculatePeriodStats(weatherData, rawSensorData), [weatherData, rawSensorData]);
   const extremes = useMemo(() => findWeatherExtremes(weatherData, rawSensorData), [weatherData, rawSensorData]);
-  const weeks = useMemo(() => splitIntoWeeks(weatherData), [weatherData]);
   const quality = useMemo(() => calculateDataQuality(rawSensorData, daysInMonth), [rawSensorData, daysInMonth]);
 
   const advancedStats = useMemo(() => {
@@ -741,67 +749,73 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa${provenanceNote}`;
             text={publicationCaption} 
           />
 
-          {/* Hero Grid Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="border-orange-100 bg-gradient-to-br from-orange-50/50 via-white to-white dark:from-slate-900 dark:to-slate-800">
-              <CardContent className="p-4 space-y-1.5">
+          {/* Hero Grid Metrics — 3 summary cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Suhu */}
+            <Card className="border-orange-100 bg-gradient-to-br from-orange-50/60 via-white to-white dark:from-slate-900 dark:to-slate-800">
+              <CardContent className="p-4 space-y-2">
                 <div className="flex justify-between items-center text-xs font-semibold text-orange-700">
-                  <span className="flex items-center gap-1.5"><Thermometer className="w-4 h-4 text-orange-500" /> Suhu Rata-rata</span>
+                  <span className="flex items-center gap-1.5"><Thermometer className="w-4 h-4 text-orange-500" /> Suhu Udara</span>
                   <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-700">Bulanan</Badge>
                 </div>
                 <div className="text-3xl font-black text-slate-900 dark:text-slate-100">
-                  {stats.avgTemp} <span className="text-sm font-normal text-slate-500">°C</span>
+                  {stats.avgTemp != null ? `${stats.avgTemp}` : '—'} <span className="text-sm font-normal text-slate-500">°C rata-rata</span>
                 </div>
-                <div className="flex justify-between text-xs text-slate-500 pt-1 border-t">
-                  <span>Maks: <strong className="text-red-600">{stats.maxTemp}°C</strong></span>
-                  <span>Min: <strong className="text-blue-600">{stats.minTemp}°C</strong></span>
+                <div className="grid grid-cols-2 gap-1 text-xs pt-1 border-t">
+                  <div className="flex flex-col items-center p-1.5 bg-red-50 dark:bg-red-950/30 rounded">
+                    <span className="text-red-500 font-bold text-base">{stats.maxTemp ?? '—'}°C</span>
+                    <span className="text-slate-500">Tertinggi</span>
+                  </div>
+                  <div className="flex flex-col items-center p-1.5 bg-blue-50 dark:bg-blue-950/30 rounded">
+                    <span className="text-blue-600 font-bold text-base">{stats.minTemp ?? '—'}°C</span>
+                    <span className="text-slate-500">Terendah</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-sky-100 bg-gradient-to-br from-sky-50/50 via-white to-white dark:from-slate-900 dark:to-slate-800">
-              <CardContent className="p-4 space-y-1.5">
+            {/* Kelembapan */}
+            <Card className="border-sky-100 bg-gradient-to-br from-sky-50/60 via-white to-white dark:from-slate-900 dark:to-slate-800">
+              <CardContent className="p-4 space-y-2">
                 <div className="flex justify-between items-center text-xs font-semibold text-sky-700">
-                  <span className="flex items-center gap-1.5"><CloudRain className="w-4 h-4 text-sky-500" /> Total Curah Hujan</span>
-                  <Badge variant="outline" className="text-[10px] bg-sky-50 text-sky-700">Akumulasi</Badge>
-                </div>
-                <div className="text-3xl font-black text-sky-600">
-                  {stats.totalRain} <span className="text-sm font-normal text-slate-500">mm</span>
-                </div>
-                <div className="flex justify-between text-xs text-slate-500 pt-1 border-t">
-                  <span>Hari Hujan:</span>
-                  <strong className="text-slate-700 dark:text-slate-300">{stats.rainyDays} Hari</strong>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-teal-100 bg-gradient-to-br from-teal-50/50 via-white to-white dark:from-slate-900 dark:to-slate-800">
-              <CardContent className="p-4 space-y-1.5">
-                <div className="flex justify-between items-center text-xs font-semibold text-teal-700">
-                  <span className="flex items-center gap-1.5"><Wind className="w-4 h-4 text-teal-500" /> Kelembapan Udara</span>
-                  <Badge variant="outline" className="text-[10px] bg-teal-50 text-teal-700">Rata-rata</Badge>
+                  <span className="flex items-center gap-1.5"><Droplets className="w-4 h-4 text-sky-500" /> Kelembapan Udara</span>
+                  <Badge variant="outline" className="text-[10px] bg-sky-50 text-sky-700">Relatif</Badge>
                 </div>
                 <div className="text-3xl font-black text-slate-900 dark:text-slate-100">
-                  {stats.avgHum} <span className="text-sm font-normal text-slate-500">%</span>
+                  {stats.avgHum != null ? `${Math.round(stats.avgHum)}` : '—'} <span className="text-sm font-normal text-slate-500">% rata-rata</span>
                 </div>
-                <div className="text-xs text-slate-500 pt-1 border-t">
-                  Rata-rata kelembapan relatif periode
+                <div className="grid grid-cols-2 gap-1 text-xs pt-1 border-t">
+                  <div className="flex flex-col items-center p-1.5 bg-cyan-50 dark:bg-cyan-950/30 rounded">
+                    <span className="text-cyan-600 font-bold text-base">{stats.maxHum != null ? `${Math.round(stats.maxHum)}` : '—'}%</span>
+                    <span className="text-slate-500">Tertinggi</span>
+                  </div>
+                  <div className="flex flex-col items-center p-1.5 bg-indigo-50 dark:bg-indigo-950/30 rounded">
+                    <span className="text-indigo-600 font-bold text-base">{stats.minHum != null ? `${Math.round(stats.minHum)}` : '—'}%</span>
+                    <span className="text-slate-500">Terendah</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/50 via-white to-white dark:from-slate-900 dark:to-slate-800">
-              <CardContent className="p-4 space-y-1.5">
-                <div className="flex justify-between items-center text-xs font-semibold text-indigo-700">
-                  <span className="flex items-center gap-1.5"><Gauge className="w-4 h-4 text-indigo-500" /> Kualitas Data</span>
-                  <Badge variant="outline" className="text-[10px] bg-indigo-50 text-indigo-700">Integritas</Badge>
+            {/* Curah Hujan */}
+            <Card className="border-violet-100 bg-gradient-to-br from-violet-50/60 via-white to-white dark:from-slate-900 dark:to-slate-800">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex justify-between items-center text-xs font-semibold text-violet-700">
+                  <span className="flex items-center gap-1.5"><CloudRain className="w-4 h-4 text-violet-500" /> Curah Hujan</span>
+                  <Badge variant="outline" className="text-[10px] bg-violet-50 text-violet-700">Akumulasi</Badge>
                 </div>
-                <div className="text-3xl font-black text-indigo-600">
-                  {quality.availabilityPercent.toFixed(1)} <span className="text-sm font-normal text-slate-500">%</span>
+                <div className="text-3xl font-black text-violet-700">
+                  {stats.totalRain ?? 0} <span className="text-sm font-normal text-slate-500">mm</span>
                 </div>
-                <div className="flex justify-between text-xs text-slate-500 pt-1 border-t">
-                  <span>Data Diterima:</span>
-                  <strong className="text-slate-700 dark:text-slate-300">{quality.actualTotal} / {quality.expectedTotal}</strong>
+                <div className="grid grid-cols-2 gap-1 text-xs pt-1 border-t">
+                  <div className="flex flex-col items-center p-1.5 bg-sky-50 dark:bg-sky-950/30 rounded">
+                    <span className="text-sky-700 font-bold text-base">{stats.rainyDays ?? 0}</span>
+                    <span className="text-slate-500">Hari Hujan</span>
+                  </div>
+                  <div className="flex flex-col items-center p-1.5 bg-slate-50 dark:bg-slate-800/50 rounded">
+                    <span className="text-slate-700 dark:text-slate-300 font-bold text-base">{advancedStats?.maxDailyRain ?? 0}</span>
+                    <span className="text-slate-500">Maks Harian</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -812,7 +826,7 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa${provenanceNote}`;
             <Card className="border-slate-200 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900">
               <CardHeader className="py-3 px-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                 <CardTitle className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-indigo-600" />
+                  <Thermometer className="w-4 h-4 text-indigo-600" />
                   Statistik Parameter Meteorologi Periode Pengamatan
                 </CardTitle>
               </CardHeader>
@@ -877,11 +891,11 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa${provenanceNote}`;
             </Card>
           )}
 
-          {/* Interactive Web Charts */}
+          {/* Interactive Web Charts — 2x2 grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="shadow-sm">
               <CardHeader className="py-3 px-4 bg-orange-50/60 border-b">
-                <CardTitle className="text-sm font-bold text-orange-950">Tren Suhu Udara Bulanan</CardTitle>
+                <CardTitle className="text-sm font-bold text-orange-950">Tren Suhu Udara — Min / Rata-rata / Maks (°C)</CardTitle>
               </CardHeader>
               <CardContent className="p-2">
                 <TemperatureTrendChart data={weatherData} />
@@ -890,28 +904,19 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa${provenanceNote}`;
 
             <Card className="shadow-sm">
               <CardHeader className="py-3 px-4 bg-sky-50/60 border-b">
-                <CardTitle className="text-sm font-bold text-sky-950">Distribusi Curah Hujan Bulanan</CardTitle>
+                <CardTitle className="text-sm font-bold text-sky-950">Tren Kelembapan — Min / Rata-rata / Maks (%)</CardTitle>
+              </CardHeader>
+              <CardContent className="p-2">
+                <HumidityTrendChart data={weatherData} />
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm col-span-1 lg:col-span-2">
+              <CardHeader className="py-3 px-4 bg-violet-50/60 border-b">
+                <CardTitle className="text-sm font-bold text-violet-950">Curah Hujan Harian & Akumulasi Bulanan (mm)</CardTitle>
               </CardHeader>
               <CardContent className="p-2">
                 <RainfallChart data={weatherData} />
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-sm">
-              <CardHeader className="py-3 px-4 bg-teal-50/60 border-b">
-                <CardTitle className="text-sm font-bold text-teal-950">Tren Kelembapan Udara (%)</CardTitle>
-              </CardHeader>
-              <CardContent className="p-2">
-                <MetricTrendChart data={weatherData} dataKey="humidityAvg" name="Kelembapan" color="#0ea5e9" unit="%" />
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-sm">
-              <CardHeader className="py-3 px-4 bg-violet-50/60 border-b">
-                <CardTitle className="text-sm font-bold text-violet-950">Tren Tekanan Udara (hPa)</CardTitle>
-              </CardHeader>
-              <CardContent className="p-2">
-                <MetricTrendChart data={weatherData} dataKey="pressureAvg" name="Tekanan" color="#8b5cf6" unit="hPa" />
               </CardContent>
             </Card>
           </div>
@@ -1030,48 +1035,49 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa${provenanceNote}`;
                 orientation="portrait"
               >
                 <div className="space-y-6 mt-6">
-                  {/* 2 Kolom Ringkasan Rata-rata Suhu & Kelembapan Kiri - Kanan */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 bg-orange-50/70 border border-orange-200 rounded-lg flex items-center justify-between">
-                      <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-orange-800 flex items-center gap-1.5">
-                          <Thermometer className="w-4 h-4 text-orange-600" />
-                          Rata-rata Suhu Udara
-                        </div>
-                        <div className="text-2xl font-black text-orange-950 mt-0.5">
-                          {stats.avgTemp} <span className="text-sm font-normal text-orange-700">°C</span>
-                        </div>
+                  {/* 3 Ringkasan Kartu: Suhu / Kelembapan / Curah Hujan */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="p-3 bg-orange-50/80 border border-orange-200 rounded-lg">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-orange-800 flex items-center gap-1 mb-1">
+                        <Thermometer className="w-3.5 h-3.5 text-orange-600" /> Suhu Udara
                       </div>
-                      <div className="text-right text-xs text-orange-700 font-medium">
-                        <div>Maks: <strong className="text-red-600">{stats.maxTemp}°C</strong></div>
-                        <div>Min: <strong className="text-blue-600">{stats.minTemp}°C</strong></div>
+                      <div className="text-xl font-black text-orange-950">{stats.avgTemp}<span className="text-xs font-normal text-orange-700"> °C rata-rata</span></div>
+                      <div className="flex justify-between text-[10px] text-slate-600 mt-1 pt-1 border-t border-orange-100">
+                        <span>Maks: <strong className="text-red-600">{stats.maxTemp}°C</strong></span>
+                        <span>Min: <strong className="text-blue-600">{stats.minTemp}°C</strong></span>
                       </div>
                     </div>
 
-                    <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg flex items-center justify-between">
-                      <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-blue-800 flex items-center gap-1.5">
-                          <Droplets className="w-4 h-4 text-blue-600" />
-                          Rata-rata Kelembapan
-                        </div>
-                        <div className="text-2xl font-black text-blue-950 mt-0.5">
-                          {stats.avgHum} <span className="text-sm font-normal text-blue-700">%</span>
-                        </div>
+                    <div className="p-3 bg-sky-50/80 border border-sky-200 rounded-lg">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-sky-800 flex items-center gap-1 mb-1">
+                        <Droplets className="w-3.5 h-3.5 text-sky-600" /> Kelembapan
                       </div>
-                      <div className="text-right text-xs text-blue-700 font-medium">
-                        <div>Total Hujan: <strong className="text-sky-700">{stats.totalRain} mm</strong></div>
-                        <div>Hari Hujan: <strong className="text-slate-700">{stats.rainyDays} Hari</strong></div>
+                      <div className="text-xl font-black text-sky-950">{stats.avgHum != null ? Math.round(stats.avgHum) : '—'}<span className="text-xs font-normal text-sky-700"> % rata-rata</span></div>
+                      <div className="flex justify-between text-[10px] text-slate-600 mt-1 pt-1 border-t border-sky-100">
+                        <span>Maks: <strong className="text-cyan-600">{stats.maxHum != null ? Math.round(stats.maxHum) : '—'}%</strong></span>
+                        <span>Min: <strong className="text-indigo-600">{stats.minHum != null ? Math.round(stats.minHum) : '—'}%</strong></span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-violet-50/80 border border-violet-200 rounded-lg">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-violet-800 flex items-center gap-1 mb-1">
+                        <CloudRain className="w-3.5 h-3.5 text-violet-600" /> Curah Hujan
+                      </div>
+                      <div className="text-xl font-black text-violet-700">{stats.totalRain}<span className="text-xs font-normal text-violet-700"> mm total</span></div>
+                      <div className="flex justify-between text-[10px] text-slate-600 mt-1 pt-1 border-t border-violet-100">
+                        <span>Hari Hujan: <strong className="text-sky-700">{stats.rainyDays}</strong></span>
+                        <span>Maks: <strong className="text-slate-700">{advancedStats?.maxDailyRain ?? 0} mm</strong></span>
                       </div>
                     </div>
                   </div>
 
-                  {/* 2 Kolom Grafik Berdampingan: Suhu (Kiri) & Hujan (Kanan) */}
+                  {/* Grafik Suhu & Kelembapan (berdampingan) */}
                   <div className="grid grid-cols-2 gap-4 break-inside-avoid">
                     <Card className="border border-slate-200 shadow-sm print:shadow-none">
                       <CardHeader className="py-2.5 px-3 bg-orange-50/60 print:bg-transparent border-b">
                         <CardTitle className="text-xs font-bold flex items-center text-orange-800">
                           <Thermometer className="w-3.5 h-3.5 mr-1.5 text-orange-600" />
-                          Tren Suhu Udara (°C)
+                          Tren Suhu — Min / Rata-rata / Maks (°C)
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-0">
@@ -1082,40 +1088,28 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa${provenanceNote}`;
                     <Card className="border border-slate-200 shadow-sm print:shadow-none">
                       <CardHeader className="py-2.5 px-3 bg-sky-50/60 print:bg-transparent border-b">
                         <CardTitle className="text-xs font-bold flex items-center text-sky-800">
-                          <CloudRain className="w-3.5 h-3.5 mr-1.5 text-sky-600" />
-                          Curah Hujan Harian (mm)
+                          <Droplets className="w-3.5 h-3.5 mr-1.5 text-sky-600" />
+                          Tren Kelembapan — Min / Rata-rata / Maks (%)
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-0">
-                        <RainfallChart data={weatherData} />
+                        <HumidityTrendChart data={weatherData} />
                       </CardContent>
                     </Card>
                   </div>
 
-                  {/* Tabel Rekapitulasi Mingguan */}
-                  <section className="break-inside-avoid mt-4">
-                    <h2 className="text-base font-bold mb-3 border-l-4 border-slate-800 pl-3">Rekapitulasi Fluktuasi Mingguan</h2>
-                    <div className="overflow-x-auto border rounded-lg">
-                      <table className="w-full text-xs text-left">
-                        <thead className="bg-slate-100 text-slate-700">
-                          <tr>
-                            <th className="px-3 py-2 font-semibold">Periode Minggu</th>
-                            <th className="px-3 py-2 text-center font-semibold">Suhu Maksimum (°C)</th>
-                            <th className="px-3 py-2 text-center font-semibold">Suhu Minimum (°C)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                          {weeks.map((w, idx) => (
-                            <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-                              <td className="px-3 py-2 font-medium">{w.weekName}</td>
-                              <td className="px-3 py-2 text-center text-red-600 font-semibold">{w.maxTemp}°C ({w.maxTempDate})</td>
-                              <td className="px-3 py-2 text-center text-blue-600 font-semibold">{w.minTemp}°C ({w.minTempDate})</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </section>
+                  {/* Grafik Curah Hujan Harian & Akumulasi */}
+                  <Card className="border border-slate-200 shadow-sm print:shadow-none break-inside-avoid">
+                    <CardHeader className="py-2.5 px-3 bg-violet-50/60 print:bg-transparent border-b">
+                      <CardTitle className="text-xs font-bold flex items-center text-violet-800">
+                        <CloudRain className="w-3.5 h-3.5 mr-1.5 text-violet-600" />
+                        Curah Hujan Harian & Akumulasi Bulanan (mm)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <RainfallChart data={weatherData} />
+                    </CardContent>
+                  </Card>
 
                   {/* Catatan Kaki Provenansi & Integritas Data (WMO No. 100) */}
                   {imputationSummary.imputedDays > 0 && (
@@ -1144,46 +1138,49 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa${provenanceNote}`;
           orientation="portrait"
         >
           <div className="space-y-6 mt-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-orange-50/70 border border-orange-200 rounded-lg flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-orange-800 flex items-center gap-1.5">
-                    <Thermometer className="w-4 h-4 text-orange-600" />
-                    Rata-rata Suhu Udara
-                  </div>
-                  <div className="text-2xl font-black text-orange-950 mt-0.5">
-                    {stats.avgTemp} <span className="text-sm font-normal text-orange-700">°C</span>
-                  </div>
+            {/* 3 Ringkasan Kartu: Suhu / Kelembapan / Curah Hujan */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-3 bg-orange-50/80 border border-orange-200 rounded-lg">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-orange-800 flex items-center gap-1 mb-1">
+                  <Thermometer className="w-3.5 h-3.5 text-orange-600" /> Suhu Udara
                 </div>
-                <div className="text-right text-xs text-orange-700 font-medium">
-                  <div>Maks: <strong className="text-red-600">{stats.maxTemp}°C</strong></div>
-                  <div>Min: <strong className="text-blue-600">{stats.minTemp}°C</strong></div>
+                <div className="text-xl font-black text-orange-950">{stats.avgTemp}<span className="text-xs font-normal text-orange-700"> °C rata-rata</span></div>
+                <div className="flex justify-between text-[10px] text-slate-600 mt-1 pt-1 border-t border-orange-100">
+                  <span>Maks: <strong className="text-red-600">{stats.maxTemp}°C</strong></span>
+                  <span>Min: <strong className="text-blue-600">{stats.minTemp}°C</strong></span>
                 </div>
               </div>
 
-              <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-blue-800 flex items-center gap-1.5">
-                    <Droplets className="w-4 h-4 text-blue-600" />
-                    Rata-rata Kelembapan
-                  </div>
-                  <div className="text-2xl font-black text-blue-950 mt-0.5">
-                    {stats.avgHum} <span className="text-sm font-normal text-blue-700">%</span>
-                  </div>
+              <div className="p-3 bg-sky-50/80 border border-sky-200 rounded-lg">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-sky-800 flex items-center gap-1 mb-1">
+                  <Droplets className="w-3.5 h-3.5 text-sky-600" /> Kelembapan
                 </div>
-                <div className="text-right text-xs text-blue-700 font-medium">
-                  <div>Total Hujan: <strong className="text-sky-700">{stats.totalRain} mm</strong></div>
-                  <div>Hari Hujan: <strong className="text-slate-700">{stats.rainyDays} Hari</strong></div>
+                <div className="text-xl font-black text-sky-950">{stats.avgHum != null ? Math.round(stats.avgHum) : '—'}<span className="text-xs font-normal text-sky-700"> % rata-rata</span></div>
+                <div className="flex justify-between text-[10px] text-slate-600 mt-1 pt-1 border-t border-sky-100">
+                  <span>Maks: <strong className="text-cyan-600">{stats.maxHum != null ? Math.round(stats.maxHum) : '—'}%</strong></span>
+                  <span>Min: <strong className="text-indigo-600">{stats.minHum != null ? Math.round(stats.minHum) : '—'}%</strong></span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-violet-50/80 border border-violet-200 rounded-lg">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-violet-800 flex items-center gap-1 mb-1">
+                  <CloudRain className="w-3.5 h-3.5 text-violet-600" /> Curah Hujan
+                </div>
+                <div className="text-xl font-black text-violet-700">{stats.totalRain}<span className="text-xs font-normal text-violet-700"> mm total</span></div>
+                <div className="flex justify-between text-[10px] text-slate-600 mt-1 pt-1 border-t border-violet-100">
+                  <span>Hari Hujan: <strong className="text-sky-700">{stats.rainyDays}</strong></span>
+                  <span>Maks: <strong className="text-slate-700">{advancedStats?.maxDailyRain ?? 0} mm</strong></span>
                 </div>
               </div>
             </div>
 
+            {/* Grafik Suhu & Kelembapan berdampingan */}
             <div className="grid grid-cols-2 gap-4 break-inside-avoid">
               <Card className="border border-slate-200 shadow-sm print:shadow-none">
                 <CardHeader className="py-2.5 px-3 bg-orange-50/60 print:bg-transparent border-b">
                   <CardTitle className="text-xs font-bold flex items-center text-orange-800">
                     <Thermometer className="w-3.5 h-3.5 mr-1.5 text-orange-600" />
-                    Tren Suhu Udara (°C)
+                    Tren Suhu — Min / Rata-rata / Maks (°C)
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -1194,39 +1191,28 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa${provenanceNote}`;
               <Card className="border border-slate-200 shadow-sm print:shadow-none">
                 <CardHeader className="py-2.5 px-3 bg-sky-50/60 print:bg-transparent border-b">
                   <CardTitle className="text-xs font-bold flex items-center text-sky-800">
-                    <CloudRain className="w-3.5 h-3.5 mr-1.5 text-sky-600" />
-                    Curah Hujan Harian (mm)
+                    <Droplets className="w-3.5 h-3.5 mr-1.5 text-sky-600" />
+                    Tren Kelembapan — Min / Rata-rata / Maks (%)
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <RainfallChart data={weatherData} />
+                  <HumidityTrendChart data={weatherData} />
                 </CardContent>
               </Card>
             </div>
 
-            <section className="break-inside-avoid mt-4">
-              <h2 className="text-base font-bold mb-3 border-l-4 border-slate-800 pl-3">Rekapitulasi Fluktuasi Mingguan</h2>
-              <div className="overflow-x-auto border rounded-lg">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-slate-100 text-slate-700">
-                    <tr>
-                      <th className="px-3 py-2 font-semibold">Periode Minggu</th>
-                      <th className="px-3 py-2 text-center font-semibold">Suhu Maksimum (°C)</th>
-                      <th className="px-3 py-2 text-center font-semibold">Suhu Minimum (°C)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {weeks.map((w, idx) => (
-                      <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-                        <td className="px-3 py-2 font-medium">{w.weekName}</td>
-                        <td className="px-3 py-2 text-center text-red-600 font-semibold">{w.maxTemp}°C ({w.maxTempDate})</td>
-                        <td className="px-3 py-2 text-center text-blue-600 font-semibold">{w.minTemp}°C ({w.minTempDate})</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+            {/* Grafik Curah Hujan Harian & Akumulasi */}
+            <Card className="border border-slate-200 shadow-sm print:shadow-none break-inside-avoid">
+              <CardHeader className="py-2.5 px-3 bg-violet-50/60 print:bg-transparent border-b">
+                <CardTitle className="text-xs font-bold flex items-center text-violet-800">
+                  <CloudRain className="w-3.5 h-3.5 mr-1.5 text-violet-600" />
+                  Curah Hujan Harian & Akumulasi Bulanan (mm)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <RainfallChart data={weatherData} />
+              </CardContent>
+            </Card>
 
             {/* Catatan Kaki Provenansi & Integritas Data (WMO No. 100) */}
             {imputationSummary.imputedDays > 0 && (
