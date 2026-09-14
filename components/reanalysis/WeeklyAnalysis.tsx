@@ -1,13 +1,15 @@
 // components/reanalysis/WeeklyAnalysis.tsx
+"use client";
+
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarDays, Thermometer, Droplets, Gauge, Wind } from "lucide-react";
 import dynamic from "next/dynamic";
 
-const Plot = dynamic(() => import("react-plotly.js"), {
+const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
   loading: () => (
-    <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
+    <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
       Membuat grafik analisis mingguan...
     </div>
   ),
@@ -40,6 +42,8 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
 
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
   const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
+  const tooltipBg = isDarkMode ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.96)";
+  const tooltipBorder = isDarkMode ? "#334155" : "#cbd5e1";
 
   const activeInfo = useMemo(() => {
     switch (activeTab) {
@@ -47,103 +51,186 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
         return {
           title: "Tren Suhu Mingguan",
           desc: "Suhu maksimum, rata-rata, dan minimum harian selama 7 hari terakhir",
-          unit: "Suhu (°C)",
+          unit: "°C",
           icon: <Thermometer className="h-5 w-5 text-orange-500" />,
           data: temperature,
-          colors: { max: "#f87171", mean: "#ef4444", min: "#60a5fa" }
+          colors: { max: "#f87171", mean: "#ef4444", min: "#60a5fa" },
         };
       case "humidity":
         return {
           title: "Tren Kelembaban Mingguan",
           desc: "Kelembaban maksimum, rata-rata, dan minimum harian selama 7 hari terakhir",
-          unit: "Kelembaban (%)",
+          unit: "%",
           icon: <Droplets className="h-5 w-5 text-blue-500" />,
           data: humidity,
-          colors: { max: "#34d399", mean: "#3b82f6", min: "#f59e0b" }
+          colors: { max: "#34d399", mean: "#3b82f6", min: "#f59e0b" },
         };
       case "pressure":
         return {
           title: "Tren Tekanan Mingguan",
           desc: "Tekanan maksimum, rata-rata, dan minimum harian selama 7 hari terakhir",
-          unit: "Tekanan MSL (hPa)",
+          unit: "hPa",
           icon: <Gauge className="h-5 w-5 text-pink-500" />,
           data: pressure,
-          colors: { max: "#f43f5e", mean: "#ec4899", min: "#818cf8" }
+          colors: { max: "#f43f5e", mean: "#ec4899", min: "#818cf8" },
         };
       case "wind":
         return {
           title: "Tren Kecepatan Angin Mingguan",
           desc: "Kecepatan angin maksimum, rata-rata, dan minimum harian selama 7 hari terakhir",
-          unit: "Kecepatan Angin (m/s)",
+          unit: "m/s",
           icon: <Wind className="h-5 w-5 text-emerald-500" />,
           data: windSpeed,
-          colors: { max: "#34d399", mean: "#10b981", min: "#a78bfa" }
+          colors: { max: "#34d399", mean: "#10b981", min: "#a78bfa" },
         };
     }
   }, [activeTab, temperature, humidity, pressure, windSpeed]);
 
-  const traces = useMemo(() => {
-    if (!days || days.length === 0) return [];
-    
-    return [
-      {
-        x: days,
-        y: activeInfo.data.max,
-        name: "Maksimum",
-        type: "scatter" as const,
-        mode: "lines" as const,
-        line: { color: activeInfo.colors.max, width: 2, dash: "dash" as const },
-      },
-      {
-        x: days,
-        y: activeInfo.data.mean,
-        name: "Rata-rata",
-        type: "scatter" as const,
-        mode: "lines+markers" as const,
-        line: { color: activeInfo.colors.mean, width: 3 },
-        marker: { size: 6 }
-      },
-      {
-        x: days,
-        y: activeInfo.data.min,
-        name: "Minimum",
-        type: "scatter" as const,
-        mode: "lines" as const,
-        line: { color: activeInfo.colors.min, width: 2, dash: "dash" as const },
-      }
-    ];
-  }, [days, activeInfo]);
+  const chartOption = useMemo(() => {
+    if (!days || days.length === 0) return {};
 
-  const layout = useMemo(() => ({
-    autosize: true,
-    height: 350,
-    hovermode: "x unified" as const,
-    margin: { l: 50, r: 20, t: 25, b: 50 },
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    font: { color: textColor, family: "Inter, sans-serif" },
-    xaxis: {
-      type: "category" as const,
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-    },
-    yaxis: {
-      title: { text: activeInfo.unit },
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-      fixedrange: true,
-    },
-    legend: {
-      orientation: "h" as const,
-      yanchor: "bottom" as const,
-      y: 1.05,
-      xanchor: "right" as const,
-      x: 1,
-      font: { color: textColor }
-    },
-  }), [textColor, gridColor, activeInfo.unit]);
+    const maxData = days.map((d, idx) => ({
+      name: d,
+      value: [d, activeInfo.data.max[idx] ?? 0],
+    }));
+    const meanData = days.map((d, idx) => ({
+      name: d,
+      value: [d, activeInfo.data.mean[idx] ?? 0],
+    }));
+    const minData = days.map((d, idx) => ({
+      name: d,
+      value: [d, activeInfo.data.min[idx] ?? 0],
+    }));
+
+    return {
+      backgroundColor: "transparent",
+      animation: true,
+      animationDuration: 400,
+      grid: {
+        top: 35,
+        right: 25,
+        bottom: 40,
+        left: 55,
+        containLabel: false,
+      },
+      tooltip: {
+        trigger: "axis",
+        backgroundColor: tooltipBg,
+        borderColor: tooltipBorder,
+        borderWidth: 1,
+        textStyle: {
+          color: isDarkMode ? "#f8fafc" : "#0f172a",
+          fontSize: 12,
+          fontFamily: "Inter, sans-serif",
+        },
+        axisPointer: {
+          type: "cross",
+          animation: false,
+          label: {
+            backgroundColor: isDarkMode ? "#334155" : "#64748b",
+          },
+        },
+        formatter: (params: any) => {
+          if (!params || !params.length) return "";
+          const first = params[0];
+          const dateStr = first.name || first.value[0];
+          let html = `
+            <div style="font-weight:700; margin-bottom:5px; font-size:11px; opacity:0.85;">
+              Tanggal: ${dateStr}
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+          `;
+          params.forEach((item: any) => {
+            const val = typeof item.value[1] === "number" ? item.value[1].toFixed(1) : item.value[1];
+            html += `
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+                <span style="display:flex; align-items:center; gap:6px;">
+                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${item.color};"></span>
+                  <span>${item.seriesName}</span>
+                </span>
+                <span style="font-weight:700; font-family:monospace;">${val} ${activeInfo.unit}</span>
+              </div>
+            `;
+          });
+          html += `</div>`;
+          return html;
+        },
+      },
+      legend: {
+        orient: "horizontal",
+        right: 20,
+        top: 5,
+        textStyle: {
+          color: textColor,
+          fontSize: 11,
+        },
+        icon: "roundRect",
+      },
+      xAxis: {
+        type: "category",
+        data: days,
+        boundaryGap: false,
+        splitLine: { show: false },
+        axisLine: { lineStyle: { color: gridColor } },
+        axisTick: { show: false },
+        axisLabel: {
+          color: textColor,
+          fontSize: 11,
+        },
+      },
+      yAxis: {
+        type: "value",
+        scale: true,
+        name: activeInfo.unit,
+        nameTextStyle: {
+          color: textColor,
+          fontSize: 11,
+          align: "left",
+          padding: [0, 0, 4, 0],
+        },
+        splitLine: {
+          lineStyle: {
+            color: gridColor,
+            type: "dashed",
+          },
+        },
+        axisLabel: {
+          color: textColor,
+          fontSize: 11,
+        },
+      },
+      series: [
+        {
+          name: "Maksimum",
+          type: "line",
+          showSymbol: false,
+          smooth: true,
+          data: maxData,
+          lineStyle: { width: 1.8, type: "dashed", color: activeInfo.colors.max },
+          itemStyle: { color: activeInfo.colors.max },
+        },
+        {
+          name: "Rata-rata",
+          type: "line",
+          showSymbol: true,
+          symbolSize: 6,
+          smooth: true,
+          data: meanData,
+          lineStyle: { width: 2.8, color: activeInfo.colors.mean },
+          itemStyle: { color: activeInfo.colors.mean },
+        },
+        {
+          name: "Minimum",
+          type: "line",
+          showSymbol: false,
+          smooth: true,
+          data: minData,
+          lineStyle: { width: 1.8, type: "dashed", color: activeInfo.colors.min },
+          itemStyle: { color: activeInfo.colors.min },
+        },
+      ],
+    };
+  }, [days, activeInfo, textColor, gridColor, tooltipBg, tooltipBorder, isDarkMode]);
 
   return (
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
@@ -191,15 +278,19 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
           </button>
         </div>
       </CardHeader>
-      
+
       <CardContent className="p-2">
-        {days.length > 0 && (
-          <Plot
-            data={traces}
-            layout={layout}
-            config={{ responsive: true, displayModeBar: false }}
+        {days.length > 0 ? (
+          <ReactECharts
+            option={chartOption}
             style={{ width: "100%", height: "350px" }}
+            notMerge={false}
+            lazyUpdate={true}
           />
+        ) : (
+          <div className="h-[350px] flex items-center justify-center text-muted-foreground border border-dashed rounded-lg">
+            Tidak ada data analisis mingguan yang tersedia
+          </div>
         )}
       </CardContent>
     </Card>

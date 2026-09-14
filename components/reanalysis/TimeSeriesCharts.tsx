@@ -1,18 +1,25 @@
 // components/reanalysis/TimeSeriesCharts.tsx
+"use client";
+
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Thermometer, Droplets, Gauge, Wind, CloudRain, Sun, Download } from "lucide-react";
 import dynamic from "next/dynamic";
 
-const Plot = dynamic(() => import("react-plotly.js"), {
+const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
   loading: () => (
-    <div className="h-[400px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
+    <div className="h-[400px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
       Membuat grafik deret waktu...
     </div>
   ),
 });
+
+interface DataItem {
+  name: string;
+  value: [string, number]; // [timeIso, val]
+}
 
 interface TimeSeriesChartsProps {
   times: string[];
@@ -41,9 +48,8 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
 
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
   const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
-
-  // Format dates for Plotly X-axis
-  const xData = useMemo(() => times.map(t => new Date(t)), [times]);
+  const tooltipBg = isDarkMode ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.96)";
+  const tooltipBorder = isDarkMode ? "#334155" : "#cbd5e1";
 
   const activeInfo = useMemo(() => {
     switch (activeTab) {
@@ -53,16 +59,17 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
           desc: "Fluktuasi suhu udara hasil reanalisis ERA5",
           unit: "°C",
           icon: <Thermometer className="h-5 w-5 text-orange-500" />,
-          traces: [
+          series: [
             {
-              x: xData,
-              y: temperature,
               name: "Suhu Udara",
-              type: "scatter" as const,
-              mode: "lines" as const,
-              line: { color: "#ef4444", width: 2.5 },
-            }
-          ]
+              type: "line",
+              smooth: true,
+              showSymbol: false,
+              lineStyle: { width: 2.6, color: "#ef4444" },
+              itemStyle: { color: "#ef4444" },
+              data: times.map((t, idx) => ({ name: t, value: [t, temperature[idx] ?? 0] })),
+            },
+          ],
         };
       case "humidity":
         return {
@@ -70,16 +77,17 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
           desc: "Persentase uap air di udara relatif terhadap saturasi",
           unit: "%",
           icon: <Droplets className="h-5 w-5 text-blue-500" />,
-          traces: [
+          series: [
             {
-              x: xData,
-              y: humidity,
               name: "Kelembaban",
-              type: "scatter" as const,
-              mode: "lines" as const,
-              line: { color: "#3b82f6", width: 2.5 },
-            }
-          ]
+              type: "line",
+              smooth: true,
+              showSymbol: false,
+              lineStyle: { width: 2.6, color: "#3b82f6" },
+              itemStyle: { color: "#3b82f6" },
+              data: times.map((t, idx) => ({ name: t, value: [t, humidity[idx] ?? 0] })),
+            },
+          ],
         };
       case "pressure":
         return {
@@ -87,16 +95,17 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
           desc: "Tekanan udara yang disesuaikan dengan permukaan laut rata-rata",
           unit: "hPa",
           icon: <Gauge className="h-5 w-5 text-pink-500" />,
-          traces: [
+          series: [
             {
-              x: xData,
-              y: pressure,
               name: "Tekanan MSL",
-              type: "scatter" as const,
-              mode: "lines" as const,
-              line: { color: "#ec4899", width: 2.5 },
-            }
-          ]
+              type: "line",
+              smooth: true,
+              showSymbol: false,
+              lineStyle: { width: 2.6, color: "#ec4899" },
+              itemStyle: { color: "#ec4899" },
+              data: times.map((t, idx) => ({ name: t, value: [t, pressure[idx] ?? 0] })),
+            },
+          ],
         };
       case "wind":
         return {
@@ -104,24 +113,26 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
           desc: "Kecepatan angin rata-rata (10m) beserta hembusan maksimum (gust)",
           unit: "m/s",
           icon: <Wind className="h-5 w-5 text-emerald-500" />,
-          traces: [
+          series: [
             {
-              x: xData,
-              y: windSpeed,
               name: "Kecepatan Rata-rata",
-              type: "scatter" as const,
-              mode: "lines" as const,
-              line: { color: "#10b981", width: 2.5 },
+              type: "line",
+              smooth: true,
+              showSymbol: false,
+              lineStyle: { width: 2.6, color: "#10b981" },
+              itemStyle: { color: "#10b981" },
+              data: times.map((t, idx) => ({ name: t, value: [t, windSpeed[idx] ?? 0] })),
             },
             {
-              x: xData,
-              y: windGust,
               name: "Hembusan Angin (Gust)",
-              type: "scatter" as const,
-              mode: "lines" as const,
-              line: { color: "#f59e0b", width: 1.5, dash: "dash" as const },
-            }
-          ]
+              type: "line",
+              smooth: true,
+              showSymbol: false,
+              lineStyle: { width: 1.8, type: "dashed", color: "#f59e0b" },
+              itemStyle: { color: "#f59e0b" },
+              data: times.map((t, idx) => ({ name: t, value: [t, windGust[idx] ?? 0] })),
+            },
+          ],
         };
       case "rain":
         return {
@@ -129,15 +140,14 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
           desc: "Laju presipitasi curah hujan per jam",
           unit: "mm",
           icon: <CloudRain className="h-5 w-5 text-purple-500" />,
-          traces: [
+          series: [
             {
-              x: xData,
-              y: rain,
               name: "Curah Hujan",
-              type: "bar" as const,
-              marker: { color: "#8b5cf6" },
-            }
-          ]
+              type: "bar",
+              itemStyle: { color: "#8b5cf6" },
+              data: times.map((t, idx) => ({ name: t, value: [t, rain[idx] ?? 0] })),
+            },
+          ],
         };
       case "radiation":
         return {
@@ -145,51 +155,164 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
           desc: "Energi radiasi matahari gelombang pendek yang diterima di permukaan bumi",
           unit: "W/m²",
           icon: <Sun className="h-5 w-5 text-amber-500" />,
-          traces: [
+          series: [
             {
-              x: xData,
-              y: radiation,
               name: "Shortwave Rad",
-              type: "scatter" as const,
-              mode: "lines" as const,
-              line: { color: "#f59e0b", width: 2 },
-              fill: "tozeroy" as const,
-              fillcolor: "rgba(245, 158, 11, 0.1)"
-            }
-          ]
+              type: "line",
+              smooth: true,
+              showSymbol: false,
+              lineStyle: { width: 2, color: "#f59e0b" },
+              itemStyle: { color: "#f59e0b" },
+              areaStyle: {
+                color: {
+                  type: "linear",
+                  x: 0,
+                  y: 0,
+                  x2: 0,
+                  y2: 1,
+                  colorStops: [
+                    { offset: 0, color: "rgba(245, 158, 11, 0.35)" },
+                    { offset: 1, color: "rgba(245, 158, 11, 0.0)" },
+                  ],
+                },
+              },
+              data: times.map((t, idx) => ({ name: t, value: [t, radiation[idx] ?? 0] })),
+            },
+          ],
         };
     }
-  }, [activeTab, xData, temperature, humidity, pressure, windSpeed, windGust, rain, radiation]);
+  }, [activeTab, times, temperature, humidity, pressure, windSpeed, windGust, rain, radiation]);
 
-  const layout = useMemo(() => ({
-    autosize: true,
-    height: 400,
-    margin: { l: 50, r: 20, t: 25, b: 50 },
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    font: { color: textColor, family: "Inter, sans-serif" },
-    xaxis: {
-      type: "date" as const,
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-    },
-    yaxis: {
-      title: { text: activeInfo.unit },
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-      fixedrange: true,
-    },
-    legend: {
-      orientation: "h" as const,
-      yanchor: "bottom" as const,
-      y: 1.05,
-      xanchor: "right" as const,
-      x: 1,
-      font: { color: textColor }
-    },
-  }), [textColor, gridColor, activeInfo.unit]);
+  const chartOption = useMemo(() => {
+    return {
+      backgroundColor: "transparent",
+      animation: true,
+      animationDuration: 400,
+      grid: {
+        top: 35,
+        right: 25,
+        bottom: 50,
+        left: 55,
+        containLabel: false,
+      },
+      tooltip: {
+        trigger: "axis",
+        backgroundColor: tooltipBg,
+        borderColor: tooltipBorder,
+        borderWidth: 1,
+        textStyle: {
+          color: isDarkMode ? "#f8fafc" : "#0f172a",
+          fontSize: 12,
+          fontFamily: "Inter, sans-serif",
+        },
+        axisPointer: {
+          type: "cross",
+          animation: false,
+          label: {
+            backgroundColor: isDarkMode ? "#334155" : "#64748b",
+          },
+        },
+        formatter: (params: any) => {
+          if (!params || !params.length) return "";
+          const first = params[0];
+          const rawTime = first.value[0];
+          const date = new Date(rawTime);
+          const timeFormatted = !isNaN(date.getTime())
+            ? `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")} WIB`
+            : rawTime;
+
+          let html = `
+            <div style="font-weight:700; margin-bottom:5px; font-size:11px; opacity:0.85;">
+              Waktu: ${timeFormatted}
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+          `;
+          params.forEach((item: any) => {
+            const val = typeof item.value[1] === "number" ? item.value[1].toFixed(1) : item.value[1];
+            html += `
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+                <span style="display:flex; align-items:center; gap:6px;">
+                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${item.color};"></span>
+                  <span>${item.seriesName}</span>
+                </span>
+                <span style="font-weight:700; font-family:monospace;">${val} ${activeInfo.unit}</span>
+              </div>
+            `;
+          });
+          html += `</div>`;
+          return html;
+        },
+      },
+      legend: {
+        orient: "horizontal",
+        right: 20,
+        top: 5,
+        textStyle: {
+          color: textColor,
+          fontSize: 11,
+        },
+        icon: "roundRect",
+      },
+      xAxis: {
+        type: "time",
+        splitLine: { show: false },
+        axisLine: { lineStyle: { color: gridColor } },
+        axisTick: { show: false },
+        axisLabel: {
+          color: textColor,
+          fontSize: 11,
+          formatter: "{dd}/{MM} {HH}:{mm}",
+        },
+      },
+      yAxis: {
+        type: "value",
+        scale: true,
+        name: activeInfo.unit,
+        nameTextStyle: {
+          color: textColor,
+          fontSize: 11,
+          align: "left",
+          padding: [0, 0, 4, 0],
+        },
+        splitLine: {
+          lineStyle: {
+            color: gridColor,
+            type: "dashed",
+          },
+        },
+        axisLabel: {
+          color: textColor,
+          fontSize: 11,
+        },
+      },
+      dataZoom: [
+        {
+          type: "inside",
+          start: 0,
+          end: 100,
+        },
+        {
+          type: "slider",
+          start: 0,
+          end: 100,
+          height: 18,
+          bottom: 5,
+          borderColor: "transparent",
+          backgroundColor: isDarkMode ? "rgba(30, 41, 59, 0.4)" : "rgba(241, 245, 249, 0.8)",
+          fillerColor: isDarkMode ? "rgba(99, 102, 241, 0.25)" : "rgba(99, 102, 241, 0.2)",
+          handleStyle: {
+            color: isDarkMode ? "#818cf8" : "#6366f1",
+            borderColor: "transparent",
+          },
+          textStyle: {
+            color: textColor,
+            fontSize: 10,
+          },
+        },
+      ],
+      series: activeInfo.series,
+    };
+  }, [activeInfo, textColor, gridColor, tooltipBg, tooltipBorder, isDarkMode]);
 
   const handleDownloadCsv = () => {
     const headers = ["Waktu", activeInfo.title + ` (${activeInfo.unit})`];
@@ -290,13 +413,17 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
       </CardHeader>
       
       <CardContent className="p-2">
-        {times.length > 0 && (
-          <Plot
-            data={activeInfo.traces}
-            layout={layout}
-            config={{ responsive: true, displayModeBar: true, toImageButtonOptions: { format: "png", filename: `era5_${activeTab}_series` } }}
+        {times.length > 0 ? (
+          <ReactECharts
+            option={chartOption}
             style={{ width: "100%", height: "400px" }}
+            notMerge={false}
+            lazyUpdate={true}
           />
+        ) : (
+          <div className="h-[400px] flex items-center justify-center text-muted-foreground border border-dashed rounded-lg">
+            Tidak ada data deret waktu yang tersedia
+          </div>
         )}
       </CardContent>
     </Card>

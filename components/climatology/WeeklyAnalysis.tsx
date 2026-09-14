@@ -1,20 +1,25 @@
 // components/climatology/WeeklyAnalysis.tsx
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Thermometer, Droplets, Gauge } from "lucide-react";
 import { AnalysisPoint } from "@/lib/climatology/analysisTypes";
 import dynamic from "next/dynamic";
 
-const Plot = dynamic(() => import("react-plotly.js"), {
+const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
   loading: () => (
-    <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-lg border">
+    <div className="h-[350px] w-full flex items-center justify-center text-muted-foreground animate-pulse bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
       Membuat grafik analisis berkala...
     </div>
   ),
 });
+
+interface DataItem {
+  name: string;
+  value: [number, number]; // [timestamp, value]
+}
 
 interface WeeklyAnalysisProps {
   points: (AnalysisPoint & { dayLabelWib: string })[];
@@ -27,147 +32,244 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
 }) => {
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
   const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
+  const tooltipBg = isDarkMode ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.96)";
+  const tooltipBorder = isDarkMode ? "#334155" : "#cbd5e1";
 
-  // Format x-axis categories: Combine Date + WIB time "DD/MM HH:MM"
-  const xData = useMemo(() => points.map((p) => `${p.dayLabelWib} ${p.timeKeyWib}`), [points]);
-
-  const commonLayout = useMemo(() => ({
-    autosize: true,
-    height: 350,
-    hovermode: "x unified" as const,
-    hoverlabel: {
-      bgcolor: isDarkMode ? "#0f172a" : "#ffffff",
-      bordercolor: isDarkMode ? "#334155" : "#cbd5e1",
-      font: {
-        family: "Inter, sans-serif",
-        size: 12,
-        color: isDarkMode ? "#f8fafc" : "#0f172a",
+  // Factory generator opsi ECharts dinamis (dynamic-data2 pattern)
+  const createWeeklyLineOption = useCallback(
+    (
+      unit: string,
+      seriesData: {
+        max: DataItem[];
+        mean: DataItem[];
+        min: DataItem[];
       },
+      colors: { max: string; mean: string; min: string },
+      yRange?: { min?: number; max?: number }
+    ) => {
+      return {
+        backgroundColor: "transparent",
+        animation: true,
+        animationDuration: 400,
+        grid: {
+          top: 35,
+          right: 25,
+          bottom: 50,
+          left: 55,
+          containLabel: false,
+        },
+        tooltip: {
+          trigger: "axis",
+          backgroundColor: tooltipBg,
+          borderColor: tooltipBorder,
+          borderWidth: 1,
+          textStyle: {
+            color: isDarkMode ? "#f8fafc" : "#0f172a",
+            fontSize: 12,
+            fontFamily: "Inter, sans-serif",
+          },
+          axisPointer: {
+            type: "cross",
+            animation: false,
+            label: {
+              backgroundColor: isDarkMode ? "#334155" : "#64748b",
+            },
+          },
+          formatter: (params: any) => {
+            if (!params || !params.length) return "";
+            const first = params[0];
+            const timeLabel = first.name || "";
+            let html = `
+              <div style="font-weight:700; margin-bottom:5px; font-size:11px; opacity:0.85;">
+                Waktu: ${timeLabel}
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px;">
+            `;
+            params.forEach((item: any) => {
+              const val = typeof item.value[1] === "number" ? item.value[1].toFixed(1) : item.value[1];
+              html += `
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+                  <span style="display:flex; align-items:center; gap:6px;">
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${item.color};"></span>
+                    <span>${item.seriesName}</span>
+                  </span>
+                  <span style="font-weight:700; font-family:monospace;">${val} ${unit}</span>
+                </div>
+              `;
+            });
+            html += `</div>`;
+            return html;
+          },
+        },
+        legend: {
+          orient: "horizontal",
+          right: 20,
+          top: 5,
+          textStyle: {
+            color: textColor,
+            fontSize: 11,
+          },
+          icon: "roundRect",
+        },
+        xAxis: {
+          type: "time",
+          splitLine: { show: false },
+          axisLine: { lineStyle: { color: gridColor } },
+          axisTick: { show: false },
+          axisLabel: {
+            color: textColor,
+            fontSize: 11,
+            formatter: "{dd}/{MM} {HH}:{mm}",
+          },
+        },
+        yAxis: {
+          type: "value",
+          scale: true,
+          name: unit,
+          min: yRange?.min,
+          max: yRange?.max,
+          nameTextStyle: {
+            color: textColor,
+            fontSize: 11,
+            align: "left",
+            padding: [0, 0, 4, 0],
+          },
+          splitLine: {
+            lineStyle: {
+              color: gridColor,
+              type: "dashed",
+            },
+          },
+          axisLabel: {
+            color: textColor,
+            fontSize: 11,
+          },
+        },
+        dataZoom: [
+          {
+            type: "inside",
+            start: 0,
+            end: 100,
+          },
+          {
+            type: "slider",
+            start: 0,
+            end: 100,
+            height: 18,
+            bottom: 5,
+            borderColor: "transparent",
+            backgroundColor: isDarkMode ? "rgba(30, 41, 59, 0.4)" : "rgba(241, 245, 249, 0.8)",
+            fillerColor: isDarkMode ? "rgba(99, 102, 241, 0.25)" : "rgba(99, 102, 241, 0.2)",
+            handleStyle: {
+              color: isDarkMode ? "#818cf8" : "#6366f1",
+              borderColor: "transparent",
+            },
+            textStyle: {
+              color: textColor,
+              fontSize: 10,
+            },
+          },
+        ],
+        series: [
+          {
+            name: "Maksimum",
+            type: "line",
+            showSymbol: false,
+            smooth: true,
+            data: seriesData.max,
+            lineStyle: { width: 1.6, type: "dashed", color: colors.max },
+            itemStyle: { color: colors.max },
+          },
+          {
+            name: "Rata-rata",
+            type: "line",
+            showSymbol: false,
+            smooth: true,
+            data: seriesData.mean,
+            lineStyle: { width: 2.6, color: colors.mean },
+            itemStyle: { color: colors.mean },
+          },
+          {
+            name: "Minimum",
+            type: "line",
+            showSymbol: false,
+            smooth: true,
+            data: seriesData.min,
+            lineStyle: { width: 1.6, type: "dashed", color: colors.min },
+            itemStyle: { color: colors.min },
+          },
+        ],
+      };
     },
-    margin: { l: 50, r: 20, t: 30, b: 50 },
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)",
-    font: { color: textColor, family: "Inter, sans-serif" },
-    xaxis: {
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-      nticks: 14,
-      showspikes: true,
-      spikemode: "across" as const,
-      spikesnap: "cursor" as const,
-      spikethickness: 1,
-      spikedash: "dot" as const,
-      spikecolor: isDarkMode ? "#64748b" : "#94a3b8",
-    },
-    yaxis: {
-      gridcolor: gridColor,
-      zerolinecolor: gridColor,
-      tickcolor: textColor,
-      fixedrange: true,
-    },
-    legend: {
-      orientation: "h" as const,
-      yanchor: "bottom" as const,
-      y: 1.02,
-      xanchor: "right" as const,
-      x: 1,
-      font: { color: textColor },
-    },
-  }), [textColor, gridColor, isDarkMode]);
+    [textColor, gridColor, tooltipBg, tooltipBorder, isDarkMode]
+  );
 
-  // Temperature Weekly Traces
-  const tempTraces = useMemo(() => [
-    {
-      x: xData,
-      y: points.map((p) => p.temperatureMax),
-      name: "Maksimum",
-      type: "scatter" as const,
-      mode: "lines" as const,
-      line: { color: "#f87171", width: 1.5, dash: "dash" as const },
-      hovertemplate: "%{y:.1f} °C<extra></extra>",
-    },
-    {
-      x: xData,
-      y: points.map((p) => p.temperatureMean),
-      name: "Rata-rata",
-      type: "scatter" as const,
-      mode: "lines" as const,
-      line: { color: "#ef4444", width: 2.5 },
-      hovertemplate: "%{y:.1f} °C<extra></extra>",
-    },
-    {
-      x: xData,
-      y: points.map((p) => p.temperatureMin),
-      name: "Minimum",
-      type: "scatter" as const,
-      mode: "lines" as const,
-      line: { color: "#60a5fa", width: 1.5, dash: "dash" as const },
-      hovertemplate: "%{y:.1f} °C<extra></extra>",
-    },
-  ], [xData, points]);
+  // 1. Opsi Suhu Berkala ECharts
+  const tempChartOption = useMemo(() => {
+    const maxData: DataItem[] = points.map((p) => ({
+      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      value: [p.timestamp, p.temperatureMax],
+    }));
+    const meanData: DataItem[] = points.map((p) => ({
+      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      value: [p.timestamp, p.temperatureMean],
+    }));
+    const minData: DataItem[] = points.map((p) => ({
+      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      value: [p.timestamp, p.temperatureMin],
+    }));
 
-  // Humidity Weekly Traces
-  const humTraces = useMemo(() => [
-    {
-      x: xData,
-      y: points.map((p) => p.humidityMax),
-      name: "Maksimum",
-      type: "scatter" as const,
-      mode: "lines" as const,
-      line: { color: "#34d399", width: 1.5, dash: "dash" as const },
-      hovertemplate: "%{y:.1f} %<extra></extra>",
-    },
-    {
-      x: xData,
-      y: points.map((p) => p.humidityMean),
-      name: "Rata-rata",
-      type: "scatter" as const,
-      mode: "lines" as const,
-      line: { color: "#059669", width: 2.5 },
-      hovertemplate: "%{y:.1f} %<extra></extra>",
-    },
-    {
-      x: xData,
-      y: points.map((p) => p.humidityMin),
-      name: "Minimum",
-      type: "scatter" as const,
-      mode: "lines" as const,
-      line: { color: "#f59e0b", width: 1.5, dash: "dash" as const },
-      hovertemplate: "%{y:.1f} %<extra></extra>",
-    },
-  ], [xData, points]);
+    return createWeeklyLineOption(
+      "°C",
+      { max: maxData, mean: meanData, min: minData },
+      { max: "#f87171", mean: "#ef4444", min: "#60a5fa" }
+    );
+  }, [points, createWeeklyLineOption]);
 
-  // Pressure Weekly Traces
-  const pressTraces = useMemo(() => [
-    {
-      x: xData,
-      y: points.map((p) => p.pressureMax),
-      name: "Maksimum",
-      type: "scatter" as const,
-      mode: "lines" as const,
-      line: { color: "#f43f5e", width: 1.5, dash: "dash" as const },
-      hovertemplate: "%{y:.1f} hPa<extra></extra>",
-    },
-    {
-      x: xData,
-      y: points.map((p) => p.pressureMean),
-      name: "Rata-rata",
-      type: "scatter" as const,
-      mode: "lines" as const,
-      line: { color: "#db2777", width: 2.5 },
-      hovertemplate: "%{y:.1f} hPa<extra></extra>",
-    },
-    {
-      x: xData,
-      y: points.map((p) => p.pressureMin),
-      name: "Minimum",
-      type: "scatter" as const,
-      mode: "lines" as const,
-      line: { color: "#818cf8", width: 1.5, dash: "dash" as const },
-      hovertemplate: "%{y:.1f} hPa<extra></extra>",
-    },
-  ], [xData, points]);
+  // 2. Opsi Kelembaban Berkala ECharts
+  const humChartOption = useMemo(() => {
+    const maxData: DataItem[] = points.map((p) => ({
+      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      value: [p.timestamp, p.humidityMax],
+    }));
+    const meanData: DataItem[] = points.map((p) => ({
+      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      value: [p.timestamp, p.humidityMean],
+    }));
+    const minData: DataItem[] = points.map((p) => ({
+      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      value: [p.timestamp, p.humidityMin],
+    }));
+
+    return createWeeklyLineOption(
+      "%",
+      { max: maxData, mean: meanData, min: minData },
+      { max: "#34d399", mean: "#059669", min: "#f59e0b" },
+      { min: 0, max: 100 }
+    );
+  }, [points, createWeeklyLineOption]);
+
+  // 3. Opsi Tekanan Berkala ECharts
+  const pressChartOption = useMemo(() => {
+    const maxData: DataItem[] = points.map((p) => ({
+      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      value: [p.timestamp, p.pressureMax],
+    }));
+    const meanData: DataItem[] = points.map((p) => ({
+      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      value: [p.timestamp, p.pressureMean],
+    }));
+    const minData: DataItem[] = points.map((p) => ({
+      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      value: [p.timestamp, p.pressureMin],
+    }));
+
+    return createWeeklyLineOption(
+      "hPa",
+      { max: maxData, mean: meanData, min: minData },
+      { max: "#f43f5e", mean: "#db2777", min: "#818cf8" }
+    );
+  }, [points, createWeeklyLineOption]);
 
   return (
     <div className="space-y-6">
@@ -183,11 +285,11 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
         </CardHeader>
         <CardContent className="p-2">
           {points.length > 0 ? (
-            <Plot
-              data={tempTraces}
-              layout={{ ...commonLayout, yaxis: { ...commonLayout.yaxis, title: { text: "Suhu (°C)" } } }}
-              config={{ responsive: true, displayModeBar: true, displaylogo: false }}
+            <ReactECharts
+              option={tempChartOption}
               style={{ width: "100%", height: "350px" }}
+              notMerge={false}
+              lazyUpdate={true}
             />
           ) : (
             <div className="h-[350px] flex items-center justify-center text-muted-foreground border border-dashed rounded-lg">
@@ -209,11 +311,11 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
         </CardHeader>
         <CardContent className="p-2">
           {points.length > 0 ? (
-            <Plot
-              data={humTraces}
-              layout={{ ...commonLayout, yaxis: { ...commonLayout.yaxis, title: { text: "Kelembaban (%)" }, max: 100, min: 0 } as any }}
-              config={{ responsive: true, displayModeBar: true, displaylogo: false }}
+            <ReactECharts
+              option={humChartOption}
               style={{ width: "100%", height: "350px" }}
+              notMerge={false}
+              lazyUpdate={true}
             />
           ) : (
             <div className="h-[350px] flex items-center justify-center text-muted-foreground border border-dashed rounded-lg">
@@ -235,11 +337,11 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
         </CardHeader>
         <CardContent className="p-2">
           {points.length > 0 ? (
-            <Plot
-              data={pressTraces}
-              layout={{ ...commonLayout, yaxis: { ...commonLayout.yaxis, title: { text: "Tekanan (hPa)" } } }}
-              config={{ responsive: true, displayModeBar: true, displaylogo: false }}
+            <ReactECharts
+              option={pressChartOption}
               style={{ width: "100%", height: "350px" }}
+              notMerge={false}
+              lazyUpdate={true}
             />
           ) : (
             <div className="h-[350px] flex items-center justify-center text-muted-foreground border border-dashed rounded-lg">
