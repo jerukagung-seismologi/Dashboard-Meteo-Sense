@@ -17,6 +17,9 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
+  Clock,
+  Globe,
+  Info,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -63,11 +66,25 @@ export default function AnalisisDashboardPage() {
   const [devices, setDevices] = useState<DeviceOption[]>([]);
   const [sensorId, setSensorId] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("daily");
+  const [timezone, setTimezone] = useState<"WIB" | "UTC">("WIB");
+  const getCalendarDate = useCallback((tz: "WIB" | "UTC", timestamp = Date.now()) => {
+    const offsetMs = tz === "WIB" ? 7 * 60 * 60 * 1000 : 0;
+    const zoned = new Date(timestamp + offsetMs);
+    return new Date(
+      zoned.getUTCFullYear(),
+      zoned.getUTCMonth(),
+      zoned.getUTCDate(),
+      12,
+      0,
+      0,
+      0
+    );
+  }, []);
   
   // Date selector states
-  const [dailyDate, setDailyDate] = useState<Date>(() => new Date());
+  const [dailyDate, setDailyDate] = useState<Date>(() => getCalendarDate("WIB"));
   const [weeklyStartDate, setWeeklyStartDate] = useState<Date>(() => {
-    const d = new Date();
+    const d = getCalendarDate("WIB");
     d.setDate(d.getDate() - 6); // Default 7 days period ending today
     return d;
   });
@@ -206,26 +223,26 @@ export default function AnalisisDashboardPage() {
     }
   }, [user]);
 
-  // Helper date formatter YYYY-MM-DD
-  const formatYmd = (date: Date) => {
+  // Calendar dates are deliberately formatted from local date fields, not UTC.
+  const formatYmd = useCallback((date: Date) => {
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, "0");
     const dd = String(date.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
-  };
+  }, []);
 
   const [refreshKey, setRefreshKey] = useState<number>(0);
 
   // API query paths
   const dailyApiPath = useMemo(() => {
     if (!sensorId) return null;
-    return `/api/analysis/daily?sensorId=${sensorId}&date=${formatYmd(dailyDate)}${refreshKey ? `&_t=${refreshKey}` : ""}`;
-  }, [sensorId, dailyDate, refreshKey]);
+    return `/api/analysis/daily?sensorId=${sensorId}&date=${formatYmd(dailyDate)}&timezone=${timezone}${refreshKey ? `&_t=${refreshKey}` : ""}`;
+  }, [sensorId, dailyDate, timezone, refreshKey]);
 
   const weeklyApiPath = useMemo(() => {
     if (!sensorId) return null;
-    return `/api/analysis/weekly?sensorId=${sensorId}&startDate=${formatYmd(weeklyStartDate)}&days=${periodDays}${refreshKey ? `&_t=${refreshKey}` : ""}`;
-  }, [sensorId, weeklyStartDate, periodDays, refreshKey]);
+    return `/api/analysis/weekly?sensorId=${sensorId}&startDate=${formatYmd(weeklyStartDate)}&days=${periodDays}&timezone=${timezone}${refreshKey ? `&_t=${refreshKey}` : ""}`;
+  }, [sensorId, weeklyStartDate, periodDays, timezone, refreshKey]);
 
   // SWR Hooks
   const {
@@ -269,7 +286,7 @@ export default function AnalisisDashboardPage() {
         return;
       }
       const headers = [
-        "Waktu (WIB)",
+        `Waktu (${timezone})`,
         "Suhu Rata-rata (°C)",
         "Suhu Maks (°C)",
         "Suhu Min (°C)",
@@ -280,15 +297,16 @@ export default function AnalisisDashboardPage() {
         "Tekanan Maks (hPa)",
         "Tekanan Min (hPa)",
       ];
-      const rows = dailyData.points.map((p: any) =>
-        `"${p.timeKeyWib}",${p.temperatureMean},${p.temperatureMax},${p.temperatureMin},${p.humidityMean},${p.humidityMax},${p.humidityMin},${p.pressureMean},${p.pressureMax},${p.pressureMin}`
-      );
+      const rows = dailyData.points.map((p: any) => {
+        const timeVal = timezone === "UTC" ? (p.timeKeyUtc || p.timeKeyWib) : p.timeKeyWib;
+        return `"${timeVal}",${p.temperatureMean},${p.temperatureMax},${p.temperatureMin},${p.humidityMean},${p.humidityMax},${p.humidityMin},${p.pressureMean},${p.pressureMax},${p.pressureMin}`;
+      });
       const csvContent = [headers.join(","), ...rows].join("\n");
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `analisis_harian_${sensorId}_${formatYmd(dailyDate)}.csv`);
+      link.setAttribute("download", `analisis_harian_${sensorId}_${formatYmd(dailyDate)}_${timezone}.csv`);
       link.click();
       URL.revokeObjectURL(url);
     } else {
@@ -297,8 +315,8 @@ export default function AnalisisDashboardPage() {
         return;
       }
       const headers = [
-        "Tanggal (WIB)",
-        "Waktu (WIB)",
+        `Tanggal (${timezone})`,
+        `Waktu (${timezone})`,
         "Suhu Rata-rata (°C)",
         "Suhu Maks (°C)",
         "Suhu Min (°C)",
@@ -309,15 +327,17 @@ export default function AnalisisDashboardPage() {
         "Tekanan Maks (hPa)",
         "Tekanan Min (hPa)",
       ];
-      const rows = weeklyData.points.map((p: any) =>
-        `"${p.dayLabelWib}","${p.timeKeyWib}",${p.temperatureMean},${p.temperatureMax},${p.temperatureMin},${p.humidityMean},${p.humidityMax},${p.humidityMin},${p.pressureMean},${p.pressureMax},${p.pressureMin}`
-      );
+      const rows = weeklyData.points.map((p: any) => {
+        const dayVal = timezone === "UTC" ? (p.dayLabelUtc || p.dayLabelWib) : p.dayLabelWib;
+        const timeVal = timezone === "UTC" ? (p.timeKeyUtc || p.timeKeyWib) : p.timeKeyWib;
+        return `"${dayVal}","${timeVal}",${p.temperatureMean},${p.temperatureMax},${p.temperatureMin},${p.humidityMean},${p.humidityMax},${p.humidityMin},${p.pressureMean},${p.pressureMax},${p.pressureMin}`;
+      });
       const csvContent = [headers.join(","), ...rows].join("\n");
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `analisis_berkala_${sensorId}_${formatYmd(weeklyStartDate)}.csv`);
+      link.setAttribute("download", `analisis_berkala_${sensorId}_${formatYmd(weeklyStartDate)}_${timezone}.csv`);
       link.click();
       URL.revokeObjectURL(url);
     }
@@ -482,12 +502,45 @@ export default function AnalisisDashboardPage() {
               </div>
             )}
 
+            {/* Timezone Selector (WIB Lokal vs UTC Standar WMO) */}
+            <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-0.5 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setTimezone("WIB")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all",
+                  timezone === "WIB"
+                    ? "bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-xs"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                )}
+                title="Waktu Indonesia Barat (UTC+7) — Standar Waktu Lokal Stasiun BMKG (00:00 - 23:59 WIB)"
+              >
+                <Clock className="h-3.5 w-3.5 text-orange-500" />
+                <span>WIB (Lokal)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimezone("UTC")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all",
+                  timezone === "UTC"
+                    ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                )}
+                title="Coordinated Universal Time (UTC) — Standar Sinoptik WMO Internasional (00Z - 23Z)"
+              >
+                <Globe className="h-3.5 w-3.5 text-blue-500" />
+                <span>UTC (WMO)</span>
+              </button>
+            </div>
+
             {/* Action buttons */}
             <Button
               variant="outline"
               size="icon"
               onClick={handleRefresh}
               disabled={isLoading || !sensorId}
+              title="Segarkan Data"
             >
               <RefreshCw className={cn("h-4 w-4 text-slate-500", isLoading && "animate-spin")} />
             </Button>
@@ -509,10 +562,10 @@ export default function AnalisisDashboardPage() {
       {!isLoading && !error && (
         <>
           {activeTab === "daily" && dailyData?.stats && (
-            <SummaryCardsAnalysis stats={dailyData.stats} scopeLabel="Harian" />
+            <SummaryCardsAnalysis stats={dailyData.stats} scopeLabel="Harian" timezone={timezone} />
           )}
           {activeTab === "weekly" && weeklyData?.stats && (
-            <SummaryCardsAnalysis stats={weeklyData.stats} scopeLabel={periodScopeLabel} />
+            <SummaryCardsAnalysis stats={weeklyData.stats} scopeLabel={periodScopeLabel} timezone={timezone} />
           )}
         </>
       )}
@@ -558,6 +611,8 @@ export default function AnalisisDashboardPage() {
                   points={dailyData.points}
                   heatmaps={dailyData.heatmaps}
                   isDarkMode={isDarkMode}
+                  timezone={timezone}
+                  onTimezoneChange={setTimezone}
                   selectedDate={dailyDate}
                   onPrevDay={handlePrevDay}
                   onNextDay={handleNextDay}
@@ -578,9 +633,9 @@ export default function AnalisisDashboardPage() {
                   {/* Time Series section */}
                   <div className="space-y-2">
                     <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-blue-500" /> Tren Waktu Jam-demi-Jam (Plotly)
+                      <TrendingUp className="h-4 w-4 text-blue-500" /> Tren Waktu Jam-demi-Jam ({timezone === "WIB" ? "WIB" : "UTC"})
                     </h3>
-                    <WeeklyAnalysis points={weeklyData.points} isDarkMode={isDarkMode} />
+                    <WeeklyAnalysis points={weeklyData.points} isDarkMode={isDarkMode} timezone={timezone} />
                   </div>
 
                   {/* Distribution Frequency section */}
@@ -591,7 +646,7 @@ export default function AnalisisDashboardPage() {
                     <DistributionAnalysis
                       histograms={weeklyData.histograms}
                       stats={weeklyData.stats}
-                      periodLabel={periodScopeLabel}
+                      periodLabel={`${periodScopeLabel} (${timezone})`}
                       isDarkMode={isDarkMode}
                     />
                   </div>
@@ -601,7 +656,7 @@ export default function AnalisisDashboardPage() {
                     <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                       <Map className="h-4 w-4 text-pink-500" /> Pola 2D Heatmap Diurnal (ECharts)
                     </h3>
-                    <HeatmapAnalysis heatmaps={weeklyData.heatmaps} isDarkMode={isDarkMode} />
+                    <HeatmapAnalysis heatmaps={weeklyData.heatmaps} isDarkMode={isDarkMode} timezone={timezone} />
                   </div>
                 </>
               ) : (

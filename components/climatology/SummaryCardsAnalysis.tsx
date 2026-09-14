@@ -7,19 +7,23 @@ import { AnalysisStats } from "@/lib/climatology/analysisTypes";
 interface SummaryCardsAnalysisProps {
   stats: AnalysisStats;
   scopeLabel: string; // e.g. "Harian" or "Mingguan"
+  timezone?: "WIB" | "UTC";
 }
 
 export const SummaryCardsAnalysis: React.FC<SummaryCardsAnalysisProps> = ({
   stats,
   scopeLabel,
+  timezone,
 }) => {
+  const displayLabel = timezone ? `${scopeLabel} · ${timezone}` : scopeLabel;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* 1. Temperature Card */}
       <Card className="border-none shadow-sm bg-gradient-to-br from-orange-50/70 to-amber-50/30 dark:from-orange-950/20 dark:to-amber-950/10">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-sm font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center gap-2">
-            <Thermometer className="h-5 w-5 text-orange-500" /> Suhu Udara ({scopeLabel})
+            <Thermometer className="h-5 w-5 text-orange-500" /> Suhu Udara ({displayLabel})
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4">
@@ -54,7 +58,7 @@ export const SummaryCardsAnalysis: React.FC<SummaryCardsAnalysisProps> = ({
       <Card className="border-none shadow-sm bg-gradient-to-br from-blue-50/70 to-cyan-50/30 dark:from-blue-950/20 dark:to-cyan-950/10">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-sm font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-2">
-            <Droplets className="h-5 w-5 text-blue-500" /> Kelembaban Relatif ({scopeLabel})
+            <Droplets className="h-5 w-5 text-blue-500" /> Kelembaban Relatif ({displayLabel})
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4">
@@ -89,7 +93,7 @@ export const SummaryCardsAnalysis: React.FC<SummaryCardsAnalysisProps> = ({
       <Card className="border-none shadow-sm bg-gradient-to-br from-pink-50/70 to-rose-50/30 dark:from-pink-950/20 dark:to-rose-950/10">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-sm font-bold uppercase tracking-wider text-pink-600 dark:text-pink-400 flex items-center gap-2">
-            <Gauge className="h-5 w-5 text-pink-500" /> Tekanan Udara ({scopeLabel})
+            <Gauge className="h-5 w-5 text-pink-500" /> Tekanan Udara ({displayLabel})
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4">

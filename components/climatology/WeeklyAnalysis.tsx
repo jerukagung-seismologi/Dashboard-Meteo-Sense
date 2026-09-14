@@ -22,18 +22,34 @@ interface DataItem {
 }
 
 interface WeeklyAnalysisProps {
-  points: (AnalysisPoint & { dayLabelWib: string })[];
+  points: (AnalysisPoint & { dayLabelWib?: string; dayLabelUtc?: string; dayLabel?: string })[];
   isDarkMode: boolean;
+  timezone?: "WIB" | "UTC";
 }
 
 export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
   points,
   isDarkMode,
+  timezone = "WIB",
 }) => {
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
   const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
   const tooltipBg = isDarkMode ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.96)";
   const tooltipBorder = isDarkMode ? "#334155" : "#cbd5e1";
+
+  // Formatter waktu sesuai timezone
+  const formatEpochTime = useCallback(
+    (ts: number): string => {
+      const offsetMs = timezone === "WIB" ? 7 * 3600 * 1000 : 0;
+      const d = new Date(ts + offsetMs);
+      const dd = String(d.getUTCDate()).padStart(2, "0");
+      const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const hh = String(d.getUTCHours()).padStart(2, "0");
+      const min = String(d.getUTCMinutes()).padStart(2, "0");
+      return `${dd}/${mm} ${hh}:${min} ${timezone}`;
+    },
+    [timezone]
+  );
 
   // Factory generator opsi ECharts dinamis (dynamic-data2 pattern)
   const createWeeklyLineOption = useCallback(
@@ -73,6 +89,12 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
             animation: false,
             label: {
               backgroundColor: isDarkMode ? "#334155" : "#64748b",
+              formatter: (param: any) => {
+                if (param.axisDimension === "x" && typeof param.value === "number") {
+                  return formatEpochTime(param.value);
+                }
+                return typeof param.value === "number" ? param.value.toFixed(1) : param.value;
+              },
             },
           },
           formatter: (params: any) => {
@@ -119,7 +141,15 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
           axisLabel: {
             color: textColor,
             fontSize: 11,
-            formatter: "{dd}/{MM} {HH}:{mm}",
+            formatter: (val: number) => {
+              const offsetMs = timezone === "WIB" ? 7 * 3600 * 1000 : 0;
+              const d = new Date(val + offsetMs);
+              const dd = String(d.getUTCDate()).padStart(2, "0");
+              const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+              const hh = String(d.getUTCHours()).padStart(2, "0");
+              const min = String(d.getUTCMinutes()).padStart(2, "0");
+              return `${dd}/${mm} ${hh}:${min}`;
+            },
           },
         },
         yAxis: {
@@ -201,21 +231,21 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
         ],
       };
     },
-    [textColor, gridColor, tooltipBg, tooltipBorder, isDarkMode]
+    [textColor, gridColor, tooltipBg, tooltipBorder, isDarkMode, formatEpochTime, timezone]
   );
 
   // 1. Opsi Suhu Berkala ECharts
   const tempChartOption = useMemo(() => {
     const maxData: DataItem[] = points.map((p) => ({
-      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      name: formatEpochTime(p.timestamp),
       value: [p.timestamp, p.temperatureMax],
     }));
     const meanData: DataItem[] = points.map((p) => ({
-      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      name: formatEpochTime(p.timestamp),
       value: [p.timestamp, p.temperatureMean],
     }));
     const minData: DataItem[] = points.map((p) => ({
-      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      name: formatEpochTime(p.timestamp),
       value: [p.timestamp, p.temperatureMin],
     }));
 
@@ -224,20 +254,20 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
       { max: maxData, mean: meanData, min: minData },
       { max: "#f87171", mean: "#ef4444", min: "#60a5fa" }
     );
-  }, [points, createWeeklyLineOption]);
+  }, [points, formatEpochTime, createWeeklyLineOption]);
 
   // 2. Opsi Kelembaban Berkala ECharts
   const humChartOption = useMemo(() => {
     const maxData: DataItem[] = points.map((p) => ({
-      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      name: formatEpochTime(p.timestamp),
       value: [p.timestamp, p.humidityMax],
     }));
     const meanData: DataItem[] = points.map((p) => ({
-      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      name: formatEpochTime(p.timestamp),
       value: [p.timestamp, p.humidityMean],
     }));
     const minData: DataItem[] = points.map((p) => ({
-      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      name: formatEpochTime(p.timestamp),
       value: [p.timestamp, p.humidityMin],
     }));
 
@@ -247,20 +277,20 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
       { max: "#34d399", mean: "#059669", min: "#f59e0b" },
       { min: 0, max: 100 }
     );
-  }, [points, createWeeklyLineOption]);
+  }, [points, formatEpochTime, createWeeklyLineOption]);
 
   // 3. Opsi Tekanan Berkala ECharts
   const pressChartOption = useMemo(() => {
     const maxData: DataItem[] = points.map((p) => ({
-      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      name: formatEpochTime(p.timestamp),
       value: [p.timestamp, p.pressureMax],
     }));
     const meanData: DataItem[] = points.map((p) => ({
-      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      name: formatEpochTime(p.timestamp),
       value: [p.timestamp, p.pressureMean],
     }));
     const minData: DataItem[] = points.map((p) => ({
-      name: `${p.dayLabelWib} ${p.timeKeyWib} WIB`,
+      name: formatEpochTime(p.timestamp),
       value: [p.timestamp, p.pressureMin],
     }));
 
@@ -269,7 +299,7 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
       { max: maxData, mean: meanData, min: minData },
       { max: "#f43f5e", mean: "#db2777", min: "#818cf8" }
     );
-  }, [points, createWeeklyLineOption]);
+  }, [points, formatEpochTime, createWeeklyLineOption]);
 
   return (
     <div className="space-y-6">
@@ -280,7 +310,59 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
             <Thermometer className="h-5 w-5 text-orange-500" /> Analisis Suhu Udara Berkala
           </CardTitle>
           <CardDescription>
-            Tren suhu udara resolusi tinggi (Maksimum, Rata-rata, Minimum) — sorot untuk melihat ketiga nilai
+            Tren suhu udara resolusi tinggi (Maksimum, Rata-rata, Minimum) dalam {timezone === "WIB" ? "WIB (Lokal)" : "UTC (Standar WMO)"} — sorot untuk melihat ketiga nilai
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-2">
+          {points.length > 0 ? (
+            <ReactECharts
+              option={tempChartOption}
+              style={{ width: "100%", height: "350px" }}
+              notMerge={false}
+              lazyUpdate={true}
+            />
+          ) : (
+            <div className="h-[350px] flex items-center justify-center text-muted-foreground border border-dashed rounded-lg">
+              Tidak ada data observasi suhu
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 2. Weekly Humidity */}
+      <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-bold flex items-center gap-2">
+            <Droplets className="h-5 w-5 text-blue-500" /> Analisis Kelembaban Relatif Berkala
+          </CardTitle>
+          <CardDescription>
+            Tren kelembaban udara resolusi tinggi (Maksimum, Rata-rata, Minimum) dalam {timezone === "WIB" ? "WIB (Lokal)" : "UTC (Standar WMO)"} — sorot untuk melihat ketiga nilai
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-2">
+          {points.length > 0 ? (
+            <ReactECharts
+              option={humChartOption}
+              style={{ width: "100%", height: "350px" }}
+              notMerge={false}
+              lazyUpdate={true}
+            />
+          ) : (
+            <div className="h-[350px] flex items-center justify-center text-muted-foreground border border-dashed rounded-lg">
+              Tidak ada data observasi kelembaban
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 3. Weekly Pressure */}
+      <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-bold flex items-center gap-2">
+            <Gauge className="h-5 w-5 text-pink-500" /> Analisis Tekanan Udara Permukaan Berkala
+          </CardTitle>
+          <CardDescription>
+            Tren tekanan udara resolusi tinggi (Maksimum, Rata-rata, Minimum) dalam {timezone === "WIB" ? "WIB (Lokal)" : "UTC (Standar WMO)"} — sorot untuk melihat ketiga nilai
           </CardDescription>
         </CardHeader>
         <CardContent className="p-2">

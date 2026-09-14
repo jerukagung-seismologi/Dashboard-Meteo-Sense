@@ -3,6 +3,8 @@
 export interface AnalysisPoint {
   hourUtc: number; // 0 - 23
   timeKeyWib: string; // e.g. "07:00"
+  timeKeyUtc?: string; // e.g. "00:00"
+  timeKey?: string; // active timezone time e.g. "07:00" or "00:00"
   timestamp: number; // UTC epoch start of the hour
   sampleCount: number;
 
@@ -58,6 +60,7 @@ export interface DailyHeatmapData {
 export interface DailyAnalysisResponse {
   sensorId: string;
   date: string; // YYYY-MM-DD
+  timezone?: "WIB" | "UTC";
   points: AnalysisPoint[]; // 24 points
   stats: AnalysisStats;
   heatmaps?: {
@@ -71,7 +74,8 @@ export interface WeeklyAnalysisResponse {
   sensorId: string;
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
-  points: (AnalysisPoint & { dayLabelWib: string })[]; // 168 hourly points
+  timezone?: "WIB" | "UTC";
+  points: (AnalysisPoint & { dayLabelWib: string; dayLabelUtc?: string; dayLabel?: string })[]; // 168 hourly points
   stats: AnalysisStats;
   histograms: {
     temperature: { bins: HistogramBin[]; stats: ParameterStats };
@@ -84,3 +88,4 @@ export interface WeeklyAnalysisResponse {
     pressure: HeatmapData;
   };
 }
+

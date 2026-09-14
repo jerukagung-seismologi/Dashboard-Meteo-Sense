@@ -6,6 +6,7 @@ import {
   calculateParameterStats,
   calculateHistogramBins,
   generateHeatmapMatrix,
+  getTimeParts,
   getWibTimeParts
 } from "@/lib/climatology/aggregateAnalysis";
 import { AnalysisStats } from "@/lib/climatology/analysisTypes";
@@ -22,6 +23,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const sensorId = searchParams.get("sensorId");
   const startDateStr = searchParams.get("startDate"); // YYYY-MM-DD
+  const tzParam = searchParams.get("timezone")?.toUpperCase();
+  const timezone: "WIB" | "UTC" = tzParam === "UTC" ? "UTC" : "WIB";
   const calibrationStr = searchParams.get("calibration");
   const daysStr = searchParams.get("days");
   const useCalibration = calibrationStr === "true";
@@ -34,26 +37,31 @@ export async function GET(request: Request) {
   const isRefresh = searchParams.get("refresh") === "true" || searchParams.has("_t") || searchParams.has("force");
 
   try {
-    let targetDate = new Date();
-    if (startDateStr) {
-      const parsed = Date.parse(startDateStr);
-      if (!isNaN(parsed)) {
-        targetDate = new Date(parsed);
-      }
+    let yyyy: number;
+    let mm: number;
+    let dd: number;
+
+    if (startDateStr && /^\d{4}-\d{2}-\d{2}$/.test(startDateStr)) {
+      const [y, m, d] = startDateStr.split("-");
+      yyyy = parseInt(y, 10);
+      mm = parseInt(m, 10) - 1;
+      dd = parseInt(d, 10);
     } else {
-      // Default to 6 days ago (for a 7-day period ending today)
-      targetDate.setUTCDate(targetDate.getUTCDate() - 6);
+      const now = new Date();
+      const offsetMs = timezone === "WIB" ? 7 * 3600 * 1000 : 0;
+      const targetNow = new Date(now.getTime() + offsetMs);
+      targetNow.setUTCDate(targetNow.getUTCDate() - (days - 1));
+      yyyy = targetNow.getUTCFullYear();
+      mm = targetNow.getUTCMonth();
+      dd = targetNow.getUTCDate();
     }
 
-    const yyyy = targetDate.getUTCFullYear();
-    const mm = targetDate.getUTCMonth();
-    const dd = targetDate.getUTCDate();
-
-    const startTimestamp = Date.UTC(yyyy, mm, dd, 0, 0, 0, 0);
+    const baseUtcEpoch = Date.UTC(yyyy, mm, dd, 0, 0, 0, 0);
+    const startTimestamp = timezone === "WIB" ? baseUtcEpoch - 7 * 3600 * 1000 : baseUtcEpoch;
     // Dynamic days = days * 24 * 60 * 60 * 1000 ms
     const endTimestamp = startTimestamp + days * 24 * 60 * 60 * 1000 - 1;
 
-    const cacheKey = `${sensorId}:${startTimestamp}:${endTimestamp}:${useCalibration}`;
+    const cacheKey = `${sensorId}:${startTimestamp}:${endTimestamp}:${useCalibration}:${timezone}`;
     if (!isRefresh) {
       const cached = weeklyCache.get(cacheKey);
       if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
@@ -66,17 +74,21 @@ export async function GET(request: Request) {
       }
     }
 
-    console.log(`Weekly Analysis API Request: sensorId=${sensorId}, startUTC=${new Date(startTimestamp).toISOString()}, endUTC=${new Date(endTimestamp).toISOString()}`);
+    console.log(`Weekly Analysis API Request: sensorId=${sensorId}, tz=${timezone}, startUTC=${new Date(startTimestamp).toISOString()}, endUTC=${new Date(endTimestamp).toISOString()}`);
 
     const rawPoints = await fetchSensorDataByDateRange(sensorId, startTimestamp, endTimestamp, useCalibration);
     
     // 1. Weekly Hourly points (168 points max)
-    const hourlyWeekly = aggregateHourlyAnalysis(rawPoints);
+    const hourlyWeekly = aggregateHourlyAnalysis(rawPoints, timezone);
     const points = hourlyWeekly.map((p) => {
-      const wib = getWibTimeParts(p.timestamp);
+      const wib = getTimeParts(p.timestamp, "WIB");
+      const utc = getTimeParts(p.timestamp, "UTC");
+      const activeTp = timezone === "WIB" ? wib : utc;
       return {
         ...p,
+        dayLabel: activeTp.dayLabel,
         dayLabelWib: wib.dayLabel, // e.g. "20/06"
+        dayLabelUtc: utc.dayLabel,
       };
     });
 
@@ -108,18 +120,19 @@ export async function GET(request: Request) {
 
     // 4. Generate diurnal heatmap matrices (24 hours x Days)
     const heatmaps = {
-      temperature: generateHeatmapMatrix(rawPoints, (p) => p.temperature),
-      humidity: generateHeatmapMatrix(rawPoints, (p) => p.humidity),
-      pressure: generateHeatmapMatrix(rawPoints, (p) => p.pressure),
+      temperature: generateHeatmapMatrix(rawPoints, (p) => p.temperature, timezone),
+      humidity: generateHeatmapMatrix(rawPoints, (p) => p.humidity, timezone),
+      pressure: generateHeatmapMatrix(rawPoints, (p) => p.pressure, timezone),
     };
 
-    const startDateFormatted = new Date(startTimestamp).toISOString().substring(0, 10);
-    const endDateFormatted = new Date(endTimestamp).toISOString().substring(0, 10);
+    const startDateFormatted = getTimeParts(startTimestamp, timezone).ymd;
+    const endDateFormatted = getTimeParts(endTimestamp, timezone).ymd;
 
     const payload = {
       sensorId,
       startDate: startDateFormatted,
       endDate: endDateFormatted,
+      timezone,
       points,
       stats,
       histograms,

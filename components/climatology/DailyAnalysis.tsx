@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Thermometer, Droplets, Gauge, Grid, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { Thermometer, Droplets, Gauge, Grid, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Globe } from "lucide-react";
 import { AnalysisPoint, DailyHeatmapData } from "@/lib/climatology/analysisTypes";
 import dynamic from "next/dynamic";
 
@@ -29,6 +29,8 @@ interface DailyAnalysisProps {
     pressure: DailyHeatmapData;
   };
   isDarkMode: boolean;
+  timezone?: "WIB" | "UTC";
+  onTimezoneChange?: (tz: "WIB" | "UTC") => void;
   selectedDate?: Date;
   onPrevDay?: () => void;
   onNextDay?: () => void;
@@ -40,6 +42,8 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
   points,
   heatmaps,
   isDarkMode,
+  timezone = "WIB",
+  onTimezoneChange,
   selectedDate,
   onPrevDay,
   onNextDay,
@@ -53,36 +57,63 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
   const tooltipBg = isDarkMode ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.96)";
   const tooltipBorder = isDarkMode ? "#334155" : "#cbd5e1";
 
-  // Konversi UTC epoch ke string WIB untuk label tooltip
-  const epochToWibLabel = useCallback((ts: number): string => {
-    const wibMs = ts + 7 * 3600 * 1000;
-    const d = new Date(wibMs);
-    const hh = String(d.getUTCHours()).padStart(2, "0");
-    const mm = String(d.getUTCMinutes()).padStart(2, "0");
-    return `${hh}:${mm}`;
-  }, []);
+  // Konversi UTC epoch ke label waktu sesuai timezone aktif
+  const formatEpochTime = useCallback(
+    (ts: number): { label: string; tooltipTitle: string } => {
+      const wibMs = ts + 7 * 3600 * 1000;
+      const dWib = new Date(wibMs);
+      const hhWib = String(dWib.getUTCHours()).padStart(2, "0");
+      const mmWib = String(dWib.getUTCMinutes()).padStart(2, "0");
 
-  // Batas sumbu X: tengah malam WIB (00:00 WIB = 17:00 UTC hari sebelumnya)
+      const dUtc = new Date(ts);
+      const hhUtc = String(dUtc.getUTCHours()).padStart(2, "0");
+      const mmUtc = String(dUtc.getUTCMinutes()).padStart(2, "0");
+
+      if (timezone === "UTC") {
+        return {
+          label: `${hhUtc}:${mmUtc} UTC`,
+          tooltipTitle: `Pukul ${hhUtc}:${mmUtc} UTC (${hhWib}:${mmWib} WIB) — Standar WMO`,
+        };
+      } else {
+        return {
+          label: `${hhWib}:${mmWib} WIB`,
+          tooltipTitle: `Pukul ${hhWib}:${mmWib} WIB (${hhUtc}:${mmUtc} UTC)`,
+        };
+      }
+    },
+    [timezone]
+  );
+
+  // Batas sumbu X: awal s/d akhir 24 jam sesuai timezone aktif
   const xAxisBounds = useMemo(() => {
-    // Gunakan timestamp point pertama/terakhir sebagai batas inklusif hari WIB
-    if (points.length === 0) {
-      // Fallback: hari ini WIB
-      const nowWib = Date.now() + 7 * 3600 * 1000;
-      const d = new Date(nowWib);
-      const startOfDayWib = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - 7 * 3600 * 1000;
-      return { min: startOfDayWib, max: startOfDayWib + 24 * 3600 * 1000 - 1 };
+    if (selectedDate) {
+      const yyyy = selectedDate.getFullYear();
+      const mm = selectedDate.getMonth();
+      const dd = selectedDate.getDate();
+      const baseUtc = Date.UTC(yyyy, mm, dd, 0, 0, 0, 0);
+      const min = timezone === "WIB" ? baseUtc - 7 * 3600 * 1000 : baseUtc;
+      const max = min + 24 * 3600 * 1000 - 1;
+      return { min, max };
     }
-    // Ambil tanggal WIB dari timeKeyWib point pertama (sudah diurutkan)
-    const firstTs = points[0].timestamp;
-    const firstWib = firstTs + 7 * 3600 * 1000;
-    const d = new Date(firstWib);
-    // Tengah malam WIB = jam 0 WIB = UTC hari D-1 jam 17:00
-    const startOfDayUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - 7 * 3600 * 1000;
-    return {
-      min: startOfDayUtc,
-      max: startOfDayUtc + 24 * 3600 * 1000 - 1,
-    };
-  }, [points]);
+
+    if (points.length > 0) {
+      const firstTs = points[0].timestamp;
+      const offsetMs = timezone === "WIB" ? 7 * 3600 * 1000 : 0;
+      const d = new Date(firstTs + offsetMs);
+      const baseUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0);
+      const min = timezone === "WIB" ? baseUtc - 7 * 3600 * 1000 : baseUtc;
+      const max = min + 24 * 3600 * 1000 - 1;
+      return { min, max };
+    }
+
+    const now = Date.now();
+    const offsetMs = timezone === "WIB" ? 7 * 3600 * 1000 : 0;
+    const d = new Date(now + offsetMs);
+    const baseUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0);
+    const min = timezone === "WIB" ? baseUtc - 7 * 3600 * 1000 : baseUtc;
+    const max = min + 24 * 3600 * 1000 - 1;
+    return { min, max };
+  }, [points, selectedDate, timezone]);
 
   // Factory generator opsi ECharts — gunakan epoch UTC sebagai nilai x
   const createDailyLineOption = useCallback(
@@ -125,9 +156,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
               backgroundColor: isDarkMode ? "#334155" : "#64748b",
               formatter: (param: any) => {
                 if (param.axisDimension === "x" && typeof param.value === "number") {
-                  const wibMs = param.value + 7 * 3600 * 1000;
-                  const d = new Date(wibMs);
-                  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} WIB`;
+                  return formatEpochTime(param.value).label;
                 }
                 return typeof param.value === "number" ? param.value.toFixed(1) : param.value;
               },
@@ -136,11 +165,10 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
           formatter: (params: any) => {
             if (!params || !params.length) return "";
             const first = params[0];
-            // Ambil label WIB dari name yang sudah disimpan
             const timeLabel = first.name || "";
             let html = `
               <div style="font-weight:700; margin-bottom:5px; font-size:11px; opacity:0.85;">
-                Jam ${timeLabel}
+                ${timeLabel}
               </div>
               <div style="display:flex; flex-direction:column; gap:4px;">
             `;
@@ -176,7 +204,6 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
         },
         xAxis: {
           type: "time",
-          // Batas axis dalam UTC epoch (bukan string ambigu)
           min: xAxisBounds.min,
           max: xAxisBounds.max,
           splitLine: { show: false },
@@ -185,10 +212,10 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
           axisLabel: {
             color: textColor,
             fontSize: 11,
-            // Formatter ekplisit: konversi timestamp ke WIB
+            // Formatter eksplisit: konversi timestamp ke jam target
             formatter: (val: number) => {
-              const wibMs = val + 7 * 3600 * 1000;
-              const d = new Date(wibMs);
+              const offsetMs = timezone === "WIB" ? 7 * 3600 * 1000 : 0;
+              const d = new Date(val + offsetMs);
               return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
             },
           },
@@ -247,7 +274,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
         ],
       };
     },
-    [xAxisBounds, textColor, gridColor, tooltipBg, tooltipBorder, isDarkMode]
+    [xAxisBounds, textColor, gridColor, tooltipBg, tooltipBorder, isDarkMode, formatEpochTime, timezone]
   );
 
   // 1. Opsi Suhu ECharts — x = UTC epoch (p.timestamp), y = nilai suhu
@@ -257,15 +284,15 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
     const tempMax = validTemps.length > 0 ? Math.ceil(Math.max(...validTemps)) + 1 : undefined;
 
     const maxData: DataItem[] = points.map((p) => ({
-      name: epochToWibLabel(p.timestamp) + " WIB",
+      name: formatEpochTime(p.timestamp).tooltipTitle,
       value: [p.timestamp, p.temperatureMax],
     }));
     const meanData: DataItem[] = points.map((p) => ({
-      name: epochToWibLabel(p.timestamp) + " WIB",
+      name: formatEpochTime(p.timestamp).tooltipTitle,
       value: [p.timestamp, p.temperatureMean],
     }));
     const minData: DataItem[] = points.map((p) => ({
-      name: epochToWibLabel(p.timestamp) + " WIB",
+      name: formatEpochTime(p.timestamp).tooltipTitle,
       value: [p.timestamp, p.temperatureMin],
     }));
 
@@ -276,7 +303,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       { max: "#f87171", mean: "#ef4444", min: "#60a5fa" },
       { min: tempMin, max: tempMax }
     );
-  }, [points, epochToWibLabel, createDailyLineOption]);
+  }, [points, formatEpochTime, createDailyLineOption]);
 
   // 2. Opsi Kelembaban ECharts — x = UTC epoch, y = kelembaban
   const humChartOption = useMemo(() => {
@@ -285,15 +312,15 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
     const humMax = validHums.length > 0 ? Math.min(100, Math.ceil(Math.max(...validHums)) + 2) : 100;
 
     const maxData: DataItem[] = points.map((p) => ({
-      name: epochToWibLabel(p.timestamp) + " WIB",
+      name: formatEpochTime(p.timestamp).tooltipTitle,
       value: [p.timestamp, p.humidityMax],
     }));
     const meanData: DataItem[] = points.map((p) => ({
-      name: epochToWibLabel(p.timestamp) + " WIB",
+      name: formatEpochTime(p.timestamp).tooltipTitle,
       value: [p.timestamp, p.humidityMean],
     }));
     const minData: DataItem[] = points.map((p) => ({
-      name: epochToWibLabel(p.timestamp) + " WIB",
+      name: formatEpochTime(p.timestamp).tooltipTitle,
       value: [p.timestamp, p.humidityMin],
     }));
 
@@ -304,7 +331,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       { max: "#34d399", mean: "#059669", min: "#f59e0b" },
       { min: humMin, max: humMax }
     );
-  }, [points, epochToWibLabel, createDailyLineOption]);
+  }, [points, formatEpochTime, createDailyLineOption]);
 
   // 3. Opsi Tekanan ECharts — x = UTC epoch, y = tekanan
   const pressChartOption = useMemo(() => {
@@ -313,15 +340,15 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
     const pressMax = validPresses.length > 0 ? Math.ceil(Math.max(...validPresses)) + 1 : undefined;
 
     const maxData: DataItem[] = points.map((p) => ({
-      name: epochToWibLabel(p.timestamp) + " WIB",
+      name: formatEpochTime(p.timestamp).tooltipTitle,
       value: [p.timestamp, p.pressureMax],
     }));
     const meanData: DataItem[] = points.map((p) => ({
-      name: epochToWibLabel(p.timestamp) + " WIB",
+      name: formatEpochTime(p.timestamp).tooltipTitle,
       value: [p.timestamp, p.pressureMean],
     }));
     const minData: DataItem[] = points.map((p) => ({
-      name: epochToWibLabel(p.timestamp) + " WIB",
+      name: formatEpochTime(p.timestamp).tooltipTitle,
       value: [p.timestamp, p.pressureMin],
     }));
 
@@ -332,7 +359,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       { max: "#f43f5e", mean: "#db2777", min: "#818cf8" },
       { min: pressMin, max: pressMax }
     );
-  }, [points, epochToWibLabel, createDailyLineOption]);
+  }, [points, formatEpochTime, createDailyLineOption]);
 
   // Daily Heatmap Trace & Layout Data
   const currentHeatmapData = useMemo(() => {
@@ -408,8 +435,15 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
             rawVal !== null && rawVal !== undefined
               ? `<b>${Number(rawVal).toFixed(1)} ${unit}</b>`
               : `<span style="color:#94a3b8">Tidak Ada Data</span>`;
+          
+          let timeHeading = `Pukul ${hStr}:${mStr} WIB`;
+          if (timezone === "UTC") {
+            const hWib = String((parseInt(hStr, 10) + 7) % 24).padStart(2, "0");
+            timeHeading = `Pukul ${hStr}:${mStr} UTC (${hWib}:${mStr} WIB)`;
+          }
+
           return `
-            <div style="font-weight:700; margin-bottom:2px;">Pukul ${hStr}:${mStr} WIB</div>
+            <div style="font-weight:700; margin-bottom:2px;">${timeHeading}</div>
             <div>${paramName}: ${valText}</div>
           `;
         },
@@ -434,7 +468,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
         data: currentHeatmapData.hours.map((h) => `${h}:00`),
         axisLine: { lineStyle: { color: isDarkMode ? "#334155" : "#cbd5e1" } },
         axisLabel: { color: textColor, fontSize: 10 },
-        name: "Jam (WIB)",
+        name: `Jam (${timezone})`,
         nameLocation: "middle",
         nameGap: 45,
         nameTextStyle: { color: textColor, fontSize: 11, fontWeight: 600 },
@@ -487,13 +521,52 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
               <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block uppercase tracking-wider">
                 Tanggal Observasi Harian
               </span>
-              <span className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100">
-                {format(selectedDate, "EEEE, dd MMMM yyyy", { locale: id })}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100">
+                  {format(selectedDate, "EEEE, dd MMMM yyyy", { locale: id })}
+                </span>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                  timezone === "WIB"
+                    ? "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-400 border border-orange-200 dark:border-orange-800"
+                    : "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
+                }`}>
+                  {timezone === "WIB" ? <Clock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+                  {timezone === "WIB" ? "WIB (UTC+7)" : "UTC (WMO)"}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 self-end sm:self-auto">
+          <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
+            {onTimezoneChange && (
+              <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-0.5 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => onTimezoneChange("WIB")}
+                  className={`flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                    timezone === "WIB"
+                      ? "bg-orange-500 text-white shadow-xs"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                  }`}
+                  title="Waktu Indonesia Barat (UTC+7) - Waktu Lokal Stasiun"
+                >
+                  <Clock className="h-3 w-3" /> WIB
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onTimezoneChange("UTC")}
+                  className={`flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                    timezone === "UTC"
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                  }`}
+                  title="Coordinated Universal Time (UTC) - Standar Sinoptik WMO"
+                >
+                  <Globe className="h-3 w-3" /> UTC
+                </button>
+              </div>
+            )}
+
             <Button
               variant="outline"
               size="sm"
@@ -534,7 +607,9 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
           <CardTitle className="text-lg font-bold flex items-center gap-2">
             <Thermometer className="h-5 w-5 text-orange-500" /> Analisis Suhu Udara Harian
           </CardTitle>
-          <CardDescription>Suhu maksimum, rata-rata, dan minimum setiap jam (WIB) — sorot untuk melihat ketiga nilai</CardDescription>
+          <CardDescription>
+            Suhu maksimum, rata-rata, dan minimum setiap jam ({timezone === "WIB" ? "WIB / Lokal UTC+7" : "UTC / Standar WMO 00Z-23Z"}) — sorot untuk melihat ketiga nilai
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-2">
           {points.length > 0 ? (
@@ -558,7 +633,9 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
           <CardTitle className="text-lg font-bold flex items-center gap-2">
             <Droplets className="h-5 w-5 text-blue-500" /> Analisis Kelembaban Relatif Harian
           </CardTitle>
-          <CardDescription>Kelembaban maksimum, rata-rata, dan minimum setiap jam (WIB) — sorot untuk melihat ketiga nilai</CardDescription>
+          <CardDescription>
+            Kelembaban maksimum, rata-rata, dan minimum setiap jam ({timezone === "WIB" ? "WIB / Lokal UTC+7" : "UTC / Standar WMO 00Z-23Z"}) — sorot untuk melihat ketiga nilai
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-2">
           {points.length > 0 ? (
@@ -582,7 +659,9 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
           <CardTitle className="text-lg font-bold flex items-center gap-2">
             <Gauge className="h-5 w-5 text-pink-500" /> Analisis Tekanan Udara Harian
           </CardTitle>
-          <CardDescription>Tekanan maksimum, rata-rata, dan minimum setiap jam (WIB) — sorot untuk melihat ketiga nilai</CardDescription>
+          <CardDescription>
+            Tekanan maksimum, rata-rata, dan minimum setiap jam ({timezone === "WIB" ? "WIB / Lokal UTC+7" : "UTC / Standar WMO 00Z-23Z"}) — sorot untuk melihat ketiga nilai
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-2">
           {points.length > 0 ? (
@@ -609,7 +688,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
                 <Grid className="h-5 w-5 text-indigo-500" /> Heatmap Diurnal Harian
               </CardTitle>
               <CardDescription>
-                Distribusi nilai parameter cuaca menit-demi-menit terhadap jam WIB (ECharts)
+                Distribusi nilai parameter cuaca menit-demi-menit terhadap jam {timezone === "WIB" ? "WIB (Lokal)" : "UTC (Standar WMO)"} (ECharts)
               </CardDescription>
             </div>
             

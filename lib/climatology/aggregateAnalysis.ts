@@ -9,9 +9,10 @@ import {
   DailyHeatmapData
 } from "@/lib/climatology/analysisTypes";
 
-// Bulletproof and high-performance WIB timezone component extractor
-export function getWibTimeParts(timestamp: number) {
-  const d = new Date(timestamp + 25200000); // UTC+7 (Asia/Jakarta)
+// Bulletproof and high-performance timezone component extractor (WIB: UTC+7, UTC: UTC+0)
+export function getTimeParts(timestamp: number, timezone: "WIB" | "UTC" = "WIB") {
+  const offset = timezone === "WIB" ? 25200000 : 0; // 7 * 3600 * 1000
+  const d = new Date(timestamp + offset);
   const yyyy = d.getUTCFullYear();
   const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
   const dd = String(d.getUTCDate()).padStart(2, "0");
@@ -27,6 +28,11 @@ export function getWibTimeParts(timestamp: number) {
     hour: hh,
     dayLabel: `${dd}/${mm}`
   };
+}
+
+// Backwards-compatible WIB extractor
+export function getWibTimeParts(timestamp: number) {
+  return getTimeParts(timestamp, "WIB");
 }
 
 export function calculateParameterStats(values: number[]): ParameterStats {
@@ -101,15 +107,16 @@ export function calculateHistogramBins(values: number[], numBins: number = 10): 
 
 export function generateHeatmapMatrix(
   rawPoints: SensorDate[],
-  extractValue: (p: SensorDate) => number
+  extractValue: (p: SensorDate) => number,
+  timezone: "WIB" | "UTC" = "WIB"
 ): HeatmapData {
   const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
 
-  // Extract unique WIB days present in the dataset
+  // Extract unique days present in the dataset according to target timezone
   const daysSet = new Set<string>();
   for (const p of rawPoints) {
-    const wib = getWibTimeParts(p.timestamp);
-    daysSet.add(wib.ymd);
+    const tp = getTimeParts(p.timestamp, timezone);
+    daysSet.add(tp.ymd);
   }
   const days = Array.from(daysSet).sort();
 
@@ -123,9 +130,9 @@ export function generateHeatmapMatrix(
   days.forEach((day, idx) => dayIndexMap.set(day, idx));
 
   for (const p of rawPoints) {
-    const wib = getWibTimeParts(p.timestamp);
-    const dayIdx = dayIndexMap.get(wib.ymd);
-    const hourIdx = Number(wib.hour);
+    const tp = getTimeParts(p.timestamp, timezone);
+    const dayIdx = dayIndexMap.get(tp.ymd);
+    const hourIdx = Number(tp.hour);
     const val = extractValue(p);
 
     if (dayIdx !== undefined && hourIdx >= 0 && hourIdx < 24 && Number.isFinite(val)) {
@@ -146,24 +153,26 @@ export function generateHeatmapMatrix(
   return { days, hours, z };
 }
 
-export function aggregateHourlyAnalysis(rawPoints: SensorDate[]): AnalysisPoint[] {
+export function aggregateHourlyAnalysis(
+  rawPoints: SensorDate[],
+  timezone: "WIB" | "UTC" = "WIB"
+): AnalysisPoint[] {
   if (rawPoints.length === 0) return [];
 
-  const groups = new Map<string, SensorDate[]>();
+  const groups = new Map<number, SensorDate[]>();
 
   for (const p of rawPoints) {
-    // Round to nearest hourly timestamp UTC
-    const hourStart = new Date(Math.floor(p.timestamp / (3600 * 1000)) * (3600 * 1000));
-    const timeKey = hourStart.toISOString().substring(0, 13); // e.g. "2026-06-20T18"
-    if (!groups.has(timeKey)) {
-      groups.set(timeKey, []);
+    // Round to whole hour UTC epoch
+    const hourEpoch = Math.floor(p.timestamp / 3600000) * 3600000;
+    if (!groups.has(hourEpoch)) {
+      groups.set(hourEpoch, []);
     }
-    groups.get(timeKey)!.push(p);
+    groups.get(hourEpoch)!.push(p);
   }
 
   const result: AnalysisPoint[] = [];
 
-  for (const [timeKey, items] of groups) {
+  for (const [hourEpoch, items] of groups) {
     const count = items.length;
     if (count === 0) continue;
 
@@ -220,15 +229,16 @@ export function aggregateHourlyAnalysis(rawPoints: SensorDate[]): AnalysisPoint[
     const pressFinalMin = pressMin === Infinity ? 0 : pressMin;
     const pressFinalMax = pressMax === -Infinity ? 0 : pressMax;
 
-    const [ymd, hour] = timeKey.split("T");
-    const [yyyy, mm, dd] = ymd.split("-");
-    const timestamp = Date.UTC(Number(yyyy), Number(mm) - 1, Number(dd), Number(hour), 0, 0, 0);
-    const wib = getWibTimeParts(timestamp);
+    const wib = getTimeParts(hourEpoch, "WIB");
+    const utc = getTimeParts(hourEpoch, "UTC");
+    const activeTp = timezone === "WIB" ? wib : utc;
 
     result.push({
-      hourUtc: Number(hour),
+      hourUtc: Number(utc.hour),
       timeKeyWib: wib.hm,
-      timestamp,
+      timeKeyUtc: utc.hm,
+      timeKey: activeTp.hm,
+      timestamp: hourEpoch,
       sampleCount: count,
       temperatureMean: Math.round(tempMean * 100) / 100,
       temperatureMax: Math.round(tempFinalMax * 100) / 100,
@@ -247,7 +257,8 @@ export function aggregateHourlyAnalysis(rawPoints: SensorDate[]): AnalysisPoint[
 
 export function generateDailyHeatmapMatrix(
   rawPoints: SensorDate[],
-  extractValue: (p: SensorDate) => number
+  extractValue: (p: SensorDate) => number,
+  timezone: "WIB" | "UTC" = "WIB"
 ): DailyHeatmapData {
   const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
   const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
@@ -256,8 +267,8 @@ export function generateDailyHeatmapMatrix(
   const cellCount = Array.from({ length: 24 }, () => Array(60).fill(0));
 
   for (const p of rawPoints) {
-    const wib = getWibTimeParts(p.timestamp);
-    const [h, m] = wib.hm.split(":");
+    const tp = getTimeParts(p.timestamp, timezone);
+    const [h, m] = tp.hm.split(":");
     const xIdx = Number(m);
     const yIdx = Number(h);
     const val = extractValue(p);

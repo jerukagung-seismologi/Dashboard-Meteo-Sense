@@ -38,6 +38,7 @@ interface HeatmapAnalysisProps {
     pressure: HeatmapData;
   };
   isDarkMode: boolean;
+  timezone?: "WIB" | "UTC";
 }
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
@@ -79,7 +80,7 @@ function formatDayFull(ymd: string): string {
   return ymd;
 }
 
-export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({ heatmaps, isDarkMode }) => {
+export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({ heatmaps, isDarkMode, timezone = "WIB" }) => {
   const [activeParam, setActiveParam] = useState<"temperature" | "humidity" | "pressure">("temperature");
   const [orientation, setOrientation] = useState<"hourX_dayY" | "dayX_hourY">("hourX_dayY");
   const [showValues, setShowValues] = useState<boolean | null>(null);
@@ -273,7 +274,7 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({ heatmaps, isDa
               ${dateStr}
             </div>
             <div style="font-size:11px; margin-bottom:2px;">
-              Pukul: <b>${hourStr}:00 WIB</b>
+              Pukul: <b>${hourStr}:00 ${timezone}</b>
             </div>
             <div style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:4px;">
               <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${activeInfo.highlightColor}"></span>
@@ -294,7 +295,7 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({ heatmaps, isDa
           interval: orientation === "hourX_dayY" ? 0 : numDays > 20 ? 1 : 0,
           rotate: orientation === "dayX_hourY" && numDays > 14 ? 35 : 0,
         },
-        name: orientation === "hourX_dayY" ? "Jam (WIB)" : "Hari Observasi",
+        name: orientation === "hourX_dayY" ? `Jam (${timezone})` : "Hari Observasi",
         nameLocation: "middle",
         nameGap: orientation === "dayX_hourY" && numDays > 14 ? 35 : 28,
         nameTextStyle: {
@@ -312,7 +313,7 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({ heatmaps, isDa
           color: textColor,
           fontSize: 11,
         },
-        name: orientation === "hourX_dayY" ? "Hari Observasi" : "Jam (WIB)",
+        name: orientation === "hourX_dayY" ? "Hari Observasi" : `Jam (${timezone})`,
         nameLocation: "middle",
         nameGap: orientation === "hourX_dayY" ? 55 : 45,
         nameTextStyle: {
