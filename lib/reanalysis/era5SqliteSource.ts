@@ -1,4 +1,4 @@
-﻿// lib/reanalysis/era5SqliteSource.ts
+// lib/reanalysis/era5SqliteSource.ts
 import path from "path";
 import fs from "fs";
 import { createRequire } from "module";

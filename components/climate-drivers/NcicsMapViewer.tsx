@@ -42,11 +42,11 @@ export interface NcicsVariable {
 
 const NCICS_CATEGORIES = [
   { id: "all", name: "Semua Variabel" },
-  { id: "konveksi", name: "🌧️ Konveksi & Awan" },
-  { id: "potensi", name: "🌀 Potensi Kecepatan & Divergensi" },
-  { id: "angin", name: "💨 Angin Zonal & Meridional" },
-  { id: "shear", name: "🌪️ Geser Angin Vertikal" },
-  { id: "hovmoller", name: "📈 Diagram Hovmöller (Waktu vs Ekuator)" },
+  { id: "konveksi", name: "Konveksi & Awan" },
+  { id: "potensi", name: "Potensi Kecepatan & Divergensi" },
+  { id: "angin", name: "Angin Zonal & Meridional" },
+  { id: "shear", name: "Geser Angin Vertikal" },
+  { id: "hovmoller", name: "Diagram Hovmöller" },
 ];
 
 const NCICS_VARIABLES: NcicsVariable[] = [
