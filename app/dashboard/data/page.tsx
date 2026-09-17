@@ -45,7 +45,7 @@ import {
   fetchSensorDataByDateRange,
   fetchSensorDataByValue,
 } from "@/lib/apiClient";
-import { filterByTimeRange } from "@/lib/timeUtils";
+import { filterByTimeRange, getPlotlyTimeJakarta } from "@/lib/timeUtils";
 import { fetchRecentAlerts, LogEvent } from "@/lib/FetchingLogs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -65,16 +65,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import dynamic from "next/dynamic";
 
-const ReactECharts = dynamic(() => import("echarts-for-react"), {
+const ChartComponent = dynamic(() => import("@/components/ChartComponent"), {
   ssr: false,
   loading: () => <Skeleton className="h-[300px] w-full" />,
 });
-
-// Format resmi Apache ECharts untuk deret waktu dinamis (dynamic-data2)
-interface DataItem {
-  name: string;
-  value: [number, number];
-}
 
 // Define the structure for selectable periods
 interface Period {
@@ -149,16 +143,17 @@ const ChartSkeleton = () => (
 export default function DataPage() {
   const { user } = useAuth();
 
-  // State untuk data grafik deret waktu (Apache ECharts dynamic-data2)
-  const [temperatures, setTemperatures] = useState<DataItem[]>([]);
-  const [humidity, setHumidity] = useState<DataItem[]>([]);
-  const [pressure, setPressure] = useState<DataItem[]>([]);
-  const [dew, setDew] = useState<DataItem[]>([]);
-  const [rainfall, setRainfall] = useState<DataItem[]>([]);
-  const [rainrate, setRainrate] = useState<DataItem[]>([]);
-  const [lights, setLights] = useState<DataItem[]>([]);
-  const [soilTemps, setSoilTemps] = useState<DataItem[]>([]);
-  const [volts, setVolts] = useState<DataItem[]>([]);
+  // State untuk data grafik (array terpisah untuk Plotly)
+  const [timestamps, setTimestamps] = useState<string[]>([]);
+  const [temperatures, setTemperatures] = useState<number[]>([]);
+  const [humidity, setHumidity] = useState<number[]>([]);
+  const [pressure, setPressure] = useState<number[]>([]);
+  const [dew, setDew] = useState<number[]>([]);
+  const [rainfall, setRainfall] = useState<number[]>([]);
+  const [rainrate, setRainrate] = useState<number[]>([]);
+  const [lights, setLights] = useState<number[]>([]);
+  const [soilTemps, setSoilTemps] = useState<number[]>([]);
+  const [volts, setVolts] = useState<number[]>([]);
 
   // State untuk data tabel
   const [weatherData, setWeatherData] = useState<WeatherData[]>([]);
@@ -238,6 +233,7 @@ export default function DataPage() {
 
   // Helper function to reset chart states
   const resetChartStates = () => {
+    setTimestamps([]);
     setTemperatures([]);
     setHumidity([]);
     setPressure([]);
@@ -274,30 +270,30 @@ export default function DataPage() {
     }
   };
 
-  // Fungsi untuk memproses dan mengatur state data grafik (dynamic-data2) dan tabel
+  // Fungsi untuk memproses dan mengatur state data grafik dan tabel
   const processAndSetData = (data: SensorDate[]) => {
     if (data.length > 0) {
-      const mapToDataItem = (valAccessor: (d: SensorDate) => number | undefined): DataItem[] => {
-        return data.map((d) => {
-          const raw = valAccessor(d);
-          const val = typeof raw === "number" && Number.isFinite(raw) ? Number(raw.toFixed(2)) : 0;
-          const dateStr = d.dateFormatted || new Date(d.timestamp).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
-          return {
-            name: dateStr,
-            value: [d.timestamp, val],
-          };
-        });
-      };
+      const fetchedTimestamps: string[] = data.map((d) => getPlotlyTimeJakarta(d.timestamp));
+      const fetchedTemperatures: number[] = data.map((d) => d.temperature);
+      const fetchedHumidity: number[] = data.map((d) => d.humidity);
+      const fetchedPressure: number[] = data.map((d) => d.pressure);
+      const fetchedDew: number[] = data.map((d) => d.dew);
+      const fetchedRainfall: number[] = data.map((d) => d.rainfall);
+      const fetchedRainrate: number[] = data.map((d) => d.rainrate);
+      const fetchedLights: number[] = data.map((d) => d.lux ?? 0);
+      const fetchedSoilTemps: number[] = data.map((d) => d.soil_temp ?? 0);
+      const fetchedVolts: number[] = data.map((d) => d.volt ?? 0);
 
-      setTemperatures(mapToDataItem((d) => d.temperature));
-      setHumidity(mapToDataItem((d) => d.humidity));
-      setPressure(mapToDataItem((d) => d.pressure));
-      setDew(mapToDataItem((d) => d.dew));
-      setRainfall(mapToDataItem((d) => d.rainfall));
-      setRainrate(mapToDataItem((d) => d.rainrate));
-      setLights(mapToDataItem((d) => d.lux));
-      setSoilTemps(mapToDataItem((d) => d.soil_temp));
-      setVolts(mapToDataItem((d) => d.volt));
+      setTimestamps(fetchedTimestamps);
+      setTemperatures(fetchedTemperatures);
+      setHumidity(fetchedHumidity);
+      setPressure(fetchedPressure);
+      setDew(fetchedDew);
+      setRainfall(fetchedRainfall);
+      setRainrate(fetchedRainrate);
+      setLights(fetchedLights);
+      setSoilTemps(fetchedSoilTemps);
+      setVolts(fetchedVolts);
 
       processTableData(data);
     } else {
@@ -628,34 +624,54 @@ export default function DataPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Fungsi untuk mendapatkan domain sumbu Y berbasis data aktual dan pembulatan bulat
-  function getYAxisDomain(data: number[], title?: string) {
-    const valid = data.filter(d => typeof d === 'number' && Number.isFinite(d));
-    if (valid.length === 0) return undefined;
-    let min = Math.min(...valid);
-    let max = Math.max(...valid);
+  // Fungsi untuk mendapatkan domain sumbu Y
+  function getYAxisDomain(data: number[]) {
+    if (data.length === 0) return [-1, 1];
+    let min = Math.min(...data);
+    let max = Math.max(...data);
     if (min === max) {
-      min = Math.floor(min) - 1;
-      max = Math.ceil(max) + 1;
+      min -= 1;
+      max += 1;
     } else {
-      min = Math.floor(min);
-      max = Math.ceil(max);
-    }
-
-    const isNonNegative = title?.includes("Kelembapan") || 
-                          title?.includes("Hujan") || 
-                          title?.includes("Cahaya") || 
-                          title?.includes("Tegangan");
-    if (isNonNegative && min < 0) {
-      min = 0;
-    }
-    if (title?.includes("Kelembapan") && max > 100) {
-      max = 100;
+      const padding = (max - min) * 0.1;
+      min -= padding;
+      max += padding;
     }
     return [min, max];
   }
 
-  // Komponen Card untuk setiap grafik deret waktu (Apache ECharts dynamic-data2 standard)
+  // Pengaturan tata letak umum untuk grafik Plotly
+  const commonLayout = {
+    autosize: true,
+    margin: { l: 60, r: 40, t: 40, b: 60 },
+    paper_bgcolor: "transparent",
+    plot_bgcolor: "transparent",
+    font: {
+      family: "Inter, Roboto, sans-serif",
+      color: "#64748b",
+    },
+    xaxis: {
+      gridcolor: "rgba(203, 213, 225, 0.2)",
+      title: {
+        font: { size: 14, color: "#475569" },
+      },
+      nticks: 10,
+    },
+    yaxis: {
+      gridcolor: "rgba(203, 213, 225, 0.2)",
+      title: { font: { size: 14, color: "#475569" } },
+      nticks: 10,
+    },
+    legend: {
+      orientation: "h" as const,
+      y: -0.3,
+      yanchor: "top" as const,
+      font: { size: 12 },
+    },
+    hovermode: "closest" as const,
+  };
+
+  // Komponen Card untuk setiap grafik (Plotly)
   const ChartCard = ({
     title,
     data,
@@ -664,132 +680,58 @@ export default function DataPage() {
     unit = "",
   }: {
     title: string;
-    data: DataItem[];
+    data: number[];
     color: string;
     Icon: React.FC<any>;
     unit?: string;
   }) => {
-    const numericValues = data.map((d) => d.value[1]).filter(Number.isFinite);
-    const yDomain = getYAxisDomain(numericValues, title);
-    const textColor = isDarkMode ? "#cbd5e1" : "#64748b";
-    const gridColor = isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)";
-
-    const option = {
-      animation: false,
-      textStyle: { fontFamily: "Inter, sans-serif" },
-      tooltip: {
-        trigger: "axis",
-        axisPointer: {
-          animation: false,
-          type: "cross",
-          label: {
-            backgroundColor: "#334155",
-            formatter: (params: any) => {
-              if (params.axisDimension === "y") {
-                const val = Number(params.value);
-                return Number.isFinite(val) ? val.toFixed(2) : params.value;
-              }
-              if (params.axisDimension === "x") {
-                const d = new Date(params.value);
-                return d.toLocaleTimeString("id-ID", {
-                  timeZone: "Asia/Jakarta",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                });
-              }
-              return params.value;
-            },
-          },
-        },
-        backgroundColor: isDarkMode ? "#0f172a" : "#ffffff",
-        borderColor: isDarkMode ? "#334155" : "#cbd5e1",
-        textStyle: { color: isDarkMode ? "#f8fafc" : "#0f172a" },
-        formatter: (params: any) => {
-          if (!Array.isArray(params) || params.length === 0) return "";
-          const item = params[0];
-          const val = Number(item.value[1]);
-          const valStr = Number.isFinite(val) ? val.toFixed(2) : "–";
-          const dateStr = item.name || new Date(item.value[0]).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
-          return `<div style="font-size:12px;padding:2px 4px">
-            <div style="font-weight:600;margin-bottom:4px;color:${isDarkMode ? "#cbd5e1" : "#475569"}">${dateStr}</div>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
-              <span>${item.marker} ${item.seriesName || title}:</span>
-              <strong style="font-variant-numeric:tabular-nums;color:${color}">${valStr} ${unit}</strong>
-            </div>
-          </div>`;
+    const yDomain = getYAxisDomain(data);
+    const chartData = [
+      {
+        x: timestamps,
+        y: data,
+        type: "scatter" as const,
+        mode: "lines+markers" as const,
+        marker: { color, size: 4 },
+        name: title,
+        line: { color, width: 2.5 },
+      },
+    ];
+    const layout = {
+      ...commonLayout,
+      paper_bgcolor: isDarkMode ? "#1e293b" : "transparent",
+      plot_bgcolor: isDarkMode ? "#1e293b" : "transparent",
+      font: {
+        family: "Inter, Roboto, sans-serif",
+        color: isDarkMode ? "#cbd5e1" : "#64748b",
+      },
+      xaxis: {
+        ...commonLayout.xaxis,
+        gridcolor: isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)",
+        title: {
+          font: { size: 14, color: isDarkMode ? "#cbd5e1" : "#475569" },
         },
       },
-      grid: {
-        left: 55,
-        right: 25,
-        top: 25,
-        bottom: 35,
-        containLabel: true,
+      yaxis: {
+        ...commonLayout.yaxis,
+        title: { text: unit, font: { size: 14, color: isDarkMode ? "#cbd5e1" : "#475569" } },
+        gridcolor: isDarkMode ? "rgba(71, 85, 105, 0.2)" : "rgba(203, 213, 225, 0.2)",
+        range: yDomain,
       },
-      xAxis: {
-        type: "time",
-        splitLine: { show: false },
-        axisLine: { lineStyle: { color: gridColor } },
-        axisLabel: {
-          color: textColor,
-          formatter: "{HH}:{mm}",
-        },
-      },
-      yAxis: {
-        type: "value",
-        scale: true,
-        min: yDomain?.[0],
-        max: yDomain?.[1],
-        name: unit,
-        nameTextStyle: { color: textColor, fontSize: 12 },
-        splitLine: { show: true, lineStyle: { color: gridColor, type: "dashed" } },
-        axisLabel: {
-          color: textColor,
-          formatter: (val: number) => (Number.isFinite(val) ? Number(val.toFixed(2)).toString() : val),
-        },
-      },
-      dataZoom: [
-        { type: "inside" },
-        {
-          type: "slider",
-          height: 16,
-          bottom: 2,
-          borderColor: "transparent",
-          backgroundColor: isDarkMode ? "#1e293b" : "#f1f5f9",
-          fillerColor: "rgba(59, 130, 246, 0.15)",
-          textStyle: { color: isDarkMode ? "#64748b" : "#94a3b8", fontSize: 9 },
-        },
-      ],
-      series: [
-        {
-          name: title,
-          type: "line",
-          showSymbol: false,
-          smooth: true,
-          data: data,
-          lineStyle: { color, width: 2.5 },
-          itemStyle: { color },
-          areaStyle: {
-            color: isDarkMode ? `${color}18` : `${color}0c`,
-          },
-        },
-      ],
     };
 
     return (
       <Card>
-        <CardHeader className={`flex flex-row items-center gap-3 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"} border-b py-3 px-6`}>
+        <CardHeader
+          className={`flex flex-row items-center gap-3 ${
+            isDarkMode ? "bg-gray-800" : "bg-gray-50"
+          } border-b py-3 px-6`}
+        >
           <Icon className={`h-5 w-5`} style={{ color }} />
           <CardTitle className="text-lg">{title}</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <ReactECharts
-            option={option}
-            notMerge={false}
-            lazyUpdate={true}
-            style={{ width: "100%", height: "300px" }}
-          />
+          <ChartComponent data={chartData} layout={layout} />
         </CardContent>
       </Card>
     );
