@@ -11,6 +11,7 @@ import LaporanCurahHujan from "@/components/pelaporan/LaporanCurahHujan"
 import LaporanMeteorologi from "@/components/pelaporan/LaporanMeteorologi"
 import LaporanKlimatologi from "@/components/pelaporan/LaporanKlimatologi"
 import LaporanHarian from "@/components/pelaporan/LaporanHarian"
+import ExportWOWMetOffice from "@/components/pelaporan/ExportWOWMetOffice"
 import { FileText } from "lucide-react"
 import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner"
 
