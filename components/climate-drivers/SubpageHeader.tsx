@@ -14,6 +14,7 @@ interface SubpageHeaderProps {
   activeTab?: string;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  lastUpdated?: string;
 }
 
 export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
@@ -21,6 +22,7 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
   subtitle,
   onRefresh,
   isRefreshing,
+  lastUpdated,
 }) => {
   const pathname = usePathname();
 
@@ -32,14 +34,14 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
   ];
 
   return (
-    <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-950 text-white rounded-2xl shadow-lg border border-indigo-800/40 overflow-hidden relative mb-6">
+    <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-950 text-white rounded-2xl shadow-md border border-indigo-800/40 overflow-hidden relative mb-6">
       {/* Background Ambient Glow */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Main Banner Header Content */}
-      <div className="p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
+      {/* Main Banner Header Content (Compact: p-4 sm:p-5) */}
+      <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+        <div className="space-y-1.5 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
             {pathname !== "/dashboard/climate-drivers" && (
               <Button variant="ghost" size="icon" asChild className="h-7 w-7 text-white hover:bg-white/10 mr-1">
                 <Link href="/dashboard/climate-drivers">
@@ -51,8 +53,8 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
               <Sparkles className="h-3 w-3 text-indigo-300" /> Climate Drivers &amp; Teleconnections Monitoring
             </span>
           </div>
-          <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-3 text-white">
-            <Globe className="h-6 w-6 sm:h-7 sm:w-7 text-indigo-400 shrink-0" /> {title}
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2.5 text-white">
+            <Globe className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-400 shrink-0" /> {title}
           </h1>
           {subtitle && (
             <p className="text-xs sm:text-sm text-slate-300 font-normal leading-relaxed max-w-3xl">
@@ -61,23 +63,29 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0">
+        {/* Action Buttons & Status */}
+        <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto shrink-0">
+          {lastUpdated && (
+            <div className="px-3 py-1.5 bg-indigo-950/70 backdrop-blur-md rounded-xl border border-indigo-500/30 text-left shrink-0">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-300 block">Terakhir Diperbarui</span>
+              <span className="text-xs font-bold font-mono tracking-tight text-white tabular-nums">{lastUpdated}</span>
+            </div>
+          )}
           {onRefresh && (
             <Button
               variant="outline"
               size="sm"
               onClick={onRefresh}
               disabled={isRefreshing}
-              className="gap-1.5 text-xs font-semibold text-white bg-slate-800/90 hover:bg-slate-700 border-slate-700 shadow-sm"
+              className="gap-1.5 text-xs font-semibold text-white bg-slate-800/90 hover:bg-slate-700 border-slate-700 shadow-sm h-8"
             >
               <RefreshCw className={cn("h-3.5 w-3.5 text-indigo-400", isRefreshing && "animate-spin")} />
               Perbarui Data
             </Button>
           )}
-          <Button size="sm" asChild className="gap-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
+          <Button size="sm" asChild className="gap-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm h-8">
             <Link href="/dashboard/klimatologi">
-              <Compass className="h-4 w-4" /> Analisis Stasiun Cuaca
+              <Compass className="h-3.5 w-3.5" /> Analisis Stasiun
             </Link>
           </Button>
         </div>

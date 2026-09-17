@@ -1,18 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
   images: {
     unoptimized: true,
   },
-  experimental: {
-    webpackBuildWorker: true,
-    parallelServerBuildTraces: true,
-    parallelServerCompiles: true,
+  serverExternalPackages: ['better-sqlite3'],
+  outputFileTracingExcludes: {
+    '*': [
+      '**/*.db',
+      '**/*.db-journal',
+      '**/*.sqlite',
+      '**/*.sqlite3',
+    ],
   },
 }
 

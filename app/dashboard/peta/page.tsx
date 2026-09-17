@@ -33,6 +33,7 @@ import {
   fetchLiveERA5WeatherForStations,
   BenchmarkDevice,
 } from "@/lib/FetchingBenchmarkDevice";
+import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner";
 
 export default function PetaPage() {
   const { user } = useAuth();
@@ -230,50 +231,38 @@ export default function PetaPage() {
 
   return (
     <div className="h-full w-full p-3 sm:p-6 space-y-4 max-w-7xl mx-auto">
-      {/* Top Header & Metrics Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-              <Compass className="h-5 w-5" />
-            </span>
-            <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border-indigo-500/20 text-[10px] uppercase font-bold tracking-wider">
-              Sistem Informasi Geografis (SIG)
-            </Badge>
+      {/* Unified Single Header Banner */}
+      <PageHeaderBanner
+        gradient="indigo"
+        badgeText="Sistem Informasi Geografis (SIG)"
+        icon={Compass}
+        title="Peta Persebaran Stasiun Cuaca"
+        subtitle="Pemantauan geospasial real-time stasiun cuaca Meteo-Sense di wilayah Kabupaten Kebumen dan sekitarnya lengkap dengan grafik telemetri 1 jam terakhir."
+        actions={
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-initial">
+              <Search className="absolute left-3 top-2 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cari stasiun/lokasi..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 pr-3 py-1 text-xs rounded-xl bg-slate-900/80 text-white border border-slate-700 w-full sm:w-48 focus:outline-hidden focus:ring-1 focus:ring-indigo-400 placeholder:text-slate-400 h-8"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadData}
+              disabled={loading}
+              className="gap-1.5 text-xs font-semibold text-white bg-slate-800/90 hover:bg-slate-700 border-slate-700 shadow-sm h-8 shrink-0"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 text-indigo-400 ${loading ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Segarkan</span>
+            </Button>
           </div>
-          <h1 className="text-xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-            Peta Persebaran Stasiun Cuaca
-          </h1>
-          <p className="text-xs text-slate-500 max-w-2xl">
-            Pemantauan geospasial real-time stasiun cuaca Meteo-Sense di wilayah Kabupaten Kebumen dan sekitarnya lengkap dengan grafik telemetri 1 jam terakhir.
-          </p>
-        </div>
-
-        {/* Quick Refresh & Search */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:flex-initial">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari stasiun/lokasi..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 w-full sm:w-56 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadData}
-            disabled={loading}
-            className="rounded-xl text-xs gap-1.5 border-slate-200 dark:border-slate-700 shrink-0"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">Segarkan</span>
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Summary KPI Badges Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

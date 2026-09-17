@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner";
 import {
   SlidersHorizontal,
   RefreshCw,
@@ -440,45 +441,37 @@ function UnifiedCalibrationContent() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20">
-              <SlidersHorizontal className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                  Kalibrasi & Validasi Bias
-                </h1>
-                <Badge className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10px] font-mono">
-                  Scientific Suite v2.0
-                </Badge>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Penyatuan sistem validasi ilmiah reanalisis ERA5 ECMWF, benchmark model kalibrasi otomatis, dan manajemen sensor IoT aktif stasiun.
-              </p>
-            </div>
+      {/* Unified Single Header Banner */}
+      <PageHeaderBanner
+        gradient="blue"
+        badgeText="Scientific Suite v2.0"
+        icon={SlidersHorizontal}
+        title="Kalibrasi & Validasi Bias"
+        subtitle="Penyatuan sistem validasi ilmiah reanalisis ERA5 ECMWF, benchmark model kalibrasi otomatis, dan manajemen sensor IoT aktif stasiun."
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs font-semibold text-white bg-slate-800/90 hover:bg-slate-700 border-slate-700 shadow-sm h-8"
+              onClick={runPipeline}
+              disabled={loading}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-blue-400 ${loading ? "animate-spin" : ""}`} />
+              Muat Ulang
+            </Button>
+            <Button
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 font-semibold shadow-sm gap-1.5"
+              onClick={() => setIsExportModalOpen(true)}
+              disabled={loading || correctedPairs.length === 0}
+            >
+              <Download className="w-3.5 h-3.5" />
+              Ekspor Hasil
+            </Button>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="text-xs h-9" onClick={runPipeline} disabled={loading}>
-            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-            Muat Ulang
-          </Button>
-          <Button
-            size="sm"
-            className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-9 font-semibold shadow-sm"
-            onClick={() => setIsExportModalOpen(true)}
-            disabled={loading || correctedPairs.length === 0}
-          >
-            <Download className="w-3.5 h-3.5 mr-1.5" />
-            Ekspor Dataset
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Main Navigation Tabs */}
       <Tabs value={activeMainTab} onValueChange={handleTabChange} className="w-full space-y-6">

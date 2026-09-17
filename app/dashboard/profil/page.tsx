@@ -13,8 +13,9 @@ import {
 } from "@/lib/FetchingAuth"
 import { auth } from "@/lib/ConfigFirebase"
 import { Timestamp } from "firebase/firestore"
-import { LogOut } from "lucide-react"
+import { LogOut, User as UserIcon } from "lucide-react"
 import Loading from "@/app/loading"
+import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner"
 
 const ProfilePage = () => {
   const [user, setUser] = useState<User | null>(null)
@@ -148,10 +149,28 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-6 lg:px-8 pb-12">
+      {/* Unified Single Header Banner */}
+      <PageHeaderBanner
+        gradient="indigo"
+        badgeText="Akun & Keamanan Akses"
+        icon={UserIcon}
+        title="Profil Pengguna"
+        subtitle="Informasi akun pengguna, hak akses peran sistem, dan pengelolaan keamanan autentikasi"
+        actions={
+          <button
+            onClick={() => signOutUser().then(() => router.push("/login"))}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span>Keluar Akun</span>
+          </button>
+        }
+      />
+
       {/* Profile Info */}
-      <div className="rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-6 shadow-md">
-        <h1 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">Profil Pengguna</h1>
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-bold text-gray-900 dark:text-gray-100">Detail Informasi Akun</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <p className="text-gray-700 dark:text-gray-200">
             <strong className="font-semibold text-gray-900 dark:text-gray-100 mr-1">Nama:</strong>

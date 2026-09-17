@@ -73,12 +73,13 @@ export default function ClimateDriversPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Persistent Header Banner (Static on tab switch) */}
+      {/* Unified Single Header Banner */}
       <SubpageHeader
         title="Indeks Iklim Global (Global Climate Drivers)"
-        subtitle="Analisis 3 pilar telekoneksi laut-atmosfer global: ENSO (Pasifik), MJO (Konveksi Tropis), dan IOD (Samudra Hindia)"
+        subtitle="Analisis 3 pilar telekoneksi laut-atmosfer global di balik cuaca Indonesia: ENSO (Pasifik), MJO (Konveksi Tropis), dan IOD (Samudra Hindia)."
         onRefresh={handleRefresh}
         isRefreshing={isLoading}
+        lastUpdated={summary.lastUpdated}
       />
 
       {isLoading && !summaryData ? (
@@ -90,34 +91,6 @@ export default function ClimateDriversPage() {
         </div>
       ) : (
         <>
-
-      {/* Hero Educational Intro Card */}
-      <Card className="bg-gradient-to-r from-indigo-900 via-slate-900 to-blue-950 text-white border-none shadow-lg overflow-hidden relative">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <CardContent className="p-6 relative z-10">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="space-y-2 max-w-3xl">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-indigo-400 animate-pulse" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300">
-                  Mengapa Cuaca Saat Ini Terjadi?
-                </span>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
-                Memahami 3 Pilar Dinamika Iklim Global di Balik Cuaca Indonesia
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
-                Cuaca di Indonesia sangat ditentukan oleh interaksi 3 driver iklim global utama: <strong>ENSO (Pasifik)</strong>, <strong>MJO (Gelombang Konveksi Tropis)</strong>, dan <strong>IOD (Samudra Hindia)</strong>. Untuk analisis sirkulasi <strong>Monsun &amp; Kalender Pola Tanam Pertanian</strong>, kunjungi menu <a href="/dashboard/agromet" className="text-cyan-300 underline font-semibold hover:text-cyan-200">Agrometeorologi</a>.
-              </p>
-            </div>
-            <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 text-center shrink-0 self-stretch md:self-auto flex flex-col justify-center">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300 block">Terakhir Diperbarui</span>
-              <span className="text-sm sm:text-base font-bold font-mono tracking-tight text-indigo-200 tabular-nums">{summary.lastUpdated}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* 3 Summary Dashboard Cards */}
       <SummaryCards summary={summary} />
 

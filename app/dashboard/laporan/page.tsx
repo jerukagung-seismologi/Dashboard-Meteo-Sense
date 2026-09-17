@@ -11,7 +11,8 @@ import LaporanCurahHujan from "@/components/pelaporan/LaporanCurahHujan"
 import LaporanMeteorologi from "@/components/pelaporan/LaporanMeteorologi"
 import LaporanKlimatologi from "@/components/pelaporan/LaporanKlimatologi"
 import LaporanHarian from "@/components/pelaporan/LaporanHarian"
-import ExportWOWMetOffice from "@/components/pelaporan/ExportWOWMetOffice"
+import { FileText } from "lucide-react"
+import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner"
 
 // --- MAIN PAGE COMPONENT ---
 export default function PelaporanPage() {
@@ -73,27 +74,30 @@ export default function PelaporanPage() {
   return (
     <ToastProvider>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-          <div>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Pelaporan</h2>
-            <p className="text-muted-foreground dark:text-gray-50">Buat dan cetak laporan data sensor serta ekspor observasi global.</p>
-          </div>
-          <div className="flex flex-col gap-1.5 w-full sm:w-auto">
-            <label className="text-sm font-medium">Pilih Sensor</label>
-            <Select value={sensorId} onValueChange={setSensorId} disabled={loading || sensorOptions.length === 0}>
-              <SelectTrigger className="w-full sm:w-[240px]">
-                <SelectValue placeholder={loading ? "Memuat sensor..." : "Pilih Sensor"} />
-              </SelectTrigger>
-              <SelectContent>
-                {sensorOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        {/* Unified Single Header Banner */}
+        <PageHeaderBanner
+          gradient="blue"
+          badgeText="Sistem Pelaporan Resmi & Ekspor Observasi"
+          icon={FileText}
+          title="Pelaporan & Ekspor Data"
+          subtitle="Buat dan cetak laporan data sensor harian, bulanan, klimatologi, serta ekspor observasi global WOW Met Office."
+          actions={
+            <div className="flex items-center gap-2">
+              <Select value={sensorId} onValueChange={setSensorId} disabled={loading || sensorOptions.length === 0}>
+                <SelectTrigger className="w-full sm:w-[220px] bg-slate-900/80 border-slate-700 text-white text-xs h-8">
+                  <SelectValue placeholder={loading ? "Memuat sensor..." : "Pilih Sensor"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {sensorOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          }
+        />
 
         {error && <div className="p-4 text-center text-red-600 bg-red-100 rounded-md">{error}</div>}
 

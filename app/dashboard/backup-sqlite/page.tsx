@@ -12,6 +12,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import {
@@ -442,27 +443,15 @@ export default function BackupSqlitePage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Top Header Banner */}
-      <div className="relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/80 backdrop-blur-md p-6 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400">
-                <Database className="h-6 w-6" />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                Pusat Cadangan & Basis Data SQLite
-              </h1>
-              <Badge variant="outline" className="border-blue-500/40 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/40">
-                Meteo Sense Administrator Sync
-              </Badge>
-            </div>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Sinkronisasi telemetri live dari Firebase RTDB ke SQLite lokal, audit multi-tier database, dan manajemen snapshot cadangan offline.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
+      {/* Top Header Banner (Single Compact Banner) */}
+      <PageHeaderBanner
+        gradient="blue"
+        badgeText="Meteo Sense Administrator Sync"
+        icon={Database}
+        title="Pusat Cadangan & Basis Data SQLite"
+        subtitle="Sinkronisasi telemetri live dari Firebase RTDB ke SQLite lokal, audit multi-tier database, dan manajemen snapshot cadangan offline."
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
             {/* ERA5 Sync Button */}
             <Button
               variant="outline"
@@ -756,46 +745,46 @@ export default function BackupSqlitePage() {
               size="sm"
               onClick={fetchSummary}
               disabled={refreshing}
-              className="gap-2 border-slate-300 dark:border-slate-700"
+              className="gap-2 border-slate-700 text-slate-200 hover:bg-slate-800"
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
               Segarkan
             </Button>
           </div>
-        </div>
-
+        }
+      >
         {/* Directory Bar */}
-        <div className="mt-4 pt-3 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-wrap items-center justify-between text-xs text-slate-600 dark:text-slate-400 gap-2">
+        <div className="flex flex-wrap items-center justify-between text-xs text-slate-300 gap-2">
           <div className="flex items-center gap-2 flex-wrap font-mono">
-            <span className="font-semibold text-slate-800 dark:text-slate-200">Multi-Tier Storage:</span>
-            <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+            <span className="font-semibold text-white">Multi-Tier Storage:</span>
+            <span className="bg-slate-900/60 px-2 py-0.5 rounded border border-slate-700/60">
               Mentah: meteo_local_cache.db
             </span>
-            <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+            <span className="bg-slate-900/60 px-2 py-0.5 rounded border border-slate-700/60">
               Bersih: meteo_clean_data.db
             </span>
-            <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+            <span className="bg-slate-900/60 px-2 py-0.5 rounded border border-slate-700/60">
               Model: era5_data.db
             </span>
           </div>
           <div className="flex items-center gap-3">
             {summary?.isLocalAvailable ? (
-              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 gap-1.5 py-0.5 px-2.5 font-sans font-medium text-[11px]">
-                <HardDrive className="h-3 w-3 text-emerald-600" />
+              <Badge variant="outline" className="bg-emerald-950/60 text-emerald-300 border-emerald-500/40 gap-1.5 py-0.5 px-2.5 font-sans font-medium text-[11px]">
+                <HardDrive className="h-3 w-3 text-emerald-400" />
                 Workstation Lokal Terhubung
               </Badge>
             ) : (
-              <Badge variant="outline" className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-300 gap-1.5 py-0.5 px-2.5 font-sans font-medium text-[11px]">
-                <Cloud className="h-3 w-3 text-amber-600" />
+              <Badge variant="outline" className="bg-amber-950/60 text-amber-300 border-amber-500/40 gap-1.5 py-0.5 px-2.5 font-sans font-medium text-[11px]">
+                <Cloud className="h-3 w-3 text-amber-400" />
                 Mode Cloud / Vercel Serverless
               </Badge>
             )}
-            <div className="font-mono text-slate-500 dark:text-slate-400 text-xs">
-              Lokasi: <span className="text-slate-700 dark:text-slate-300">{summary?.databasesDir || "D:\\Github\\Firebase_Database_Administrator\\databases"}</span>
+            <div className="font-mono text-slate-400 text-xs">
+              Lokasi: <span className="text-slate-200">{summary?.databasesDir || "D:\\Github\\Firebase_Database_Administrator\\databases"}</span>
             </div>
           </div>
         </div>
-      </div>
+      </PageHeaderBanner>
 
       {/* Cloud Environment Warning Banner (jika dibuka di Vercel atau storage lokal tidak ada) */}
       {summary && summary.isLocalAvailable === false && (

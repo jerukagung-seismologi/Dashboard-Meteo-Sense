@@ -39,13 +39,9 @@ import {
   Loader2,
   MoreVertical,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Toaster } from "@/components/ui/toaster";
+import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner";
 
 type UserWithId = UserProfile & { id: string };
 
@@ -178,25 +174,26 @@ export default function ManagerPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       <Toaster />
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Manajemen Pengguna</h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Tambah, edit, atau hapus akun pengguna sistem.
-          </p>
-        </div>
-        <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <UserPlus className="mr-2 h-4 w-4" /> Tambah Pengguna
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Tambah Pengguna Baru</DialogTitle>
-            </DialogHeader>
+      {/* Unified Single Header Banner */}
+      <PageHeaderBanner
+        gradient="indigo"
+        badgeText="Hak Akses &amp; Otorisasi Sistem"
+        icon={ShieldCheck}
+        title="Manajemen Pengguna"
+        subtitle="Tambah, edit, atau hapus akun pengguna sistem dan kendalikan izin hak akses peran administrator"
+        actions={
+          <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 font-semibold shadow-sm">
+                <UserPlus className="h-3.5 w-3.5" /> Tambah Pengguna
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Tambah Pengguna Baru</DialogTitle>
+              </DialogHeader>
             <div className="space-y-4 py-4">
               {/* Add user form fields */}
               <div className="space-y-2">
@@ -221,7 +218,8 @@ export default function ManagerPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      }
+    />
 
       <div className="border rounded-lg">
         <Table>

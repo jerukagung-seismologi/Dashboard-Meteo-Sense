@@ -43,6 +43,7 @@ import { SummaryCardsAnalysis } from "@/components/climatology/SummaryCardsAnaly
 import { DailyAnalysis } from "@/components/climatology/DailyAnalysis";
 import { WeeklyAnalysis } from "@/components/climatology/WeeklyAnalysis";
 import { DistributionAnalysis } from "@/components/climatology/DistributionAnalysis";
+import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner";
 import { HeatmapAnalysis } from "@/components/climatology/HeatmapAnalysis";
 
 const fetcher = async (url: string) => {
@@ -345,17 +346,38 @@ export default function AnalisisDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
-            Analisis Meteorologi
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Eksplorasi cuaca mendalam dan analisis klimatologi berbasis agregasi server
-          </p>
-        </div>
-      </div>
+      {/* 1. Header Banner */}
+      <PageHeaderBanner
+        gradient="blue"
+        badgeText="Observasi & Agregasi Server"
+        icon={TrendingUp}
+        title="Analisis Meteorologi"
+        subtitle="Eksplorasi cuaca mendalam, analisis diurnal, dan agregasi data server stasiun cuaca terhubung"
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="gap-1.5 text-xs font-semibold text-white bg-slate-800/90 hover:bg-slate-700 border-slate-700 shadow-sm h-8"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5 text-blue-400", isLoading && "animate-spin")} />
+              Perbarui Data
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadCsv}
+              disabled={isLoading}
+              className="gap-1.5 text-xs font-semibold text-white bg-slate-800/90 hover:bg-slate-700 border-slate-700 shadow-sm h-8"
+            >
+              <Download className="h-3.5 w-3.5 text-blue-400" />
+              Unduh CSV
+            </Button>
+          </div>
+        }
+      />
 
       {/* 2. Global Control Filter Bar */}
       <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">

@@ -638,18 +638,18 @@ export default function KlimatologiPage() {
   return (
     <div className="space-y-6 pb-12">
 
-      {/* ── A. Page Header ──────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-6 bg-gradient-to-r from-teal-900 via-slate-900 to-indigo-950 text-white rounded-2xl shadow-lg border border-teal-800/40 relative overflow-hidden">
+      {/* ── A. Page Header (Single Compact Banner) ────────────────────────── */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-4 sm:p-5 bg-gradient-to-r from-teal-950 via-slate-900 to-indigo-950 text-white rounded-2xl shadow-md border border-teal-800/40 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="space-y-1.5 z-10">
+        <div className="space-y-1.5 z-10 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-400/30 flex items-center gap-1">
               <Sparkles className="h-3 w-3" /> Analisis Klimatologi Terpadu
             </span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">ERA5 · Agrometeorologi · Statistik Iklim</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-3">
-            <TrendingUp className="h-7 w-7 text-teal-400" /> Analisis Klimatologi & Agrometeorologi
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2.5 text-white">
+            <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-teal-400 shrink-0" /> Analisis Klimatologi &amp; Agrometeorologi
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
             Platform analisis iklim terpadu: pemantauan kondisi terkini lahan, statistik iklim berbasis sensor stasiun, dan reanalisis ERA5 global (1940–sekarang).
@@ -1297,26 +1297,25 @@ export default function KlimatologiPage() {
             TAB 3: REANALISIS ERA5
             ════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="era5" className="mt-6 space-y-6">
-          {/* Tab 3 Banner */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-gradient-to-r from-purple-900 via-slate-900 to-slate-950 text-white rounded-2xl shadow-lg border border-purple-800/40 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="space-y-1 z-10">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-400/30 flex items-center gap-1">
-                  <Sparkles className="h-3 w-3" /> ECMWF Fifth Generation Global Atmospheric Reanalysis
+          {/* Tab 3 Info Sub-Header (Compact Tab Sub-Bar) */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 bg-slate-100/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/20 flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" /> Reanalisis Global ECMWF ERA5 (1940–sekarang)
                 </span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
-                <Compass className="h-6 w-6 text-purple-400 animate-spin-slow" /> Reanalisis Klimatologi ERA5
+              <h2 className="text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                <Compass className="h-4 w-4 text-purple-500" /> Analisis Reanalisis Atmosfer Resolusi Tinggi
               </h2>
-              <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-                Dataset reanalisis iklim global (1940–sekarang). Analisis komprehensif parameter meteorologi & klimatologi beresolusi tinggi di seluruh koordinat Indonesia.
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
+                Analisis komprehensif parameter meteorologi &amp; klimatologi di seluruh koordinat Indonesia.
               </p>
             </div>
             {appliedCoords && (
-              <div className="z-10 flex items-center gap-2 self-start md:self-auto bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700/60 text-xs text-slate-300 font-medium">
-                <MapPin className="h-4 w-4 text-purple-400" />
-                <span>Lokasi: <strong className="text-white">{appliedLocationName}</strong> ({appliedCoords.lat.toFixed(4)}°, {appliedCoords.lng.toFixed(4)}°)</span>
+              <div className="flex items-center gap-2 self-start md:self-auto bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 font-medium shadow-xs shrink-0">
+                <MapPin className="h-3.5 w-3.5 text-purple-500" />
+                <span>Lokasi: <strong className="text-slate-900 dark:text-white">{appliedLocationName}</strong> ({appliedCoords.lat.toFixed(4)}°, {appliedCoords.lng.toFixed(4)}°)</span>
               </div>
             )}
           </div>

@@ -24,6 +24,7 @@ import {
   MapPin, Wifi, WifiOff, Calendar, Key, Edit, Trash2, AlertTriangle, Copy, Plus, HardDrive
 } from "lucide-react"
 import { auth } from "@/lib/ConfigFirebase"
+import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner"
 
 // DeviceCard Component
 function DeviceCard({ device, onEdit, onDelete, onGenerateToken }: {
@@ -473,27 +474,31 @@ export default function PerangkatPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-50">Perangkat</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400">Daftar perangkat yang terhubung dengan sistem</p>
-        </div>
-        <AddDeviceDialog
-          open={showAddDialog}
-          onOpenChange={setShowAddDialog}
-          onAddDevice={handleAddDevice}
-          onTokenGenerated={(token) => { setToken(token); setShowTokenDialog(true) }}
-          trigger={
-            <Button
-              className="w-full sm:w-auto px-4 py-2 rounded flex items-center justify-center bg-blue-600 hover:bg-blue-600/50 text-white text-sm"
-              onClick={() => setShowAddDialog(true)}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              <span>Tambah Perangkat</span>
-            </Button>
-          }
-        />
-      </div>
+      {/* Unified Single Header Banner */}
+      <PageHeaderBanner
+        gradient="blue"
+        badgeText="Manajemen Node Stasiun IoT"
+        icon={HardDrive}
+        title="Pengelolaan Perangkat"
+        subtitle="Konfigurasi stasiun sensor cuaca, token otentikasi API, dan pemantauan status konektivitas perangkat"
+        actions={
+          <AddDeviceDialog
+            open={showAddDialog}
+            onOpenChange={setShowAddDialog}
+            onAddDevice={handleAddDevice}
+            onTokenGenerated={(token) => { setToken(token); setShowTokenDialog(true) }}
+            trigger={
+              <Button
+                className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 font-semibold shadow-sm"
+                onClick={() => setShowAddDialog(true)}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Tambah Perangkat</span>
+              </Button>
+            }
+          />
+        }
+      />
       {loading ? (
         <div className="text-center text-gray-500 dark:text-gray-300">Memuat perangkat...</div>
       ) : devices.length > 0 ? (

@@ -240,40 +240,41 @@ export default function AgrometPage() {
   }
 
   return (
-    <div className="space-y-8 pb-16">
-      {/* 1. Header Banner & Location Selector */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900 p-6 sm:p-8 text-white shadow-xl">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="flex items-center gap-2">
-              <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs py-0.5 px-2.5">
-                <Sprout className="h-3.5 w-3.5 mr-1" /> Agrometeorologi &amp; Iklim Mikro Lahan
+    <div className="space-y-6 pb-16">
+      {/* 1. Header Banner & Location Selector (Compact Single Banner) */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-950 p-4 sm:p-5 text-white shadow-md border border-emerald-800/40">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5 max-w-2xl min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold uppercase tracking-wider py-0.5 px-2.5">
+                <Sprout className="h-3 w-3 mr-1" /> Agrometeorologi &amp; Iklim Mikro Lahan
               </Badge>
-              <Badge variant="outline" className="text-slate-300 border-white/20 text-[11px]">
+              <Badge variant="outline" className="text-slate-300 border-white/20 text-[10px]">
                 ECMWF IFS Ensemble
               </Badge>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Monitoring Lingkungan Tanaman dan Prediksi Agrometeorologi
+            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
+              <Sprout className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-400 shrink-0" />
+              <span>Monitoring Lingkungan Tanaman &amp; Agrometeorologi</span>
             </h1>
             <p className="text-xs sm:text-sm text-emerald-100/80 leading-relaxed">
               Pemantauan kondisi cuaca mikro pertanian, profil perakaran tanah, neraca air, dan prediksi ensemble 50 anggota.
             </p>
           </div>
 
-          {/* Location & Controls Box */}
-          <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/15 space-y-3 shrink-0 self-stretch md:self-auto min-w-[280px]">
+          {/* Location & Controls Box (Compact) */}
+          <div className="p-3 bg-white/10 backdrop-blur-md rounded-xl border border-white/15 space-y-2 shrink-0 self-stretch md:self-auto min-w-[260px]">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-emerald-200 uppercase tracking-wider">Lokasi Stasiun Lahan</span>
+              <span className="text-[10px] font-semibold text-emerald-200 uppercase tracking-wider">Lokasi Stasiun Lahan</span>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs text-white hover:bg-white/10"
+                className="h-6 px-1.5 text-[11px] text-white hover:bg-white/10"
                 onClick={handleRefresh}
                 disabled={isLoading}
               >
-                <RefreshCw className={`h-3.5 w-3.5 mr-1 ${isLoading ? "animate-spin" : ""}`} />
+                <RefreshCw className={`h-3 w-3 mr-1 ${isLoading ? "animate-spin" : ""}`} />
                 Perbarui
               </Button>
             </div>
@@ -285,8 +286,8 @@ export default function AgrometPage() {
                 if (sensor) setSelectedSensor(sensor);
               }}
             >
-              <SelectTrigger className="w-full bg-slate-900/80 border-white/20 text-white text-xs h-9">
-                <MapPin className="w-3.5 h-3.5 mr-1.5 text-emerald-400 shrink-0" />
+              <SelectTrigger className="w-full bg-slate-900/80 border-white/20 text-white text-xs h-8">
+                <MapPin className="w-3.5 h-3.5 mr-1 text-emerald-400 shrink-0" />
                 <SelectValue placeholder="Pilih Lokasi Lahan" />
               </SelectTrigger>
               <SelectContent>
@@ -298,10 +299,10 @@ export default function AgrometPage() {
               </SelectContent>
             </Select>
 
-            <div className="text-[11px] text-emerald-200/80 flex items-center justify-between pt-1 border-t border-white/10">
-              <span>Koordinat GPS:</span>
+            <div className="text-[10px] text-emerald-200/80 flex items-center justify-between pt-0.5 border-t border-white/10">
+              <span>Koordinat:</span>
               <span className="font-mono font-bold text-white">
-                {selectedSensor?.lat.toFixed(4)}, {selectedSensor?.lng.toFixed(4)}
+                {selectedSensor?.lat.toFixed(4)}°, {selectedSensor?.lng.toFixed(4)}°
               </span>
             </div>
           </div>

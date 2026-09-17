@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -306,72 +307,61 @@ export default function PerangkatBenchmarkPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-              <Radio className="h-5 w-5" />
-            </span>
-            <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border-indigo-500/20 text-[10px] uppercase font-bold tracking-wider">
-              Cloud Firestore • benchmarkdevices
-            </Badge>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-            Pengelolaan Stasiun Benchmark
-          </h1>
-          <p className="text-xs text-slate-500 max-w-2xl">
-            Kelola stasiun acuan geospasial di wilayah Kabupaten Kebumen. Data ini otomatis digunakan oleh Peta Persebaran Geografis dan modul validasi bias ERA5.
-          </p>
-        </div>
-
-        {/* Action Header Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleBulkSeed}
-            disabled={isSeeding || loading}
-            className="rounded-xl text-xs gap-1.5 border-slate-200 dark:border-slate-700"
-            title="Seed 20 Titik Default Kebumen"
-          >
-            <Sparkles className={`h-3.5 w-3.5 text-amber-500 ${isSeeding ? "animate-spin" : ""}`} />
-            <span>{isSeeding ? "Menyinkronkan..." : "Sinkronkan 20 Titik"}</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadDevices}
-            disabled={loading}
-            className="rounded-xl text-xs gap-1.5 border-slate-200 dark:border-slate-700"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            <span>Segarkan</span>
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={handleOpenAdd}
-            className="rounded-xl text-xs gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Tambah Stasiun</span>
-          </Button>
-
-          <Link href="/dashboard/peta">
+      {/* Unified Single Header Banner */}
+      <PageHeaderBanner
+        gradient="indigo"
+        badgeText="Cloud Firestore • benchmarkdevices"
+        icon={Radio}
+        title="Pengelolaan Stasiun Benchmark"
+        subtitle="Kelola stasiun acuan geospasial di wilayah Kabupaten Kebumen untuk modul Peta Persebaran Geografis dan validasi bias ERA5."
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="outline"
               size="sm"
-              className="rounded-xl text-xs gap-1.5 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+              onClick={handleBulkSeed}
+              disabled={isSeeding || loading}
+              className="gap-1.5 text-xs font-semibold text-white bg-slate-800/90 hover:bg-slate-700 border-slate-700 shadow-sm h-8"
+              title="Seed 20 Titik Default Kebumen"
             >
-              <Globe className="h-3.5 w-3.5 text-indigo-500" />
-              <span>Buka Peta</span>
-              <ExternalLink className="h-3 w-3" />
+              <Sparkles className={`h-3.5 w-3.5 text-amber-400 ${isSeeding ? "animate-spin" : ""}`} />
+              <span>{isSeeding ? "Menyinkronkan..." : "Sinkron 20 Titik"}</span>
             </Button>
-          </Link>
-        </div>
-      </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadDevices}
+              disabled={loading}
+              className="gap-1.5 text-xs font-semibold text-white bg-slate-800/90 hover:bg-slate-700 border-slate-700 shadow-sm h-8"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 text-indigo-400 ${loading ? "animate-spin" : ""}`} />
+              <span>Segarkan</span>
+            </Button>
+
+            <Button
+              size="sm"
+              onClick={handleOpenAdd}
+              className="gap-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm h-8"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Tambah Stasiun</span>
+            </Button>
+
+            <Link href="/dashboard/peta">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs font-semibold text-white bg-slate-800/90 hover:bg-slate-700 border-slate-700 shadow-sm h-8"
+              >
+                <Globe className="h-3.5 w-3.5 text-indigo-400" />
+                <span>Buka Peta</span>
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
+        }
+      />
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

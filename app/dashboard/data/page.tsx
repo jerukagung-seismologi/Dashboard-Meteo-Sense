@@ -32,6 +32,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import Loading from "@/app/loading";
 import { fetchAllDevices, Device } from "@/lib/FetchingDevice";
+import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner";
 import {
   SensorDate,
   deleteSensorData,
@@ -825,12 +826,14 @@ export default function DataPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Data Editor</h2>
-          <p className="text-muted-foreground dark:text-gray-50">Pengelolaan data sensor</p>
-        </div>
-      </div>
+      {/* Unified Single Header Banner */}
+      <PageHeaderBanner
+        gradient="slate"
+        badgeText="Manajemen Database & Telemetri"
+        icon={EditIcon}
+        title="Data Editor & Telemetri"
+        subtitle="Pengelolaan, inspeksi, filtering, koreksi, dan ekspor dataset deret waktu sensor cuaca terhubung"
+      />
       
       {/* Global Controls Card */}
       <Card className="mb-6">

@@ -4,48 +4,39 @@ import ForecastForm from "@/components/prakirawan/ForecastFunction"
 import { Toaster } from "@/components/ui/toaster"
 import BMKGNowcasting from "@/components/prakirawan/FetchBMKGData"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { CloudSun, Calendar } from "lucide-react"
+import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner"
 
 export default function Page() {
     const printedAt = new Date()
 
     return (
-        <div className="space-y-6 text-slate-900 dark:text-slate-100">
-            {/* Header title section */}
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">
-                        Prakirawan
-                    </h2>
-                    <p className="text-muted-foreground text-gray-600 dark:text-slate-300">
-                        Buat template laporan prakiraan cuaca dalam bentuk tabel.
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-12">
+            {/* Unified Single Header Banner */}
+            <PageHeaderBanner
+                gradient="sky"
+                badgeText="Operasional Prakirawan Cuaca"
+                icon={CloudSun}
+                title="Prakiraan Cuaca & Outlook"
+                subtitle="Prakiraan cuaca resolusi tinggi BMKG Nowcasting dan penyusunan template laporan outlook cuaca resmi"
+                actions={
+                    <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700/60 text-xs text-slate-300 font-medium">
+                        <Calendar className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+                        <span>
+                            {printedAt.toLocaleDateString("id-ID", {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                                timeZone: "Asia/Jakarta",
+                            })}
+                        </span>
+                    </div>
+                }
+            />
 
-            {/* Main Area: DIPERLEBAR (Hapus max-w-210mm, ganti max-w-full atau container-2xl) */}
-            <main className="mx-auto my-0 mb-6 min-h-[500px] w-full max-w-7xl rounded-lg overflow-hidden border border-gray-100 bg-white text-gray-900 shadow-md shadow-slate-200/70 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:shadow-black/40 print:border-0 print:bg-white print:text-black">
-                <header className="mb-2 border-b border-gray-300 dark:border-slate-700 px-4 sm:px-8 py-4 sm:py-6 bg-gray-50 dark:bg-slate-800/70 print:bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div>
-                            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                                Form Prakiraan Cuaca
-                            </h1>
-                            <p className="text-sm text-gray-500 dark:text-slate-300">
-                                Silakan isi data di bawah untuk menghasilkan gambar outlook.
-                            </p>
-                        </div>
-                        <div className="text-left sm:text-right text-xs sm:text-sm text-gray-500 dark:text-slate-300">
-                            <div>
-                                <strong className="text-gray-700 dark:text-slate-100">Tanggal Akses:</strong>{" "}
-                                {printedAt.toLocaleDateString("id-ID", {
-                                    weekday: "long",
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric",
-                                    timeZone: "Asia/Jakarta",
-                                })}
-                            </div>
-                        </div>
-                </header>
+            {/* Main Content Area */}
+            <main className="mx-auto my-0 mb-6 min-h-[500px] w-full max-w-7xl rounded-2xl overflow-hidden border border-gray-100 bg-white text-gray-900 shadow-md shadow-slate-200/70 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:shadow-black/40 print:border-0 print:bg-white print:text-black">
 
                 <div className="p-3 sm:p-6 lg:p-8 print:p-2 dark:bg-slate-900">
                     <Tabs defaultValue="prakiraan_bmkg" className="w-full">
