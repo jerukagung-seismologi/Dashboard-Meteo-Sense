@@ -1,45 +1,31 @@
-# Learning Proposal: Konsep Iklim & Analisis Nilai Ekstrem Klimatologis (ERA5 & Stasiun)
+# Learning Proposal: Calibration Curve State Isolation & Ground Truth Invariants
 
-## 1. Identifikasi Hal yang Dipelajari (What to Learn)
+## 1. Context & Identified Problem
+Saat pengguna menguji metode **Mean Bias Error (Offset)** dengan formula $y = x + 1.71$ pada node stasiun cuaca `id-03`, nilai formula pada inspektur matematika dan leaderboard model sudah tepat ($+1.71^\circ\text{C}$). Namun, kurva kalibrasi visual tampak tidak menunjukkan perubahan (garis terkalibrasi menumpuk persis di atas garis mentah).
 
-### A. Apa Itu Iklim vs Cuaca (Definisi Ilmiah WMO & BMKG)
-- **Cuaca (*Weather*)**: Keadaan atmosfer sesaat atau jangka pendek (skala jam hingga harian) pada wilayah tertentu yang ditandai oleh fluktuasi cepat parameter seperti suhu, angin, dan hujan.
-- **Iklim (*Climate*)**: Sintesis, nilai rata-rata, variabilitas, dan **perilaku ekstremitas** dari unsur-unsur cuaca dalam periode waktu yang panjang (umumnya minimal 10–30 tahun, atau reanalisis multi-tahun seperti ERA5).
-- **Skala Waktu Klimatologi**: Dalam sains klimatologi operasional (BMKG & WMO), analisis iklim **tidak menggunakan pilihan data harian sesaat**, melainkan skala waktu agregasi klimatologis:
-  1. **Dasarian (10-Harian)**: Satuan dasar analisis iklim di Indonesia (3 dasarian per bulan, 36 dasarian per tahun).
-  2. **Bulanan Kalender**: Menilai karakteristik iklim bulanan dan variasi musiman (Monsoon/ITCZ).
-  3. **Tahunan Kalender / Multi-Tahun**: Menilai tren tahunan, anomali iklim, dan siklus multi-dekade.
+### Akar Masalah:
+1. **Gating Kondisi Enabled pada Engine Pratinjau**: Fungsi `applyCalibrationToSeries` mengecek `varConfig.enabled`. Jika saklar sensor di form berstatus nonaktif/bypass (atau belum tersimpan aktif di Firestore), engine mengembalikan nilai mentah ($y = x$), sehingga kurva respons transfer function tidak menampilkan efek pergeseran offset $+1.71$.
+2. **Race Condition Async Form Reset**: Fungsi `loadConfig` di form `ActiveSensorManager` memanggil Firestore secara asinkron (`await getDoc`). Ketika hasil tiba, `form.reset(baseConfig)` menimpa parameter *draft staging* ($1.71$) kembali ke nilai database ($0$) karena *staged calibrations* tidak digabungkan (*deep merge*) saat reset.
+3. **Ambiguitas Arah Koreksi (Validation vs Calibration)**: Pada Tab 1 (Validasi Ilmiah Bias ERA5), kurva AWS adalah *Ground Truth Acuan* yang sengaja dibuat statis, sedangkan model ERA5 yang bergeser. Sebaliknya, pada Tab 3 (Kalibrasi Sensor IoT), kurva sensor AWS yang bergeser. Perbedaan arah ini membingungkan jika tidak memiliki penanda peran yang jelas.
 
-### B. Fokus Utama Analisis Klimatologi: Pencarian Nilai Ekstrem (*Climate Extremes*)
-Klimatologi modern tidak hanya mengkaji rata-rata (*mean/normals*), melainkan berfokus utama pada **Nilai-Nilai Ekstrem** karena kejadian ekstrem inilah yang berdampak kritis terhadap bencana hidrometeorologi, keselamatan publik, dan ketahanan pangan:
-1. **Ekstrem Suhu Udara**:
-   - Suhu Maksimum Absolut ($T_{max}$ Rekor Tertinggi) & tanggal kejadian.
-   - Suhu Minimum Absolut ($T_{min}$ Rekor Terendah) & tanggal kejadian.
-   - Hari-hari Panas Ekstrem (ambang batas BMKG $>35^\circ$C).
-   - Rentang Suhu Diurnal Ekstrem ($DTR = T_{max} - T_{min}$).
-2. **Ekstrem Curah Hujan**:
-   - Curah Hujan Harian Maksimum ($Rx1day$) & rekor tanggal kejadian.
-   - Klasifikasi BMKG: Hujan Lebat (50–100 mm/hari), Sangat Lebat (100–150 mm/hari), Hujan Ekstrem ($>150$ mm/hari).
-   - Indeks Hari Kering Berturut-turut (*Consecutive Dry Days* - CDD) & Hari Basah (*Consecutive Wet Days* - CWD).
-3. **Ekstrem Tekanan Udara & Angin**:
-   - Tekanan Permukaan Terendah ($P_{min}$) penanda sistem depresi / bibit siklon tropis.
-   - Kecepatan Angin Puncak & Hembusan Ekstrem (*Wind Gust Max*).
-4. **Ekstrem Kelembaban Udara**:
-   - Kelembaban Minimum Ekstrem ($RH_{min}$) penanda kekeringan udara ekstrem.
+---
 
-### C. Konsep Desain: Modul Klimatologi Sebagai Gabungan Reanalisis ERA5 untuk Nilai Ekstrem
-- Membatasi filter waktu pada **Dasarian, Bulanan, dan Tahunan** (meniadakan pilihan harian).
-- Mengintegrasikan komputasi nilai ekstrem dari dataset ERA5 reanalysis resolusi tinggi (ECMWF ERA5-Land 9 km) dengan data observasi stasiun AWS.
-- Menyajikan KPI Card Rekor Ekstrem, garis batas ambang bahaya ekstrem (*extreme warning thresholds*), dan tabel kejadian ekstrem pada setiap parameter.
+## 2. Proposed Rules & Guardrails
 
-## 2. Klasifikasi (Rule vs Skill)
-- **Klasifikasi**: *Domain Knowledge & Design Rule* untuk Modul Klimatologi di Meteo Sense.
-- **Batasan**:
-  - Filter waktu halaman `/dashboard/klimatologi` hanya menyediakan: `dasarian`, `monthly`, dan `yearly`.
-  - Tiap sub-menu wajib menyajikan statistik nilai ekstrem (Min, Maks, Rekor Kejadian, Ambang Batas Ekstrem).
+### Rule 1: Visual Calibration Preview Isolation
+> "Komponen pratinjau kurva / transfer function kalibrasi TIDAK BOLEH dibatasi oleh status saklar operasional (`enabled: false`). Mode pratinjau harus menggunakan `effectiveConfig` terisolasi dengan `enabled: true` pada variabel target agar kurva selalu memvisualisasikan respons matematis formula secara riil (termasuk offset, slope, kuadratik, atau power-law)."
 
-## 3. Rencana Aksi Implementasi
-1. Perbarui `PresetSelector.tsx` untuk menghapus opsi `daily` dan `weekly`.
-2. Perbarui `app/dashboard/klimatologi/page.tsx` default preset ke `monthly`.
-3. Bangun modul komputasi nilai ekstrem stasiun & ERA5.
-4. Tampilkan Kartu Rekor Nilai Ekstrem (Suhu Tx/Tn, Hujan Rx, Tekanan Pmin, Angin Gust) dan garis ambang batas ekstrem pada grafik.
+### Rule 2: In-Memory Staging Merge Invariant on Async Hydration
+> "Pada arsitektur formulir multi-tab yang mendukung staging in-memory (seperti 1-Click Apply dari Tab Model ke Tab Manajemen Sensor), setiap operasi asinkron remote fetch (misal: Firestore `getDoc`) yang memicu `form.reset()` WAJIB melakukan deep-merge dengan `stagedCalibrations` yang ada di memori agar parameter draft tidak terhapus."
+
+### Rule 3: Visual Role Distinction for Model Validation vs Sensor Calibration
+> "Pada antarmuka meteorologi, selalu berikan identitas peran eksplisit:
+> - Di Tab Validasi Bias Reanalisis: Beri label tegas `AWS Observasi (Ground Truth Statis)` dan `ERA5 (Model Terkoreksi)`.
+> - Di Tab Kalibrasi Sensor: Beri label tegas `Ground Input Mentah` vs `Output Terkalibrasi (Offset: +X.XX)` dan sertakan badge formula serta rata-rata delta."
+
+---
+
+## 3. Files to Update
+- [components/calibration/CalibrationPreviewChart.tsx](file:///d:/Github/Dashboard-Meteo-Sense/components/calibration/CalibrationPreviewChart.tsx)
+- [components/calibration/ActiveSensorManager.tsx](file:///d:/Github/Dashboard-Meteo-Sense/components/calibration/ActiveSensorManager.tsx)
+- [components/calibration/ModelParameterInspector.tsx](file:///d:/Github/Dashboard-Meteo-Sense/components/calibration/ModelParameterInspector.tsx)

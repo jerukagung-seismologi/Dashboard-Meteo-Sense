@@ -90,40 +90,49 @@ export const ModelParameterInspector: React.FC<ModelParameterInspectorProps> = (
       );
       break;
 
-    case "linear_regression":
-      formulaDisplay = "y = m·x + c";
+    case "linear_regression": {
+      const s = typeof parameters?.scale === "number" ? parameters.scale : (typeof parameters?.slope === "number" ? parameters.slope : undefined);
+      const o = typeof parameters?.offset === "number" ? parameters.offset : (typeof parameters?.intercept === "number" ? parameters.intercept : undefined);
+      formulaDisplay = (s !== undefined && o !== undefined)
+        ? `y = ${s.toFixed(3)}·x ${o >= 0 ? "+" : "-"} ${Math.abs(o).toFixed(2)}`
+        : "y = m·x + c";
       formulaDesc = "Regresi linier Ordinary Least Squares (OLS) dengan penyesuaian skala dan pergeseran intercept.";
       paramItems.push(
         {
           label: "Slope / Skala",
           symbol: "m",
-          value: safeNum(parameters?.scale),
+          value: safeNum(s),
           description: "Faktor pengali sensitivitas sensor",
         },
         {
           label: "Intercept",
           symbol: "c",
-          value: safeNum(parameters?.offset),
+          value: safeNum(o),
           description: "Koreksi pergeseran titik nol",
           unit: variableUnit,
         }
       );
       break;
+    }
 
-    case "robust_huber":
-      formulaDisplay = "y = m·x + c (Huber Loss)";
+    case "robust_huber": {
+      const s = typeof parameters?.scale === "number" ? parameters.scale : (typeof parameters?.slope === "number" ? parameters.slope : undefined);
+      const o = typeof parameters?.offset === "number" ? parameters.offset : (typeof parameters?.intercept === "number" ? parameters.intercept : undefined);
+      formulaDisplay = (s !== undefined && o !== undefined)
+        ? `y = ${s.toFixed(3)}·x ${o >= 0 ? "+" : "-"} ${Math.abs(o).toFixed(2)} (Huber)`
+        : "y = m·x + c (Huber Loss)";
       formulaDesc = "Regresi linier robust berbobot M-Estimator Huber yang tahan terhadap gangguan pencilan / outlier ekstrem.";
       paramItems.push(
         {
           label: "Slope Robust",
           symbol: "m",
-          value: safeNum(parameters?.scale),
+          value: safeNum(s),
           description: "Skala pembobotan residual M-estimator",
         },
         {
           label: "Intercept Robust",
           symbol: "c",
-          value: safeNum(parameters?.offset),
+          value: safeNum(o),
           description: "Offset titik nol dengan pembobotan robust",
           unit: variableUnit,
         }
@@ -137,18 +146,25 @@ export const ModelParameterInspector: React.FC<ModelParameterInspectorProps> = (
         });
       }
       break;
+    }
 
-    case "mean_bias":
-      formulaDisplay = "y = x + Offset";
+    case "mean_bias": {
+      const offsetVal = typeof parameters?.offset === "number" 
+        ? parameters.offset 
+        : (typeof parameters?.bias === "number" ? parameters.bias : undefined);
+      formulaDisplay = offsetVal !== undefined
+        ? `y = x ${offsetVal >= 0 ? "+" : "-"} ${Math.abs(offsetVal).toFixed(2)}`
+        : "y = x + Offset";
       formulaDesc = "Koreksi aditif seragam berdasarkan Mean Bias Error (MBE) antara AWS dan ERA5.";
       paramItems.push({
         label: "Nilai Offset (MBE)",
         symbol: "Δ",
-        value: safeNum(parameters?.offset),
+        value: safeNum(offsetVal),
         description: "Nilai penambah/pengurang rata-rata bias",
         unit: variableUnit,
       });
       break;
+    }
 
     case "power_law":
       formulaDisplay = "y = a · x^b";

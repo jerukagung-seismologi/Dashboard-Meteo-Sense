@@ -201,6 +201,21 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
             method: varVal?.method || "none",
           };
         });
+
+        // Deep-merge in-memory staged calibrations so async fetch does not overwrite drafts!
+        if (stagedCalibrations) {
+          Object.entries(stagedCalibrations).forEach(([sensorKey, item]) => {
+            const cal = item.calibrationData;
+            if (cal && baseConfig[sensorKey]) {
+              baseConfig[sensorKey] = {
+                ...baseConfig[sensorKey],
+                ...cal,
+                enabled: true,
+              };
+            }
+          });
+        }
+
         form.reset(baseConfig);
       } catch (err) {
         console.error("Gagal membaca konfigurasi kalibrasi:", err);
@@ -210,7 +225,7 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
     };
 
     loadConfig();
-  }, [selectedStationId, form]);
+  }, [selectedStationId, form, stagedCalibrations]);
 
   // Sync staged calibrations into the form
   useEffect(() => {
@@ -222,21 +237,21 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
       const cal = item.calibrationData;
       if (!cal) return;
 
-      form.setValue(`${sensorKey}.enabled` as any, true);
-      if (cal.method !== undefined) form.setValue(`${sensorKey}.method` as any, cal.method);
-      if (cal.offset !== undefined) form.setValue(`${sensorKey}.offset` as any, cal.offset);
-      if (cal.scale !== undefined) form.setValue(`${sensorKey}.scale` as any, cal.scale);
-      if (cal.percentage !== undefined) form.setValue(`${sensorKey}.percentage` as any, cal.percentage);
-      if (cal.multiplier !== undefined) form.setValue(`${sensorKey}.multiplier` as any, cal.multiplier);
-      if (cal.polyA !== undefined) form.setValue(`${sensorKey}.polyA` as any, cal.polyA);
-      if (cal.polyB !== undefined) form.setValue(`${sensorKey}.polyB` as any, cal.polyB);
-      if (cal.polyC !== undefined) form.setValue(`${sensorKey}.polyC` as any, cal.polyC);
-      if (cal.powerA !== undefined) form.setValue(`${sensorKey}.powerA` as any, cal.powerA);
-      if (cal.powerB !== undefined) form.setValue(`${sensorKey}.powerB` as any, cal.powerB);
-      if (cal.point1Raw !== undefined) form.setValue(`${sensorKey}.point1Raw` as any, cal.point1Raw);
-      if (cal.point1Ref !== undefined) form.setValue(`${sensorKey}.point1Ref` as any, cal.point1Ref);
-      if (cal.point2Raw !== undefined) form.setValue(`${sensorKey}.point2Raw` as any, cal.point2Raw);
-      if (cal.point2Ref !== undefined) form.setValue(`${sensorKey}.point2Ref` as any, cal.point2Ref);
+      form.setValue(`${sensorKey}.enabled` as any, true, { shouldDirty: true, shouldTouch: true });
+      if (cal.method !== undefined) form.setValue(`${sensorKey}.method` as any, cal.method, { shouldDirty: true });
+      if (cal.offset !== undefined) form.setValue(`${sensorKey}.offset` as any, cal.offset, { shouldDirty: true });
+      if (cal.scale !== undefined) form.setValue(`${sensorKey}.scale` as any, cal.scale, { shouldDirty: true });
+      if (cal.percentage !== undefined) form.setValue(`${sensorKey}.percentage` as any, cal.percentage, { shouldDirty: true });
+      if (cal.multiplier !== undefined) form.setValue(`${sensorKey}.multiplier` as any, cal.multiplier, { shouldDirty: true });
+      if (cal.polyA !== undefined) form.setValue(`${sensorKey}.polyA` as any, cal.polyA, { shouldDirty: true });
+      if (cal.polyB !== undefined) form.setValue(`${sensorKey}.polyB` as any, cal.polyB, { shouldDirty: true });
+      if (cal.polyC !== undefined) form.setValue(`${sensorKey}.polyC` as any, cal.polyC, { shouldDirty: true });
+      if (cal.powerA !== undefined) form.setValue(`${sensorKey}.powerA` as any, cal.powerA, { shouldDirty: true });
+      if (cal.powerB !== undefined) form.setValue(`${sensorKey}.powerB` as any, cal.powerB, { shouldDirty: true });
+      if (cal.point1Raw !== undefined) form.setValue(`${sensorKey}.point1Raw` as any, cal.point1Raw, { shouldDirty: true });
+      if (cal.point1Ref !== undefined) form.setValue(`${sensorKey}.point1Ref` as any, cal.point1Ref, { shouldDirty: true });
+      if (cal.point2Raw !== undefined) form.setValue(`${sensorKey}.point2Raw` as any, cal.point2Raw, { shouldDirty: true });
+      if (cal.point2Ref !== undefined) form.setValue(`${sensorKey}.point2Ref` as any, cal.point2Ref, { shouldDirty: true });
     });
 
     if (entries.length > 0 && entries[0][0]) {
