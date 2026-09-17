@@ -59,11 +59,24 @@ export const CALIBRATION_METHODS = [
   { value: "multiplier", label: "Multiplier (Curah Hujan)" },
 ];
 
+export interface StagedItemInfo {
+  sensorKey: string;
+  variableLabel?: string;
+  method: string;
+  methodName: string;
+  calibrationData: any;
+  notes?: string;
+  appliedAt?: number;
+}
+
 interface ActiveSensorManagerProps {
   selectedStationId: string;
   stationName?: string;
   stationOptions: { label: string; value: string }[];
   onStationChange: (stationId: string) => void;
+  stagedCalibrations?: Record<string, StagedItemInfo>;
+  onClearStationStaged?: (stationId: string) => void;
+  onClearVariableStaged?: (stationId: string, sensorKey: string) => void;
   pendingApply?: {
     sensorKey: string;
     calibrationData: any;
@@ -78,6 +91,9 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
   stationName,
   stationOptions,
   onStationChange,
+  stagedCalibrations,
+  onClearStationStaged,
+  onClearVariableStaged,
   pendingApply,
   onClearPendingApply,
 }) => {
@@ -133,7 +149,39 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
     loadConfig();
   }, [selectedStationId, form]);
 
-  // Handle external 1-Click apply from Tab 2
+  // Sync staged calibrations into the form
+  useEffect(() => {
+    if (!stagedCalibrations) return;
+    const entries = Object.entries(stagedCalibrations);
+    if (entries.length === 0) return;
+
+    entries.forEach(([sensorKey, item]) => {
+      const cal = item.calibrationData;
+      if (!cal) return;
+
+      form.setValue(`${sensorKey}.enabled` as any, true);
+      if (cal.method !== undefined) form.setValue(`${sensorKey}.method` as any, cal.method);
+      if (cal.offset !== undefined) form.setValue(`${sensorKey}.offset` as any, cal.offset);
+      if (cal.scale !== undefined) form.setValue(`${sensorKey}.scale` as any, cal.scale);
+      if (cal.percentage !== undefined) form.setValue(`${sensorKey}.percentage` as any, cal.percentage);
+      if (cal.multiplier !== undefined) form.setValue(`${sensorKey}.multiplier` as any, cal.multiplier);
+      if (cal.polyA !== undefined) form.setValue(`${sensorKey}.polyA` as any, cal.polyA);
+      if (cal.polyB !== undefined) form.setValue(`${sensorKey}.polyB` as any, cal.polyB);
+      if (cal.polyC !== undefined) form.setValue(`${sensorKey}.polyC` as any, cal.polyC);
+      if (cal.powerA !== undefined) form.setValue(`${sensorKey}.powerA` as any, cal.powerA);
+      if (cal.powerB !== undefined) form.setValue(`${sensorKey}.powerB` as any, cal.powerB);
+      if (cal.point1Raw !== undefined) form.setValue(`${sensorKey}.point1Raw` as any, cal.point1Raw);
+      if (cal.point1Ref !== undefined) form.setValue(`${sensorKey}.point1Ref` as any, cal.point1Ref);
+      if (cal.point2Raw !== undefined) form.setValue(`${sensorKey}.point2Raw` as any, cal.point2Raw);
+      if (cal.point2Ref !== undefined) form.setValue(`${sensorKey}.point2Ref` as any, cal.point2Ref);
+    });
+
+    if (entries.length > 0 && entries[0][0]) {
+      setPreviewVar(entries[0][0]);
+    }
+  }, [stagedCalibrations, form]);
+
+  // Handle external 1-Click apply legacy from Tab 2
   useEffect(() => {
     if (pendingApply && pendingApply.sensorKey) {
       const { sensorKey, calibrationData, sourceMethodName, notes } = pendingApply;
@@ -167,12 +215,42 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
     }
   }, [pendingApply, form, toast, onClearPendingApply]);
 
+  const handleDiscardDraft = async () => {
+    if (onClearStationStaged) {
+      onClearStationStaged(selectedStationId);
+    }
+    setIsLoadingConfig(true);
+    try {
+      const data = await getCalibrationDocument(selectedStationId);
+      if (data) {
+        form.reset({ ...data, stationId: selectedStationId });
+      } else {
+        const emptyConfig: any = { stationId: selectedStationId, enabled: true };
+        SENSOR_VARIABLES.forEach(v => {
+          emptyConfig[v.key] = { ...DEFAULT_VARIABLE_CALIBRATION };
+        });
+        form.reset(emptyConfig);
+      }
+      toast({
+        title: "Draft Dibatalkan",
+        description: "Form dikembalikan ke konfigurasi resmi yang tersimpan di Firestore.",
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingConfig(false);
+    }
+  };
+
   const onSubmit = async (data: StationCalibrationDocument) => {
     setIsSaving(true);
     try {
       await saveCalibrationDocument(selectedStationId, data);
+      if (onClearStationStaged) {
+        onClearStationStaged(selectedStationId);
+      }
       toast({
-        title: "Konfigurasi Berhasil Disimpan",
+        title: "Konfigurasi Berhasil Disimpan ke Firestore 🎉",
         description: `Seluruh parameter kalibrasi sensor untuk stasiun ${stationName || selectedStationId} aktif di Firestore.`,
       });
     } catch (err: any) {
@@ -186,6 +264,7 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
     }
   };
 
+  const stagedEntries = stagedCalibrations ? Object.entries(stagedCalibrations) : [];
   const watchGlobalEnabled = form.watch("enabled");
   const currentFormValues = form.watch();
 
@@ -273,6 +352,104 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* Staged Calibration Review Banner */}
+      {stagedEntries.length > 0 && (
+        <Card className="border-amber-300 dark:border-amber-700/80 bg-gradient-to-r from-amber-50/90 via-orange-50/50 to-amber-50/90 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-amber-950/30 shadow-sm">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-amber-500 text-white shadow-xs">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-amber-950 dark:text-amber-200">
+                      Draft Parameter Hasil Kalibrasi Siap Disimpan
+                    </span>
+                    <Badge className="bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold px-2 py-0">
+                      {stagedEntries.length} Variabel
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                    Variabel di bawah telah diterapkan dari Leaderboard dan otomatis terisi di form. Klik &ldquo;Simpan Semua ke Firestore&rdquo; untuk mengaktifkan seluruh parameter ke database.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                  onClick={handleDiscardDraft}
+                  disabled={isSaving}
+                >
+                  <Undo2 className="w-3.5 h-3.5 mr-1" />
+                  Batalkan Draft
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm gap-1.5"
+                  disabled={isSaving || isLoadingConfig}
+                  onClick={form.handleSubmit(
+                    data => onSubmit(data as StationCalibrationDocument),
+                    errors => {
+                      console.error("Gagal validasi form kalibrasi:", errors);
+                      toast({
+                        title: "Gagal Validasi Formulir",
+                        description: "Mohon periksa kembali input yang terisi.",
+                        variant: "destructive",
+                      });
+                    }
+                  )}
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  Simpan Semua ke Firestore
+                </Button>
+              </div>
+            </div>
+
+            {/* List of staged variables */}
+            <div className="flex flex-wrap gap-2 pt-1 border-t border-amber-200/80 dark:border-amber-800/60">
+              {stagedEntries.map(([sKey, item]) => (
+                <div
+                  key={sKey}
+                  className="flex items-center gap-2 bg-white/90 dark:bg-slate-900/90 border border-amber-300/70 dark:border-amber-800 px-2.5 py-1.5 rounded-lg text-xs shadow-2xs cursor-pointer hover:border-amber-500 transition-colors"
+                  onClick={() => setPreviewVar(sKey)}
+                  title="Klik untuk pratinjau kurva respon variabel ini"
+                >
+                  <Badge variant="outline" className="text-[10px] font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200">
+                    {item.variableLabel || sKey}
+                  </Badge>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 text-[11px]">
+                    {item.methodName}
+                  </span>
+                  {onClearVariableStaged && (
+                    <button
+                      type="button"
+                      className="text-slate-400 hover:text-red-500 text-sm font-bold ml-1 px-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClearVariableStaged(selectedStationId, sKey);
+                      }}
+                      title="Hapus variabel ini dari draft"
+                    >
+                      &times;
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {!watchGlobalEnabled && (
         <Alert variant="destructive" className="bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900">

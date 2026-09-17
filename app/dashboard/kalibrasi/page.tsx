@@ -97,8 +97,17 @@ const VARIABLES_CONFIG: {
   { id: "surface_pressure", label: "Tekanan Permukaan (P)", unit: "hPa", sensorKey: "pressure", recommendedMethod: "linear_regression" },
   { id: "wind_speed", label: "Kecepatan Angin (10m)", unit: "m/s", sensorKey: "windSpeed", recommendedMethod: "power_law" },
   { id: "wind_direction", label: "Arah Angin (Circular)", unit: "°", sensorKey: "windDirection", recommendedMethod: "circular_wind" },
-  { id: "precipitation", label: "Presipitasi (Rainfall)", unit: "mm", sensorKey: "rainfall", recommendedMethod: "zero_aware_rain" },
 ];
+
+export interface StagedVariableCalibration {
+  sensorKey: string;
+  variableLabel: string;
+  method: CorrectionMethod;
+  methodName: string;
+  calibrationData: any;
+  notes?: string;
+  appliedAt: number;
+}
 
 function UnifiedCalibrationContent() {
   const { user } = useAuth();
@@ -182,7 +191,54 @@ function UnifiedCalibrationContent() {
   const [era5SourceMode, setEra5SourceMode] = useState<"auto" | "sqlite" | "online">("auto");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  // Pending 1-Click apply payload from Tab 2 to Tab 3
+  // Staged multi-variable multi-station calibrations (Staging-to-Commit pattern)
+  const [stagedCalibrations, setStagedCalibrations] = useState<Record<string, Record<string, StagedVariableCalibration>>>({});
+
+  // Sync staged calibrations from localStorage on client mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("meteo_staged_calibrations");
+      if (stored) {
+        setStagedCalibrations(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error("Gagal membaca staged calibrations dari localStorage:", e);
+    }
+  }, []);
+
+  const updateStagedCalibrations = (updater: (prev: Record<string, Record<string, StagedVariableCalibration>>) => Record<string, Record<string, StagedVariableCalibration>>) => {
+    setStagedCalibrations(prev => {
+      const next = updater(prev);
+      try {
+        localStorage.setItem("meteo_staged_calibrations", JSON.stringify(next));
+      } catch (e) {
+        console.error("Gagal menyimpan staged calibrations ke localStorage:", e);
+      }
+      return next;
+    });
+  };
+
+  const handleClearStationStaged = (stationId: string) => {
+    updateStagedCalibrations(prev => {
+      const copy = { ...prev };
+      delete copy[stationId];
+      return copy;
+    });
+  };
+
+  const handleClearVariableStaged = (stationId: string, sensorKey: string) => {
+    updateStagedCalibrations(prev => {
+      if (!prev[stationId]) return prev;
+      const copy = { ...prev, [stationId]: { ...prev[stationId] } };
+      delete copy[stationId][sensorKey];
+      if (Object.keys(copy[stationId]).length === 0) {
+        delete copy[stationId];
+      }
+      return copy;
+    });
+  };
+
+  // Pending 1-Click apply payload from Tab 2 to Tab 3 (legacy fallback)
   const [pendingApply, setPendingApply] = useState<{
     sensorKey: string;
     calibrationData: any;
@@ -419,6 +475,7 @@ function UnifiedCalibrationContent() {
   };
 
   // Convert bias correction fit parameters to IoT Sensor calibration schema (AWS Raw -> ERA5 Reference)
+  // Non-disruptive 1-Click Apply: Staged immediately without forcing tab navigation
   const handle1ClickApply = (method: CorrectionMethod, fitParams: any) => {
     const sensorKey = activeVarConfig.sensorKey;
     const calPairs = matchedPairs
@@ -428,15 +485,31 @@ function UnifiedCalibrationContent() {
     const fallbackBias = evaluationResult?.correctedEra5?.meanBias ?? 0;
     const { sensorData, methodName, notes } = fitSensorCalibrationFromERA5(method, calPairs, fallbackBias);
 
-    // Set pending apply payload and switch to Tab 3
-    setPendingApply({
+    const newEntry: StagedVariableCalibration = {
       sensorKey,
+      variableLabel: activeVarConfig.label,
+      method,
+      methodName,
       calibrationData: sensorData,
-      sourceMethodName: `${methodName} (${method})`,
       notes,
+      appliedAt: Date.now(),
+    };
+
+    updateStagedCalibrations(prev => {
+      const currentStationEntries = prev[selectedStationId] || {};
+      return {
+        ...prev,
+        [selectedStationId]: {
+          ...currentStationEntries,
+          [sensorKey]: newEntry,
+        },
+      };
     });
-    setActiveMainTab("sensor-settings");
-    router.replace(`/dashboard/kalibrasi?tab=sensor-settings`, { scroll: false });
+
+    toast({
+      title: `✓ Kalibrasi ${activeVarConfig.label} Berhasil Disimpan ke Draft`,
+      description: `Formula ${methodName} telah diterapkan ke stasiun ${stationName}. Buka Tab 3 "Parameter Sensor Aktif" saat siap menyimpan ke Firestore.`,
+    });
   };
 
   return (
@@ -484,9 +557,14 @@ function UnifiedCalibrationContent() {
             <Trophy className="w-4 h-4 mr-1.5 text-indigo-500" />
             2. Model Kalibrasi & Leaderboard
           </TabsTrigger>
-          <TabsTrigger value="sensor-settings" className="text-xs font-semibold py-2">
+          <TabsTrigger value="sensor-settings" className="text-xs font-semibold py-2 relative flex items-center justify-center">
             <Settings2 className="w-4 h-4 mr-1.5 text-emerald-500" />
-            3. Parameter Sensor Aktif (Firestore)
+            <span>3. Parameter Sensor Aktif (Firestore)</span>
+            {stagedCalibrations[selectedStationId] && Object.keys(stagedCalibrations[selectedStationId]).length > 0 && (
+              <Badge className="ml-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1.5 py-0 h-4 rounded-full font-bold">
+                {Object.keys(stagedCalibrations[selectedStationId]).length} Siap Simpan
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -822,6 +900,7 @@ function UnifiedCalibrationContent() {
           <MethodBenchmarkLeaderboard
             benchmarks={benchmarkSummaries}
             selectedMethod={selectedMethod}
+            currentStagedMethod={stagedCalibrations[selectedStationId]?.[activeVarConfig.sensorKey]?.method}
             onSelectMethod={setSelectedMethod}
             onApplyToSensor={handle1ClickApply}
             variableUnit={activeVarConfig.unit}
@@ -844,11 +923,24 @@ function UnifiedCalibrationContent() {
 
               <Button
                 size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-9 font-semibold"
+                className={`text-white text-xs h-9 font-semibold transition-all ${
+                  stagedCalibrations[selectedStationId]?.[activeVarConfig.sensorKey]?.method === selectedMethod
+                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
                 onClick={() => handle1ClickApply(selectedMethod, evaluationResult?.provenance?.fitParameters)}
               >
-                <Sliders className="w-3.5 h-3.5 mr-1.5" />
-                Terapkan Parameter ke Sensor Stasiun Ini
+                {stagedCalibrations[selectedStationId]?.[activeVarConfig.sensorKey]?.method === selectedMethod ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-200" />
+                    Diterapkan di Draft Staging
+                  </>
+                ) : (
+                  <>
+                    <Sliders className="w-3.5 h-3.5 mr-1.5" />
+                    Terapkan Parameter ke Sensor Stasiun Ini
+                  </>
+                )}
               </Button>
             </CardHeader>
 
@@ -887,6 +979,9 @@ function UnifiedCalibrationContent() {
                 setStationCoords({ lat: opt.lat, lng: opt.lng });
               }
             }}
+            stagedCalibrations={stagedCalibrations[selectedStationId]}
+            onClearStationStaged={handleClearStationStaged}
+            onClearVariableStaged={handleClearVariableStaged}
             pendingApply={pendingApply}
             onClearPendingApply={() => setPendingApply(null)}
           />

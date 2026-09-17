@@ -20,6 +20,7 @@ import { MethodBenchmarkSummary } from "@/lib/bias-correction/correction/Correct
 interface MethodBenchmarkLeaderboardProps {
   benchmarks: MethodBenchmarkSummary[];
   selectedMethod: CorrectionMethod;
+  currentStagedMethod?: CorrectionMethod | null;
   onSelectMethod: (method: CorrectionMethod) => void;
   onApplyToSensor: (method: CorrectionMethod, fitParams: any) => void;
   variableUnit: string;
@@ -28,10 +29,18 @@ interface MethodBenchmarkLeaderboardProps {
 export const MethodBenchmarkLeaderboard: React.FC<MethodBenchmarkLeaderboardProps> = ({
   benchmarks,
   selectedMethod,
+  currentStagedMethod,
   onSelectMethod,
   onApplyToSensor,
   variableUnit,
 }) => {
+  const [recentlyApplied, setRecentlyApplied] = React.useState<CorrectionMethod | null>(null);
+
+  const handleApply = (method: CorrectionMethod, fitParams: any) => {
+    onApplyToSensor(method, fitParams);
+    setRecentlyApplied(method);
+    setTimeout(() => setRecentlyApplied(null), 2500);
+  };
   if (!benchmarks || benchmarks.length === 0) {
     return (
       <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
@@ -211,12 +220,32 @@ export const MethodBenchmarkLeaderboard: React.FC<MethodBenchmarkLeaderboardProp
                         </Button>
                         <Button
                           size="sm"
-                          className="h-7 text-[11px] px-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium"
-                          onClick={() => onApplyToSensor(item.method, item.fitParams)}
-                          title="Terapkan rumus kalibrasi ini ke sensor stasiun aktif"
+                          className={`h-7 text-[11px] px-2.5 font-medium transition-all ${
+                            recentlyApplied === item.method
+                              ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                              : currentStagedMethod === item.method
+                              ? "bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs"
+                              : "bg-blue-600 hover:bg-blue-700 text-white"
+                          }`}
+                          onClick={() => handleApply(item.method, item.fitParams)}
+                          title="Terapkan rumus kalibrasi ini ke sensor stasiun aktif (langsung disimpan ke draft)"
                         >
-                          <Sliders className="w-3 h-3 mr-1" />
-                          1-Click Apply
+                          {recentlyApplied === item.method ? (
+                            <>
+                              <CheckCircle2 className="w-3 h-3 mr-1 text-white animate-pulse" />
+                              Tersimpan!
+                            </>
+                          ) : currentStagedMethod === item.method ? (
+                            <>
+                              <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-200" />
+                              Diterapkan di Draft
+                            </>
+                          ) : (
+                            <>
+                              <Sliders className="w-3 h-3 mr-1" />
+                              1-Click Apply
+                            </>
+                          )}
                         </Button>
                       </div>
                     </td>
