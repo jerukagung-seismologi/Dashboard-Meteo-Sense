@@ -129,6 +129,17 @@ export interface EnsoForecastMonth {
   };
 }
 
+export interface GlobalModelTrajectory {
+  modelId: string;
+  modelName: string;
+  institution: string;
+  country: string;
+  flag: string;
+  color: string;
+  membersCount: number;
+  trajectory: number[]; // monthly mean anomalies
+}
+
 export interface EnsoForecastData {
   region: "nino34" | "nino3" | "nino4" | "nino12";
   regionName: string;
@@ -136,6 +147,15 @@ export interface EnsoForecastData {
   baseDate: string;
   source: string;
   model: string;
+  selectedModel?: string;
+  availableModels?: Array<{
+    id: string;
+    name: string;
+    institution: string;
+    flag: string;
+    membersCount: number;
+  }>;
+  allModelsComparison?: GlobalModelTrajectory[];
   months: EnsoForecastMonth[];
   summary: {
     dominantPhase: string;

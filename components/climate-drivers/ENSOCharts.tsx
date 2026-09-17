@@ -9,14 +9,7 @@ import { EnsoData } from "@/lib/climate-drivers/types";
 
 import { getEnsoCategory, getEnsoColor } from "@/lib/climate-drivers/climateData";
 
-const ReactECharts = dynamic(() => import("echarts-for-react"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[300px] w-full flex items-center justify-center text-muted-foreground animate-pulse">
-      Memuat Grafik ENSO...
-    </div>
-  ),
-});
+import { ResponsiveEChart } from "@/components/climate-drivers/ResponsiveEChart";
 
 interface ENSOChartsProps {
   data: EnsoData;
@@ -289,7 +282,10 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[340px] p-2">
-          <ReactECharts option={ninoRegionsOption} style={{ height: "100%", width: "100%" }} />
+          <ResponsiveEChart
+            chartKey={`nino-regions-${isDarkMode}`}
+            option={ninoRegionsOption}
+          />
         </CardContent>
       </Card>
 
@@ -304,7 +300,10 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[320px] p-2">
-          <ReactECharts option={oniOption} style={{ height: "100%", width: "100%" }} />
+          <ResponsiveEChart
+            chartKey={`oni-${isDarkMode}`}
+            option={oniOption}
+          />
         </CardContent>
       </Card>
 
@@ -320,7 +319,10 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
             </CardDescription>
           </CardHeader>
           <CardContent className="h-[280px] p-2">
-            <ReactECharts option={nino34Option} style={{ height: "100%", width: "100%" }} />
+            <ResponsiveEChart
+              chartKey={`nino34-${isDarkMode}`}
+              option={nino34Option}
+            />
           </CardContent>
         </Card>
 
@@ -334,7 +336,10 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
             </CardDescription>
           </CardHeader>
           <CardContent className="h-[280px] p-2">
-            <ReactECharts option={soiOption} style={{ height: "100%", width: "100%" }} />
+            <ResponsiveEChart
+              chartKey={`soi-${isDarkMode}`}
+              option={soiOption}
+            />
           </CardContent>
         </Card>
       </div>
