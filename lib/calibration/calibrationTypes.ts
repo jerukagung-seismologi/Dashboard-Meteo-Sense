@@ -21,8 +21,18 @@ const safeNumber = z.preprocess(
   z.number().optional()
 );
 
+export const DEFAULT_VARIABLE_CALIBRATION: SensorVariableCalibration = {
+  enabled: false,
+  method: "none",
+};
+
+const safeBoolean = z.preprocess(
+  (val) => (val === undefined || val === null ? false : Boolean(val)),
+  z.boolean().default(false)
+);
+
 export const SensorVariableCalibrationSchema = z.object({
-  enabled: z.boolean(),
+  enabled: safeBoolean,
   method: CalibrationMethodSchema.default("none"),
   percentage: safeNumber, // For 'percentage' method
   offset: safeNumber, // For 'offset', 'scale_offset', 'robust_linear' methods
@@ -47,29 +57,23 @@ export type SensorVariableCalibration = z.infer<typeof SensorVariableCalibration
 // Record of all variables to their calibration settings
 export const StationCalibrationDocumentSchema = z.object({
   stationId: z.string(),
-  enabled: z.boolean().default(true),
+  enabled: safeBoolean,
   // Known variables based on project SensorValue interface
-  temperature: SensorVariableCalibrationSchema.optional(),
-  humidity: SensorVariableCalibrationSchema.optional(),
-  pressure: SensorVariableCalibrationSchema.optional(),
-  dew: SensorVariableCalibrationSchema.optional(),
-  rainfall: SensorVariableCalibrationSchema.optional(),
-  rainrate: SensorVariableCalibrationSchema.optional(),
-  volt: SensorVariableCalibrationSchema.optional(),
-  lux: SensorVariableCalibrationSchema.optional(),
-  soil_temp: SensorVariableCalibrationSchema.optional(),
-  windSpeed: SensorVariableCalibrationSchema.optional(),
-  windGust: SensorVariableCalibrationSchema.optional(),
-  windDirection: SensorVariableCalibrationSchema.optional(),
+  temperature: SensorVariableCalibrationSchema.optional().default(() => ({ ...DEFAULT_VARIABLE_CALIBRATION })),
+  humidity: SensorVariableCalibrationSchema.optional().default(() => ({ ...DEFAULT_VARIABLE_CALIBRATION })),
+  pressure: SensorVariableCalibrationSchema.optional().default(() => ({ ...DEFAULT_VARIABLE_CALIBRATION })),
+  dew: SensorVariableCalibrationSchema.optional().default(() => ({ ...DEFAULT_VARIABLE_CALIBRATION })),
+  rainfall: SensorVariableCalibrationSchema.optional().default(() => ({ ...DEFAULT_VARIABLE_CALIBRATION })),
+  rainrate: SensorVariableCalibrationSchema.optional().default(() => ({ ...DEFAULT_VARIABLE_CALIBRATION })),
+  volt: SensorVariableCalibrationSchema.optional().default(() => ({ ...DEFAULT_VARIABLE_CALIBRATION })),
+  lux: SensorVariableCalibrationSchema.optional().default(() => ({ ...DEFAULT_VARIABLE_CALIBRATION })),
+  soil_temp: SensorVariableCalibrationSchema.optional().default(() => ({ ...DEFAULT_VARIABLE_CALIBRATION })),
+  windSpeed: SensorVariableCalibrationSchema.optional().default(() => ({ ...DEFAULT_VARIABLE_CALIBRATION })),
+  windGust: SensorVariableCalibrationSchema.optional().default(() => ({ ...DEFAULT_VARIABLE_CALIBRATION })),
+  windDirection: SensorVariableCalibrationSchema.optional().default(() => ({ ...DEFAULT_VARIABLE_CALIBRATION })),
   solarRadiation: SensorVariableCalibrationSchema.optional(),
   uvIndex: SensorVariableCalibrationSchema.optional(),
   soilMoisture: SensorVariableCalibrationSchema.optional(),
 }).passthrough(); // Allow future variables without breaking named properties
 
 export type StationCalibrationDocument = z.infer<typeof StationCalibrationDocumentSchema>;
-
-// Default calibration configuration for a variable
-export const DEFAULT_VARIABLE_CALIBRATION: SensorVariableCalibration = {
-  enabled: false,
-  method: "none",
-};

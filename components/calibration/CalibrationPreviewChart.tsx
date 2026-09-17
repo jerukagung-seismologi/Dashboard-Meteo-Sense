@@ -21,6 +21,7 @@ interface CalibrationPreviewChartProps {
   stationId: string;
   config: StationCalibrationDocument;
   previewVariable: string;
+  isDarkMode?: boolean;
 }
 
 const fetcher = async (url: string) => {
@@ -33,6 +34,7 @@ export const CalibrationPreviewChart: React.FC<CalibrationPreviewChartProps> = (
   stationId,
   config,
   previewVariable,
+  isDarkMode = false,
 }) => {
   // Fetch latest 50 raw data points (calibration=false)
   const apiPath = stationId ? `/api/sensors?action=latest&sensorId=${stationId}&limit=50&calibration=false` : null;
@@ -140,16 +142,21 @@ export const CalibrationPreviewChart: React.FC<CalibrationPreviewChartProps> = (
       <div className="w-full h-72 pt-2">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 10, right: 15, left: -15, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.6} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke={isDarkMode ? "#334155" : "#e2e8f0"}
+              strokeOpacity={0.6}
+            />
             <XAxis
               dataKey="time"
-              tick={{ fontSize: 11, fill: "#64748b" }}
+              tick={{ fontSize: 11, fill: isDarkMode ? "#94a3b8" : "#64748b" }}
               tickLine={false}
               axisLine={false}
               minTickGap={25}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: "#64748b" }}
+              tick={{ fontSize: 11, fill: isDarkMode ? "#94a3b8" : "#64748b" }}
               tickLine={false}
               axisLine={false}
               domain={["auto", "auto"]}
@@ -158,9 +165,10 @@ export const CalibrationPreviewChart: React.FC<CalibrationPreviewChartProps> = (
               contentStyle={{
                 borderRadius: "8px",
                 fontSize: "12px",
-                backgroundColor: "rgba(255, 255, 255, 0.95)",
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.95)",
+                borderColor: isDarkMode ? "#334155" : "#e2e8f0",
+                color: isDarkMode ? "#f8fafc" : "#0f172a",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
               }}
             />
             <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
@@ -170,7 +178,7 @@ export const CalibrationPreviewChart: React.FC<CalibrationPreviewChartProps> = (
               type="monotone"
               dataKey="raw"
               name="Nilai Mentah (Raw)"
-              stroke="#94a3b8"
+              stroke={isDarkMode ? "#64748b" : "#94a3b8"}
               strokeWidth={2}
               strokeDasharray="4 4"
               dot={false}

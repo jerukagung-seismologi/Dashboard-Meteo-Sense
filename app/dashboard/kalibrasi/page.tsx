@@ -37,6 +37,15 @@ import {
   Loader2,
   Database,
   Cloud,
+  Thermometer,
+  Droplets,
+  Gauge,
+  CloudFog,
+  Wind,
+  Compass,
+  Clock,
+  LineChart,
+  TrendingUp,
 } from "lucide-react";
 
 import {
@@ -68,6 +77,7 @@ import { ExportModal } from "@/components/validasi-bias/ExportModal";
 
 import { MethodBenchmarkLeaderboard } from "@/components/calibration/MethodBenchmarkLeaderboard";
 import { ActiveSensorManager } from "@/components/calibration/ActiveSensorManager";
+import { ModelParameterInspector } from "@/components/calibration/ModelParameterInspector";
 import { fitSensorCalibrationFromERA5 } from "@/lib/calibration/sensorCalibrationFit";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -90,13 +100,14 @@ const VARIABLES_CONFIG: {
   unit: string;
   sensorKey: string;
   recommendedMethod: CorrectionMethod;
+  icon: React.ElementType;
 }[] = [
-  { id: "air_temperature", label: "Suhu Udara (2m)", unit: "°C", sensorKey: "temperature", recommendedMethod: "polynomial_regression" },
-  { id: "relative_humidity", label: "Kelembapan Relatif (RH)", unit: "%", sensorKey: "humidity", recommendedMethod: "quantile_mapping" },
-  { id: "dew_point_temperature", label: "Titik Embun (Dew Point)", unit: "°C", sensorKey: "dew", recommendedMethod: "robust_huber" },
-  { id: "surface_pressure", label: "Tekanan Permukaan (P)", unit: "hPa", sensorKey: "pressure", recommendedMethod: "linear_regression" },
-  { id: "wind_speed", label: "Kecepatan Angin (10m)", unit: "m/s", sensorKey: "windSpeed", recommendedMethod: "power_law" },
-  { id: "wind_direction", label: "Arah Angin (Circular)", unit: "°", sensorKey: "windDirection", recommendedMethod: "circular_wind" },
+  { id: "air_temperature", label: "Suhu Udara (2m)", unit: "°C", sensorKey: "temperature", recommendedMethod: "polynomial_regression", icon: Thermometer },
+  { id: "relative_humidity", label: "Kelembapan Relatif (RH)", unit: "%", sensorKey: "humidity", recommendedMethod: "quantile_mapping", icon: Droplets },
+  { id: "dew_point_temperature", label: "Titik Embun (Dew Point)", unit: "°C", sensorKey: "dew", recommendedMethod: "robust_huber", icon: CloudFog },
+  { id: "surface_pressure", label: "Tekanan Permukaan (P)", unit: "hPa", sensorKey: "pressure", recommendedMethod: "linear_regression", icon: Gauge },
+  { id: "wind_speed", label: "Kecepatan Angin (10m)", unit: "m/s", sensorKey: "windSpeed", recommendedMethod: "power_law", icon: Wind },
+  { id: "wind_direction", label: "Arah Angin (Circular)", unit: "°", sensorKey: "windDirection", recommendedMethod: "circular_wind", icon: Compass },
 ];
 
 export interface StagedVariableCalibration {
@@ -548,21 +559,21 @@ function UnifiedCalibrationContent() {
 
       {/* Main Navigation Tabs */}
       <Tabs value={activeMainTab} onValueChange={handleTabChange} className="w-full space-y-6">
-        <TabsList className="grid grid-cols-1 sm:grid-cols-3 w-full max-w-2xl bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl">
-          <TabsTrigger value="validation" className="text-xs font-semibold py-2">
-            <Layers className="w-4 h-4 mr-1.5 text-blue-500" />
-            1. Validasi & Komparasi Bias
+        <TabsList className="grid grid-cols-1 sm:grid-cols-3 w-full max-w-4xl bg-slate-100/90 dark:bg-slate-800/80 p-1.5 rounded-xl gap-1">
+          <TabsTrigger value="validation" className="text-xs font-semibold py-2.5 flex items-center justify-center gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
+            <Layers className="w-4 h-4 text-blue-500 shrink-0" />
+            <span>1. Validasi &amp; Komparasi Bias</span>
           </TabsTrigger>
-          <TabsTrigger value="model-calibration" className="text-xs font-semibold py-2">
-            <Trophy className="w-4 h-4 mr-1.5 text-indigo-500" />
-            2. Model Kalibrasi & Leaderboard
+          <TabsTrigger value="model-calibration" className="text-xs font-semibold py-2.5 flex items-center justify-center gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
+            <Trophy className="w-4 h-4 text-indigo-500 shrink-0" />
+            <span>2. Model Kalibrasi &amp; Leaderboard</span>
           </TabsTrigger>
-          <TabsTrigger value="sensor-settings" className="text-xs font-semibold py-2 relative flex items-center justify-center">
-            <Settings2 className="w-4 h-4 mr-1.5 text-emerald-500" />
-            <span>3. Parameter Sensor Aktif (Firestore)</span>
+          <TabsTrigger value="sensor-settings" className="text-xs font-semibold py-2.5 relative flex items-center justify-center gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
+            <Settings2 className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span className="truncate">3. Parameter Sensor Aktif</span>
             {stagedCalibrations[selectedStationId] && Object.keys(stagedCalibrations[selectedStationId]).length > 0 && (
-              <Badge className="ml-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1.5 py-0 h-4 rounded-full font-bold">
-                {Object.keys(stagedCalibrations[selectedStationId]).length} Siap Simpan
+              <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1.5 py-0 h-4 rounded-full font-bold ml-1 animate-pulse shrink-0">
+                {Object.keys(stagedCalibrations[selectedStationId]).length} Draf
               </Badge>
             )}
           </TabsTrigger>
@@ -671,11 +682,17 @@ function UnifiedCalibrationContent() {
                     <SelectValue placeholder="Pilih Parameter" />
                   </SelectTrigger>
                   <SelectContent>
-                    {VARIABLES_CONFIG.map(v => (
-                      <SelectItem key={v.id} value={v.id} className="text-xs">
-                        {v.label}
-                      </SelectItem>
-                    ))}
+                    {VARIABLES_CONFIG.map(v => {
+                      const IconComp = v.icon;
+                      return (
+                        <SelectItem key={v.id} value={v.id} className="text-xs">
+                          <div className="flex items-center gap-2">
+                            <IconComp className="w-3.5 h-3.5 text-blue-500" />
+                            <span>{v.label}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -731,19 +748,23 @@ function UnifiedCalibrationContent() {
 
               {/* Train / Validation Split Slider */}
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
-                  <span>Split Rasio Kalibrasi:</span>
-                  <strong className="font-mono text-blue-600">{trainSplitRatio}% Train / {100 - trainSplitRatio}% Test</strong>
+                <div className="flex justify-between items-center text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <span>Split Data Kalibrasi</span>
+                  <span className="font-mono text-blue-600 dark:text-blue-400 font-bold text-[11px] bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-900">
+                    {trainSplitRatio}% Train / {100 - trainSplitRatio}% Test
+                  </span>
                 </div>
-                <input
-                  type="range"
-                  value={trainSplitRatio}
-                  onChange={e => setTrainSplitRatio(Number(e.target.value))}
-                  min={40}
-                  max={90}
-                  step={5}
-                  className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                />
+                <div className="h-9 flex items-center px-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-md">
+                  <input
+                    type="range"
+                    value={trainSplitRatio}
+                    onChange={e => setTrainSplitRatio(Number(e.target.value))}
+                    min={40}
+                    max={90}
+                    step={5}
+                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -824,12 +845,27 @@ function UnifiedCalibrationContent() {
 
           {/* Detailed Analytical Visualization Tabs */}
           <Tabs defaultValue="timeseries" className="w-full">
-            <TabsList className="grid grid-cols-2 sm:grid-cols-5 max-w-3xl bg-slate-100/90 dark:bg-slate-800/80 p-0.5 rounded-lg">
-              <TabsTrigger value="timeseries" className="text-xs">Deret Waktu</TabsTrigger>
-              <TabsTrigger value="diurnal" className="text-xs">Siklus Diurnal MBE</TabsTrigger>
-              <TabsTrigger value="scatter" className="text-xs">Scatter 1:1</TabsTrigger>
-              <TabsTrigger value="distribution" className="text-xs">Distribusi / ECDF</TabsTrigger>
-              <TabsTrigger value="residual" className="text-xs">Residual Error</TabsTrigger>
+            <TabsList className="flex flex-wrap sm:grid sm:grid-cols-5 w-full max-w-3xl bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl gap-1">
+              <TabsTrigger value="timeseries" className="text-xs py-2 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
+                <LineChart className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                Deret Waktu
+              </TabsTrigger>
+              <TabsTrigger value="diurnal" className="text-xs py-2 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
+                <Clock className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                Siklus Diurnal
+              </TabsTrigger>
+              <TabsTrigger value="scatter" className="text-xs py-2 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
+                <ScatterChart className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                Scatter 1:1
+              </TabsTrigger>
+              <TabsTrigger value="distribution" className="text-xs py-2 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                Distribusi ECDF
+              </TabsTrigger>
+              <TabsTrigger value="residual" className="text-xs py-2 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                Residual Error
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="timeseries" className="pt-3">
@@ -951,14 +987,17 @@ function UnifiedCalibrationContent() {
                 unit={activeVarConfig.unit}
               />
 
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Parameter Fitting Matematika:
-                </span>
-                <pre className="text-[11px] font-mono text-blue-700 dark:text-blue-400 bg-white dark:bg-slate-900 p-2.5 rounded border border-slate-200 dark:border-slate-800 overflow-x-auto">
-                  {JSON.stringify(evaluationResult?.provenance?.fitParameters || {}, null, 2)}
-                </pre>
-              </div>
+              <ModelParameterInspector
+                method={selectedMethod}
+                parameters={evaluationResult?.provenance?.fitParameters}
+                variableUnit={activeVarConfig.unit}
+                provenance={{
+                  trainingSamplesCount: evaluationResult?.provenance?.calibrationPeriod?.sampleCount,
+                  validationSamplesCount: evaluationResult?.provenance?.validationPeriod?.sampleCount,
+                  splitRatio: trainSplitRatio,
+                  trainingPeriod: evaluationResult?.provenance?.calibrationPeriod,
+                }}
+              />
             </CardContent>
           </Card>
         </TabsContent>

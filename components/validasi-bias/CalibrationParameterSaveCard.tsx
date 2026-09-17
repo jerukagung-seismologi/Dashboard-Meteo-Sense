@@ -190,6 +190,7 @@ export const CalibrationParameterSaveCard: React.FC<CalibrationParameterSaveCard
         rainfall: { ...DEFAULT_VARIABLE_CALIBRATION },
         rainrate: { ...DEFAULT_VARIABLE_CALIBRATION },
         windSpeed: { ...DEFAULT_VARIABLE_CALIBRATION },
+        windGust: { ...DEFAULT_VARIABLE_CALIBRATION },
         windDirection: { ...DEFAULT_VARIABLE_CALIBRATION },
         soil_temp: { ...DEFAULT_VARIABLE_CALIBRATION },
         lux: { ...DEFAULT_VARIABLE_CALIBRATION },
