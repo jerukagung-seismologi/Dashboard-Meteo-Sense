@@ -197,7 +197,7 @@ export const WaterBalanceDualChart: React.FC<WaterBalanceDualChartProps> = ({
         },
       },
       legend: {
-        data: ["Evapotranspirasi (ET0)", "Curah Hujan"],
+        data: ["Curah Hujan", "Evapotranspirasi (ET0)"],
         left: 20,
         top: 2,
         textStyle: {
@@ -224,20 +224,13 @@ export const WaterBalanceDualChart: React.FC<WaterBalanceDualChartProps> = ({
         right: 20,
         top: 0,
       },
-      axisPointer: {
-        link: [
-          {
-            xAxisIndex: "all",
-          },
-        ],
-      },
       dataZoom: [
         {
           show: true,
           realtime: true,
           start: resolution === "hourly" ? 0 : 0,
           end: resolution === "hourly" ? 100 : 100,
-          xAxisIndex: [0, 1],
+          xAxisIndex: [0],
           bottom: 4,
           height: 20,
           textStyle: {
@@ -255,117 +248,64 @@ export const WaterBalanceDualChart: React.FC<WaterBalanceDualChartProps> = ({
           realtime: true,
           start: 0,
           end: 100,
-          xAxisIndex: [0, 1],
+          xAxisIndex: [0],
         },
       ],
-      grid: [
-        // Top Grid: Evaporation
-        {
-          left: 55,
-          right: 35,
-          top: 48,
-          height: "33%",
-        },
-        // Bottom Grid: Rainfall (Inverted)
-        {
-          left: 55,
-          right: 35,
-          top: "54%",
-          height: "33%",
-        },
-      ],
-      xAxis: [
-        // Top X-Axis
-        {
-          type: "category",
-          boundaryGap: false,
-          axisLine: { onZero: true, lineStyle: { color: isDarkMode ? "#334155" : "#cbd5e1" } },
-          axisLabel: {
-            color: textColor,
-            fontSize: 10,
-            show: resolution === "daily", // Hide on top if hourly to reduce clutter, or show conditionally
+      grid: {
+        left: 55,
+        right: 35,
+        top: 48,
+        bottom: 45,
+        containLabel: true,
+      },
+      xAxis: {
+        type: "category",
+        boundaryGap: true,
+        axisLine: { onZero: true, lineStyle: { color: isDarkMode ? "#334155" : "#cbd5e1" } },
+        axisLabel: {
+          color: textColor,
+          fontSize: 10,
+          formatter: (val: string) => {
+            if (resolution === "hourly") {
+              return val.includes("00:00") ? val.split(" ")[0] : val.split(" ")[1];
+            }
+            return val;
           },
-          data: timeData,
         },
-        // Bottom X-Axis (position top creates the shared horizon line)
-        {
-          gridIndex: 1,
-          type: "category",
-          boundaryGap: false,
-          axisLine: { onZero: true, lineStyle: { color: isDarkMode ? "#334155" : "#cbd5e1" } },
-          axisLabel: {
-            color: textColor,
-            fontSize: 10,
-            formatter: (val: string) => {
-              // Condense hourly label for cleanliness
-              if (resolution === "hourly") {
-                return val.includes("00:00") ? val.split(" ")[0] : val.split(" ")[1];
-              }
-              return val;
-            },
-          },
-          data: timeData,
-          position: "top",
+        data: timeData,
+      },
+      yAxis: {
+        name: resolution === "hourly" ? "mm/jam" : "mm/hari",
+        type: "value",
+        scale: true,
+        nameTextStyle: {
+          color: textColor,
+          fontSize: 10.5,
+          fontWeight: "bold",
         },
-      ],
-      yAxis: [
-        // Top Y-Axis: Evapotranspiration
-        {
-          name: resolution === "hourly" ? "Evaporasi (mm/jam)" : "Evaporasi (mm/hari)",
-          type: "value",
-          nameTextStyle: {
-            color: "#f59e0b",
-            fontSize: 10.5,
-            fontWeight: "bold",
-          },
-          max: Number((maxEt0 * 1.25).toFixed(1)),
-          axisLabel: { color: textColor, fontSize: 10 },
-          splitLine: { lineStyle: { color: gridColor } },
-        },
-        // Bottom Y-Axis: Inverted Rainfall
-        {
-          gridIndex: 1,
-          name: resolution === "hourly" ? "Curah Hujan (mm/jam)" : "Curah Hujan (mm/hari)",
-          type: "value",
-          inverse: true, // Inverted vertical orientation
-          nameTextStyle: {
-            color: "#3b82f6",
-            fontSize: 10.5,
-            fontWeight: "bold",
-          },
-          max: Number((maxRain * 1.35).toFixed(1)),
-          axisLabel: { color: textColor, fontSize: 10 },
-          splitLine: { lineStyle: { color: gridColor } },
-        },
-      ],
+        axisLabel: { color: textColor, fontSize: 10 },
+        splitLine: { lineStyle: { color: gridColor } },
+      },
       series: [
-        // 1. Evaporation Line (Top Grid)
+        // 1. Rainfall Bar
+        {
+          name: "Curah Hujan",
+          type: "bar",
+          itemStyle: {
+            color: "#3b82f6",
+            borderRadius: [4, 4, 0, 0],
+          },
+          data: rainData,
+        },
+        // 2. Evaporation Line
         {
           name: "Evapotranspirasi (ET0)",
           type: "line",
-          symbolSize: resolution === "daily" ? 7 : 4,
+          symbolSize: resolution === "daily" ? 6 : 3,
           smooth: true,
           itemStyle: { color: "#f59e0b" },
-          lineStyle: { width: 2.2, color: "#f59e0b" },
-          areaStyle: {
-            color: isDarkMode ? "rgba(245, 158, 11, 0.18)" : "rgba(245, 158, 11, 0.12)",
-          },
+          lineStyle: { width: 2.5, color: "#f59e0b" },
           data: et0Data,
-        },
-        // 2. Rainfall Line (Bottom Grid, Inverted)
-        {
-          name: "Curah Hujan",
-          type: "line",
-          xAxisIndex: 1,
-          yAxisIndex: 1,
-          symbolSize: resolution === "daily" ? 7 : 4,
-          smooth: true,
-          itemStyle: { color: "#3b82f6" },
-          lineStyle: { width: 2.2, color: "#3b82f6" },
-          areaStyle: {
-            color: isDarkMode ? "rgba(59, 130, 246, 0.22)" : "rgba(59, 130, 246, 0.14)",
-          },
-          data: rainData,
         },
       ],
     };
@@ -479,8 +419,8 @@ export const WaterBalanceDualChart: React.FC<WaterBalanceDualChartProps> = ({
       </CardHeader>
 
       <CardContent className="p-3 sm:p-4">
-        {/* Dual Linked ECharts Container */}
-        <div className="h-[340px] sm:h-[400px] md:h-[440px] w-full bg-slate-50/50 dark:bg-slate-950/40 rounded-2xl p-1.5 border dark:border-slate-800">
+        {/* ECharts Container */}
+        <div className="h-[300px] sm:h-[340px] w-full bg-slate-50/50 dark:bg-slate-950/40 rounded-2xl p-1.5 border dark:border-slate-800">
           <ReactECharts option={chartOption} style={{ height: "100%", width: "100%" }} notMerge={true} lazyUpdate={true} />
         </div>
 
@@ -489,16 +429,14 @@ export const WaterBalanceDualChart: React.FC<WaterBalanceDualChartProps> = ({
           <Info className="h-4 w-4 text-indigo-500 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p>
-              <strong>Prinsip Hidrologi Visual ECharts:</strong> Grafik bagian atas menampilkan laju{" "}
-              <strong className="text-amber-600 dark:text-amber-400">Evapotranspirasi (ET0)</strong> yang menguap ke atas
-              menuju atmosfer. Grafik bagian bawah menampilkan{" "}
-              <strong className="text-blue-600 dark:text-blue-400">Curah Hujan</strong> dengan sumbu terbalik (
-              <code className="text-[10px] font-mono bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded">inverse: true</code>
-              ) melambangkan air yang turun membasahi tanah.
+              <strong>Prinsip Neraca Air Lahan:</strong> Grafik membandingkan input{" "}
+              <strong className="text-blue-600 dark:text-blue-400">Curah Hujan</strong> dengan output{" "}
+              <strong className="text-amber-600 dark:text-amber-400">Evapotranspirasi (ET0)</strong> potensial Penman-Monteith.
+              Jika balok curah hujan melampaui kurva ET0 terjadi surplus air, sebaliknya jika kurva ET0 berada di atas curah hujan maka lahan mengalami defisit kelembapan yang memerlukan irigasi.
             </p>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
               Gunakan slider zoom di bagian bawah atau gulir mouse (scroll) untuk meneliti lonjakan hujan ekstrem per jam
-              maupun periode defisit kekeringan secara sinkron.
+              maupun periode defisit kekeringan secara rinci.
             </p>
           </div>
         </div>
