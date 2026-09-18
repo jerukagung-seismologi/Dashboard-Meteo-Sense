@@ -23,6 +23,7 @@ export async function GET(request: Request) {
       'precipitation',
       'relative_humidity_2m',
       'wind_speed_10m',
+      'cloud_cover',
       'shortwave_radiation',
       'et0_fao_evapotranspiration',
     ].join(',');
@@ -129,6 +130,7 @@ export async function GET(request: Request) {
     const precipitation = processVariable('precipitation');
     const relativeHumidity = processVariable('relative_humidity_2m');
     const windSpeed = processVariable('wind_speed_10m');
+    const cloudCover = processVariable('cloud_cover');
     const solarRadiation = processVariable('shortwave_radiation');
     const et0 = processVariable('et0_fao_evapotranspiration');
 
@@ -143,6 +145,7 @@ export async function GET(request: Request) {
         precipitation,
         relativeHumidity,
         windSpeed,
+        cloudCover,
         solarRadiation,
         et0,
       },

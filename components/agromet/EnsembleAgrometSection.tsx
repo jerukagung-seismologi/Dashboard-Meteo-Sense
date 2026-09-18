@@ -35,7 +35,10 @@ import {
   Sun,
   Sprout,
   Waves,
+  Cloud,
+  Bot,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface EnsembleAgrometSectionProps {
   lat: number;
@@ -44,12 +47,13 @@ interface EnsembleAgrometSectionProps {
 }
 
 const GLOBAL_MODELS = [
-  { id: "ecmwf_ifs025", label: "ECMWF IFS (50 Member)", badge: "Eropa • 50 Skenario" },
-  { id: "gfs025", label: "NCEP GFS (30 Member)", badge: "USA/NOAA • 30 Skenario" },
-  { id: "icon_seamless", label: "DWD ICON (40 Member)", badge: "Jerman • 40 Skenario" },
-  { id: "gem_global", label: "CMC GEM (20 Member)", badge: "Kanada • 20 Skenario" },
-  { id: "gfs_seamless", label: "NCEP GFS Seamless (30 Member)", badge: "USA • 30 Skenario" },
-  { id: "icon_global", label: "DWD ICON Global (40 Member)", badge: "DWD • 40 Skenario" },
+  { id: "ecmwf_ifs025", label: "ECMWF IFS (50 Member)", badge: "Eropa • 50 Skenario", isAi: false },
+  { id: "google_weathernext2_ensemble", label: "Google WeatherNext 2 (64 Member AI)", badge: "Google DeepMind • AI • 64 Skenario", isAi: true },
+  { id: "gfs025", label: "NCEP GFS (30 Member)", badge: "USA/NOAA • 30 Skenario", isAi: false },
+  { id: "icon_seamless", label: "DWD ICON (40 Member)", badge: "Jerman • 40 Skenario", isAi: false },
+  { id: "gem_global", label: "CMC GEM (20 Member)", badge: "Kanada • 20 Skenario", isAi: false },
+  { id: "gfs_seamless", label: "NCEP GFS Seamless (30 Member)", badge: "USA • 30 Skenario", isAi: false },
+  { id: "icon_global", label: "DWD ICON Global (40 Member)", badge: "DWD • 40 Skenario", isAi: false },
 ];
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -291,39 +295,85 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
     [data, showSpaghetti, times, isDarkMode, textColor, gridColor]
   );
 
-  // 7. Radiasi Surya
+  // 7. Tutupan Awan
+  const cloudOption = useMemo(
+    () => createEnsembleOption(data?.cloudCover, "Tutupan Awan", "%", "#64748b", "rgba(100, 116, 139, 0.15)", "rgba(148, 163, 184, 0.22)"),
+    [data, showSpaghetti, times, isDarkMode, textColor, gridColor]
+  );
+
+  // 8. Radiasi Surya
   const solarOption = useMemo(
     () => createEnsembleOption(data?.solarRadiation, "Radiasi Surya", "W/m²", "#f59e0b", "rgba(245, 158, 11, 0.15)", "rgba(251, 191, 36, 0.22)"),
     [data, showSpaghetti, times, isDarkMode, textColor, gridColor]
   );
 
-  // 8. Evapotranspirasi ET0
+  // 9. Evapotranspirasi ET0
   const et0Option = useMemo(
     () => createEnsembleOption(data?.et0, "Evapotranspirasi ET0", "mm", "#10b981", "rgba(16, 185, 129, 0.15)", "rgba(52, 211, 153, 0.22)"),
     [data, showSpaghetti, times, isDarkMode, textColor, gridColor]
   );
 
-  // Current Summary Metrics
-  const currentTemp = data?.temperature?.mean?.[0] ?? "-";
-  const currentDew = data?.dewPoint?.mean?.[0] ?? "-";
-  const currentPress = data?.surfacePressure?.mean?.[0] ?? "-";
-  const currentPrecip7d = data?.precipitation?.mean ? data.precipitation.mean.reduce((a: number, b: number) => a + b, 0).toFixed(1) : "-";
-  const currentRh = data?.relativeHumidity?.mean?.[0] ?? "-";
-  const currentWind = data?.windSpeed?.mean?.[0] ?? "-";
-  const currentEt07d = data?.et0?.mean ? data.et0.mean.reduce((a: number, b: number) => a + b, 0).toFixed(1) : "-";
+  const isAiModel = currentModelMeta.id === "google_weathernext2_ensemble";
+
+  // Current Summary Metrics with AI awareness
+  const currentTemp = data?.temperature?.mean?.[0] !== undefined ? `${data.temperature.mean[0]}°C` : "-";
+  const currentDew = isAiModel ? "N/A (AI)" : (data?.dewPoint?.mean?.[0] !== undefined ? `${data.dewPoint.mean[0]}°C` : "-");
+  const currentPress = data?.surfacePressure?.mean?.[0] !== undefined ? `${data.surfacePressure.mean[0]} hPa` : "-";
+  const currentPrecip7d = data?.precipitation?.mean ? `${data.precipitation.mean.reduce((a: number, b: number) => a + b, 0).toFixed(1)} mm` : "-";
+  const currentRh = isAiModel ? "N/A (AI)" : (data?.relativeHumidity?.mean?.[0] !== undefined ? `${data.relativeHumidity.mean[0]}%` : "-");
+  const currentWind = data?.windSpeed?.mean?.[0] !== undefined ? `${data.windSpeed.mean[0]} m/s` : "-";
+  const currentCloud = data?.cloudCover?.mean?.[0] !== undefined ? `${data.cloudCover.mean[0]}%` : "-";
+  const currentEt07d = isAiModel ? "N/A (AI)" : (data?.et0?.mean ? `${data.et0.mean.reduce((a: number, b: number) => a + b, 0).toFixed(1)} mm` : "-");
+
+  const renderAiDisclaimer = (varName: string) => (
+    <div className="p-6 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-amber-900 dark:text-amber-200 space-y-3 my-2">
+      <div className="flex items-center gap-2 font-bold text-sm">
+        <Sparkles className="h-5 w-5 text-amber-500 shrink-0" />
+        <span>Variabel {varName} Tidak Disimulasikan oleh Model AI Ini</span>
+      </div>
+      <p className="text-xs leading-relaxed text-amber-800/90 dark:text-amber-300/80">
+        Model <strong>Google WeatherNext 2 (64 Member)</strong> adalah model cuaca AI berbasis <em>deep learning</em> dinamika atmosfer makro global (Google DeepMind). Arsitektur model ini berfokus pada <strong>Suhu Udara, Presipitasi, Tekanan Permukaan, Kecepatan Angin, dan Tutupan Awan</strong>, sehingga tidak mensimulasikan kelembapan permukaan 2m, radiasi surya, atau neraca lengas tanah secara langsung.
+      </p>
+      <p className="text-xs leading-relaxed text-amber-800/90 dark:text-amber-300/80">
+        Untuk melihat proyeksi probabilistik {varName}, silakan beralih ke model fisik numerik berbasis <em>Land Surface Model</em> seperti <strong>ECMWF IFS (50 Member)</strong> atau <strong>NCEP GFS (30 Member)</strong>.
+      </p>
+      <div className="pt-1">
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-xs font-semibold border-amber-400 dark:border-amber-700 bg-white/60 dark:bg-amber-900/40 hover:bg-amber-100 dark:hover:bg-amber-900/70 text-amber-900 dark:text-amber-100"
+          onClick={() => setModel("ecmwf_ifs025")}
+        >
+          Alihkan ke ECMWF IFS (50 Member Fisik)
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white overflow-hidden">
       <CardHeader className="pb-3 border-b dark:border-slate-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <Sparkles className="h-5 w-5" />
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={cn(
+                "p-1.5 rounded-lg",
+                isAiModel ? "bg-purple-500/10 text-purple-600 dark:text-purple-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              )}>
+                {isAiModel ? <Bot className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
               </span>
               <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                Prediksi Ensemble Multi-Model Agrometeorologi (7 Hari)
+                Prediksi Ensemble Multi-Model &amp; AI Agrometeorologi (7 Hari)
               </CardTitle>
+              {isAiModel ? (
+                <Badge className="bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30 text-[10px] font-bold">
+                  <Bot className="h-3 w-3 mr-1" /> Google DeepMind AI (64 Skenario)
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px] font-semibold">
+                  Model Fisik Numerik (NWP)
+                </Badge>
+              )}
             </div>
             <CardDescription className="text-xs text-slate-500 mt-1">
               Analisis probabilistik {memberCount} skenario model ensemble {currentModelMeta.label} untuk mengukur risiko iklim mikro
@@ -333,14 +383,17 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
           <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
             {/* Model Selector Dropdown */}
             <Select value={model} onValueChange={setModel}>
-              <SelectTrigger className="w-[230px] h-8 text-xs bg-slate-50 dark:bg-slate-800 font-semibold">
+              <SelectTrigger className="w-[250px] h-8 text-xs bg-slate-50 dark:bg-slate-800 font-semibold">
                 <SelectValue placeholder="Pilih Model Global" />
               </SelectTrigger>
               <SelectContent>
                 {GLOBAL_MODELS.map((m) => (
                   <SelectItem key={m.id} value={m.id} className="text-xs">
                     <div className="flex items-center justify-between gap-2">
-                      <span>{m.label}</span>
+                      <span className="flex items-center gap-1.5">
+                        {m.isAi ? <Bot className="h-3 w-3 text-purple-500" /> : null}
+                        {m.label}
+                      </span>
                       <span className="text-[10px] text-slate-400 font-mono">({m.badge})</span>
                     </div>
                   </SelectItem>
@@ -373,15 +426,15 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
       </CardHeader>
 
       <CardContent className="pt-4 space-y-6">
-        {/* Top Mini Summary Metric Chips */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+        {/* Top Mini Summary Metric Chips (8 Metrics) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
           {/* Suhu */}
           <div className="p-2.5 rounded-xl bg-red-50/60 dark:bg-red-950/20 border border-red-100 dark:border-red-900/40">
             <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
               <span>Suhu Udara</span>
               <Thermometer className="h-3.5 w-3.5 text-red-500" />
             </div>
-            <div className="text-base font-black text-red-600 dark:text-red-400 font-mono mt-1">{currentTemp}°C</div>
+            <div className="text-base font-black text-red-600 dark:text-red-400 font-mono mt-1">{currentTemp}</div>
           </div>
 
           {/* Titik Embun */}
@@ -390,7 +443,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
               <span>Titik Embun</span>
               <Droplets className="h-3.5 w-3.5 text-teal-500" />
             </div>
-            <div className="text-base font-black text-teal-600 dark:text-teal-400 font-mono mt-1">{currentDew}°C</div>
+            <div className="text-base font-black text-teal-600 dark:text-teal-400 font-mono mt-1">{currentDew}</div>
           </div>
 
           {/* Tekanan */}
@@ -399,16 +452,16 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
               <span>Tekanan</span>
               <Gauge className="h-3.5 w-3.5 text-indigo-500" />
             </div>
-            <div className="text-base font-black text-indigo-600 dark:text-indigo-400 font-mono mt-1">{currentPress} hPa</div>
+            <div className="text-base font-black text-indigo-600 dark:text-indigo-400 font-mono mt-1">{currentPress}</div>
           </div>
 
           {/* Hujan 7 Hari */}
           <div className="p-2.5 rounded-xl bg-cyan-50/60 dark:bg-cyan-950/20 border border-cyan-100 dark:border-cyan-900/40">
             <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <span>Total Hujan 7h</span>
+              <span>Hujan 7h</span>
               <CloudRain className="h-3.5 w-3.5 text-cyan-500" />
             </div>
-            <div className="text-base font-black text-cyan-600 dark:text-cyan-400 font-mono mt-1">{currentPrecip7d} mm</div>
+            <div className="text-base font-black text-cyan-600 dark:text-cyan-400 font-mono mt-1">{currentPrecip7d}</div>
           </div>
 
           {/* Kelembapan */}
@@ -417,36 +470,45 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
               <span>Kelembapan</span>
               <Waves className="h-3.5 w-3.5 text-blue-500" />
             </div>
-            <div className="text-base font-black text-blue-600 dark:text-blue-400 font-mono mt-1">{currentRh}%</div>
+            <div className="text-base font-black text-blue-600 dark:text-blue-400 font-mono mt-1">{currentRh}</div>
           </div>
 
           {/* Angin */}
           <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40">
             <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <span>Kecepatan Angin</span>
+              <span>Angin 10m</span>
               <Wind className="h-3.5 w-3.5 text-purple-500" />
             </div>
-            <div className="text-base font-black text-purple-600 dark:text-purple-400 font-mono mt-1">{currentWind} m/s</div>
+            <div className="text-base font-black text-purple-600 dark:text-purple-400 font-mono mt-1">{currentWind}</div>
+          </div>
+
+          {/* Tutupan Awan */}
+          <div className="p-2.5 rounded-xl bg-slate-100/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
+            <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
+              <span>Awan</span>
+              <Cloud className="h-3.5 w-3.5 text-slate-500" />
+            </div>
+            <div className="text-base font-black text-slate-700 dark:text-slate-200 font-mono mt-1">{currentCloud}</div>
           </div>
 
           {/* ET0 */}
           <div className="p-2.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
             <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <span>Total ET0 7h</span>
+              <span>ET0 7h</span>
               <Sprout className="h-3.5 w-3.5 text-emerald-500" />
             </div>
-            <div className="text-base font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1">{currentEt07d} mm</div>
+            <div className="text-base font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1">{currentEt07d}</div>
           </div>
         </div>
 
-        {/* 8-Variable Unified Responsive Tab Bar */}
+        {/* 9-Variable Unified Responsive Tab Bar */}
         <Tabs defaultValue="temperature" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4 gap-1">
+          <TabsList className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4 gap-1">
             <TabsTrigger value="temperature" className="py-2 text-xs font-bold flex items-center gap-1">
               <Thermometer className="h-3.5 w-3.5 text-red-500" /> Suhu
             </TabsTrigger>
-            <TabsTrigger value="dewpoint" className="py-2 text-xs font-bold flex items-center gap-1">
-              <Droplets className="h-3.5 w-3.5 text-teal-500" /> T. Embun
+            <TabsTrigger value="dewpoint" className={cn("py-2 text-xs font-bold flex items-center gap-1", isAiModel && "opacity-60")}>
+              <Droplets className="h-3.5 w-3.5 text-teal-500" /> T. Embun {isAiModel && <span className="text-[9px] font-normal text-slate-400">(N/A)</span>}
             </TabsTrigger>
             <TabsTrigger value="pressure" className="py-2 text-xs font-bold flex items-center gap-1">
               <Gauge className="h-3.5 w-3.5 text-indigo-500" /> Tekanan
@@ -454,17 +516,20 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
             <TabsTrigger value="precipitation" className="py-2 text-xs font-bold flex items-center gap-1">
               <CloudRain className="h-3.5 w-3.5 text-sky-500" /> Hujan
             </TabsTrigger>
-            <TabsTrigger value="humidity" className="py-2 text-xs font-bold flex items-center gap-1">
-              <Waves className="h-3.5 w-3.5 text-blue-500" /> Kel. (RH)
+            <TabsTrigger value="humidity" className={cn("py-2 text-xs font-bold flex items-center gap-1", isAiModel && "opacity-60")}>
+              <Waves className="h-3.5 w-3.5 text-blue-500" /> Kel. (RH) {isAiModel && <span className="text-[9px] font-normal text-slate-400">(N/A)</span>}
             </TabsTrigger>
             <TabsTrigger value="wind" className="py-2 text-xs font-bold flex items-center gap-1">
               <Wind className="h-3.5 w-3.5 text-purple-500" /> Angin
             </TabsTrigger>
-            <TabsTrigger value="solar" className="py-2 text-xs font-bold flex items-center gap-1">
-              <Sun className="h-3.5 w-3.5 text-amber-500" /> Radiasi
+            <TabsTrigger value="cloud" className="py-2 text-xs font-bold flex items-center gap-1">
+              <Cloud className="h-3.5 w-3.5 text-slate-500" /> Awan
             </TabsTrigger>
-            <TabsTrigger value="et0" className="py-2 text-xs font-bold flex items-center gap-1">
-              <Sprout className="h-3.5 w-3.5 text-emerald-500" /> ET0
+            <TabsTrigger value="solar" className={cn("py-2 text-xs font-bold flex items-center gap-1", isAiModel && "opacity-60")}>
+              <Sun className="h-3.5 w-3.5 text-amber-500" /> Radiasi {isAiModel && <span className="text-[9px] font-normal text-slate-400">(N/A)</span>}
+            </TabsTrigger>
+            <TabsTrigger value="et0" className={cn("py-2 text-xs font-bold flex items-center gap-1", isAiModel && "opacity-60")}>
+              <Sprout className="h-3.5 w-3.5 text-emerald-500" /> ET0 {isAiModel && <span className="text-[9px] font-normal text-slate-400">(N/A)</span>}
             </TabsTrigger>
           </TabsList>
 
@@ -503,24 +568,30 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
 
               {/* 2. Titik Embun */}
               <TabsContent value="dewpoint" className="mt-0 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <Droplets className="h-3.5 w-3.5 text-teal-500" />
-                    Pita Probabilitas Titik Embun ({currentModelMeta.label}):
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    Garis Hijau Kebiruan: Mean | Bayangan: Rentang 80% (P10–P90)
-                  </span>
-                </div>
-                <div className="h-[360px] w-full">
-                  <ReactECharts option={dewOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
-                  <Info className="h-4 w-4 text-teal-500 shrink-0" />
-                  <span>
-                    <strong>Catatan:</strong> Titik embun mendekati suhu udara malam (selisih &le; 1.5°C) memicu pembentukan embun pekat yang meningkatkan risiko spora jamur daun.
-                  </span>
-                </div>
+                {isAiModel ? (
+                  renderAiDisclaimer("Titik Embun")
+                ) : (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                        <Droplets className="h-3.5 w-3.5 text-teal-500" />
+                        Pita Probabilitas Titik Embun ({currentModelMeta.label}):
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        Garis Hijau Kebiruan: Mean | Bayangan: Rentang 80% (P10–P90)
+                      </span>
+                    </div>
+                    <div className="h-[360px] w-full">
+                      <ReactECharts option={dewOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
+                      <Info className="h-4 w-4 text-teal-500 shrink-0" />
+                      <span>
+                        <strong>Catatan:</strong> Titik embun mendekati suhu udara malam (selisih &le; 1.5°C) memicu pembentukan embun pekat yang meningkatkan risiko spora jamur daun.
+                      </span>
+                    </div>
+                  </>
+                )}
               </TabsContent>
 
               {/* 3. Tekanan Permukaan */}
@@ -569,24 +640,30 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
 
               {/* 5. Kelembapan Relatif */}
               <TabsContent value="humidity" className="mt-0 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <Waves className="h-3.5 w-3.5 text-blue-500" />
-                    Pita Probabilitas Kelembapan Udara RH ({currentModelMeta.label}):
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    Garis Biru: Mean | Bayangan: Rentang 80% (P10–P90)
-                  </span>
-                </div>
-                <div className="h-[360px] w-full">
-                  <ReactECharts option={rhOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
-                  <Info className="h-4 w-4 text-blue-500 shrink-0" />
-                  <span>
-                    <strong>Catatan:</strong> Kelembapan relatif &gt; 85% berkepanjangan meningkatkan kelembapan kanopi tanaman dan risiko penyakit bercak daun.
-                  </span>
-                </div>
+                {isAiModel ? (
+                  renderAiDisclaimer("Kelembapan Relatif (RH)")
+                ) : (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                        <Waves className="h-3.5 w-3.5 text-blue-500" />
+                        Pita Probabilitas Kelembapan Udara RH ({currentModelMeta.label}):
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        Garis Biru: Mean | Bayangan: Rentang 80% (P10–P90)
+                      </span>
+                    </div>
+                    <div className="h-[360px] w-full">
+                      <ReactECharts option={rhOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
+                      <Info className="h-4 w-4 text-blue-500 shrink-0" />
+                      <span>
+                        <strong>Catatan:</strong> Kelembapan relatif &gt; 85% berkepanjangan meningkatkan kelembapan kanopi tanaman dan risiko penyakit bercak daun.
+                      </span>
+                    </div>
+                  </>
+                )}
               </TabsContent>
 
               {/* 6. Kecepatan Angin */}
@@ -611,48 +688,82 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
                 </div>
               </TabsContent>
 
-              {/* 7. Radiasi Surya */}
-              <TabsContent value="solar" className="mt-0 space-y-3">
+              {/* 7. Tutupan Awan */}
+              <TabsContent value="cloud" className="mt-0 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
                   <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <Sun className="h-3.5 w-3.5 text-amber-500" />
-                    Pita Probabilitas Fluks Radiasi Surya ({currentModelMeta.label}):
+                    <Cloud className="h-3.5 w-3.5 text-slate-500" />
+                    Pita Probabilitas Tutupan Awan ({currentModelMeta.label}):
                   </span>
                   <span className="text-[11px] text-slate-400">
-                    Garis Kuning Amber: Mean | Bayangan: Rentang 80% (P10–P90)
+                    Garis Abu-abu Slate: Mean | Bayangan: Rentang 80% (P10–P90)
                   </span>
                 </div>
                 <div className="h-[360px] w-full">
-                  <ReactECharts option={solarOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
+                  <ReactECharts option={cloudOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
-                  <Info className="h-4 w-4 text-amber-500 shrink-0" />
+                  <Info className="h-4 w-4 text-slate-500 shrink-0" />
                   <span>
-                    <strong>Catatan:</strong> Fluks radiasi gelombang pendek menentukan laju fotosintesis netto dan akumulasi biomassa harian tanaman.
+                    <strong>Catatan:</strong> Tutupan awan tinggi (&gt; 70%) meredam insolasi radiasi surya langsung dan mengurangi fluktuasi suhu diurnal pada tajuk tanaman.
                   </span>
                 </div>
               </TabsContent>
 
-              {/* 8. Evapotranspirasi ET0 */}
+              {/* 8. Radiasi Surya */}
+              <TabsContent value="solar" className="mt-0 space-y-3">
+                {isAiModel ? (
+                  renderAiDisclaimer("Radiasi Surya Permukaan")
+                ) : (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                        <Sun className="h-3.5 w-3.5 text-amber-500" />
+                        Pita Probabilitas Fluks Radiasi Surya ({currentModelMeta.label}):
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        Garis Kuning Amber: Mean | Bayangan: Rentang 80% (P10–P90)
+                      </span>
+                    </div>
+                    <div className="h-[360px] w-full">
+                      <ReactECharts option={solarOption} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
+                      <Info className="h-4 w-4 text-amber-500 shrink-0" />
+                      <span>
+                        <strong>Catatan:</strong> Fluks radiasi gelombang pendek menentukan laju fotosintesis netto dan akumulasi biomassa harian tanaman.
+                      </span>
+                    </div>
+                  </>
+                )}
+              </TabsContent>
+
+              {/* 9. Evapotranspirasi ET0 */}
               <TabsContent value="et0" className="mt-0 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <Sprout className="h-3.5 w-3.5 text-emerald-500" />
-                    Pita Probabilitas Evapotranspirasi Potensial FAO Penman-Monteith ({currentModelMeta.label}):
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    Garis Hijau Emerald: Mean | Bayangan: Rentang 80% (P10–P90)
-                  </span>
-                </div>
-                <div className="h-[360px] w-full">
-                  <ReactECharts option={et0Option} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
-                  <Info className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <span>
-                    <strong>Catatan:</strong> Nilai ET0 menjadi acuan utama estimasi kebutuhan air irigasi harian tanaman untuk mencegah kekeringan zona akar.
-                  </span>
-                </div>
+                {isAiModel ? (
+                  renderAiDisclaimer("Evapotranspirasi Potensial ET0")
+                ) : (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                        <Sprout className="h-3.5 w-3.5 text-emerald-500" />
+                        Pita Probabilitas Evapotranspirasi Potensial FAO Penman-Monteith ({currentModelMeta.label}):
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        Garis Hijau Emerald: Mean | Bayangan: Rentang 80% (P10–P90)
+                      </span>
+                    </div>
+                    <div className="h-[360px] w-full">
+                      <ReactECharts option={et0Option} notMerge={true} lazyUpdate={true} style={{ height: "100%", width: "100%" }} />
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-center gap-2">
+                      <Info className="h-4 w-4 text-emerald-500 shrink-0" />
+                      <span>
+                        <strong>Catatan:</strong> Nilai ET0 menjadi acuan utama estimasi kebutuhan air irigasi harian tanaman untuk mencegah kekeringan zona akar.
+                      </span>
+                    </div>
+                  </>
+                )}
               </TabsContent>
             </>
           )}

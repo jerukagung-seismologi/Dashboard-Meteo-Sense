@@ -738,7 +738,7 @@ export default function KlimatologiPage() {
                 Analisis Agroklimatologi, Neraca Air Lahan & Proyeksi Ekosistem
               </h2>
               <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
-                Ketercukupan air lahan (P vs ET0) · Profil perakaran tanah · Prediksi ensemble ECMWF IFS (15 Hari) · Dinamika Monsun BMKG
+                Ketercukupan air lahan (P vs ET0) · Profil perakaran tanah · Prediksi ensemble ECMWF IFS &amp; Google WeatherNext 2 AI (64 Skenario) · Dinamika Monsun BMKG
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={handleRefreshAgromet} disabled={isAgrometLoading} className="h-8 px-3 text-xs border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 shrink-0">
@@ -1035,7 +1035,7 @@ export default function KlimatologiPage() {
                 </div>
               </div>
 
-              {/* 1c. Prediksi Ensemble 15 Hari ECMWF */}
+              {/* 1c. Prediksi Ensemble Multi-Model & Google WeatherNext 2 AI (ECMWF, GFS, ICON, AI 64-Member) */}
               {selectedSensorOption && (
                 <EnsembleAgrometSection lat={selectedSensorOption.lat} lon={selectedSensorOption.lng} isDarkMode={isDarkMode} />
               )}

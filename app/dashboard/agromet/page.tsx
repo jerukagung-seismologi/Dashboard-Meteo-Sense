@@ -276,7 +276,7 @@ export default function AgrometPage() {
                 <Sprout className="h-3 w-3 mr-1" /> Agrometeorologi &amp; Iklim Mikro Lahan
               </Badge>
               <Badge variant="outline" className="text-slate-300 border-white/20 text-[10px]">
-                ECMWF IFS Ensemble
+                ECMWF IFS &amp; Google WeatherNext 2 AI Ensemble
               </Badge>
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
@@ -284,7 +284,7 @@ export default function AgrometPage() {
               <span>Monitoring Lingkungan Tanaman &amp; Agrometeorologi</span>
             </h1>
             <p className="text-xs sm:text-sm text-emerald-100/80 leading-relaxed">
-              Pemantauan kondisi cuaca mikro pertanian, profil perakaran tanah, neraca air, dan prediksi ensemble 50 anggota.
+              Pemantauan kondisi cuaca mikro pertanian, profil perakaran tanah, neraca air, dan prediksi ensemble probabilistik multi-model hingga 64 skenario.
             </p>
           </div>
 
