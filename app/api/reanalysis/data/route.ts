@@ -84,7 +84,11 @@ export async function GET(request: Request) {
 
     // 2. If not fetched yet (or historical date > 5 days), fetch from Archive API (ERA5-Land)
     if (!rawData) {
-      const archiveUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=${variables.join(",")}&models=era5_land,era5&wind_speed_unit=ms&timezone=auto`;
+      const today = new Date();
+      const maxArchiveDate = new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+      const safeArchiveEnd = endDate > maxArchiveDate ? maxArchiveDate : endDate;
+      const safeArchiveStart = startDate > safeArchiveEnd ? safeArchiveEnd : startDate;
+      const archiveUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${safeArchiveStart}&end_date=${safeArchiveEnd}&hourly=${variables.join(",")}&models=era5_land,era5&wind_speed_unit=ms&timezone=auto`;
       console.log("Fetching ECMWF ERA5-Land Archive:", archiveUrl);
 
       const res = await fetch(archiveUrl);

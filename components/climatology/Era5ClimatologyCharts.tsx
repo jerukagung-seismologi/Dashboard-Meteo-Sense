@@ -29,6 +29,10 @@ import {
   Flame,
   Wind,
   AlertTriangle,
+  TrendingUp,
+  Waves,
+  BarChart2,
+  BoxSelect,
 } from "lucide-react";
 import type { ClimatologySummary } from "@/lib/reanalysis/climatology";
 import type { AggregatedPoint } from "@/lib/climatology/climatologyTypes";
@@ -58,6 +62,7 @@ interface Era5ClimatologyChartsProps {
 
 type ViewMode = "monthly" | "diurnal" | "extremes";
 type Parameter = "temperature" | "humidity" | "pressure" | "rainfall";
+type PercentilePlotType = "boxplot" | "ecdf" | "ribbon" | "bar";
 
 export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
   era5Data,
@@ -70,6 +75,7 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>("monthly");
   const [activeParam, setActiveParam] = useState<Parameter>("temperature");
+  const [percentilePlotType, setPercentilePlotType] = useState<PercentilePlotType>("boxplot");
 
   const textColor = isDarkMode ? "#cbd5e1" : "#475569";
   const titleColor = isDarkMode ? "#f1f5f9" : "#0f172a";
@@ -813,12 +819,592 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
     return computeClimateExtremes(stationPoints, era5Data);
   }, [stationPoints, era5Data]);
 
+  // 1. Hitung distribusi bulanan (Min, P5, Q1, Median, Q3, P95, Max, Outliers) untuk Box Plot & Fan Chart
+  const monthlyDistributions = useMemo(() => {
+    if (!era5Data?.hourly || !era5Data.hourly.times) return null;
+    const { times, temperature, humidity, pressure, rain, windSpeed } = era5Data.hourly;
+
+    const monthBuckets: {
+      [m: number]: {
+        temperature: number[];
+        humidity: number[];
+        pressure: number[];
+        rain: number[];
+        windSpeed: number[];
+      };
+    } = {};
+
+    for (let m = 0; m < 12; m++) {
+      monthBuckets[m] = { temperature: [], humidity: [], pressure: [], rain: [], windSpeed: [] };
+    }
+
+    times.forEach((tStr, idx) => {
+      const d = new Date(tStr);
+      const m = d.getUTCMonth();
+      if (m >= 0 && m < 12) {
+        if (Number.isFinite(temperature?.[idx])) monthBuckets[m].temperature.push(temperature[idx]);
+        if (Number.isFinite(humidity?.[idx])) monthBuckets[m].humidity.push(humidity[idx]);
+        if (Number.isFinite(pressure?.[idx])) monthBuckets[m].pressure.push(pressure[idx]);
+        if (Number.isFinite(rain?.[idx])) monthBuckets[m].rain.push(rain[idx]);
+        if (Number.isFinite(windSpeed?.[idx])) monthBuckets[m].windSpeed.push(windSpeed[idx]);
+      }
+    });
+
+    const calcBoxStats = (vals: number[]) => {
+      if (vals.length === 0) return null;
+      const sorted = [...vals].sort((a, b) => a - b);
+      const getP = (p: number) => {
+        const idx = Math.min(sorted.length - 1, Math.max(0, Math.floor((p / 100) * (sorted.length - 1))));
+        return Number(sorted[idx].toFixed(2));
+      };
+      const min = Number(sorted[0].toFixed(2));
+      const p5 = getP(5);
+      const q1 = getP(25);
+      const median = getP(50);
+      const q3 = getP(75);
+      const p95 = getP(95);
+      const p99 = getP(99);
+      const max = Number(sorted[sorted.length - 1].toFixed(2));
+
+      // Tukey 1.5*IQR whiskers
+      const iqr = Number((q3 - q1).toFixed(2));
+      const lowerFence = Math.max(min, Number((q1 - 1.5 * iqr).toFixed(2)));
+      const upperFence = Math.min(max, Number((q3 + 1.5 * iqr).toFixed(2)));
+
+      const outliers = sorted.filter((v) => v < lowerFence || v > upperFence);
+      // Sample max 12 outliers agar grafik tetap ringan dan informatif
+      const step = Math.max(1, Math.floor(outliers.length / 12));
+      const sampledOutliers = outliers.filter((_, i) => i % step === 0);
+
+      return {
+        min,
+        p5,
+        q1,
+        median,
+        q3,
+        p95,
+        p99,
+        max,
+        iqr,
+        lowerFence,
+        upperFence,
+        boxData: [lowerFence, q1, median, q3, upperFence],
+        outliers: sampledOutliers,
+      };
+    };
+
+    return {
+      temperature: Array.from({ length: 12 }, (_, m) => calcBoxStats(monthBuckets[m].temperature)),
+      humidity: Array.from({ length: 12 }, (_, m) => calcBoxStats(monthBuckets[m].humidity)),
+      pressure: Array.from({ length: 12 }, (_, m) => calcBoxStats(monthBuckets[m].pressure)),
+      rain: Array.from({ length: 12 }, (_, m) => calcBoxStats(monthBuckets[m].rain.filter((r) => r > 0.1))),
+      windSpeed: Array.from({ length: 12 }, (_, m) => calcBoxStats(monthBuckets[m].windSpeed)),
+    };
+  }, [era5Data]);
+
+  // 2. Data titik ECDF kontinu (0% s.d. 100%)
+  const ecdfData = useMemo(() => {
+    if (!era5Data?.hourly) return null;
+    let rawVals: number[] = [];
+    if (activeParam === "temperature") rawVals = era5Data.hourly.temperature || [];
+    else if (activeParam === "humidity") rawVals = era5Data.hourly.humidity || [];
+    else if (activeParam === "pressure") rawVals = era5Data.hourly.pressure || [];
+    else rawVals = (era5Data.hourly.rain || []).filter((r) => r > 0.1);
+
+    const valid = rawVals.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+    if (valid.length === 0) return [];
+
+    const points: [number, number][] = [];
+    for (let p = 0; p <= 100; p++) {
+      const idx = Math.min(valid.length - 1, Math.round((p / 100) * (valid.length - 1)));
+      points.push([Number(valid[idx].toFixed(2)), p]);
+    }
+    return points;
+  }, [era5Data, activeParam]);
+
   // Option generator for Extremes & Rekor View
   const extremesChartOption = useMemo(() => {
     if (!era5Data || !era5Percentiles) return {};
 
-    const p = era5Percentiles;
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
+    // Konfigurasi Parameter
+    let paramLabel = "Suhu Udara";
+    let unit = "°C";
+    let paramColor = "#ef4444";
+    let paramColorSoft = "rgba(239, 68, 68, 0.25)";
+    let paramBgColor = isDarkMode ? "rgba(239, 68, 68, 0.2)" : "rgba(239, 68, 68, 0.12)";
+
+    if (activeParam === "humidity") {
+      paramLabel = "Kelembaban Relatif";
+      unit = "%";
+      paramColor = "#0284c7";
+      paramColorSoft = "rgba(2, 132, 199, 0.25)";
+      paramBgColor = isDarkMode ? "rgba(2, 132, 199, 0.2)" : "rgba(2, 132, 199, 0.12)";
+    } else if (activeParam === "pressure") {
+      paramLabel = "Tekanan MSL";
+      unit = "hPa";
+      paramColor = "#9333ea";
+      paramColorSoft = "rgba(147, 51, 234, 0.25)";
+      paramBgColor = isDarkMode ? "rgba(147, 51, 234, 0.2)" : "rgba(147, 51, 234, 0.12)";
+    } else if (activeParam === "rainfall") {
+      paramLabel = "Intensitas Hujan (>0.1 mm/jam)";
+      unit = "mm/jam";
+      paramColor = "#0d9488";
+      paramColorSoft = "rgba(13, 148, 136, 0.25)";
+      paramBgColor = isDarkMode ? "rgba(13, 148, 136, 0.2)" : "rgba(13, 148, 136, 0.12)";
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // MODEL 1: BOX-AND-WHISKER PLOT WMO (12 BULAN)
+    // ─────────────────────────────────────────────────────────────────────────────
+    if (percentilePlotType === "boxplot" && monthlyDistributions) {
+      const paramDist =
+        activeParam === "temperature"
+          ? monthlyDistributions.temperature
+          : activeParam === "humidity"
+          ? monthlyDistributions.humidity
+          : activeParam === "pressure"
+          ? monthlyDistributions.pressure
+          : monthlyDistributions.rain;
+
+      const boxData = paramDist.map((item) => (item ? item.boxData : [null, null, null, null, null]));
+
+      const outlierData: [number, number][] = [];
+      paramDist.forEach((item, monthIdx) => {
+        if (item && item.outliers) {
+          item.outliers.forEach((val) => {
+            outlierData.push([monthIdx, val]);
+          });
+        }
+      });
+
+      return {
+        tooltip: {
+          trigger: "item",
+          backgroundColor: tooltipBg,
+          borderColor: tooltipBorder,
+          textStyle: { color: textColor },
+          formatter: (param: any) => {
+            if (param.seriesType === "boxplot") {
+              const mIdx = param.dataIndex;
+              const stat = paramDist[mIdx];
+              if (!stat) return "";
+              return `
+                <div style="font-family: inherit; font-size: 12px; padding: 4px; min-width: 210px;">
+                  <div style="font-weight: 800; border-bottom: 1px solid ${gridColor}; padding-bottom: 4px; margin-bottom: 6px; color: ${titleColor};">
+                    ${monthNames[mIdx]} — Boxplot ${paramLabel}
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 3px;">
+                    <div style="display: flex; justify-content: space-between;">
+                      <span style="color:#ef4444">Whisker Atas (Maks Wajar):</span>
+                      <strong>${stat.upperFence} ${unit}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                      <span style="color:#f59e0b">Kuartil Atas (Q3 / P75):</span>
+                      <strong>${stat.q3} ${unit}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                      <span style="color:${paramColor}; font-weight: bold;">● Median Iklim (P50):</span>
+                      <strong>${stat.median} ${unit}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                      <span style="color:#0284c7">Kuartil Bawah (Q1 / P25):</span>
+                      <strong>${stat.q1} ${unit}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                      <span style="color:#3b82f6">Whisker Bawah (Min Wajar):</span>
+                      <strong>${stat.lowerFence} ${unit}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed ${gridColor}; padding-top: 4px; margin-top: 2px;">
+                      <span style="color:#64748b">Rentang Interkuartil (IQR):</span>
+                      <strong>${stat.iqr} ${unit}</strong>
+                    </div>
+                    <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">
+                      Ekstrem Absolut: ${stat.min} s.d. ${stat.max} ${unit}
+                    </div>
+                  </div>
+                </div>
+              `;
+            } else {
+              return `
+                <div style="font-size: 11px; padding: 2px;">
+                  <span style="color: #ef4444; font-weight: bold;">● Pencilan Ekstrem (Outlier):</span>
+                  <b>${param.data[1]} ${unit}</b> (${monthNames[param.data[0]]})
+                </div>
+              `;
+            }
+          },
+        },
+        grid: { left: "4%", right: "4%", top: "12%", bottom: "14%", containLabel: true },
+        xAxis: {
+          type: "category",
+          data: monthNames,
+          axisLabel: { color: textColor, fontWeight: "bold" },
+          axisLine: { lineStyle: { color: textColor } },
+        },
+        yAxis: {
+          type: "value",
+          name: `${paramLabel} (${unit})`,
+          nameTextStyle: { color: textColor, fontSize: 11, fontWeight: "bold" },
+          axisLabel: { color: textColor, formatter: `{value} ${unit}` },
+          splitLine: { lineStyle: { color: gridColor } },
+          scale: true,
+        },
+        series: [
+          {
+            name: `Boxplot ${paramLabel}`,
+            type: "boxplot",
+            data: boxData,
+            itemStyle: {
+              color: paramBgColor,
+              borderColor: paramColor,
+              borderWidth: 2,
+            },
+            emphasis: {
+              itemStyle: {
+                borderWidth: 3,
+                shadowBlur: 10,
+                shadowColor: "rgba(0,0,0,0.15)",
+              },
+            },
+          },
+          {
+            name: "Pencilan Ekstrem (>1.5×IQR)",
+            type: "scatter",
+            data: outlierData,
+            itemStyle: { color: "#ef4444" },
+            symbolSize: 6,
+          },
+        ],
+      };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // MODEL 2: KURVA PERSENTIL KUMULATIF (ECDF)
+    // ─────────────────────────────────────────────────────────────────────────────
+    if (percentilePlotType === "ecdf" && ecdfData && ecdfData.length > 0) {
+      const pVals = era5Percentiles[activeParam === "rainfall" ? "rain" : activeParam];
+      return {
+        tooltip: {
+          trigger: "axis",
+          backgroundColor: tooltipBg,
+          borderColor: tooltipBorder,
+          textStyle: { color: textColor },
+          formatter: (params: any[]) => {
+            const item = params[0];
+            const val = item.data[0];
+            const pct = item.data[1];
+            return `
+              <div style="font-family: inherit; font-size: 12px; padding: 4px; min-width: 220px;">
+                <div style="font-weight: 800; border-bottom: 1px solid ${gridColor}; padding-bottom: 4px; margin-bottom: 6px; color: ${titleColor};">
+                  Fungsi Distribusi Kumulatif (ECDF)
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <div style="display: flex; justify-content: space-between;">
+                    <span style="color:${paramColor}; font-weight: 600;">Nilai ${paramLabel}:</span>
+                    <strong style="color:${paramColor}">${val} ${unit}</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span style="color:#6366f1; font-weight: 600;">Persentil Kumulatif:</span>
+                    <strong style="color:#6366f1">${pct}%</strong>
+                  </div>
+                  <div style="font-size: 11px; color: #64748b; background: ${
+                    isDarkMode ? "rgba(30,41,59,0.7)" : "rgba(241,245,249,0.9)"
+                  }; padding: 4px 6px; border-radius: 4px; margin-top: 2px;">
+                    Sebanyak <strong>${pct}%</strong> waktu bernilai ≤ ${val} ${unit}, dan <strong>${(100 - pct).toFixed(
+                      1
+                    )}%</strong> waktu melampaui nilai ini.
+                  </div>
+                </div>
+              </div>
+            `;
+          },
+        },
+        grid: { left: "4%", right: "6%", top: "12%", bottom: "14%", containLabel: true },
+        xAxis: {
+          type: "value",
+          name: `${paramLabel} (${unit})`,
+          nameTextStyle: { color: textColor, fontSize: 11, fontWeight: "bold" },
+          axisLabel: { color: textColor, formatter: `{value} ${unit}` },
+          splitLine: { lineStyle: { color: gridColor } },
+          scale: true,
+        },
+        yAxis: {
+          type: "value",
+          name: "Persentil Kumulatif (%)",
+          min: 0,
+          max: 100,
+          interval: 20,
+          nameTextStyle: { color: textColor, fontSize: 11, fontWeight: "bold" },
+          axisLabel: { color: textColor, formatter: "{value}%" },
+          splitLine: { lineStyle: { color: gridColor } },
+        },
+        series: [
+          {
+            name: `ECDF ${paramLabel}`,
+            type: "line",
+            data: ecdfData,
+            smooth: true,
+            symbol: "none",
+            lineStyle: { width: 3, color: paramColor },
+            areaStyle: {
+              color: {
+                type: "linear",
+                x: 0,
+                y: 0,
+                x2: 0,
+                y2: 1,
+                colorStops: [
+                  { offset: 0, color: paramColorSoft },
+                  { offset: 1, color: "rgba(99, 102, 241, 0.01)" },
+                ],
+              },
+            },
+            markLine: {
+              symbol: "none",
+              data: [
+                {
+                  yAxis: 25,
+                  lineStyle: { color: "#38bdf8", type: "dashed", width: 1.5 },
+                  label: { formatter: "P25 (Q1: 25%)", position: "insideEndTop", fontSize: 10, color: "#38bdf8" },
+                },
+                {
+                  yAxis: 50,
+                  lineStyle: { color: "#6366f1", type: "solid", width: 2 },
+                  label: {
+                    formatter: "P50 (Median: 50%)",
+                    position: "insideEndTop",
+                    fontSize: 10,
+                    color: "#6366f1",
+                    fontWeight: "bold",
+                  },
+                },
+                {
+                  yAxis: 75,
+                  lineStyle: { color: "#f59e0b", type: "dashed", width: 1.5 },
+                  label: { formatter: "P75 (Q3: 75%)", position: "insideEndTop", fontSize: 10, color: "#f59e0b" },
+                },
+                {
+                  yAxis: 95,
+                  lineStyle: { color: "#ef4444", type: "dashed", width: 2 },
+                  label: {
+                    formatter: "P95 (Ambang Ekstrem WMO: 95%)",
+                    position: "insideEndTop",
+                    fontSize: 10,
+                    color: "#ef4444",
+                    fontWeight: "bold",
+                  },
+                },
+                {
+                  yAxis: 99,
+                  lineStyle: { color: "#b91c1c", type: "dashed", width: 2 },
+                  label: {
+                    formatter: "P99 (Ekstrem Kritis: 99%)",
+                    position: "insideEndTop",
+                    fontSize: 10,
+                    color: "#b91c1c",
+                    fontWeight: "bold",
+                  },
+                },
+              ],
+            },
+            markPoint: pVals
+              ? {
+                  symbol: "circle",
+                  symbolSize: 8,
+                  data: [
+                    {
+                      coord: [pVals.p50, 50],
+                      value: `P50: ${pVals.p50}`,
+                      itemStyle: { color: "#6366f1" },
+                      label: { position: "right", color: textColor, fontSize: 10, fontWeight: "bold" },
+                    },
+                    {
+                      coord: [pVals.p95, 95],
+                      value: `P95: ${pVals.p95}`,
+                      itemStyle: { color: "#ef4444" },
+                      label: { position: "left", color: textColor, fontSize: 10, fontWeight: "bold" },
+                    },
+                  ],
+                }
+              : undefined,
+          },
+        ],
+      };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // MODEL 3: PITA PERSENTIL IKLIM (FAN CHART / PERCENTILE RIBBON)
+    // ─────────────────────────────────────────────────────────────────────────────
+    if (percentilePlotType === "ribbon" && monthlyDistributions) {
+      const paramDist =
+        activeParam === "temperature"
+          ? monthlyDistributions.temperature
+          : activeParam === "humidity"
+          ? monthlyDistributions.humidity
+          : activeParam === "pressure"
+          ? monthlyDistributions.pressure
+          : monthlyDistributions.rain;
+
+      const p5Arr = paramDist.map((d) => (d ? d.p5 : null));
+      const p25Arr = paramDist.map((d) => (d ? d.q1 : null));
+      const p50Arr = paramDist.map((d) => (d ? d.median : null));
+      const maxArr = paramDist.map((d) => (d ? d.max : null));
+      const minArr = paramDist.map((d) => (d ? d.min : null));
+
+      const outerBandHeight = paramDist.map((d) => (d ? Number((d.p95 - d.p5).toFixed(2)) : null));
+      const innerBandHeight = paramDist.map((d) => (d ? Number((d.q3 - d.q1).toFixed(2)) : null));
+
+      return {
+        tooltip: {
+          trigger: "axis",
+          backgroundColor: tooltipBg,
+          borderColor: tooltipBorder,
+          textStyle: { color: textColor },
+          formatter: (params: any[]) => {
+            if (!params || params.length === 0) return "";
+            const mIdx = params[0].dataIndex;
+            const stat = paramDist[mIdx];
+            if (!stat) return "";
+            return `
+              <div style="font-family: inherit; font-size: 12px; padding: 4px; min-width: 220px;">
+                <div style="font-weight: 800; border-bottom: 1px solid ${gridColor}; padding-bottom: 4px; margin-bottom: 6px; color: ${titleColor};">
+                  ${monthNames[mIdx]} — Pita Persentil Iklim (Fan Chart)
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 3px;">
+                  <div style="display: flex; justify-content: space-between;">
+                    <span style="color:#ef4444">Rekor Maksimum:</span>
+                    <strong>${stat.max} ${unit}</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span style="color:#f59e0b">Batas Atas Iklim (P95):</span>
+                    <strong>${stat.p95} ${unit}</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span style="color:#10b981">Kuartil Atas (P75):</span>
+                    <strong>${stat.q3} ${unit}</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span style="color:${paramColor}; font-weight: bold;">● Median Iklim (P50):</span>
+                    <strong>${stat.median} ${unit}</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span style="color:#06b6d4">Kuartil Bawah (P25):</span>
+                    <strong>${stat.q1} ${unit}</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span style="color:#3b82f6">Batas Bawah Iklim (P5):</span>
+                    <strong>${stat.p5} ${unit}</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span style="color:#64748b">Rekor Minimum:</span>
+                    <strong>${stat.min} ${unit}</strong>
+                  </div>
+                </div>
+              </div>
+            `;
+          },
+        },
+        legend: {
+          data: ["Median (P50)", "Rentang IQR (P25–P75)", "Rentang Iklim (P5–P95)", "Rekor Maksimum", "Rekor Minimum"],
+          textStyle: { color: textColor, fontSize: 11 },
+          top: "2%",
+        },
+        grid: { left: "4%", right: "4%", top: "14%", bottom: "14%", containLabel: true },
+        xAxis: {
+          type: "category",
+          data: monthNames,
+          axisLabel: { color: textColor, fontWeight: "bold" },
+          axisLine: { lineStyle: { color: textColor } },
+        },
+        yAxis: {
+          type: "value",
+          name: `${paramLabel} (${unit})`,
+          nameTextStyle: { color: textColor, fontSize: 11, fontWeight: "bold" },
+          axisLabel: { color: textColor, formatter: `{value} ${unit}` },
+          splitLine: { lineStyle: { color: gridColor } },
+          scale: true,
+        },
+        series: [
+          {
+            name: "Base P5",
+            type: "line",
+            stack: "outerBand",
+            data: p5Arr,
+            lineStyle: { opacity: 0 },
+            areaStyle: { opacity: 0 },
+            symbol: "none",
+            showSymbol: false,
+          },
+          {
+            name: "Rentang Iklim (P5–P95)",
+            type: "line",
+            stack: "outerBand",
+            data: outerBandHeight,
+            lineStyle: { opacity: 0 },
+            areaStyle: {
+              color: isDarkMode ? "rgba(99, 102, 241, 0.15)" : "rgba(99, 102, 241, 0.12)",
+            },
+            symbol: "none",
+            showSymbol: false,
+          },
+          {
+            name: "Base P25",
+            type: "line",
+            stack: "innerBand",
+            data: p25Arr,
+            lineStyle: { opacity: 0 },
+            areaStyle: { opacity: 0 },
+            symbol: "none",
+            showSymbol: false,
+          },
+          {
+            name: "Rentang IQR (P25–P75)",
+            type: "line",
+            stack: "innerBand",
+            data: innerBandHeight,
+            lineStyle: { opacity: 0 },
+            areaStyle: {
+              color: isDarkMode ? "rgba(99, 102, 241, 0.35)" : "rgba(99, 102, 241, 0.25)",
+            },
+            symbol: "none",
+            showSymbol: false,
+          },
+          {
+            name: "Median (P50)",
+            type: "line",
+            data: p50Arr,
+            smooth: true,
+            symbol: "circle",
+            symbolSize: 6,
+            lineStyle: { width: 3, color: paramColor },
+            itemStyle: { color: paramColor },
+          },
+          {
+            name: "Rekor Maksimum",
+            type: "line",
+            data: maxArr,
+            smooth: true,
+            symbol: "none",
+            lineStyle: { width: 1.5, type: "dashed", color: "#ef4444" },
+          },
+          {
+            name: "Rekor Minimum",
+            type: "line",
+            data: minArr,
+            smooth: true,
+            symbol: "none",
+            lineStyle: { width: 1.5, type: "dashed", color: "#0284c7" },
+          },
+        ],
+      };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // MODEL 4 (FALLBACK / ALTERNATIF): DIAGRAM BATANG PERSENTIL
+    // ─────────────────────────────────────────────────────────────────────────────
+    const p = era5Percentiles;
     if (activeParam === "temperature") {
       const { min, p5, p25, p50, p75, p95, p99, max } = p.temperature;
       const categories = [
@@ -829,7 +1415,7 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
         "P75 (Kuartil Atas)",
         "P95 (Sangat Hangat)",
         "P99 (Ekstrem Panas)",
-        "Maks Absolut"
+        "Maks Absolut",
       ];
       const vals = [min, p5, p25, p50, p75, p95, p99, max];
       const yMin = Math.floor(min - 1);
@@ -841,7 +1427,7 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
           backgroundColor: tooltipBg,
           borderColor: tooltipBorder,
           textStyle: { color: textColor },
-          formatter: (params: any) => {
+          formatter: (params: any[]) => {
             const item = params[0];
             return `<div class="font-bold border-b pb-1 mb-1" style="color:${titleColor}">Distribusi Ekstrem Suhu ERA5</div>
                     <div class="text-xs py-0.5">
@@ -898,7 +1484,7 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
         "P75 (Kuartil Atas)",
         "P95 (Sangat Lembap)",
         "P99 (Jenuh)",
-        "Maks Absolut"
+        "Maks Absolut",
       ];
       const vals = [min, p5, p25, p50, p75, p95, p99, max];
 
@@ -908,7 +1494,7 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
           backgroundColor: tooltipBg,
           borderColor: tooltipBorder,
           textStyle: { color: textColor },
-          formatter: (params: any) => {
+          formatter: (params: any[]) => {
             const item = params[0];
             return `<div class="font-bold border-b pb-1 mb-1" style="color:${titleColor}">Distribusi Kelembaban Relatif ERA5</div>
                     <div class="text-xs py-0.5">
@@ -964,7 +1550,7 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
         "P75 (Kuartil Atas)",
         "P95 (Tekanan Tinggi)",
         "P99 (Pusat Antisiklon)",
-        "Maks Absolut"
+        "Maks Absolut",
       ];
       const vals = [min, p5, p25, p50, p75, p95, p99, max];
 
@@ -974,12 +1560,12 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
           backgroundColor: tooltipBg,
           borderColor: tooltipBorder,
           textStyle: { color: textColor },
-          formatter: (params: any) => {
+          formatter: (params: any[]) => {
             const item = params[0];
             return `<div class="font-bold border-b pb-1 mb-1" style="color:${titleColor}">Distribusi Tekanan Udara ERA5</div>
                     <div class="text-xs py-0.5">
                       <span>${item.name}: </span>
-                      <span class="font-bold text-pink-500">${item.value} hPa</span>
+                      <span class="font-bold text-purple-500">${item.value} hPa</span>
                     </div>`;
           },
         },
@@ -993,10 +1579,10 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
           type: "value",
           name: "Tekanan MSL (hPa)",
           nameTextStyle: { color: textColor, fontSize: 11 },
-          axisLabel: { color: textColor, formatter: "{value} hPa" },
+          axisLabel: { color: textColor, formatter: "{value}" },
           splitLine: { lineStyle: { color: gridColor } },
-          min: Math.floor(min - 1),
-          max: Math.ceil(max + 1),
+          min: Math.floor(min - 2),
+          max: Math.ceil(max + 2),
           scale: true,
         },
         series: [
@@ -1034,13 +1620,9 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
         "Gust P99",
         "Puncak Gust ERA5",
         "Hujan Jam P99",
-        "Hujan Jam Maks"
+        "Hujan Jam Maks",
       ];
-      const vals = [
-        p95Wind, p99Wind, maxWind,
-        p95Gust, p99Gust, maxGust,
-        p99Rain, maxRain
-      ];
+      const vals = [p95Wind, p99Wind, maxWind, p95Gust, p99Gust, maxGust, p99Rain, maxRain];
 
       return {
         tooltip: {
@@ -1048,13 +1630,13 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
           backgroundColor: tooltipBg,
           borderColor: tooltipBorder,
           textStyle: { color: textColor },
-          formatter: (params: any) => {
+          formatter: (params: any[]) => {
             const item = params[0];
-            const unit = item.name.includes("Hujan") ? "mm" : "m/s";
+            const u = item.name.includes("Hujan") ? "mm" : "m/s";
             return `<div class="font-bold border-b pb-1 mb-1" style="color:${titleColor}">Nilai Ekstrem Angin & Hujan</div>
                     <div class="text-xs py-0.5">
                       <span>${item.name}: </span>
-                      <span class="font-bold text-teal-500">${item.value} ${unit}</span>
+                      <span class="font-bold text-teal-500">${item.value} ${u}</span>
                     </div>`;
           },
         },
@@ -1095,7 +1677,20 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
         ],
       };
     }
-  }, [era5Data, era5Percentiles, activeParam, textColor, titleColor, gridColor, tooltipBg, tooltipBorder]);
+  }, [
+    era5Data,
+    era5Percentiles,
+    monthlyDistributions,
+    ecdfData,
+    percentilePlotType,
+    activeParam,
+    isDarkMode,
+    textColor,
+    titleColor,
+    gridColor,
+    tooltipBg,
+    tooltipBorder,
+  ]);
 
   if (isLoading) {
     return (
@@ -1284,12 +1879,12 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
                 onClick={() => setViewMode("extremes")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition duration-150 ${
                   viewMode === "extremes"
-                    ? "bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 shadow-sm font-bold"
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
                 }`}
               >
-                <Flame className="h-3.5 w-3.5 text-red-500" />
-                Rekor & Ekstrem ERA5
+                <TrendingUp className="h-3.5 w-3.5 text-indigo-500" />
+                Persentil &amp; Distribusi WMO
               </button>
             </div>
           </div>
@@ -1352,6 +1947,76 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
               <CloudRain className="h-3.5 w-3.5" /> {viewMode === "monthly" ? "Curah Hujan Bulanan" : viewMode === "diurnal" ? "Hujan & Angin Diurnal" : "Ekstrem Hujan & Angin"}
             </Button>
           </div>
+
+          {/* Sub-Mode Selector for Percentile Analytics */}
+          {viewMode === "extremes" && (
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-3 mt-1 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <BoxSelect className="h-3.5 w-3.5 text-indigo-500" /> Model Plot Persentil:
+                </span>
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setPercentilePlotType("boxplot")}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition ${
+                      percentilePlotType === "boxplot"
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                    }`}
+                  >
+                    <span>📦 Box Plot WMO (12-Bulan)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPercentilePlotType("ecdf")}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition ${
+                      percentilePlotType === "ecdf"
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                    }`}
+                  >
+                    <TrendingUp className="h-3 w-3" />
+                    <span>Kurva Kumulatif (ECDF)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPercentilePlotType("ribbon")}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition ${
+                      percentilePlotType === "ribbon"
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                    }`}
+                  >
+                    <Waves className="h-3 w-3" />
+                    <span>Pita Persentil (Fan Chart)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPercentilePlotType("bar")}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition ${
+                      percentilePlotType === "bar"
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                    }`}
+                  >
+                    <BarChart2 className="h-3 w-3" />
+                    <span>Distribusi Batang</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                <Info className="h-3.5 w-3.5 text-indigo-500" />
+                <span>
+                  {percentilePlotType === "boxplot" && "Menampilkan distribusi kuartil (Q1–Q3), median (P50), dan pencilan ekstrem per bulan."}
+                  {percentilePlotType === "ecdf" && "Fungsi distribusi kumulatif kontinu (0–100%) dengan acuan kuartil & ambang ekstrem."}
+                  {percentilePlotType === "ribbon" && "Pita amplop klimatologi ECMWF: Rentang 90% (P5–P95) dan Interkuartil (P25–P75)."}
+                  {percentilePlotType === "bar" && "Nilai persentil diskrit dalam diagram batang."}
+                </span>
+              </div>
+            </div>
+          )}
         </CardHeader>
 
         <CardContent className="p-4 sm:p-6">
@@ -1484,15 +2149,25 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
                 </table>
               </div>
 
-              {/* Explanatory note for Climatology Extremes */}
-              <div className="p-3 bg-red-50/50 dark:bg-red-950/20 rounded-lg border border-red-200/60 dark:border-red-900/30 text-xs text-slate-600 dark:text-slate-400 flex items-start gap-2.5">
-                <Info className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-semibold text-slate-800 dark:text-slate-200">
-                    Konsep Ilmiah: Mengapa Analisis Klimatologi Menggunakan Skala Minimal Dasarian / Bulanan?
+              {/* Explanatory note for Climatology Extremes & Percentile Models */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 text-xs">
+                <div className="p-3 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-lg border border-indigo-200/60 dark:border-indigo-900/40 space-y-1">
+                  <p className="font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                    <Info className="h-4 w-4 text-indigo-500" />
+                    Standar Visualisasi Persentil (WMO No. 1203 &amp; ECMWF)
                   </p>
-                  <p>
-                    Iklim didefinisikan oleh WMO sebagai sintesis statistik jangka panjang kondisi atmosfer. Variasi skala harian merupakan fluktuasi cuaca sesaat (noise). Analisis iklim ekstrem menggunakan batas persentil (P95 atau P99) yang dihitung dari agregasi Dasarian (10 hari), Bulanan, atau Tahunan guna mengidentifikasi anomali cuaca yang persisten, gelombang panas (heatwaves), atau kekeringan berkepanjangan (CDD).
+                  <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
+                    Alih-alih diagram batang yang kurang merepresentasikan sebaran, klimatologi modern menggunakan <strong>Box Plot</strong> (meringkas 5-angka kuartil &amp; pencilan), <strong>Kurva ECDF</strong> (fungsi probabilitas kumulatif 0–100% kontinu), dan <strong>Fan Chart</strong> (pita amplop variabilitas iklim) untuk memantau nilai normal vs ekstrem secara presisi.
+                  </p>
+                </div>
+
+                <div className="p-3 bg-red-50/60 dark:bg-red-950/30 rounded-lg border border-red-200/60 dark:border-red-900/40 space-y-1">
+                  <p className="font-bold text-red-950 dark:text-red-200 flex items-center gap-1.5">
+                    <Flame className="h-4 w-4 text-red-500" />
+                    Ambang Batas Cuaca Ekstrem P95 &amp; P99
+                  </p>
+                  <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
+                    Sesuai panduan BMKG dan ETCCDI, persentil ke-95 (P95) dan ke-99 (P99) digunakan sebagai ambang matematis cuaca ekstrem (misal hari sangat panas <em>TX90p/TX95p</em> atau hari hujan sangat lebat <em>R95p/R99p</em>). Nilai di atas ambang ini hanya terjadi 1%–5% sepanjang waktu pengamatan.
                   </p>
                 </div>
               </div>
