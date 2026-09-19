@@ -30,8 +30,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    // 1. Ambil 30-Tahun WMO Normal (1991-2020)
-    const normals = await getWmo30YearNormals(lat, lng);
+    // 1. Ambil WMO Normal 1991-2020 DAN data mutakhir 2021-sekarang secara PARALEL
+    //    → hemat ~50% waktu dibanding sekuensial, karena keduanya adalah I/O bound HTTP
+    const [normals, recentMonthlyData] = await Promise.all([
+      getWmo30YearNormals(lat, lng),
+      fetchRecentMonthlyPrecip(lat, lng, 2021),
+    ]);
 
     // 2. Hitung Klasifikasi Iklim Komprehensif (Oldeman, Schmidt-Ferguson, Köppen)
     const monthlyRainfall = normals.monthly.map((m) => m.precipMean);
@@ -49,9 +53,6 @@ export async function GET(request: Request) {
         baselineMonthlyData.push({ dateStr: `${yr}-${mStr}`, rainSum: val });
       }
     }
-
-    // Ambil data presipitasi bulanan 2021 s.d. bulan lalu dari Open-Meteo Archive
-    const recentMonthlyData = await fetchRecentMonthlyPrecip(lat, lng, 2021);
 
     // Gabungkan: baseline 2016-2020 + data mutakhir 2021-sekarang
     const fullSpiData = [...baselineMonthlyData, ...recentMonthlyData];
