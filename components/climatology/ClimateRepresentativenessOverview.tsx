@@ -46,6 +46,7 @@ interface ClimateRepresentativenessOverviewProps {
   soilMoistureRoot?: number;
   vpd?: number;
   era5Elevation?: number;
+  locationMode?: "station" | "region";
 }
 
 export const ClimateRepresentativenessOverview: React.FC<ClimateRepresentativenessOverviewProps> = ({
@@ -66,7 +67,9 @@ export const ClimateRepresentativenessOverview: React.FC<ClimateRepresentativene
   soilMoistureRoot = 0,
   vpd = 0,
   era5Elevation,
+  locationMode = "station",
 }) => {
+  const isRegion = locationMode === "region";
   // 1. Deteksi Pola Iklim Wilayah
   const regimeInfo = useMemo(() => {
     return detectIndonesianClimateRegime(coordinates.lat, coordinates.lng, selectedMonth);
@@ -121,16 +124,16 @@ export const ClimateRepresentativenessOverview: React.FC<ClimateRepresentativene
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-teal-800/40 pb-4">
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge className="bg-teal-500/20 text-teal-300 border-teal-400/40 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 py-0.5 px-2.5">
-                  <ShieldCheck className="h-3.5 w-3.5 text-teal-400" />
-                  Sintesis Keterwakilan Iklim Standar BMKG & WMO
+                <Badge className={isRegion ? "bg-indigo-500/20 text-indigo-300 border-indigo-400/40 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 py-0.5 px-2.5" : "bg-teal-500/20 text-teal-300 border-teal-400/40 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 py-0.5 px-2.5"}>
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  {isRegion ? "Sintesis Iklim Regional Standar WMO & BMKG" : "Sintesis Keterwakilan Iklim Standar BMKG & WMO"}
                 </Badge>
                 <Badge variant="outline" className="text-[10px] font-semibold text-slate-300 border-slate-700 bg-slate-800/60">
                   {periodLabel}
                 </Badge>
                 <span className="text-[11px] text-teal-200/80 flex items-center gap-1 font-medium">
                   <MapPin className="h-3 w-3 text-teal-400" />
-                  {stationName} ({coordinates.lat.toFixed(3)}°, {coordinates.lng.toFixed(3)}°)
+                  {isRegion ? "Wilayah: " : "Stasiun: "}{stationName} ({coordinates.lat.toFixed(3)}°, {coordinates.lng.toFixed(3)}°)
                   {era5Elevation != null && (
                     <span className="text-slate-400 text-[10px]">· Alt ~{era5Elevation} m dpl</span>
                   )}
@@ -138,21 +141,23 @@ export const ClimateRepresentativenessOverview: React.FC<ClimateRepresentativene
               </div>
               <h2 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2.5">
                 <Compass className="h-5 w-5 text-teal-400" />
-                Profil Keterwakilan Iklim & Tolok Ukur Anomali
+                {isRegion ? "Profil Klimatologi & Karakteristik Wilayah Regional" : "Profil Keterwakilan Iklim & Tolok Ukur Anomali"}
               </h2>
             </div>
 
             {/* Quality badge right side */}
             <div className="flex items-center gap-3 bg-slate-950/60 p-2.5 rounded-xl border border-teal-900/60 shrink-0">
               <div className="space-y-0.5 text-right">
-                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Validitas Data Stasiun</div>
+                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                  {isRegion ? "Basis Data Spasial" : "Validitas Data Stasiun"}
+                </div>
                 <div className="text-xs font-bold text-emerald-400 flex items-center justify-end gap-1.5">
                   <Sparkles className="h-3 w-3" />
-                  {completeness.qualityLevel} ({completeness.percentage}%)
+                  {isRegion ? "ECMWF ERA5 & WMO" : `${completeness.qualityLevel} (${completeness.percentage}%)`}
                 </div>
               </div>
               <div className="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-mono font-bold text-xs border border-emerald-400/30">
-                {completeness.percentage}%
+                {isRegion ? "9km" : `${completeness.percentage}%`}
               </div>
             </div>
           </div>
@@ -176,56 +181,98 @@ export const ClimateRepresentativenessOverview: React.FC<ClimateRepresentativene
               </div>
             </div>
 
-            {/* 2. Sifat Hujan BMKG */}
+            {/* 2. Sifat Hujan BMKG (Station) atau Normal Curah Hujan Regional (Region) */}
             <div className="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-teal-500/50 transition">
               <div className="flex justify-between items-start">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Sifat Hujan BMKG</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  {isRegion ? "Curah Hujan Normal WMO" : "Sifat Hujan BMKG"}
+                </span>
                 <span className="p-1 rounded-md bg-cyan-500/20 text-cyan-300">
                   <CloudRain className="h-4 w-4" />
                 </span>
               </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-base font-black text-white">
-                    {rainCharacter.category === "AN" ? "Atas Normal" : rainCharacter.category === "BN" ? "Bawah Normal" : rainCharacter.category === "N" ? "Normal" : "Tersedia"}
-                  </span>
-                  {rainCharacter.ratioPercent != null && (
-                    <span className="text-xs font-mono font-bold text-cyan-300">({rainCharacter.ratioPercent}%)</span>
-                  )}
+              {isRegion ? (
+                <div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xl font-black font-mono text-white">
+                      {normalRainTotal != null ? `${normalRainTotal.toFixed(1)}` : "-"}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-300">mm / bln</span>
+                  </div>
+                  <div className="text-[10px] text-slate-300 mt-0.5">
+                    Kategori: <strong className="text-cyan-300">
+                      {normalRainTotal != null
+                        ? normalRainTotal < 100
+                          ? "Rendah (0–100 mm)"
+                          : normalRainTotal <= 300
+                          ? "Menengah (100–300 mm)"
+                          : normalRainTotal <= 500
+                          ? "Tinggi (300–500 mm)"
+                          : "Sangat Tinggi (>500 mm)"
+                        : "Standar WMO"}
+                    </strong>
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-300 mt-0.5">
-                  Obs: <strong className="text-white">{observedRainTotal?.toFixed(1) ?? "-"} mm</strong> vs Norm: <strong className="text-slate-300">{normalRainTotal?.toFixed(1) ?? "-"} mm</strong>
+              ) : (
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base font-black text-white">
+                      {rainCharacter.category === "AN" ? "Atas Normal" : rainCharacter.category === "BN" ? "Bawah Normal" : rainCharacter.category === "N" ? "Normal" : "Tersedia"}
+                    </span>
+                    {rainCharacter.ratioPercent != null && (
+                      <span className="text-xs font-mono font-bold text-cyan-300">({rainCharacter.ratioPercent}%)</span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-300 mt-0.5">
+                    Obs: <strong className="text-white">{observedRainTotal?.toFixed(1) ?? "-"} mm</strong> vs Norm: <strong className="text-slate-300">{normalRainTotal?.toFixed(1) ?? "-"} mm</strong>
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="text-[10px] leading-tight border-t border-slate-700/50 pt-1.5">
-                <span className={rainCharacter.category === "AN" ? "text-emerald-400 font-bold" : rainCharacter.category === "BN" ? "text-amber-400 font-bold" : "text-blue-400 font-bold"}>
-                  {rainCharacter.label}
+                <span className={isRegion ? "text-cyan-400 font-bold" : rainCharacter.category === "AN" ? "text-emerald-400 font-bold" : rainCharacter.category === "BN" ? "text-amber-400 font-bold" : "text-blue-400 font-bold"}>
+                  {isRegion ? "Norma Standar 1991–2020" : rainCharacter.label}
                 </span>
               </div>
             </div>
 
-            {/* 3. Anomali Suhu Termal */}
+            {/* 3. Anomali Suhu Termal (Station) atau Normal Suhu WMO (Region) */}
             <div className="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-teal-500/50 transition">
               <div className="flex justify-between items-start">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Anomali Suhu Termal</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  {isRegion ? "Suhu Normal WMO" : "Anomali Suhu Termal"}
+                </span>
                 <span className="p-1 rounded-md bg-rose-500/20 text-rose-300">
                   <ThermometerSun className="h-4 w-4" />
                 </span>
               </div>
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-black font-mono text-white">
-                    {tempAnomaly.deltaT > 0 ? `+${tempAnomaly.deltaT}` : tempAnomaly.deltaT}°C
-                  </span>
-                  <span className="text-[10px] text-slate-400">vs Normal ERA5</span>
+              {isRegion ? (
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xl font-black font-mono text-white">
+                      {normalTempMean != null ? `${normalTempMean.toFixed(1)}°C` : "-"}
+                    </span>
+                    <span className="text-[10px] text-slate-400">Rerata Grid</span>
+                  </div>
+                  <div className="text-[10px] text-slate-300 mt-0.5">
+                    Acuan: <strong className="text-white">WMO Standard 1991–2020</strong>
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-300 mt-0.5">
-                  Rerata: <strong className="text-white">{observedTempMean?.toFixed(1) ?? "-"}°C</strong> (Norm: {normalTempMean?.toFixed(1) ?? "-"}°C)
+              ) : (
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xl font-black font-mono text-white">
+                      {tempAnomaly.deltaT > 0 ? `+${tempAnomaly.deltaT}` : tempAnomaly.deltaT}°C
+                    </span>
+                    <span className="text-[10px] text-slate-400">vs Normal ERA5</span>
+                  </div>
+                  <div className="text-[10px] text-slate-300 mt-0.5">
+                    Rerata: <strong className="text-white">{observedTempMean?.toFixed(1) ?? "-"}°C</strong> (Norm: {normalTempMean?.toFixed(1) ?? "-"}°C)
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="text-[10px] leading-tight border-t border-slate-700/50 pt-1.5">
-                <span className={tempAnomaly.deltaT > 0.5 ? "text-rose-400 font-bold" : tempAnomaly.deltaT < -0.5 ? "text-sky-400 font-bold" : "text-emerald-400 font-bold"}>
-                  {tempAnomaly.status.split(" ")[0]} {tempAnomaly.status.split(" ")[1]}
+                <span className={isRegion ? "text-emerald-400 font-bold" : tempAnomaly.deltaT > 0.5 ? "text-rose-400 font-bold" : tempAnomaly.deltaT < -0.5 ? "text-sky-400 font-bold" : "text-emerald-400 font-bold"}>
+                  {isRegion ? "Normal Termal Regional 30-Thn" : `${tempAnomaly.status.split(" ")[0]} ${tempAnomaly.status.split(" ")[1]}`}
                 </span>
               </div>
             </div>
@@ -233,7 +280,9 @@ export const ClimateRepresentativenessOverview: React.FC<ClimateRepresentativene
             {/* 4. Hari Tanpa Hujan (HTH) */}
             <div className="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex flex-col justify-between space-y-2 hover:border-teal-500/50 transition">
               <div className="flex justify-between items-start">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Indeks HTH BMKG</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  {isRegion ? "Estimasi HTH Wilayah" : "Indeks HTH BMKG"}
+                </span>
                 <span className="p-1 rounded-md bg-amber-500/20 text-amber-300">
                   <Sun className="h-4 w-4" />
                 </span>
@@ -287,7 +336,15 @@ export const ClimateRepresentativenessOverview: React.FC<ClimateRepresentativene
             <div className="flex items-start gap-2">
               <Activity className="h-4 w-4 text-teal-400 shrink-0 mt-0.5" />
               <p className="leading-relaxed">
-                <strong>Interpretasi Keterwakilan:</strong> Stasiun berada dalam <strong>{regimeInfo.title}</strong> pada <em>{regimeInfo.currentSeasonPhase}</em>. Sifat hujan periode terpilih adalah <strong>{rainCharacter.label}</strong> dengan deviasi suhu <strong>{tempAnomaly.deltaT > 0 ? `+${tempAnomaly.deltaT}` : tempAnomaly.deltaT}°C</strong> terhadap acuan normal klimatologis ERA5. Ketersediaan air tanah berada pada status <strong>{waterDeficit >= 0 ? "Surplus Ketercukupan" : "Defisit Hidrologis"}</strong>.
+                {isRegion ? (
+                  <>
+                    <strong>Interpretasi Wilayah:</strong> Wilayah <strong>{stationName}</strong> berada dalam rezim iklim <strong>{regimeInfo.title}</strong> pada fase <em>{regimeInfo.currentSeasonPhase}</em> dengan proyeksi puncak hujan pada <strong>{regimeInfo.peakRainfallMonths}</strong>. Berdasarkan reanalisis grid WMO 1991–2020, normal curah hujan periode ini adalah <strong>{normalRainTotal?.toFixed(1) ?? "-"} mm</strong> dengan estimasi suhu rata-rata <strong>{normalTempMean?.toFixed(1) ?? "-"}°C</strong>. Neraca air klimatologis wilayah berstatus <strong>{waterDeficit >= 0 ? "Surplus Ketercukupan" : "Defisit Hidrologis"}</strong>.
+                  </>
+                ) : (
+                  <>
+                    <strong>Interpretasi Keterwakilan:</strong> Stasiun berada dalam <strong>{regimeInfo.title}</strong> pada <em>{regimeInfo.currentSeasonPhase}</em>. Sifat hujan periode terpilih adalah <strong>{rainCharacter.label}</strong> dengan deviasi suhu <strong>{tempAnomaly.deltaT > 0 ? `+${tempAnomaly.deltaT}` : tempAnomaly.deltaT}°C</strong> terhadap acuan normal klimatologis ERA5. Ketersediaan air tanah berada pada status <strong>{waterDeficit >= 0 ? "Surplus Ketercukupan" : "Defisit Hidrologis"}</strong>.
+                  </>
+                )}
               </p>
             </div>
           </div>

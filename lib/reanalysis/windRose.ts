@@ -12,8 +12,7 @@ export interface WindRoseBin {
 }
 
 export const SECTORS = [
-  "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-  "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"
+  "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"
 ];
 
 const SPEED_RANGES = [
@@ -28,7 +27,10 @@ export function calculateWindRose(
   windSpeeds: number[], // m/s
   windDirections: number[] // degrees (0-360)
 ): WindRoseBin[] {
-  const totalPoints = Math.min(windSpeeds.length, windDirections.length);
+  const totalPoints = Math.min(
+    windSpeeds.length, 
+    windDirections.length
+  );
   
   // Initialize bins
   const sectorData: Record<string, number[]> = {};

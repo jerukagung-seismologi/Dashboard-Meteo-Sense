@@ -21,7 +21,7 @@ export interface CitizenReportInput {
   waktu: Date;
   alamat: string;
   intensitasHujan: "Tidak Hujan" | "Gerimis" | "Sedang" | "Lebat" | "Badai";
-  kondisiAngin: "Tenang" | "Sepoi-sepoi" | "Kencang" | "Angin Ribut";
+  kondisiAngin: "Tenang" | "Sepoi-sepoi" | "Kencang" | "Angin Kencang";
   dampak: string[];
   lokasi?: { 
     latitude: number; 

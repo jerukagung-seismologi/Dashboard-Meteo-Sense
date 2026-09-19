@@ -44,7 +44,10 @@ export interface Wmo30YearNormals {
   };
 }
 
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", 
+  "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
+];
 const MONTH_FULL_NAMES = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"

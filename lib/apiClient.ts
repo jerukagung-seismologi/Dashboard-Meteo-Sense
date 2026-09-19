@@ -1,4 +1,4 @@
-import type { SensorDate, SensorValue, SensorMetaData } from "./FetchingSensorData";
+import type { SensorDate, SensorValue, SensorMetaData } from "@/lib/FetchingSensorData";
 
 export async function fetchSensorData(
   sensorId: string,
