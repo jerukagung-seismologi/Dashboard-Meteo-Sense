@@ -57,6 +57,96 @@ const MONTH_FULL_NAMES = [
 const normalsCache = new Map<string, { timestamp: number; data: Wmo30YearNormals }>();
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 jam (karena data 1991-2020 adalah data historis permanen)
 
+// Cache untuk data arsip periode mutakhir (2021-sekarang), TTL lebih pendek
+const recentDataCache = new Map<string, { timestamp: number; data: { dateStr: string; rainSum: number }[] }>();
+const RECENT_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 jam
+
+/**
+ * Mengambil total curah hujan bulanan dari Open-Meteo Archive untuk rentang tahun arbitrari.
+ * Berguna untuk memperluas seri SPI dari baseline WMO 1991-2020 hingga bulan berjalan.
+ *
+ * @param lat  Lintang lokasi
+ * @param lng  Bujur lokasi
+ * @param startYear Tahun awal (inklusif)
+ * @param endYear   Tahun akhir (inklusif); default = tahun berjalan
+ * @returns Array {dateStr: "YYYY-MM", rainSum: number} urut kronologis
+ */
+export async function fetchRecentMonthlyPrecip(
+  lat: number,
+  lng: number,
+  startYear: number,
+  endYear?: number
+): Promise<{ dateStr: string; rainSum: number }[]> {
+  const roundedLat = Number(lat.toFixed(2));
+  const roundedLng = Number(lng.toFixed(2));
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // 1..12
+  const toYear = endYear ?? currentYear;
+
+  const cacheKey = `recent_${roundedLat}_${roundedLng}_${startYear}_${toYear}`;
+  const cached = recentDataCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < RECENT_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  // Batas akhir: akhir bulan sebelumnya (Open-Meteo belum tentu punya hari ini)
+  const endMonth = (toYear === currentYear ? currentMonth - 1 : 12);
+  if (endMonth < 1) {
+    // Jika toYear == currentYear dan kita di bulan Januari, tidak ada data previous month
+    return [];
+  }
+
+  const endDay = new Date(toYear, endMonth, 0).getDate(); // hari terakhir endMonth
+  const startDate = `${startYear}-01-01`;
+  const endDate = `${toYear}-${String(endMonth).padStart(2, "0")}-${endDay}`;
+
+  try {
+    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${roundedLat}&longitude=${roundedLng}&start_date=${startDate}&end_date=${endDate}&daily=precipitation_sum&timezone=auto`;
+    const res = await fetch(url, { next: { revalidate: 21600 } }); // 6 jam
+
+    if (!res.ok) {
+      throw new Error(`Open-Meteo recent archive HTTP ${res.status}`);
+    }
+
+    const json = await res.json();
+    const daily = json.daily;
+    if (!daily || !daily.time || daily.time.length === 0) {
+      return [];
+    }
+
+    // Akumulasi per bulan
+    const monthMap = new Map<string, number>();
+    const times: string[] = daily.time;
+    const rains: number[] = daily.precipitation_sum;
+
+    for (let i = 0; i < times.length; i++) {
+      const dateStr = times[i]; // "YYYY-MM-DD"
+      const monthKey = dateStr.substring(0, 7); // "YYYY-MM"
+      const r = rains[i] ?? 0;
+      monthMap.set(monthKey, (monthMap.get(monthKey) ?? 0) + r);
+    }
+
+    // Ubah ke array urut kronologis
+    const result: { dateStr: string; rainSum: number }[] = [];
+    for (let y = startYear; y <= toYear; y++) {
+      const mMax = y === toYear ? endMonth : 12;
+      for (let m = 1; m <= mMax; m++) {
+        const key = `${y}-${String(m).padStart(2, "0")}`;
+        if (monthMap.has(key)) {
+          result.push({ dateStr: key, rainSum: Number((monthMap.get(key) ?? 0).toFixed(1)) });
+        }
+      }
+    }
+
+    recentDataCache.set(cacheKey, { timestamp: Date.now(), data: result });
+    return result;
+  } catch (err) {
+    console.error("fetchRecentMonthlyPrecip error:", err);
+    return [];
+  }
+}
+
 /**
  * Mengambil atau menghitung Normal Klimatologis WMO 1991–2020 untuk koordinat tertentu
  */

@@ -1850,6 +1850,7 @@ function KlimatologiInner() {
           {/* SPI Drought Monitoring */}
           <SpiDroughtSection
             spiData={wmoNormalsData?.spi || null}
+            currentPeriodNormals={wmoNormalsData?.currentPeriodNormals || null}
             isDarkMode={isDarkMode}
           />
         </TabsContent>

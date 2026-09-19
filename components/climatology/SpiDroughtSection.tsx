@@ -15,11 +15,19 @@ interface SpiDroughtSectionProps {
     spi3: SpiSeriesResult;
     spi6: SpiSeriesResult;
     spi12: SpiSeriesResult;
+    dataRange?: { start: string; end: string; totalMonths: number };
+  } | null;
+  currentPeriodNormals?: {
+    periodLabel: string;
+    startYear: number;
+    endYear: number;
+    monthlyMeans: { monthIndex: number; monthName: string; precipMean: number }[];
+    annualMean: number;
   } | null;
   isDarkMode?: boolean;
 }
 
-export function SpiDroughtSection({ spiData, isDarkMode = false }: SpiDroughtSectionProps) {
+export function SpiDroughtSection({ spiData, currentPeriodNormals, isDarkMode = false }: SpiDroughtSectionProps) {
   const [activeTimescale, setActiveTimescale] = useState<"1" | "3" | "6" | "12">("3");
 
   const currentSeries: SpiSeriesResult | null = useMemo(() => {
@@ -158,6 +166,11 @@ export function SpiDroughtSection({ spiData, isDarkMode = false }: SpiDroughtSec
               <Badge variant="outline" className="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 text-[10px]">
                 McKee et al. (1993)
               </Badge>
+              {spiData?.dataRange && (
+                <Badge variant="outline" className="bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 text-[10px] font-mono">
+                  Data: {spiData.dataRange.start} – {spiData.dataRange.end} ({spiData.dataRange.totalMonths} bln)
+                </Badge>
+              )}
             </div>
             <CardTitle className="text-lg font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
               <ShieldAlert className="h-5 w-5 text-amber-500" />
@@ -226,6 +239,39 @@ export function SpiDroughtSection({ spiData, isDarkMode = false }: SpiDroughtSec
         <div className="h-[340px] w-full">
           <ReactECharts option={chartOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
         </div>
+
+        {/* Rata-rata Klimatologis Periode Berjalan (2021–sekarang) */}
+        {currentPeriodNormals && (
+          <div className="border-t dark:border-slate-800 pt-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Rata-Rata Klimatologis Periode Berjalan ({currentPeriodNormals.periodLabel})
+              </span>
+              <Badge variant="outline" className="text-[9px] bg-violet-50 text-violet-800 dark:bg-violet-950 dark:text-violet-300 border-violet-300">
+                Normal Sementara · Rerata {currentPeriodNormals.monthlyMeans.filter(m => m.precipMean > 0).length} bln
+              </Badge>
+            </div>
+            <div className="grid grid-cols-6 sm:grid-cols-12 gap-1">
+              {currentPeriodNormals.monthlyMeans.map((m) => {
+                return (
+                  <div key={m.monthIndex} className="flex flex-col items-center text-center">
+                    <span className="text-[9px] font-semibold text-slate-400 uppercase">{m.monthName}</span>
+                    <span
+                      className="text-[11px] font-bold mt-0.5"
+                      style={{ color: m.precipMean > 200 ? "#0284c7" : m.precipMean < 60 ? "#f59e0b" : "#10b981" }}
+                    >
+                      {m.precipMean}
+                    </span>
+                    <span className="text-[8px] text-slate-400">mm</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-slate-400 italic">
+              Rerata curah hujan bulanan periode iklim berjalan {currentPeriodNormals.periodLabel} · Total tahunan: <strong className="text-slate-600 dark:text-slate-300">{currentPeriodNormals.annualMean} mm/tahun</strong>
+            </p>
+          </div>
+        )}
 
         {/* WMO Official Scale Guide Legend */}
         <div className="border-t dark:border-slate-800 pt-3">

@@ -1,10 +1,11 @@
 // app/api/climatology/normals/route.ts
 import { NextResponse } from "next/server";
-import { getWmo30YearNormals } from "@/lib/climatology/wmoNormals";
+import { getWmo30YearNormals, fetchRecentMonthlyPrecip } from "@/lib/climatology/wmoNormals";
 import { evaluateClimateClassification } from "@/lib/climatology/climateClassification";
 import { calculateSpiSeries } from "@/lib/climatology/spiCalculator";
 
-export const revalidate = 86400; // Cache 24 jam di edge/CDN
+// Tidak di-cache di edge karena seri SPI mencakup data mutakhir (berjalan)
+export const revalidate = 0;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -36,53 +37,95 @@ export async function GET(request: Request) {
     const monthlyRainfall = normals.monthly.map((m) => m.precipMean);
     const classification = evaluateClimateClassification(monthlyRainfall);
 
-    // 3. Bangun data runtun waktu bulanan untuk analisis SPI (menggunakan 5 tahun terakhir dari arsip 30 tahun)
-    // Format { dateStr: "YYYY-MM", rainSum }
-    const recentMonthlyData: { dateStr: string; rainSum: number }[] = [];
-    // Ambil 5 tahun terakhir (2016-2020) dari arsip bulanan (indeks 25 s.d. 29)
+    // 3. Bangun data runtun waktu bulanan untuk SPI
+    //    Gunakan 5 tahun akhir WMO baseline (2016-2020) sebagai warm-up,
+    //    lalu sambungkan dengan data real-time 2021 s.d. bulan lalu.
+    const baselineMonthlyData: { dateStr: string; rainSum: number }[] = [];
     for (let yr = 2016; yr <= 2020; yr++) {
       const yrIdx = yr - 1991;
       for (let m = 0; m < 12; m++) {
         const val = normals.monthly[m].monthlyTotalsHistory[yrIdx] ?? normals.monthly[m].precipMean;
         const mStr = (m + 1).toString().padStart(2, "0");
-        recentMonthlyData.push({
-          dateStr: `${yr}-${mStr}`,
-          rainSum: val,
-        });
+        baselineMonthlyData.push({ dateStr: `${yr}-${mStr}`, rainSum: val });
       }
     }
 
-    const spi1 = calculateSpiSeries(recentMonthlyData, 1, monthlyRainfall);
-    const spi3 = calculateSpiSeries(recentMonthlyData, 3, monthlyRainfall);
-    const spi6 = calculateSpiSeries(recentMonthlyData, 6, monthlyRainfall);
-    const spi12 = calculateSpiSeries(recentMonthlyData, 12, monthlyRainfall);
+    // Ambil data presipitasi bulanan 2021 s.d. bulan lalu dari Open-Meteo Archive
+    const recentMonthlyData = await fetchRecentMonthlyPrecip(lat, lng, 2021);
 
-    // 4. Analisis Dinamika Musim BMKG (Awal Musim Hujan & Kemarau berdasarkan 36 Dasarian)
-    // Kriteria BMKG:
-    // AMH: Dasarian di mana CH >= 50 mm/dasarian dan diikuti oleh 2 dasarian berikutnya >= 50 mm
-    // AMK: Dasarian di mana CH < 50 mm/dasarian dan diikuti oleh 2 dasarian berikutnya < 50 mm
+    // Gabungkan: baseline 2016-2020 + data mutakhir 2021-sekarang
+    const fullSpiData = [...baselineMonthlyData, ...recentMonthlyData];
+
+    // 4. Hitung SPI series pada keseluruhan runtun waktu gabungan
+    const spi1 = calculateSpiSeries(fullSpiData, 1, monthlyRainfall);
+    const spi3 = calculateSpiSeries(fullSpiData, 3, monthlyRainfall);
+    const spi6 = calculateSpiSeries(fullSpiData, 6, monthlyRainfall);
+    const spi12 = calculateSpiSeries(fullSpiData, 12, monthlyRainfall);
+
+    // 5. Hitung rata-rata klimatologis periode berjalan (2021–sekarang)
+    //    sebagai "normal sementara" untuk perbandingan
+    let currentPeriodNormals: {
+      periodLabel: string;
+      startYear: number;
+      endYear: number;
+      monthlyMeans: { monthIndex: number; monthName: string; precipMean: number }[];
+      annualMean: number;
+    } | null = null;
+
+    if (recentMonthlyData.length >= 12) {
+      // Kelompokkan per bulan (0..11) → hitung rata-rata dari tahun yang sudah lengkap
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1; // 1..12
+
+      // Hanya gunakan tahun yang sudah berjalan penuh (2021 s.d. tahun lalu)
+      // supaya rata-rata tidak bias karena tahun berjalan belum selesai
+      const lastFullYear = currentMonth === 12 ? currentYear : currentYear - 1;
+      const fullYearData = recentMonthlyData.filter((d) => {
+        const yr = parseInt(d.dateStr.substring(0, 4), 10);
+        return yr >= 2021 && yr <= lastFullYear;
+      });
+
+      if (fullYearData.length >= 12) {
+        const monthSums: number[] = Array(12).fill(0);
+        const monthCounts: number[] = Array(12).fill(0);
+        for (const d of fullYearData) {
+          const m = parseInt(d.dateStr.substring(5, 7), 10) - 1; // 0..11
+          monthSums[m] += d.rainSum;
+          monthCounts[m]++;
+        }
+
+        const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+        const monthlyMeans = monthSums.map((sum, m) => ({
+          monthIndex: m,
+          monthName: MONTH_NAMES[m],
+          precipMean: monthCounts[m] > 0 ? Number((sum / monthCounts[m]).toFixed(1)) : 0,
+        }));
+
+        const annualMean = Number(monthlyMeans.reduce((a, b) => a + b.precipMean, 0).toFixed(1));
+
+        currentPeriodNormals = {
+          periodLabel: `2021–${lastFullYear}`,
+          startYear: 2021,
+          endYear: lastFullYear,
+          monthlyMeans,
+          annualMean,
+        };
+      }
+    }
+
+    // 6. Analisis Dinamika Musim BMKG (Awal Musim Hujan & Kemarau berdasarkan 36 Dasarian)
     const das = normals.dasarians;
     let amhDasarian: { number: number; name: string; rain: number } | null = null;
     let amkDasarian: { number: number; name: string; rain: number } | null = null;
 
-    // Evaluasi siklus (duplikasi array untuk menangani pergantian tahun dasarian 36 -> 1)
     const doubleDas = [...das, ...das];
     for (let i = 0; i < 36; i++) {
-      // Cek AMH
       if (!amhDasarian && doubleDas[i].precipMean >= 50 && doubleDas[i + 1].precipMean >= 50 && doubleDas[i + 2].precipMean >= 50) {
-        amhDasarian = {
-          number: das[i].dasarianNumber,
-          name: das[i].name,
-          rain: das[i].precipMean,
-        };
+        amhDasarian = { number: das[i].dasarianNumber, name: das[i].name, rain: das[i].precipMean };
       }
-      // Cek AMK
       if (!amkDasarian && doubleDas[i].precipMean < 50 && doubleDas[i + 1].precipMean < 50 && doubleDas[i + 2].precipMean < 50) {
-        amkDasarian = {
-          number: das[i].dasarianNumber,
-          name: das[i].name,
-          rain: das[i].precipMean,
-        };
+        amkDasarian = { number: das[i].dasarianNumber, name: das[i].name, rain: das[i].precipMean };
       }
     }
 
@@ -97,7 +140,15 @@ export async function GET(request: Request) {
         spi3,
         spi6,
         spi12,
+        // Metadata rentang data yang dipakai untuk SPI (berguna untuk label di UI)
+        dataRange: {
+          start: fullSpiData[0]?.dateStr ?? "2016-01",
+          end: fullSpiData[fullSpiData.length - 1]?.dateStr ?? "2020-12",
+          totalMonths: fullSpiData.length,
+        },
       },
+      // Normal periode berjalan (2021–sekarang) — null jika belum ada 1 tahun penuh
+      currentPeriodNormals,
       seasonalDynamics: {
         amh: amhDasarian || { number: 28, name: "Okt I", rain: 65 },
         amk: amkDasarian || { number: 13, name: "Mei I", rain: 42 },
@@ -107,7 +158,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json(payload, {
       headers: {
-        "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=43200",
+        // Revalidasi lebih sering karena mencakup data mutakhir
+        "Cache-Control": "public, s-maxage=21600, stale-while-revalidate=3600",
       },
     });
   } catch (error: any) {
