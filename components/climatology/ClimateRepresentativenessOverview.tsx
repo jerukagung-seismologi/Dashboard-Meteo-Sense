@@ -72,8 +72,8 @@ export const ClimateRepresentativenessOverview: React.FC<ClimateRepresentativene
   const isRegion = locationMode === "region";
   // 1. Deteksi Pola Iklim Wilayah
   const regimeInfo = useMemo(() => {
-    return detectIndonesianClimateRegime(coordinates.lat, coordinates.lng, selectedMonth);
-  }, [coordinates.lat, coordinates.lng, selectedMonth]);
+    return detectIndonesianClimateRegime(coordinates.lat, coordinates.lng, selectedMonth, era5Elevation);
+  }, [coordinates.lat, coordinates.lng, selectedMonth, era5Elevation]);
 
   // 2. Sifat Hujan BMKG (AN / N / BN)
   const rainCharacter = useMemo(() => {
@@ -173,11 +173,14 @@ export const ClimateRepresentativenessOverview: React.FC<ClimateRepresentativene
                 </span>
               </div>
               <div>
-                <span className="text-base font-black text-white">{regimeInfo.title.split(" ")[2] || regimeInfo.regime}</span>
+                <span className="text-base font-black text-white">{regimeInfo.regime}</span>
                 <div className="text-[10px] text-teal-300 font-semibold mt-0.5">{regimeInfo.currentSeasonPhase}</div>
               </div>
               <div className="text-[10px] text-slate-400 leading-tight border-t border-slate-700/50 pt-1.5">
                 Puncak Hujan: <strong className="text-slate-200">{regimeInfo.peakRainfallMonths}</strong>
+              </div>
+              <div className="text-[10px] text-slate-400 leading-tight">
+                Zona i-TMY: <strong className="text-slate-200">{regimeInfo.climateZone.code} — {regimeInfo.climateZone.title}</strong>{regimeInfo.climateZone.isIndicative ? " (estimasi)" : ""}
               </div>
             </div>
 

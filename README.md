@@ -231,7 +231,7 @@ flowchart TD
     
     WMOAggregation --> FormatOption{"Pilih Format Output"}
     
-    FormatOption -- "Laporan Cetak A4" --> PrintView["Render Tata Letak A4 CSS @media print\n(react-to-print -> Dialog Cetak Browser / Simpan PDF)"]
+    FormatOption -- "Laporan Cetak A4" --> PrintView["Render Tata Letak A4 CSS @media print\n(Dialog Cetak Browser / Simpan PDF)"]
     FormatOption -- "WOW Met Office" --> WOWTransform["Konversi ke Skema Met Office WOW:\nFormat Tanggal: YYYY-MM-DD HH:mm:ss\nKonversi Satuan: Celcius, hPa, mm, km/h"]
     FormatOption -- "Weather Underground" --> WUStep["Format PWS Upload Data Stream"]
     FormatOption -- "Cadangan SQLite" --> SQLiteGen["Ekspor File Basis Data Relasional SQLite"]
@@ -424,9 +424,7 @@ Aplikasi dibangun menggunakan arsitektur modern berkinerja tinggi:
 | **`leaflet`** & **`react-leaflet`** | `^1.9.4` | Rendering peta interaktif jaringan stasiun dan koordinat AWS |
 | **`lucide-react`** | `^0.454.0` | Pustaka ikonografi meteorologi dan antarmuka terpadu |
 | **`date-fns`** | `^4.1.0` | Manipulasi dan formatting manipulasi waktu |
-| **`react-to-print`** | `^3.1.1` | Pencetakan dokumen laporan A4 browser-to-PDF |
 | **`jspdf`** & **`html2canvas`** | `^4.2.1` | Utilitas tangkapan kanvas dan konversi dokumen PDF |
-| **`openmeteo`** | `^1.2.3` | Klien resmi Open-Meteo SDK untuk data reanalisis & musiman |
 | **`@radix-ui/*`** | Berbagai | Komponen dasar headless UI aksesibel (Dialog, Dropdown, Tabs, dll.) |
 | **`sonner`** | `^2.0.8` | Sistem notifikasi toast modern dan ringan |
 | **`next-themes`** | `^0.4.4` | Penyedia tema dinamis Light / Dark Mode bebas flicker |

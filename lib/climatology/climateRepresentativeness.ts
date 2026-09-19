@@ -6,13 +6,81 @@
  */
 
 export interface ClimateRegimeInfo {
-  regime: "Monsunal" | "Ekuatorial" | "Lokal";
+  regime: IndonesiaClimateZoneCode;
+  /** Klasifikasi i-TMY BMKG; berbeda dari rezim pola hujan/ZOM di atas. */
+  climateZone: IndonesiaClimateZoneInfo;
   title: string;
   description: string;
   peakRainfallMonths: string;
   drySeasonMonths: string;
   currentSeasonPhase: string;
   iconName: "monsoon" | "equatorial" | "local";
+}
+
+export type IndonesiaClimateZoneCode = "1A" | "1B" | "2A" | "2B" | "3A" | "3B" | "4A" | "4B";
+
+export interface IndonesiaClimateZoneInfo {
+  code: IndonesiaClimateZoneCode;
+  title: string;
+  description: string;
+  /** Penetapan otomatis bersifat indikatif; batas resmi memerlukan layer spasial i-TMY BMKG. */
+  isIndicative: boolean;
+}
+
+/** Delapan zona i-TMY BMKG; ini berbeda dari tiga pola hujan/ZOM. */
+export const INDONESIA_TMY_CLIMATE_ZONES: Record<IndonesiaClimateZoneCode, Pick<IndonesiaClimateZoneInfo, "title" | "description">> = {
+  "1A": { title: "Khatulistiwa", description: "Wilayah hangat di pulau besar sekitar khatulistiwa dengan tutupan awan dan curah hujan relatif tinggi sepanjang tahun." },
+  "1B": { title: "Sub-Khatulistiwa", description: "Pulau kecil di sekitar khatulistiwa yang sedikit dipengaruhi monsun, dengan angin rata-rata lebih kuat." },
+  "2A": { title: "Dataran Tinggi Tropis", description: "Wilayah pada ketinggian 500–1.500 m dengan suhu lebih dingin, lembap, dan hujan orografis tinggi." },
+  "2B": { title: "Dataran Sangat Tinggi Tropis", description: "Wilayah di atas 1.500 m dengan suhu sangat rendah serta kelembapan, angin, dan curah hujan tinggi." },
+  "3A": { title: "Monsunal", description: "Wilayah dengan siklus musim yang jelas; kelembapan dan tutupan awan tinggi saat hujan, lalu lebih rendah saat kemarau." },
+  "3B": { title: "Sub-Monsunal", description: "Varian monsunal dengan angin lebih lemah dan variasi suhu diurnal lebih rendah dibanding Zona 3A." },
+  "4A": { title: "Sabana", description: "Wilayah Nusa Tenggara dengan kemarau panjang, angin kencang, intensitas matahari tinggi, dan malam relatif dingin pada Juni–September." },
+  "4B": { title: "Sub-Sabana", description: "Wilayah sub-sabana seperti Madura dengan variasi suhu tahunan dan diurnal lebih kecil daripada Zona 4A." },
+};
+
+/**
+ * Estimasi zona i-TMY dari koordinat dan elevasi ERA5. Hasil ini tidak
+ * menggantikan penetapan resmi BMKG karena batas poligon i-TMY belum tersedia
+ * pada repositori ini.
+ */
+export function detectIndonesiaTmyClimateZone(
+  lat: number,
+  lng: number,
+  elevationMeters?: number,
+): IndonesiaClimateZoneInfo {
+  const zone = (code: IndonesiaClimateZoneCode): IndonesiaClimateZoneInfo => ({
+    code,
+    ...INDONESIA_TMY_CLIMATE_ZONES[code],
+    isIndicative: true,
+  });
+
+  if (Number.isFinite(elevationMeters) && elevationMeters! > 1500) return zone("2B");
+  if (Number.isFinite(elevationMeters) && elevationMeters! >= 500) return zone("2A");
+
+  if (lat >= -7.5 && lat <= -6.5 && lng >= 112.5 && lng <= 114.5) return zone("4B");
+  if (lat >= -11.8 && lat <= -7.3 && lng >= 115 && lng <= 125.5) return zone("4A");
+
+  // Estimasi sub-monsunal untuk bagian selatan Kalimantan, Sulawesi, dan
+  // Maluku utara yang tidak termasuk pola lokal di bawah.
+  const subMonsunalRegion =
+    (lat >= -4.5 && lat < -1.5 && lng >= 108 && lng <= 119.5) ||
+    (lat >= -3.5 && lat <= 2.5 && lng >= 120 && lng <= 125) ||
+    (lat >= -2.5 && lat <= 2.5 && lng > 125 && lng <= 130);
+  if (subMonsunalRegion) return zone("3B");
+
+  const nearEquator = lat >= -3.5 && lat <= 4.5;
+  if (nearEquator) {
+    const onLargeIsland =
+      (lng >= 95 && lng <= 106) || // Sumatera
+      (lng >= 108 && lng <= 119.5) || // Kalimantan
+      (lng >= 119 && lng <= 125.5) || // Sulawesi
+      (lng >= 130 && lng <= 141.5); // Papua
+    return zone(onLargeIsland ? "1A" : "1B");
+  }
+
+  // Tanpa layer poligon i-TMY, area monsunal menjadi estimasi aman.
+  return zone("3A");
 }
 
 export interface BmkgRainCharacter {
@@ -43,7 +111,7 @@ export interface DataCompletenessInfo {
 
 export interface TemperatureAnomalyInfo {
   deltaT: number;
-  status: "Lebih Hangat (Anomali Positif)" | "Normal Termal" | "Lebih Sejuk (Anomali Negatif)";
+  status: "Lebih Hangat (Anomali Positif)" | "Normal" | "Lebih Sejuk (Anomali Negatif)";
   description: string;
   colorClass: string;
   badgeBg: string;
@@ -56,8 +124,14 @@ export interface TemperatureAnomalyInfo {
  * 2. Ekuatorial: 2 puncak hujan (MAM & SON) saat ekuinoks. Sumatera tengah/utara, Kalimantan, Sulawesi utara.
  * 3. Lokal: Pola terbalik, puncak hujan pertengahan tahun (JJA). Maluku, Ambon, Seram, Papua Barat.
  */
-export function detectIndonesianClimateRegime(lat: number, lng: number, currentMonth?: number): ClimateRegimeInfo {
+export function detectIndonesianClimateRegime(
+  lat: number,
+  lng: number,
+  currentMonth?: number,
+  elevationMeters?: number,
+): ClimateRegimeInfo {
   const m = currentMonth ?? (new Date().getUTCMonth() + 1);
+  const climateZone = detectIndonesiaTmyClimateZone(lat, lng, elevationMeters);
 
   // 1. Deteksi Pola Lokal (Maluku, Seram, Ambon, sekitarnya: bujur > 125 E, lintang antara -6 s.d. +2)
   if (lng >= 125 && lng <= 135 && lat >= -6.0 && lat <= 2.5) {
@@ -67,7 +141,8 @@ export function detectIndonesianClimateRegime(lat: number, lng: number, currentM
     else currentSeasonPhase = "Peralihan Musim Lokal";
 
     return {
-      regime: "Lokal",
+      regime: climateZone.code,
+      climateZone,
       title: "Pola Hujan Lokal (Unimodal Terbalik)",
       description: "Dicirikan oleh puncak curah hujan di pertengahan tahun (Mei–Agustus) akibat pengaruh sirkulasi angin timur dan topografi pulau.",
       peakRainfallMonths: "Mei – Agustus",
@@ -84,7 +159,8 @@ export function detectIndonesianClimateRegime(lat: number, lng: number, currentM
     else currentSeasonPhase = "Periode Penurunan Hujan Antara";
 
     return {
-      regime: "Ekuatorial",
+      regime: climateZone.code,
+      climateZone,
       title: "Pola Hujan Ekuatorial (Bimodal)",
       description: "Memiliki dua puncak curah hujan dalam setahun seiring pergerakan semu matahari melintasi garis khatulistiwa tanpa musim kemarau panjang.",
       peakRainfallMonths: "Maret–Mei & Oktober–Desember",
@@ -105,7 +181,8 @@ export function detectIndonesianClimateRegime(lat: number, lng: number, currentM
   }
 
   return {
-    regime: "Monsunal",
+    regime: climateZone.code,
+    climateZone,
     title: "Pola Hujan Monsunal (Unimodal)",
     description: "Dipengaruhi sirkulasi monsun Benua Asia–Australia dengan kontras tegas antara musim hujan (Des–Feb) dan musim kemarau (Jun–Agu).",
     peakRainfallMonths: "Desember – Februari",
@@ -267,7 +344,7 @@ export function calculateTemperatureAnomaly(
   if (observedMean == null || normalMean == null || !Number.isFinite(observedMean) || !Number.isFinite(normalMean)) {
     return {
       deltaT: 0,
-      status: "Normal Termal",
+      status: "Normal",
       description: "Data komparasi suhu belum lengkap.",
       colorClass: "text-slate-500",
       badgeBg: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
@@ -298,7 +375,7 @@ export function calculateTemperatureAnomaly(
 
   return {
     deltaT: delta,
-    status: "Normal Termal",
+    status: "Normal",
     description: `Deviasi suhu ${delta > 0 ? `+${delta}` : delta}°C mendekati rata-rata normal (±0.5°C).`,
     colorClass: "text-emerald-600 dark:text-emerald-400",
     badgeBg: "bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300",
