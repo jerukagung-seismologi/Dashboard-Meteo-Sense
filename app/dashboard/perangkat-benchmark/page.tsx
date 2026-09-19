@@ -44,11 +44,6 @@ import {
 import {
   Radio,
   MapPin,
-  Thermometer,
-  Droplets,
-  CloudRain,
-  Gauge,
-  Wind,
   Plus,
   Edit,
   Trash2,
@@ -59,7 +54,6 @@ import {
   Database,
   CheckCircle2,
   AlertTriangle,
-  Zap,
   Globe,
   SlidersHorizontal,
 } from "lucide-react"
@@ -283,7 +277,7 @@ export default function PerangkatBenchmarkPage() {
 
   // Force Bulk Seed / Reset 20 Stations
   const handleBulkSeed = async () => {
-    if (!confirm("Sinkronkan ulang 20 titik stasiun referensi default Kabupaten Kebumen ke Firestore?")) return
+    if (!confirm("Sinkronkan ulang data ke Database?")) return
 
     setIsSeeding(true)
     try {
@@ -297,7 +291,7 @@ export default function PerangkatBenchmarkPage() {
       console.error("Error bulk seeding:", error)
       toast({
         title: "Gagal Sinkronisasi",
-        description: "Terjadi kesalahan saat seeding data ke Firestore.",
+        description: "Terjadi kesalahan saat seeding data ke Database",
         variant: "destructive",
       })
     } finally {
@@ -310,10 +304,9 @@ export default function PerangkatBenchmarkPage() {
       {/* Unified Single Header Banner */}
       <PageHeaderBanner
         gradient="indigo"
-        badgeText="Cloud Firestore • benchmarkdevices"
         icon={Radio}
         title="Pengelolaan Stasiun Benchmark"
-        subtitle="Kelola stasiun acuan geospasial di wilayah Kabupaten Kebumen untuk modul Peta Persebaran Geografis dan validasi bias ERA5."
+        subtitle="Kelola stasiun acuan geospasial untuk modul Peta Persebaran Geografis dan validasi bias ERA5."
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <Button
@@ -325,7 +318,7 @@ export default function PerangkatBenchmarkPage() {
               title="Seed 20 Titik Default Kebumen"
             >
               <Sparkles className={`h-3.5 w-3.5 text-amber-400 ${isSeeding ? "animate-spin" : ""}`} />
-              <span>{isSeeding ? "Menyinkronkan..." : "Sinkron 20 Titik"}</span>
+              <span>{isSeeding ? "Menyinkronkan..." : "Sinkronisasi"}</span>
             </Button>
 
             <Button
@@ -379,7 +372,7 @@ export default function PerangkatBenchmarkPage() {
               <span className="text-xs font-normal text-slate-500">Titik</span>
             </div>
             <span className="text-[10px] text-slate-400 block -mt-0.5">
-              Tersimpan di Firestore
+              Tersimpan di Database
             </span>
           </div>
         </div>
@@ -399,42 +392,6 @@ export default function PerangkatBenchmarkPage() {
             </div>
             <span className="text-[10px] text-slate-400 block -mt-0.5">
               Telemetri Berjalan
-            </span>
-          </div>
-        </div>
-
-        {/* Model Reanalisis */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 shrink-0">
-            <Globe className="h-5 w-5" />
-          </div>
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Model Reanalisis
-            </span>
-            <div className="text-xl font-black text-violet-600 dark:text-violet-400 font-mono">
-              ECMWF ERA5
-            </div>
-            <span className="text-[10px] text-slate-400 block -mt-0.5">
-              Resolusi Grid ~9-25 km
-            </span>
-          </div>
-        </div>
-
-        {/* Telemetri Cuaca */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 shrink-0">
-            <Zap className="h-5 w-5" />
-          </div>
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Telemetri Cuaca
-            </span>
-            <div className="text-xl font-black text-amber-600 dark:text-amber-400 font-mono">
-              Live Fetch
-            </div>
-            <span className="text-[10px] text-slate-400 block -mt-0.5">
-              Otomatis di Halaman Peta
             </span>
           </div>
         </div>
@@ -480,7 +437,7 @@ export default function PerangkatBenchmarkPage() {
       {loading ? (
         <div className="py-20 flex flex-col items-center justify-center space-y-3">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <p className="text-xs font-semibold text-slate-500">Memuat stasiun dari Firestore...</p>
+          <p className="text-xs font-semibold text-slate-500">Memuat data stasiun dari Database...</p>
         </div>
       ) : filteredDevices.length === 0 ? (
         <div className="py-16 text-center rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 p-8 space-y-3">
@@ -544,10 +501,7 @@ export default function PerangkatBenchmarkPage() {
                       </div>
                       <div>
                         <span className="text-[10px] font-bold text-indigo-950 dark:text-indigo-200 block leading-tight">
-                          Live ECMWF ERA5
-                        </span>
-                        <span className="text-[9px] text-indigo-600/80 dark:text-indigo-400 block">
-                          Telemetri dipanggil langsung di Peta
+                          Live ECMWF AIFS
                         </span>
                       </div>
                     </div>
@@ -562,7 +516,6 @@ export default function PerangkatBenchmarkPage() {
                       <MapPin className="h-3 w-3 text-indigo-500" />
                       {device.lat.toFixed(4)}°, {device.lng.toFixed(4)}°
                     </span>
-                    <span className="text-[10px] text-slate-400">Kabupaten Kebumen</span>
                   </div>
 
                   {/* Document ID Tag */}
@@ -621,7 +574,7 @@ export default function PerangkatBenchmarkPage() {
               <span>Tambah Stasiun Benchmark</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Tambahkan titik stasiun cuaca baru ke koleksi Firestore <code>benchmarkdevices</code>.
+              Tambahkan titik stasiun cuaca baru ke Database
             </DialogDescription>
           </DialogHeader>
 
@@ -629,7 +582,7 @@ export default function PerangkatBenchmarkPage() {
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Nama Stasiun</Label>
               <Input
-                placeholder="Contoh: Stasiun Riset Pantai Ayah"
+                placeholder="Contoh: Stasiun Riset"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
@@ -705,14 +658,6 @@ export default function PerangkatBenchmarkPage() {
               </div>
             </div>
 
-            {/* Informasi Live Fetch ERA5 */}
-            <div className="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 flex items-start gap-2.5 text-indigo-900 dark:text-indigo-300">
-              <Sparkles className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
-              <p className="text-[11px] leading-relaxed">
-                Data cuaca (suhu, kelembapan, tekanan, hujan, dll.) <strong>tidak disimpan di database</strong>. Sistem langsung memanggil data cuaca terkini secara <em>live otomatis</em> dari model <strong>ECMWF ERA5</strong> saat membuka halaman Peta berdasarkan koordinat titik ini.
-              </p>
-            </div>
-
             {/* Status Online */}
             <div className="flex items-center justify-between pt-1">
               <Label className="text-xs font-semibold">Status Telemetri</Label>
@@ -754,7 +699,7 @@ export default function PerangkatBenchmarkPage() {
                 disabled={submitting}
                 className="rounded-xl text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
               >
-                {submitting ? "Menyimpan..." : "Simpan ke Firestore"}
+                {submitting ? "Menyimpan..." : "Simpan"}
               </Button>
             </DialogFooter>
           </form>
@@ -842,14 +787,6 @@ export default function PerangkatBenchmarkPage() {
                   className="text-xs rounded-xl font-mono"
                 />
               </div>
-            </div>
-
-            {/* Informasi Live Fetch ERA5 */}
-            <div className="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 flex items-start gap-2.5 text-indigo-900 dark:text-indigo-300">
-              <Sparkles className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
-              <p className="text-[11px] leading-relaxed">
-                Data cuaca (suhu, kelembapan, tekanan, hujan, dll.) <strong>tidak disimpan di database</strong>. Sistem langsung memanggil data cuaca terkini secara <em>live otomatis</em> dari model <strong>ECMWF ERA5</strong> saat membuka halaman Peta berdasarkan koordinat titik ini.
-              </p>
             </div>
 
             {/* Status Online */}

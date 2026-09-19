@@ -769,7 +769,7 @@ function KlimatologiInner() {
         <CardContent className="p-16 flex flex-col items-center justify-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-purple-500" />
           <div className="text-center space-y-1">
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Mengambil Data Reanalisis Atmosfer ERA5 (ECMWF)...</p>
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Mengambil Data Reanalisis Atmosfer ERA5</p>
             <p className="text-xs text-slate-400 max-w-md">Menghitung profil suhu, kelembaban, tekanan, CAPE, dan diagram Hovmöller untuk {activeLocation.name}...</p>
           </div>
         </CardContent>
@@ -785,17 +785,17 @@ function KlimatologiInner() {
         <div className="space-y-1.5 z-10 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-400/30 flex items-center gap-1">
-              <Sparkles className="h-3 w-3" /> Analisis Klimatologi &amp; Sains Atmosfer Terpadu
+              <Sparkles className="h-3 w-3" /> Analisis Klimatologi &amp; Sains Atmosfer
             </span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
               WMO 1991–2020 · BMKG ZOM · Reanalisis ERA5 · Multi-Wilayah Global
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2.5 text-white">
-            <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-teal-400 shrink-0" /> Analisis Klimatologi, Agrometeorologi &amp; ERA5
+            <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-teal-400 shrink-0" /> Analisis Klimatologi dan Agroklimatologi
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
-            Pusat analisis iklim menyeluruh: Normal Standar WMO 30-Tahun, taksonomi Oldeman &amp; Köppen, kekeringan SPI, ekstrem ETCCDI, prediksi ensemble ECMWF/AI, serta reanalisis atmosfer ERA5 (1940–sekarang) untuk seluruh wilayah Indonesia &amp; dunia.
+            Pusat analisis iklim menyeluruh: Normal Standar WMO,Iklim Oldeman &amp; Köppen, Kekeringan SPI, ekstrem ETCCDI, prediksi ensemble, serta reanalisis atmosfer ERA5 untuk seluruh wilayah Indonesia &amp; Dunia.
           </p>
         </div>
       </div>
@@ -816,7 +816,7 @@ function KlimatologiInner() {
                 }`}
               >
                 <Radio className="h-3.5 w-3.5 text-teal-500" />
-                <span>Stasiun Sensor IoT</span>
+                <span>Stasiun Cuaca</span>
                 {devices.length > 0 && (
                   <span className="ml-1 px-1.5 py-0.2 text-[10px] rounded-full bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300">
                     {devices.length}
@@ -833,7 +833,7 @@ function KlimatologiInner() {
                 }`}
               >
                 <Globe className="h-3.5 w-3.5 text-indigo-500" />
-                <span>Pencarian Wilayah Bebas / Koordinat</span>
+                <span>Pencarian Wilayah</span>
               </button>
             </div>
 
@@ -860,7 +860,7 @@ function KlimatologiInner() {
           {locationMode === "station" ? (
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex flex-col gap-1 w-full sm:w-[280px]">
-                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Pilih Stasiun Perangkat Terdaftar</label>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Pilih Stasiun Cuaca Terdaftar</label>
                 <Select value={sensorId} onValueChange={setSensorId} disabled={devices.length === 0}>
                   <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 h-9 text-xs">
                     <MapPin className="w-3.5 h-3.5 mr-1.5 text-teal-500" />
@@ -882,13 +882,13 @@ function KlimatologiInner() {
               {currentDevice && (
                 <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Stasiun IoT: <strong className="text-slate-800 dark:text-slate-200">{currentDevice.label}</strong></span>
-                  <span className="font-mono text-[11px] text-slate-400">[{activeCoords.lat.toFixed(4)}°, {activeCoords.lng.toFixed(4)}°]</span>
+                  <span>Stasiun: <strong className="text-slate-800 dark:text-slate-200">{currentDevice.label}</strong></span>
+                  <span className="font-mono text-[11px] text-slate-400">[{activeCoords.lat.toFixed(3)}°, {activeCoords.lng.toFixed(3)}°]</span>
                 </div>
               )}
 
               <div className="ml-auto text-xs text-slate-400 flex items-center gap-2">
-                <span>Ingin menganalisis kota/daerah lain di Indonesia?</span>
+                <span>Ingin menganalisis daerah lain di Indonesia?</span>
                 <Button
                   variant="outline"
                   size="sm"
