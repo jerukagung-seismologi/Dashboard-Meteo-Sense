@@ -223,14 +223,14 @@ export function WalterLiethClimograph({
   return (
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white overflow-hidden">
       {/* Header Standar WMO Klimadiagramm */}
-      <CardHeader className="pb-3 border-b dark:border-slate-800 bg-gradient-to-r from-blue-50/70 via-slate-50 to-indigo-50/70 dark:from-slate-900 dark:to-slate-900/50">
+      <CardHeader className="pb-3 border-b border-slate-200/80 bg-slate-50/90 dark:border-slate-800 dark:bg-slate-900/90">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline" className="bg-blue-100/70 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800 text-[10px] font-bold">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800 text-[10px] font-bold">
                 WMO Standard No. 1203 / No. 100
               </Badge>
-              <Badge variant="outline" className="bg-indigo-100/70 text-indigo-800 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800 text-[10px]">
+              <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 text-[10px]">
                 Periode Normal: 1991–2020 (30 Tahun)
               </Badge>
             </div>
@@ -244,7 +244,7 @@ export function WalterLiethClimograph({
           </div>
 
           {/* Metadata Stasiun Box ala Walter-Lieth */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-white dark:bg-slate-800/90 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs shadow-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-white/80 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs shadow-xs">
             <div className="space-y-0.5">
               <span className="text-[10px] text-slate-400 flex items-center gap-1 font-medium">
                 <Compass className="h-3 w-3 text-blue-500" /> Posisi

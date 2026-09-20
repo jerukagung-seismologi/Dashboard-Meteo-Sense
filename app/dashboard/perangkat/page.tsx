@@ -477,10 +477,9 @@ export default function PerangkatPage() {
       {/* Unified Single Header Banner */}
       <PageHeaderBanner
         gradient="blue"
-        badgeText="Manajemen Node Stasiun IoT"
         icon={HardDrive}
         title="Pengelolaan Perangkat"
-        subtitle="Konfigurasi stasiun sensor cuaca, token otentikasi API, dan pemantauan status konektivitas perangkat"
+        subtitle="Konfigurasi stasiun sensor cuaca, token autentikasi API, dan pemantauan status konektivitas perangkat"
         actions={
           <AddDeviceDialog
             open={showAddDialog}

@@ -154,8 +154,11 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
         trigger: "axis",
         formatter: (params: any) => {
           const p = params[0];
+          const phase = p.value >= 7 ? "Fase positif (mendukung La Niña)" : p.value <= -7 ? "Fase negatif (mendukung El Niño)" : "Netral";
+          const phaseColor = p.value >= 7 ? "#2563eb" : p.value <= -7 ? "#dc2626" : "#64748b";
           return `<div class="font-semibold">${p.name}</div>
-            <div class="text-xs mt-1">SOI Index: <span class="font-bold">${p.value >= 0 ? "+" : ""}${p.value.toFixed(1)}</span></div>`;
+            <div class="text-xs mt-1">SOI Index: <span class="font-bold">${p.value >= 0 ? "+" : ""}${p.value.toFixed(1)}</span></div>
+            <div class="text-xs mt-0.5 font-bold" style="color:${phaseColor}">${phase}</div>`;
         },
       },
       grid: { left: "3%", right: "4%", top: "12%", bottom: "10%", containLabel: true },
@@ -171,6 +174,14 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
         axisLabel: { color: textColor },
         splitLine: { lineStyle: { color: gridColor } },
       },
+      visualMap: {
+        show: false,
+        pieces: [
+          { gte: 7, color: "#2563eb" },
+          { gt: -7, lt: 7, color: "#94a3b8" },
+          { lte: -7, color: "#dc2626" },
+        ],
+      },
       series: [
         {
           name: "SOI",
@@ -178,9 +189,29 @@ export const ENSOCharts: React.FC<ENSOChartsProps> = ({ data, isDarkMode = false
           data: values.map((val) => ({
             value: val,
             itemStyle: {
-              color: val >= 7 ? "#3b82f6" : val <= -7 ? "#ef4444" : "#64748b",
+              color: val >= 7 ? "#2563eb" : val <= -7 ? "#dc2626" : "#94a3b8",
             },
           })),
+          markLine: {
+            silent: true,
+            symbol: "none",
+            data: [
+              {
+                yAxis: 7,
+                lineStyle: { color: "#2563eb", type: "dashed", width: 1.5 },
+                label: { formatter: "Positif +7", color: "#2563eb", position: "insideEndTop" },
+              },
+              {
+                yAxis: -7,
+                lineStyle: { color: "#dc2626", type: "dashed", width: 1.5 },
+                label: { formatter: "Negatif -7", color: "#dc2626", position: "insideEndBottom" },
+              },
+              {
+                yAxis: 0,
+                lineStyle: { color: textColor, type: "dotted", width: 1 },
+              },
+            ],
+          },
         },
       ],
     };

@@ -4,7 +4,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, ArrowLeft, Layers, Waves, CloudRain, Compass, Wind, RefreshCw, Sparkles } from "lucide-react";
+import { Globe, ArrowLeft, Layers, Waves, CloudRain, Compass, Wind, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -49,9 +49,6 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
                 </Link>
               </Button>
             )}
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 flex items-center gap-1">
-              <Sparkles className="h-3 w-3 text-indigo-300" /> Climate Drivers &amp; Teleconnections Monitoring
-            </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2.5 text-white">
             <Globe className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-400 shrink-0" /> {title}

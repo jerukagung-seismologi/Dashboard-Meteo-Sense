@@ -41,8 +41,8 @@ export interface StationData {
 }
 
 function getCardinalDirection(deg: number = 0): string {
-  const directions = ["U", "TL", "T", "TG", "S", "BD", "B", "BL"];
-  const index = Math.round(((deg % 360) / 45)) % 8;
+  const directions = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+  const index = Math.round(((deg % 360) / 22.5)) % 16;
   return directions[index];
 }
 
@@ -113,7 +113,7 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
           <span className="font-mono font-bold text-xs text-rose-600 dark:text-rose-400">
             {station.temp !== undefined ? `${station.temp.toFixed(1)}°` : "--"}
           </span>
-          <span className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Suhu</span>
+          <span className="text-[9px] text-slate-500 dark:text-slate-200 uppercase tracking-tighter">Suhu</span>
         </button>
 
         {/* Kelembapan */}
@@ -129,7 +129,7 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
           <span className="font-mono font-bold text-xs text-sky-600 dark:text-sky-400">
             {station.hum !== undefined ? `${Math.round(station.hum)}%` : "--"}
           </span>
-          <span className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-tighter">RH</span>
+          <span className="text-[9px] text-slate-500 dark:text-slate-200 uppercase tracking-tighter">Kelembapan</span>
         </button>
 
         {/* Curah Hujan */}
@@ -145,7 +145,7 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
           <span className="font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">
             {station.rainfall !== undefined ? `${station.rainfall.toFixed(1)}` : "0.0"}
           </span>
-          <span className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Hujan</span>
+          <span className="text-[9px] text-slate-500 dark:text-slate-200 uppercase tracking-tighter">Hujan</span>
         </button>
 
         {/* Arah & Kecepatan Angin */}
@@ -167,8 +167,8 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
           <span className="font-mono font-bold text-xs text-cyan-600 dark:text-cyan-400">
             {station.windSpeed !== undefined ? `${station.windSpeed.toFixed(1)}` : "0.0"}
           </span>
-          <span className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
-            {station.windDirection !== undefined ? `Dr ${getCardinalDirection(station.windDirection)}` : "Angin"}
+          <span className="text-[9px] text-slate-500 dark:text-slate-200 uppercase tracking-tighter">
+            {station.windDirection !== undefined ? `${getCardinalDirection(station.windDirection)}` : "Angin"}
           </span>
         </button>
       </div>
@@ -176,12 +176,12 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
       {/* 1-Hour Trend Chart Container */}
       <div className="space-y-1">
         <div className="flex items-center justify-between text-[11px] text-slate-500 px-0.5 font-medium">
-          <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-semibold">
+          <span className="flex items-center gap-1 text-slate-800 dark:text-slate-200 font-semibold">
             <Sparkles className="h-3 w-3" />
             Grafik 1 Jam Terakhir
           </span>
-          <span className="text-[10px] text-slate-400">
-            {historyData.length} Poin Observasi
+          <span className="text-[11px] text-slate-400">
+            {historyData.length} Data Observasi
           </span>
         </div>
 
@@ -213,7 +213,6 @@ export const StationMarkerPopup: React.FC<StationMarkerPopupProps> = ({
           )}
         </div>
         <div className="text-[9px] text-slate-400 dark:text-slate-500 flex items-center justify-between pt-0.5">
-          <span>Jaringan Stasiun Kebumen</span>
           <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">● Live Stream</span>
         </div>
       </div>

@@ -349,7 +349,6 @@ export default function AnalisisDashboardPage() {
       {/* 1. Header Banner */}
       <PageHeaderBanner
         gradient="blue"
-        badgeText="Observasi & Agregasi Server"
         icon={TrendingUp}
         title="Analisis Meteorologi"
         subtitle="Eksplorasi cuaca mendalam, analisis diurnal, dan agregasi data server stasiun cuaca terhubung"

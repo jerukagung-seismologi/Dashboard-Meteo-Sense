@@ -451,6 +451,15 @@ function KlimatologiInner() {
   const rh = agroCurrentData.relative_humidity_2m ?? 0;
   const dewPoint = agroCurrentData.dew_point_2m ?? (temp - (100 - rh) / 5);
   const dewPointDepression = Math.max(0, Number((temp - dewPoint).toFixed(1)));
+  const dewPointCondition = dewPointDepression <= 1.5
+    ? { label: "Embun Pekat", className: "bg-teal-100 text-teal-800 border-teal-300" }
+    : dewPointDepression <= 3
+      ? { label: "Sangat Lembap", className: "bg-cyan-100 text-cyan-800 border-cyan-300" }
+      : dewPointDepression <= 6
+        ? { label: "Lembap", className: "bg-sky-100 text-sky-800 border-sky-300" }
+        : dewPointDepression <= 10
+          ? { label: "Sedang", className: "bg-slate-100 text-slate-600 border-slate-200" }
+          : { label: "Kering", className: "bg-amber-100 text-amber-800 border-amber-300" };
   const surfacePressure = agroCurrentData.surface_pressure ?? 1012;
   const vpd = agroCurrentData.vapour_pressure_deficit ?? Number((0.61078 * Math.exp((17.27 * temp) / (temp + 237.3)) * (1 - rh / 100)).toFixed(2));
   const rainToday = agroDailyData.precipitation_sum?.[0] || 0;
@@ -784,12 +793,6 @@ function KlimatologiInner() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="space-y-1.5 z-10 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-400/30 flex items-center gap-1">
-              <Sparkles className="h-3 w-3" /> Analisis Klimatologi &amp; Sains Atmosfer
-            </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-              WMO 1991–2020 · BMKG ZOM · Reanalisis ERA5 · Multi-Wilayah Global
-            </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2.5 text-white">
             <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-teal-400 shrink-0" /> Analisis Klimatologi dan Agroklimatologi
@@ -1118,7 +1121,7 @@ function KlimatologiInner() {
             TAB: PROFIL IKLIM WMO (1991–2020) & KLASIFIKASI BIOKLIMATIK
             ════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="profil-iklim" className="mt-6 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border border-blue-200 dark:border-blue-900/50">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border border-blue-00 dark:border-blue-900/50">
             <div>
               <h2 className="text-base font-bold text-blue-950 dark:text-blue-100 flex items-center gap-2">
                 <CloudSun className="h-5 w-5 text-blue-500" />
@@ -1334,8 +1337,8 @@ function KlimatologiInner() {
                         <span className="text-2xl font-black text-teal-600 dark:text-teal-400 font-mono">{dewPoint.toFixed(1)}°C</span>
                         <div className="text-[10px] text-slate-400 mt-0.5">Depresi T-Td: {dewPointDepression}°C</div>
                       </div>
-                      <Badge variant="outline" className={`text-[9px] w-fit font-bold ${dewPointDepression <= 1.5 ? "bg-teal-100 text-teal-800 border-teal-300" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
-                        {dewPointDepression <= 1.5 ? "💧 Embun Pekat" : "Embun Ringan"}
+                      <Badge variant="outline" className={`text-[9px] w-fit font-bold ${dewPointCondition.className}`}>
+                        {dewPointCondition.label}
                       </Badge>
                     </CardContent>
                   </Card>

@@ -51,12 +51,19 @@ import {
   Search,
   ExternalLink,
   Sparkles,
-  Database,
-  CheckCircle2,
   AlertTriangle,
   Globe,
   SlidersHorizontal,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  LayoutGrid,
+  List,
 } from "lucide-react"
+
+type SortKey = "name" | "location" | "id" | "status"
+type SortDir = "asc" | "desc"
+type ViewMode = "grid" | "list"
 
 export default function PerangkatBenchmarkPage() {
   const { toast } = useToast()
@@ -64,6 +71,9 @@ export default function PerangkatBenchmarkPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | "online" | "offline">("all")
+  const [sortKey, setSortKey] = useState<SortKey>("name")
+  const [sortDir, setSortDir] = useState<SortDir>("asc")
+  const [viewMode, setViewMode] = useState<ViewMode>("grid")
   const [isSeeding, setIsSeeding] = useState(false)
 
   // Dialog States
@@ -106,32 +116,45 @@ export default function PerangkatBenchmarkPage() {
     loadDevices()
   }, [])
 
-  // Filtered devices based on search and status
+  // Filtered + Sorted devices
   const filteredDevices = useMemo(() => {
-    return devices.filter((d) => {
+    let result = devices.filter((d) => {
+      const q = searchQuery.toLowerCase()
       const matchesSearch =
-        d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.id.toLowerCase().includes(searchQuery.toLowerCase())
-
-      const matchesStatus =
-        statusFilter === "all" ? true : d.status === statusFilter
-
+        !q ||
+        d.name.toLowerCase().includes(q) ||
+        d.location.toLowerCase().includes(q) ||
+        d.id.toLowerCase().includes(q)
+      const matchesStatus = statusFilter === "all" || d.status === statusFilter
       return matchesSearch && matchesStatus
     })
-  }, [devices, searchQuery, statusFilter])
+    // Sort
+    result = [...result].sort((a, b) => {
+      let valA = "", valB = ""
+      if (sortKey === "name") { valA = a.name; valB = b.name }
+      else if (sortKey === "location") { valA = a.location; valB = b.location }
+      else if (sortKey === "id") { valA = a.id; valB = b.id }
+      else if (sortKey === "status") { valA = a.status; valB = b.status }
+      const cmp = valA.localeCompare(valB, "id", { sensitivity: "base" })
+      return sortDir === "asc" ? cmp : -cmp
+    })
+    return result
+  }, [devices, searchQuery, statusFilter, sortKey, sortDir])
 
-  // Statistics Summary
-  const stats = useMemo(() => {
-    const total = devices.length
-    const online = devices.filter((d) => d.status === "online").length
-    const offline = total - online
-    return {
-      total,
-      online,
-      offline,
-    }
-  }, [devices])
+  // Quick inline stats
+  const totalOnline = useMemo(() => devices.filter((d) => d.status === "online").length, [devices])
+  const totalOffline = useMemo(() => devices.length - totalOnline, [devices, totalOnline])
+
+  // Toggle sort: same key flips direction, new key resets to asc
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+    else { setSortKey(key); setSortDir("asc") }
+  }
+
+  const SortIcon = ({ k }: { k: SortKey }) => {
+    if (sortKey !== k) return <ArrowUpDown className="h-3 w-3 opacity-40" />
+    return sortDir === "asc" ? <ArrowUp className="h-3 w-3 text-indigo-500" /> : <ArrowDown className="h-3 w-3 text-indigo-500" />
+  }
 
   // Handle Open Add Dialog
   // Handle Open Add Dialog
@@ -356,79 +379,120 @@ export default function PerangkatBenchmarkPage() {
         }
       />
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* Total Stasiun */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shrink-0">
-            <Database className="h-5 w-5" />
-          </div>
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Total Stasiun
-            </span>
-            <div className="text-xl font-black text-slate-900 dark:text-slate-100 font-mono">
-              {stats.total}{" "}
-              <span className="text-xs font-normal text-slate-500">Titik</span>
-            </div>
-            <span className="text-[10px] text-slate-400 block -mt-0.5">
-              Tersimpan di Database
-            </span>
-          </div>
-        </div>
 
-        {/* Stasiun Online */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 shrink-0">
-            <CheckCircle2 className="h-5 w-5" />
-          </div>
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Status Online
-            </span>
-            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-              {stats.online}{" "}
-              <span className="text-xs font-normal text-slate-500">Aktif</span>
-            </div>
-            <span className="text-[10px] text-slate-400 block -mt-0.5">
-              Telemetri Berjalan
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter & Search Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Cari stasiun, kecamatan, atau ID..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          <span className="text-xs text-slate-400 flex items-center gap-1">
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            Filter:
-          </span>
-          <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-            {(["all", "online", "offline"] as const).map((s) => (
+      {/* ── Rich Filter + Sort Toolbar ── */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+        {/* Row 1: Search + View Toggle */}
+        <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Cari nama stasiun, lokasi/kecamatan, atau ID dokumen…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400"
+            />
+            {searchQuery && (
               <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  statusFilter === s
-                    ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                }`}
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm leading-none"
               >
-                {s === "all" ? "Semua" : s === "online" ? "Online" : "Offline"}
+                ×
               </button>
-            ))}
+            )}
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl self-end sm:self-auto shrink-0">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === "grid" ? "bg-white dark:bg-slate-700 shadow-xs text-indigo-600" : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              }`}
+              title="Tampilan Grid"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === "list" ? "bg-white dark:bg-slate-700 shadow-xs text-indigo-600" : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              }`}
+              title="Tampilan Daftar"
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2: Filter chips + Sort + Count */}
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
+          {/* Status filter */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <SlidersHorizontal className="h-3 w-3" />
+              Filter:
+            </span>
+            <div className="flex gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl">
+              {(["all", "online", "offline"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    statusFilter === s
+                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs"
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                  }`}
+                >
+                  {s === "online" && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                  {s === "offline" && <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />}
+                  {s === "all" ? `Semua (${devices.length})` : s === "online" ? `Online (${totalOnline})` : `Offline (${totalOffline})`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block" />
+
+          {/* Sort */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <ArrowUpDown className="h-3 w-3" />
+              Urutkan:
+            </span>
+            <div className="flex gap-1 flex-wrap">
+              {(["name", "location", "status", "id"] as const).map((key) => (
+                <button
+                  key={key}
+                  onClick={() => handleSort(key)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border ${
+                    sortKey === key
+                      ? "bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300"
+                      : "border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 bg-white dark:bg-slate-900 hover:border-slate-300"
+                  }`}
+                >
+                  {key === "name" ? "Nama" : key === "location" ? "Lokasi" : key === "status" ? "Status" : "ID"}
+                  <SortIcon k={key} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Inline result count */}
+          <div className="ml-auto shrink-0 text-[11px] text-slate-400">
+            {loading ? (
+              <span className="inline-flex items-center gap-1"><RefreshCw className="h-3 w-3 animate-spin" />Memuat…</span>
+            ) : (
+              <span>
+                Menampilkan{" "}
+                <strong className="text-slate-700 dark:text-slate-300">{filteredDevices.length}</strong>
+                {filteredDevices.length !== devices.length && (
+                  <> dari <strong className="text-slate-700 dark:text-slate-300">{devices.length}</strong></>
+                )}{" "}
+                stasiun
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -453,7 +517,8 @@ export default function PerangkatBenchmarkPage() {
             Tambah Stasiun Pertama
           </Button>
         </div>
-      ) : (
+      ) : viewMode === "grid" ? (
+        /* ── Grid View ── */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {filteredDevices.map((device) => {
             const isOnline = device.status === "online"
@@ -560,6 +625,98 @@ export default function PerangkatBenchmarkPage() {
               </Card>
             )
           })}
+        </div>
+      ) : (
+        /* ── List View ── */
+        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
+          {/* List Header */}
+          <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] items-center gap-3 px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <button onClick={() => handleSort("name")} className="flex items-center gap-1 hover:text-slate-600 dark:hover:text-slate-200 transition-colors text-left">
+              Nama Stasiun <SortIcon k="name" />
+            </button>
+            <button onClick={() => handleSort("location")} className="flex items-center gap-1 hover:text-slate-600 dark:hover:text-slate-200 transition-colors text-left">
+              Lokasi <SortIcon k="location" />
+            </button>
+            <button onClick={() => handleSort("status")} className="flex items-center gap-1 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+              Status <SortIcon k="status" />
+            </button>
+            <span className="font-mono">Koordinat</span>
+            <span>Aksi</span>
+          </div>
+
+          {/* List Rows */}
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {filteredDevices.map((device) => {
+              const isOnline = device.status === "online"
+              return (
+                <div
+                  key={device.id}
+                  className="grid grid-cols-[1fr_1fr_auto_auto_auto] items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                >
+                  {/* Name + ID */}
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{device.name}</p>
+                    <p className="text-[10px] font-mono text-slate-400 truncate">ID: {device.id}</p>
+                  </div>
+
+                  {/* Location */}
+                  <div className="flex items-center gap-1 min-w-0">
+                    <MapPin className="h-3 w-3 text-indigo-500 shrink-0" />
+                    <span className="text-xs text-slate-600 dark:text-slate-300 truncate">{device.location}</span>
+                  </div>
+
+                  {/* Status */}
+                  <Badge
+                    className={`text-[9px] font-bold px-1.5 py-0.5 flex items-center gap-1 w-fit ${
+                      isOnline
+                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                        : "bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-800 dark:border-slate-700"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                    {isOnline ? "Online" : "Offline"}
+                  </Badge>
+
+                  {/* Coordinates */}
+                  <span className="text-[10px] font-mono text-slate-400 whitespace-nowrap">
+                    {device.lat.toFixed(3)}°, {device.lng.toFixed(3)}°
+                  </span>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenEdit(device)}
+                      className="h-7 w-7 p-0 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-500"
+                      title="Edit"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenDelete(device)}
+                      className="h-7 w-7 p-0 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-500"
+                      title="Hapus"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Link href="/dashboard/peta">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-400"
+                        title="Lihat di Peta"
+                      >
+                        <Globe className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 

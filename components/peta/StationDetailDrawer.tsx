@@ -169,7 +169,7 @@ export const StationDetailDrawer: React.FC<StationDetailDrawerProps> = ({
               const labels: Record<ChartMetricType, string> = {
                 wind: "Angin",
                 temperature: "Suhu",
-                humidity: "RH",
+                humidity: "Kelembapan",
                 rainfall: "Hujan",
                 pressure: "Tekanan",
               };

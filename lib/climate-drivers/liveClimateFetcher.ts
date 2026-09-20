@@ -8,12 +8,16 @@ import { getEnsoData as getFallbackEnso, getMjoData as getFallbackMjo, getIodDat
 export async function fetchLiveEnsoData(): Promise<EnsoData> {
   const fallback = getFallbackEnso();
   try {
-    const [oniRes, sstoiRes] = await Promise.allSettled([
+    const [oniRes, sstoiRes, soiRes] = await Promise.allSettled([
       fetch("https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt", {
         next: { revalidate: 3600 },
         headers: { "User-Agent": "MeteoSense-Dashboard/2.1" },
       }),
       fetch("https://www.cpc.ncep.noaa.gov/data/indices/sstoi.indices", {
+        next: { revalidate: 3600 },
+        headers: { "User-Agent": "MeteoSense-Dashboard/2.1" },
+      }),
+      fetch("https://www.cpc.ncep.noaa.gov/data/indices/soi", {
         next: { revalidate: 3600 },
         headers: { "User-Agent": "MeteoSense-Dashboard/2.1" },
       }),
@@ -52,6 +56,8 @@ export async function fetchLiveEnsoData(): Promise<EnsoData> {
     let historicalNino3 = fallback.historicalNino3;
     let historicalNino34 = fallback.historicalNino34;
     let historicalNino4 = fallback.historicalNino4;
+    let historicalSoi = fallback.historicalSoi;
+    let latestSoi = fallback.soi;
 
     if (sstoiRes.status === "fulfilled" && sstoiRes.value.ok) {
       const text = await sstoiRes.value.text();
@@ -92,12 +98,38 @@ export async function fetchLiveEnsoData(): Promise<EnsoData> {
       }
     }
 
+    if (soiRes.status === "fulfilled" && soiRes.value.ok) {
+      const text = await soiRes.value.text();
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+      const rows = text.split("\n").filter((line) => /^\s*\d{4}\s+/.test(line));
+      const parsedSoi = rows.flatMap((line) => {
+        const parts = line.trim().split(/\s+/);
+        const year = Number(parts[0]);
+        // NOAA sometimes concatenates the final valid value with -999.9
+        // missing-value sentinels when trailing months are unavailable.
+        const values = parts.slice(1).join(" ").match(/-?\d+(?:\.\d+)?/g) || [];
+        return values.slice(0, 12).flatMap((rawValue, index) => {
+          const value = Number(rawValue);
+          return Number.isFinite(value) && Math.abs(value) < 50
+            ? [{ date: `${year}-${String(index + 1).padStart(2, "0")}`, label: `${monthNames[index]} ${year}`, value }]
+            : [];
+        });
+      });
+
+      if (parsedSoi.length > 0) {
+        const recentSoi = parsedSoi.slice(-24);
+        historicalSoi = recentSoi.map(({ date, value }) => ({ date, value }));
+        latestSoi = recentSoi[recentSoi.length - 1].value;
+      }
+    }
+
     const status = getEnsoCategory(nino34) as any;
 
     return {
       ...fallback,
       status,
       oni: latestOni,
+      soi: latestSoi,
       nino12,
       nino3,
       nino34,
@@ -109,6 +141,7 @@ export async function fetchLiveEnsoData(): Promise<EnsoData> {
       historicalNino3,
       historicalNino34,
       historicalNino4,
+      historicalSoi,
     };
   } catch (err) {
     console.warn("Live NOAA ENSO fetch failed, using fallback:", err);

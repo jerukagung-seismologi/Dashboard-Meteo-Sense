@@ -151,6 +151,15 @@ export default function AgrometPage() {
   const rh = current.relative_humidity_2m ?? 0;
   const dewPoint = current.dew_point_2m ?? (temp - (100 - rh) / 5);
   const dewPointDepression = Math.max(0, Number((temp - dewPoint).toFixed(1)));
+  const dewPointCondition = dewPointDepression <= 1.5
+    ? { label: "Embun Pekat", className: "bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-950/60 dark:text-teal-200 dark:border-teal-800" }
+    : dewPointDepression <= 3
+      ? { label: "Sangat Lembap", className: "bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-950/60 dark:text-cyan-200 dark:border-cyan-800" }
+      : dewPointDepression <= 6
+        ? { label: "Lembap", className: "bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-800" }
+        : dewPointDepression <= 10
+          ? { label: "Sedang", className: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700" }
+          : { label: "Kering", className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-800" };
 
   const surfacePressure = current.surface_pressure ?? 1012;
   const vpd = current.vapour_pressure_deficit ?? Number((0.61078 * Math.exp((17.27 * temp) / (temp + 237.3)) * (1 - rh / 100)).toFixed(2));
@@ -272,19 +281,13 @@ export default function AgrometPage() {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5 max-w-2xl min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold uppercase tracking-wider py-0.5 px-2.5">
-                <Sprout className="h-3 w-3 mr-1" /> Agrometeorologi &amp; Iklim Mikro Lahan
-              </Badge>
-              <Badge variant="outline" className="text-slate-300 border-white/20 text-[10px]">
-                ECMWF IFS &amp; Google WeatherNext 2 AI Ensemble
-              </Badge>
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
               <Sprout className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-400 shrink-0" />
               <span>Monitoring Lingkungan Tanaman &amp; Agrometeorologi</span>
             </h1>
             <p className="text-xs sm:text-sm text-emerald-100/80 leading-relaxed">
-              Pemantauan kondisi cuaca mikro pertanian, profil perakaran tanah, neraca air, dan prediksi ensemble probabilistik multi-model hingga 64 skenario.
+              Pemantauan kondisi cuaca mikro pertanian, profil tanah, neraca air, dan prediksi ansambel probabilistik multi-model
             </p>
           </div>
 
@@ -364,18 +367,18 @@ export default function AgrometPage() {
               <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
                 <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
                   <div className="flex justify-between items-start">
-                    <span className="text-xs font-semibold text-slate-500">Suhu Udara (2m)</span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Suhu Udara (2m)</span>
                     <div className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-500">
-                      <ThermometerSun className="h-4 w-4" />
+                      <ThermometerSun className="h-5 w-5" />
                     </div>
                   </div>
                   <div>
                     <span className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono">{temp}°C</span>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[11px] text-slate-800 dark:text-slate-200 mt-0.5">
                       Min: {tempMin}° | Max: {tempMax}°
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">
+                  <Badge variant="outline" className="text-[11px] w-fit font-normal text-slate-800 dark:text-slate-200">
                     Terasa: {apparentTemp}°C
                   </Badge>
                 </CardContent>
@@ -385,26 +388,22 @@ export default function AgrometPage() {
               <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
                 <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
                   <div className="flex justify-between items-start">
-                    <span className="text-xs font-semibold text-slate-500">Titik Embun (Td)</span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Titik Embun (Td)</span>
                     <div className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-500">
-                      <Droplets className="h-4 w-4" />
+                      <Droplets className="h-5 w-5" />
                     </div>
                   </div>
                   <div>
                     <span className="text-2xl font-black text-teal-600 dark:text-teal-400 font-mono">{dewPoint.toFixed(1)}°C</span>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[11px] text-slate-800 dark:text-slate-200 mt-0.5">
                       Depresi T-Td: {dewPointDepression}°C
                     </div>
                   </div>
                   <Badge
                     variant="outline"
-                    className={`text-[9px] w-fit font-bold ${
-                      dewPointDepression <= 1.5
-                        ? "bg-teal-100 text-teal-800 border-teal-300"
-                        : "bg-slate-100 text-slate-600 border-slate-200"
-                    }`}
+                    className={`text-[10px] w-fit font-bold ${dewPointCondition.className}`}
                   >
-                    {dewPointDepression <= 1.5 ? "💧 Embun Pekat" : "Embun Ringan"}
+                    {dewPointCondition.label}
                   </Badge>
                 </CardContent>
               </Card>
@@ -413,18 +412,18 @@ export default function AgrometPage() {
               <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
                 <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
                   <div className="flex justify-between items-start">
-                    <span className="text-xs font-semibold text-slate-500">Tekanan Barometrik</span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Tekanan Barometrik</span>
                     <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-500">
                       <Gauge className="h-4 w-4" />
                     </div>
                   </div>
                   <div>
                     <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono">{surfacePressure.toFixed(0)} <span className="text-xs font-normal">hPa</span></span>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[11px] text-slate-800 dark:text-slate-200 mt-0.5">
                       Tingkat Permukaan Lahan
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">
+                  <Badge variant="outline" className="text-[11px] w-fit font-normal text-slate-800 dark:text-slate-200">
                     {surfacePressure < 1008 ? "Sistem Rendah" : "Stabil Normal"}
                   </Badge>
                 </CardContent>
@@ -434,18 +433,18 @@ export default function AgrometPage() {
               <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
                 <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
                   <div className="flex justify-between items-start">
-                    <span className="text-xs font-semibold text-slate-500">Kelembapan Udara</span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Kelembapan Udara</span>
                     <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-500">
                       <Waves className="h-4 w-4" />
                     </div>
                   </div>
                   <div>
                     <span className="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono">{rh}%</span>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[11px] text-slate-800 dark:text-slate-200 mt-0.5">
                       Kondisi Kanopi Lahan
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">
+                  <Badge variant="outline" className="text-[11px] w-fit font-normal text-slate-800 dark:text-slate-200">
                     {rh > 85 ? "Sangat Lembap" : rh < 50 ? "Kering" : "Optimal"}
                   </Badge>
                 </CardContent>
@@ -455,14 +454,14 @@ export default function AgrometPage() {
               <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
                 <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
                   <div className="flex justify-between items-start">
-                    <span className="text-xs font-semibold text-slate-500">Defisit Uap (VPD)</span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Defisit Uap (VPD)</span>
                     <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-500">
                       <Sprout className="h-4 w-4" />
                     </div>
                   </div>
                   <div>
                     <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">{vpd} <span className="text-xs font-normal">kPa</span></span>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[11px] text-slate-800 dark:text-slate-200 mt-0.5">
                       Transpirasi Stomata
                     </div>
                   </div>
@@ -470,10 +469,10 @@ export default function AgrometPage() {
                     variant="outline"
                     className={`text-[9px] w-fit font-bold ${
                       vpd >= 0.8 && vpd <= 1.5
-                        ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                        ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800"
                         : vpd > 1.5
-                        ? "bg-amber-100 text-amber-800 border-amber-300"
-                        : "bg-blue-100 text-blue-800 border-blue-300"
+                        ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-800"
+                        : "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-200 dark:border-blue-800"
                     }`}
                   >
                     {vpd >= 0.8 && vpd <= 1.5 ? "Transpirasi Ideal" : vpd > 1.5 ? "Stres Transpirasi" : "Transpirasi Rendah"}
@@ -485,18 +484,18 @@ export default function AgrometPage() {
               <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
                 <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
                   <div className="flex justify-between items-start">
-                    <span className="text-xs font-semibold text-slate-500">Curah Hujan Hari Ini</span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Curah Hujan Hari Ini</span>
                     <div className="p-1.5 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 text-cyan-500">
                       <CloudRain className="h-4 w-4" />
                     </div>
                   </div>
                   <div>
                     <span className="text-2xl font-black text-cyan-600 dark:text-cyan-400 font-mono">{rainToday} <span className="text-xs font-normal">mm</span></span>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[11px] text-slate-800 dark:text-slate-200 mt-0.5">
                       Akumulasi 7 Hari: {rain7d.toFixed(1)} mm
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">
+                  <Badge variant="outline" className="text-[11px] w-fit font-normal text-slate-800 dark:text-slate-200">
                     {rainToday > 20 ? "Hujan Lebat" : rainToday > 5 ? "Hujan Sedang" : "Nihil / Ringan"}
                   </Badge>
                 </CardContent>
@@ -506,14 +505,14 @@ export default function AgrometPage() {
               <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
                 <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
                   <div className="flex justify-between items-start">
-                    <span className="text-xs font-semibold text-slate-500">Evapotranspirasi (ET0)</span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Evapotranspirasi (ET0)</span>
                     <div className="p-1.5 rounded-lg bg-orange-50 dark:bg-orange-950/60 text-orange-500">
                       <Sun className="h-4 w-4" />
                     </div>
                   </div>
                   <div>
                     <span className="text-2xl font-black text-orange-600 dark:text-orange-400 font-mono">{et0Today.toFixed(1)} <span className="text-xs font-normal">mm</span></span>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[11px] text-slate-800 dark:text-slate-200 mt-0.5">
                       FAO Penman-Monteith
                     </div>
                   </div>
@@ -521,8 +520,8 @@ export default function AgrometPage() {
                     variant="outline"
                     className={`text-[9px] w-fit font-bold ${
                       waterDeficit >= 0
-                        ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                        : "bg-rose-100 text-rose-800 border-rose-300"
+                        ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800"
+                        : "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-800"
                     }`}
                   >
                     {waterDeficit >= 0 ? `Surplus +${waterDeficit.toFixed(1)}mm` : `Defisit ${waterDeficit.toFixed(1)}mm`}
@@ -534,18 +533,18 @@ export default function AgrometPage() {
               <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
                 <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
                   <div className="flex justify-between items-start">
-                    <span className="text-xs font-semibold text-slate-500">Radiasi Surya</span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Radiasi Surya</span>
                     <div className="p-1.5 rounded-lg bg-yellow-50 dark:bg-yellow-950/60 text-yellow-600">
                       <Sun className="h-4 w-4" />
                     </div>
                   </div>
                   <div>
                     <span className="text-2xl font-black text-yellow-600 dark:text-yellow-400 font-mono">{solarCurrent} <span className="text-xs font-normal">W/m²</span></span>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[11px] text-slate-800 dark:text-slate-200 mt-0.5">
                       Total Harian: {solarDaily} MJ/m²
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">
+                  <Badge variant="outline" className="text-[11px] w-fit font-normal text-slate-800 dark:text-slate-200">
                     Fotosintesis Aktif
                   </Badge>
                 </CardContent>
@@ -555,18 +554,18 @@ export default function AgrometPage() {
               <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
                 <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
                   <div className="flex justify-between items-start">
-                    <span className="text-xs font-semibold text-slate-500">Angin (10m)</span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Angin (10m)</span>
                     <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                       <Wind className="h-4 w-4" />
                     </div>
                   </div>
                   <div>
                     <span className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono">{windSpeed} <span className="text-xs font-normal">m/s</span></span>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[11px] text-slate-800 dark:text-slate-200 mt-0.5">
                       Arah: {windDir}° ({getCardinalDirection(windDir)})
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">
+                  <Badge variant="outline" className="text-[11px] w-fit font-normal text-slate-800 dark:text-slate-200">
                     {Number(windSpeed) > 5 ? "Angin Kencang" : "Angin Tenang"}
                   </Badge>
                 </CardContent>
@@ -576,18 +575,18 @@ export default function AgrometPage() {
               <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
                 <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
                   <div className="flex justify-between items-start">
-                    <span className="text-xs font-semibold text-slate-500">Tutupan Awan &amp; UV</span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Tutupan Awan &amp; UV</span>
                     <div className="p-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600">
                       <Cloud className="h-4 w-4" />
                     </div>
                   </div>
                   <div>
                     <span className="text-2xl font-black text-sky-600 dark:text-sky-400 font-mono">{cloudCover}%</span>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[11px] text-slate-800 dark:text-slate-200 mt-0.5">
                       Indeks UV Maks: {uvIndex}
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">
+                  <Badge variant="outline" className="text-[11px] w-fit font-normal text-slate-800 dark:text-slate-200">
                     {cloudCover > 75 ? "Mendung Tebal" : cloudCover > 30 ? "Sebagian Berawan" : "Cerah Terbuka"}
                   </Badge>
                 </CardContent>

@@ -327,7 +327,7 @@ const Map = ({ devices = [], isDarkMode = false }: MapProps) => {
           }`}
         >
           <CloudRain className="h-3.5 w-3.5" />
-          <span>Hujan</span>
+          <span> Curah Hujan</span>
         </button>
       </div>
 
@@ -398,10 +398,10 @@ const Map = ({ devices = [], isDarkMode = false }: MapProps) => {
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
         <div>
           <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
-            Jaringan Cuaca Kabupaten Kebumen
+            Jaringan Stasiun Cuaca
           </span>
           <span className="text-[10px] text-slate-400 block -mt-0.5">
-            {devices.length} Stasiun Terpantau Real-time
+            {devices.length} Stasiun
           </span>
         </div>
       </div>

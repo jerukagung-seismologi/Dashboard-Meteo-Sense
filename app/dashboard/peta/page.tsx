@@ -18,11 +18,7 @@ import {
   CloudRain,
   Compass,
   CheckCircle2,
-  Sparkles,
-  Layers,
-  ArrowUpDown,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   KEBUMEN_DEFAULT_STATIONS,
@@ -234,10 +230,9 @@ export default function PetaPage() {
       {/* Unified Single Header Banner */}
       <PageHeaderBanner
         gradient="indigo"
-        badgeText="Sistem Informasi Geografis (SIG)"
         icon={Compass}
         title="Peta Persebaran Stasiun Cuaca"
-        subtitle="Pemantauan geospasial real-time stasiun cuaca Meteo-Sense di wilayah Kabupaten Kebumen dan sekitarnya lengkap dengan grafik telemetri 1 jam terakhir."
+        subtitle="Sistem Informasi Geografis real-time stasiun cuaca Meteo Sense"
         actions={
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="relative flex-1 sm:flex-initial">
@@ -273,15 +268,12 @@ export default function PetaPage() {
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Stasiun Terpantau
+              Stasiun Cuaca
             </span>
             <div className="text-xl font-black text-slate-900 dark:text-slate-100 font-mono">
               {filteredDevices.length}{" "}
-              <span className="text-xs font-normal text-slate-500">Titik</span>
+              <span className="text-xs font-normal text-slate-500">Stasiun</span>
             </div>
-            <span className="text-[10px] text-slate-400 block -mt-0.5">
-              Jaringan Wilayah Kebumen
-            </span>
           </div>
         </div>
 
@@ -298,9 +290,6 @@ export default function PetaPage() {
               {stats.avgTemp}{" "}
               <span className="text-xs font-normal text-slate-500">°C</span>
             </div>
-            <span className="text-[10px] text-slate-400 block -mt-0.5">
-              Mikroklimat Kebumen
-            </span>
           </div>
         </div>
 
@@ -317,9 +306,6 @@ export default function PetaPage() {
               {stats.avgHum}{" "}
               <span className="text-xs font-normal text-slate-500">%</span>
             </div>
-            <span className="text-[10px] text-slate-400 block -mt-0.5">
-              Rata-rata Terukur
-            </span>
           </div>
         </div>
 
@@ -334,11 +320,8 @@ export default function PetaPage() {
             </span>
             <div className="text-base font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <span>{stats.activeCount} Aktif Online</span>
+              <span>{stats.activeCount} Online</span>
             </div>
-            <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 block -mt-0.5">
-              Real-time Streaming
-            </span>
           </div>
         </div>
       </div>
