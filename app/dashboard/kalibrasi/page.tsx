@@ -528,7 +528,6 @@ function UnifiedCalibrationContent() {
       {/* Unified Single Header Banner */}
       <PageHeaderBanner
         gradient="blue"
-        badgeText="Scientific Suite v2.0"
         icon={SlidersHorizontal}
         title="Kalibrasi & Validasi Bias"
         subtitle="Penyatuan sistem validasi ilmiah reanalisis ERA5 ECMWF, benchmark model kalibrasi otomatis, dan manajemen sensor IoT aktif stasiun."

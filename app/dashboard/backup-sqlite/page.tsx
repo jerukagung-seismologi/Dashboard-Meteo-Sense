@@ -446,7 +446,6 @@ export default function BackupSqlitePage() {
       {/* Top Header Banner (Single Compact Banner) */}
       <PageHeaderBanner
         gradient="blue"
-        badgeText="Meteo Sense Administrator Sync"
         icon={Database}
         title="Pusat Cadangan & Basis Data SQLite"
         subtitle="Sinkronisasi telemetri live dari Firebase RTDB ke SQLite lokal, audit multi-tier database, dan manajemen snapshot cadangan offline."

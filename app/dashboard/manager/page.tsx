@@ -179,7 +179,6 @@ export default function ManagerPage() {
       {/* Unified Single Header Banner */}
       <PageHeaderBanner
         gradient="indigo"
-        badgeText="Hak Akses &amp; Otorisasi Sistem"
         icon={ShieldCheck}
         title="Manajemen Pengguna"
         subtitle="Tambah, edit, atau hapus akun pengguna sistem dan kendalikan izin hak akses peran administrator"

@@ -78,7 +78,6 @@ export default function PelaporanPage() {
         {/* Unified Single Header Banner */}
         <PageHeaderBanner
           gradient="blue"
-          badgeText="Sistem Pelaporan Resmi & Ekspor Observasi"
           icon={FileText}
           title="Pelaporan & Ekspor Data"
           subtitle="Buat dan cetak laporan data sensor harian, bulanan, klimatologi, serta ekspor observasi global WOW Met Office."

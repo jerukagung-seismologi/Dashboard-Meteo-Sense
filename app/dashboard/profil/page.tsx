@@ -153,7 +153,6 @@ const ProfilePage = () => {
       {/* Unified Single Header Banner */}
       <PageHeaderBanner
         gradient="indigo"
-        badgeText="Akun & Keamanan Akses"
         icon={UserIcon}
         title="Profil Pengguna"
         subtitle="Informasi akun pengguna, hak akses peran sistem, dan pengelolaan keamanan autentikasi"

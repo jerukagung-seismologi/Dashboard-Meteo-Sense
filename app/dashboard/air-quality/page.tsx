@@ -31,7 +31,6 @@ export default function AirQualityPage() {
       {/* Subpage Header Banner */}
       <PageHeaderBanner
         gradient="sky"
-        badgeText="ECMWF CAMS Atmosphere Monitoring"
         icon={Wind}
         title="Air Quality, Gas Pollutants & Aerosol"
         subtitle="Pemantauan real-time dan prakiraan gas polutan (Karbon Monoksida, Karbon Dioksida, NO2, SO2, Ozon), partikulat PM2.5/PM10, serta distribusi aerosol CAMS di Indonesia."

@@ -771,7 +771,6 @@ export default function DataPage() {
       {/* Unified Single Header Banner */}
       <PageHeaderBanner
         gradient="slate"
-        badgeText="Manajemen Database & Telemetri"
         icon={EditIcon}
         title="Data Editor & Telemetri"
         subtitle="Pengelolaan, inspeksi, filtering, koreksi, dan ekspor dataset deret waktu sensor cuaca terhubung"

@@ -15,7 +15,6 @@ export default function Page() {
             {/* Unified Single Header Banner */}
             <PageHeaderBanner
                 gradient="sky"
-                badgeText="Operasional Prakirawan Cuaca"
                 icon={CloudSun}
                 title="Prakiraan Cuaca & Outlook"
                 subtitle="Prakiraan cuaca resolusi tinggi BMKG Nowcasting dan penyusunan template laporan outlook cuaca resmi"

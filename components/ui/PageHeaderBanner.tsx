@@ -9,9 +9,6 @@ export interface PageHeaderBannerProps {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   icon?: LucideIcon;
-  badgeText?: string;
-  badgeIcon?: LucideIcon;
-  badgeExtra?: React.ReactNode;
   gradient?: "indigo" | "teal" | "sky" | "purple" | "emerald" | "blue" | "slate";
   actions?: React.ReactNode;
   children?: React.ReactNode;
@@ -74,9 +71,6 @@ export const PageHeaderBanner: React.FC<PageHeaderBannerProps> = ({
   title,
   subtitle,
   icon: MainIcon,
-  badgeText,
-  badgeIcon: BadgeIcon = Sparkles,
-  badgeExtra,
   gradient = "indigo",
   actions,
   children,
@@ -103,23 +97,6 @@ export const PageHeaderBanner: React.FC<PageHeaderBannerProps> = ({
       {/* Main Banner Header Content (Compact padding: p-4 sm:p-5) */}
       <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
         <div className="space-y-1.5 min-w-0">
-          {(badgeText || badgeExtra) && (
-            <div className="flex items-center gap-2 flex-wrap">
-              {badgeText && (
-                <span
-                  className={cn(
-                    "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 border shrink-0",
-                    theme.badge
-                  )}
-                >
-                  <BadgeIcon className="h-3 w-3 shrink-0" />
-                  <span>{badgeText}</span>
-                </span>
-              )}
-              {badgeExtra}
-            </div>
-          )}
-
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2.5 text-white leading-tight">
             {MainIcon && <MainIcon className={cn("h-6 w-6 shrink-0", theme.icon)} />}
             <span className="truncate">{title}</span>
