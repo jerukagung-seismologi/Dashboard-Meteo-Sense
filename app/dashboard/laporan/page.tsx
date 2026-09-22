@@ -132,7 +132,13 @@ export default function PelaporanPage() {
               <LaporanMeteorologi sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />
             </TabsContent>
             <TabsContent value="klimatologi" className="pt-4">
-              <LaporanKlimatologi sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />
+              <LaporanKlimatologi
+                sensorId={sensorId}
+                sensorName={selectedSensorName}
+                displayName={displayName}
+                lat={selectedLat}
+                lng={selectedLng}
+              />
             </TabsContent>
             <TabsContent value="wow" className="pt-4">
               <ExportWOWMetOffice sensorId={sensorId} sensorName={selectedSensorName} displayName={displayName} />

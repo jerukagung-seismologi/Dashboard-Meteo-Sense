@@ -1,5 +1,104 @@
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
+
+function convertCssLabColors(value: string): string | null {
+  const labPattern = /lab\(\s*([\d.+-]+)%?\s+([\d.+-]+)%?\s+([\d.+-]+)%?(?:\s*\/\s*([\d.]+%?))?\s*\)/gi;
+  if (!labPattern.test(value)) return null;
+  labPattern.lastIndex = 0;
+
+  return value.replace(labPattern, (_match, lightnessValue, aValue, bValue, alphaValue) => {
+    const lightness = Math.max(0, Math.min(100, Number(lightnessValue)));
+    const a = Number(aValue);
+    const b = Number(bValue);
+    const alpha = alphaValue ? (alphaValue.endsWith('%') ? Number(alphaValue.slice(0, -1)) / 100 : Number(alphaValue)) : 1;
+
+  // CSS Lab uses a D50 white point. Convert Lab -> XYZ D50 -> D65 -> sRGB.
+  const fy = (lightness + 16) / 116;
+  const fx = fy + a / 500;
+  const fz = fy - b / 200;
+  const epsilon = 216 / 24389;
+  const kappa = 24389 / 27;
+  const finv = (value: number) => (value ** 3 > epsilon ? value ** 3 : (116 * value - 16) / kappa);
+  const x = 0.96422 * finv(fx);
+  const y = 1.0 * finv(fy);
+  const z = 0.82521 * finv(fz);
+
+  const d65X =  0.9555766 * x - 0.0230393 * y + 0.0631636 * z;
+  const d65Y = -0.0282895 * x + 1.0099416 * y + 0.0210077 * z;
+  const d65Z =  0.0122982 * x - 0.0204830 * y + 1.3299098 * z;
+  const linearR =  3.2404542 * d65X - 1.5371385 * d65Y - 0.4985314 * d65Z;
+  const linearG = -0.9692660 * d65X + 1.8760108 * d65Y + 0.0415560 * d65Z;
+  const linearB =  0.0556434 * d65X - 0.2040259 * d65Y + 1.0572252 * d65Z;
+  const toSrgb = (channel: number) => Math.round(255 * (channel <= 0.0031308 ? 12.92 * channel : 1.055 * channel ** (1 / 2.4) - 0.055));
+  const clamp = (channel: number) => Math.max(0, Math.min(255, toSrgb(channel)));
+
+    return `rgba(${clamp(linearR)}, ${clamp(linearG)}, ${clamp(linearB)}, ${Math.max(0, Math.min(1, alpha))})`;
+  });
+}
+
+function srgbFromLinear(red: number, green: number, blue: number, alpha: number) {
+  const encode = (channel: number) => Math.round(255 * (channel <= 0.0031308 ? 12.92 * channel : 1.055 * channel ** (1 / 2.4) - 0.055));
+  const clamp = (channel: number) => Math.max(0, Math.min(255, encode(channel)));
+  return `rgba(${clamp(red)}, ${clamp(green)}, ${clamp(blue)}, ${Math.max(0, Math.min(1, alpha))})`;
+}
+
+function convertCssOklabColors(value: string): string | null {
+  const pattern = /oklab\(\s*([\d.+-]+%?)\s+([\d.+-]+%?)\s+([\d.+-]+%?)(?:\s*\/\s*([\d.]+%?))?\s*\)/gi;
+  if (!pattern.test(value)) return null;
+  pattern.lastIndex = 0;
+
+  return value.replace(pattern, (_match, lightnessValue, aValue, bValue, alphaValue) => {
+    const lightness = String(lightnessValue).endsWith("%") ? Number.parseFloat(lightnessValue) / 100 : Number(lightnessValue);
+    const a = String(aValue).endsWith("%") ? Number.parseFloat(aValue) * 0.004 : Number(aValue);
+    const b = String(bValue).endsWith("%") ? Number.parseFloat(bValue) * 0.004 : Number(bValue);
+    const alpha = alphaValue ? (String(alphaValue).endsWith("%") ? Number.parseFloat(alphaValue) / 100 : Number(alphaValue)) : 1;
+    const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+    const m = (lightness - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+    const s = (lightness - 0.0894841775 * a - 1.2914855480 * b) ** 3;
+    return srgbFromLinear(
+      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+      alpha,
+    );
+  });
+}
+
+function convertCssOklchColors(value: string): string | null {
+  const pattern = /oklch\(\s*([\d.+-]+%?)\s+([\d.+-]+%?)\s+([\d.+-]+)(?:deg)?(?:\s*\/\s*([\d.]+%?))?\s*\)/gi;
+  if (!pattern.test(value)) return null;
+  pattern.lastIndex = 0;
+
+  return value.replace(pattern, (_match, lightnessValue, chromaValue, hueValue, alphaValue) => {
+    const lightness = String(lightnessValue).endsWith("%") ? Number.parseFloat(lightnessValue) / 100 : Number(lightnessValue);
+    const chroma = String(chromaValue).endsWith("%") ? Number.parseFloat(chromaValue) * 0.004 : Number(chromaValue);
+    const hue = (Number(hueValue) * Math.PI) / 180;
+    const a = chroma * Math.cos(hue);
+    const b = chroma * Math.sin(hue);
+    const alpha = alphaValue ? (String(alphaValue).endsWith("%") ? Number.parseFloat(alphaValue) / 100 : Number(alphaValue)) : 1;
+    return convertCssOklabColors(`oklab(${lightness} ${a} ${b} / ${alpha})`) || "transparent";
+  });
+}
+
+function normalizeUnsupportedColors(document: Document, root: HTMLElement) {
+  const properties = [
+    'color', 'backgroundColor', 'backgroundImage', 'borderTopColor', 'borderRightColor',
+    'borderBottomColor', 'borderLeftColor', 'outlineColor', 'textDecorationColor',
+    'fill', 'stroke', 'caretColor', 'columnRuleColor', 'textShadow', 'boxShadow',
+  ] as const;
+
+  [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))].forEach((element) => {
+    const computed = document.defaultView?.getComputedStyle(element);
+    if (!computed) return;
+
+    properties.forEach((property) => {
+      const value = computed[property];
+      if (!value || !/lab\(/i.test(value)) return;
+      const converted = convertCssOklabColors(value) || convertCssOklchColors(value) || convertCssLabColors(value);
+      if (converted) element.style.setProperty(property.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`), converted);
+    });
+  });
+}
 
 /**
  * Renders an HTML element to a high-resolution Canvas.
@@ -25,6 +124,9 @@ export const generateCanvasFromDOM = async (elementId: string): Promise<HTMLCanv
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
+      onclone: (clonedDocument, clonedElement) => {
+        normalizeUnsupportedColors(clonedDocument, clonedElement as HTMLElement);
+      },
     });
     return canvas;
   } catch (error) {

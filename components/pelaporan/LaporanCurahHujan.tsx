@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import { Download, Calendar as CalendarIcon, CloudRain, Clock, Activity, CheckCircle2, ShieldCheck } from "lucide-react"
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"

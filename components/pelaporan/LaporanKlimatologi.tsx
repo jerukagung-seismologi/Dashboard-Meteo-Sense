@@ -29,6 +29,7 @@ import { PrintLayout } from "./PrintLayout"
 import { generateCanvasFromDOM, exportAsPNG, exportAsJPEG, exportAsPDF, printCanvas } from "@/lib/exportUtils"
 import { cn } from "@/lib/utils"
 import { ReportPublicationCard } from "./ReportPublicationCard"
+import { SeasonalRepresentativenessReport } from "./SeasonalRepresentativenessReport"
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -38,9 +39,11 @@ interface LaporanKlimatologiProps {
   sensorId: string;
   sensorName: string;
   displayName: string;
+  lat: number;
+  lng: number;
 }
 
-export default function LaporanKlimatologi({ sensorId, sensorName, displayName }: LaporanKlimatologiProps) {
+export default function LaporanKlimatologi({ sensorId, sensorName, displayName, lat, lng }: LaporanKlimatologiProps) {
   const { toast } = useToast()
   
   const [preset, setPreset] = useState<string>("monthly");
@@ -349,6 +352,17 @@ Tekanan Udara Rata-Rata: ${minPress} - ${maxPress} hPa`;
             />
           )}
 
+          {data?.stats && (
+            <SeasonalRepresentativenessReport
+              stats={data.stats}
+              pointsCount={data.points?.length ?? 0}
+              preset={preset}
+              periodLabel={publicationCaption.split("\n")[0]?.replace("LAPORAN KLIMATOLOGI ", "") || preset.toUpperCase()}
+              latitude={lat}
+              longitude={lng}
+            />
+          )}
+
           {/* Summary Stat Cards */}
           {data?.stats && (
             <SummaryCards stats={data.stats} />
@@ -448,36 +462,65 @@ Tekanan Udara Rata-Rata: ${minPress} - ${maxPress} hPa`;
                   </div>
                 </section>
 
-                <section className="break-inside-avoid mt-8 print:mt-4">
-                  <h2 className="text-xl print:text-lg font-semibold mb-4 print:mb-2 border-l-4 border-slate-800 pl-3">Tabel Agregasi Data ({preset})</h2>
-                  <div className="overflow-x-auto border rounded-lg print:border-none print:rounded-none">
-                    <table className="w-full text-sm print:text-[10px]">
-                      <thead className="bg-slate-100 print:bg-slate-200 text-slate-700">
-                        <tr>
-                          <th className="px-4 py-3 print:py-1 text-left font-semibold border-b border-r">Waktu (UTC)</th>
-                          <th className="px-2 py-3 print:py-1 text-center font-semibold border-b border-r">Suhu Rata-rata</th>
-                          <th className="px-2 py-3 print:py-1 text-center font-semibold border-b border-r">Suhu Maks</th>
-                          <th className="px-2 py-3 print:py-1 text-center font-semibold border-b border-r">Suhu Min</th>
-                          <th className="px-2 py-3 print:py-1 text-center font-semibold border-b border-r text-blue-700">Total Hujan</th>
-                          <th className="px-2 py-3 print:py-1 text-center font-semibold border-b border-r">Kelembaban Rata</th>
-                          <th className="px-2 py-3 print:py-1 text-center font-semibold border-b">Tekanan Rata</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {data?.points?.map((p: any, idx: number) => (
-                          <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50 print:bg-white"}>
-                            <td className="px-4 py-2 print:py-1 border-r font-medium">{p.timeKey}</td>
-                            <td className="px-2 py-2 print:py-1 border-r text-center">{p.temperatureMean?.toFixed(1) ?? "-"}</td>
-                            <td className="px-2 py-2 print:py-1 border-r text-center text-red-600 font-medium">{p.temperatureMax?.toFixed(1) ?? "-"}</td>
-                            <td className="px-2 py-2 print:py-1 border-r text-center text-blue-600 font-medium">{p.temperatureMin?.toFixed(1) ?? "-"}</td>
-                            <td className="px-2 py-2 print:py-1 border-r text-center font-bold text-blue-700">{p.rainfallTotal?.toFixed(1) ?? "-"}</td>
-                            <td className="px-2 py-2 print:py-1 border-r text-center">{p.humidityMean?.toFixed(0) ?? "-"}</td>
-                            <td className="px-2 py-2 print:py-1 text-center">{p.pressureMean?.toFixed(1) ?? "-"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                <section className="break-inside-avoid mt-6 print:mt-3">
+                  {data ? (
+                    <SeasonalRepresentativenessReport
+                      stats={data.stats}
+                      pointsCount={data.points?.length ?? 0}
+                      preset={preset}
+                      periodLabel={
+                        publicationCaption
+                          .split("\n")[0]
+                          ?.replace("LAPORAN KLIMATOLOGI ", "") || preset.toUpperCase()
+                      }
+                      latitude={
+                        typeof data.latitude === "number" ? data.latitude : null
+                      }
+                      longitude={
+                        typeof data.longitude === "number" ? data.longitude : null
+                      }
+                      compact={false}
+                    />
+                  ) : null}
+
+                  {/* Interactive Web Table */}
+                  {data?.points && data.points.length > 0 && (
+                    <Card className="shadow-sm">
+                      <CardHeader className="py-3 px-4 border-b">
+                        <CardTitle className="text-sm font-bold">Tabel Rincian Agregasi Data ({preset})</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs text-left font-mono">
+                            <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 font-sans border-b">
+                              <tr>
+                                <th className="px-4 py-3 font-semibold border-r">Waktu (UTC)</th>
+                                <th className="px-3 py-2 text-center font-semibold border-r text-orange-600">Suhu Rata² (°C)</th>
+                                <th className="px-3 py-2 text-center font-semibold border-r text-red-600">Suhu Maks (°C)</th>
+                                <th className="px-3 py-2 text-center font-semibold border-r text-blue-600">Suhu Min (°C)</th>
+                                <th className="px-3 py-2 text-center font-semibold border-r text-sky-700">Total Hujan (mm)</th>
+                                <th className="px-3 py-2 text-center font-semibold border-r text-emerald-700">Kelembapan (%)</th>
+                                <th className="px-3 py-2 text-center font-semibold text-violet-700">Tekanan (hPa)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {data.points.map((p: any, idx: number) => (
+                                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                                  <td className="px-4 py-2 font-sans font-medium border-r">{p.timeKey}</td>
+                                  <td className="px-3 py-2 text-center border-r font-semibold">{p.temperatureMean?.toFixed(1) ?? "-"}</td>
+                                  <td className="px-3 py-2 text-center border-r text-red-600">{p.temperatureMax?.toFixed(1) ?? "-"}</td>
+                                  <td className="px-3 py-2 text-center border-r text-blue-600">{p.temperatureMin?.toFixed(1) ?? "-"}</td>
+                                  <td className="px-3 py-2 text-center border-r font-semibold text-sky-700">{p.rainfallTotal?.toFixed(1) ?? "0.0"}</td>
+                                  <td className="px-3 py-2 text-center border-r text-emerald-700">{p.humidityMean?.toFixed(0) ?? "-"}</td>
+                                  <td className="px-3 py-2 text-center text-violet-700">{p.pressureMean?.toFixed(1) ?? "-"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </section>
               </PrintLayout>
             </div>
@@ -500,6 +543,25 @@ Tekanan Udara Rata-Rata: ${minPress} - ${maxPress} hPa`;
             <div className="print-summary-cards">
               {data?.stats && <SummaryCards stats={data.stats} />}
             </div>
+          </section>
+
+          <section className="break-inside-avoid mt-6 print:mt-3">
+            {data ? (
+              <SeasonalRepresentativenessReport
+                stats={data.stats}
+                pointsCount={data.points?.length ?? 0}
+                preset={preset}
+                periodLabel={
+                  publicationCaption
+                    .split("\n")[0]
+                    ?.replace("LAPORAN KLIMATOLOGI ", "") || preset.toUpperCase()
+                }
+              />
+            ) : (
+              <section className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                Data klimatologi belum tersedia untuk membuat laporan representativitas musim.
+              </section>
+            )}
           </section>
 
           <section className="break-inside-avoid mt-8 print:mt-4">
