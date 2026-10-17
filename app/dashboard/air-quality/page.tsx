@@ -32,7 +32,7 @@ export default function AirQualityPage() {
       <PageHeaderBanner
         gradient="sky"
         icon={Wind}
-        title="Air Quality, Gas Pollutants & Aerosol"
+        title="Kualitas Udara, Polutan & Aerosol"
         subtitle="Pemantauan real-time dan prakiraan gas polutan (Karbon Monoksida, Karbon Dioksida, NO2, SO2, Ozon), partikulat PM2.5/PM10, serta distribusi aerosol CAMS di Indonesia."
         actions={
           <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700/60 text-xs text-slate-300 font-medium">
