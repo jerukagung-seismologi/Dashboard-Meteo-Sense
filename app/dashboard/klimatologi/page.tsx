@@ -78,6 +78,7 @@ import { ClimateClassificationCard } from "@/components/climatology/ClimateClass
 import { SpiDroughtSection } from "@/components/climatology/SpiDroughtSection";
 import { EtccdiExtremesSection } from "@/components/climatology/EtccdiExtremesSection";
 import { ZomDynamicsSection } from "@/components/climatology/ZomDynamicsSection";
+import { ChcEarlyEstimatesViewer } from "@/components/climatology/ChcEarlyEstimatesViewer";
 
 // ─── ERA5 Reanalysis Components ────────────────────────────────────────────
 import { CurrentConditions } from "@/components/reanalysis/CurrentConditions";
@@ -261,7 +262,7 @@ function KlimatologiInner() {
     const lngParam = searchParams.get("lng");
     const nameParam = searchParams.get("name");
 
-    if (tabParam && ["profil-iklim", "klimatologi", "ekstrem-spi", "zom-musim", "agromet", "era5"].includes(tabParam)) {
+    if (tabParam && ["profil-iklim", "klimatologi", "ekstrem-spi", "zom-musim", "agromet", "era5", "chc-estimates"].includes(tabParam)) {
       setMainTab(tabParam);
     }
     if (latParam && lngParam) {
@@ -1090,7 +1091,7 @@ function KlimatologiInner() {
 
       {/* ── C. Main Climatology & Meteorology Navigation ──────────────────── */}
       <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto p-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl gap-1">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 h-auto p-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl gap-1">
           <TabsTrigger value="profil-iklim" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
             <CloudSun className="h-4 w-4 text-blue-500 shrink-0" />
             <span>Profil Iklim WMO</span>
@@ -1114,6 +1115,10 @@ function KlimatologiInner() {
           <TabsTrigger value="era5" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
             <Globe className="h-4 w-4 text-purple-500 shrink-0" />
             <span>Reanalisis ERA5</span>
+          </TabsTrigger>
+          <TabsTrigger value="chc-estimates" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+            <CloudRain className="h-4 w-4 text-cyan-500 shrink-0" />
+            <span>Satelit CHC CHIRPS</span>
           </TabsTrigger>
         </TabsList>
 
@@ -2053,6 +2058,13 @@ function KlimatologiInner() {
               </Tabs>
             </div>
           )}
+        </TabsContent>
+
+        {/* ════════════════════════════════════════════════════════════════════
+            TAB: CHC EARLY ESTIMATES (UC SANTA BARBARA) — ASIA TENGGARA
+            ════════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="chc-estimates" className="mt-6 space-y-6">
+          <ChcEarlyEstimatesViewer />
         </TabsContent>
 
       </Tabs>

@@ -113,18 +113,18 @@ export const CAMS_PRODUCT_LIST = [
 
 // Step offsets in hours from base time
 const TIME_STEPS = [
-  { offset: 0, label: "+0 Jam (Terbaru)" },
+  { offset: 0, label: "+0 Jam" },
   { offset: 3, label: "+3 Jam" },
   { offset: 6, label: "+6 Jam" },
   { offset: 9, label: "+9 Jam" },
   { offset: 12, label: "+12 Jam" },
   { offset: 18, label: "+18 Jam" },
-  { offset: 24, label: "+24 Jam (Besok)" },
+  { offset: 24, label: "+24 Jam" },
   { offset: 36, label: "+36 Jam" },
-  { offset: 48, label: "+48 Jam (H+2)" },
-  { offset: 72, label: "+72 Jam (H+3)" },
-  { offset: 96, label: "+96 Jam (H+4)" },
-  { offset: 120, label: "+120 Jam (H+5)" },
+  { offset: 48, label: "+48 Jam" },
+  { offset: 72, label: "+72 Jam" },
+  { offset: 96, label: "+96 Jam" },
+  { offset: 120, label: "+120 Jam" },
 ];
 
 export const EcmwfAerosolViewer: React.FC = () => {
@@ -157,9 +157,8 @@ export const EcmwfAerosolViewer: React.FC = () => {
 
   const apiUrl = `/api/ecmwf/cams?product=${encodeURIComponent(selectedProduct)}&projection=${encodeURIComponent(
     projection
-  )}&base_time=${encodeURIComponent(baseTime)}&valid_time=${encodeURIComponent(validTime)}${
-    refreshKey ? `&_t=${refreshKey}&refresh=true` : ""
-  }`;
+  )}&base_time=${encodeURIComponent(baseTime)}&valid_time=${encodeURIComponent(validTime)}${refreshKey ? `&_t=${refreshKey}&refresh=true` : ""
+    }`;
 
   const { data, isLoading, isValidating, mutate } = useSWR(apiUrl, fetcher, {
     revalidateOnFocus: false,
@@ -205,8 +204,8 @@ export const EcmwfAerosolViewer: React.FC = () => {
         projection === "classical_south_east_asia_and_indonesia"
           ? "Indonesia-SEAsia"
           : projection === "classical_asia"
-          ? "Asia"
-          : "Global";
+            ? "Asia"
+            : "Global";
 
       const cleanBase = baseTime.replace(/[-:]/g, "");
       const baseDateTag = `${cleanBase.substring(0, 8)}_${cleanBase.substring(9, 11)}UTC`;
@@ -419,9 +418,8 @@ export const EcmwfAerosolViewer: React.FC = () => {
               <Button
                 variant="default"
                 size="sm"
-                className={`h-8 px-3 text-xs font-bold ${
-                  isPlaying ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-sky-600 hover:bg-sky-700 text-white"
-                }`}
+                className={`h-8 px-3 text-xs font-bold ${isPlaying ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-sky-600 hover:bg-sky-700 text-white"
+                  }`}
                 onClick={() => setIsPlaying(!isPlaying)}
               >
                 {isPlaying ? (
@@ -480,11 +478,10 @@ export const EcmwfAerosolViewer: React.FC = () => {
                     setImageLoaded(false);
                     setStepIndex(idx);
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                    isSelected
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${isSelected
                       ? "bg-sky-500 text-white shadow-md shadow-sky-500/20 scale-105"
                       : "bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800"
-                  }`}
+                    }`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-white" : "bg-slate-600"}`} />
                   {step.label}
@@ -534,9 +531,8 @@ export const EcmwfAerosolViewer: React.FC = () => {
               <button
                 key={step.offset}
                 onClick={() => setStepIndex(idx)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                  idx === stepIndex ? "bg-sky-500 text-white font-bold" : "bg-slate-900 text-slate-400 hover:bg-slate-800"
-                }`}
+                className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${idx === stepIndex ? "bg-sky-500 text-white font-bold" : "bg-slate-900 text-slate-400 hover:bg-slate-800"
+                  }`}
               >
                 {step.label}
               </button>

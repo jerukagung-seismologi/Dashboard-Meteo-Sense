@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 
 // --- OPSI PILIHAN (Citizen Science Friendly) ---
 const WEATHER_OPTIONS = ["Cerah", "Berawan", "Hujan Ringan", "Hujan Lebat", "Badai"];
-const ANGIN_OPTIONS = ["Tenang", "Sepoi-sepoi","Sedang", "Angin Kencang", "Angin Ribut"];
+const ANGIN_OPTIONS = ["Tenang", "Sepoi-sepoi", "Sedang", "Angin Kencang", "Angin Ribut"];
 const DAMPAK_OPTIONS = [
   "Aman Terkendali",
   "Jalan Tergenang",
@@ -36,7 +36,7 @@ export default function ObservationPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  
+
   // State Form
   const [intensitas, setIntensitas] = useState<string>("");
   const [angin, setAngin] = useState<string>("");
@@ -113,7 +113,7 @@ export default function ObservationPage() {
 
       await createReport(payload);
       setIsSuccess(true);
-      
+
     } catch (error) {
       console.error(error);
       toast({ variant: "destructive", title: "Gagal", description: "Terjadi kesalahan saat mengirim data." });
@@ -155,7 +155,7 @@ export default function ObservationPage() {
 
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                
+
                 {/* 1. Lokasi GPS */}
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex items-center justify-between border border-blue-100 dark:border-blue-800">
                   <div className="flex items-center gap-3">
@@ -179,9 +179,9 @@ export default function ObservationPage() {
                 {/* Alamat */}
                 <div className="space-y-3">
                   <Label htmlFor="alamat">Alamat <span className="text-red-500">*</span></Label>
-                  <Input 
-                    id="alamat" 
-                    placeholder="Contoh: Jl. Merdeka No. 10, Kelurahan, Kecamatan" 
+                  <Input
+                    id="alamat"
+                    placeholder="Contoh: Jl. Merdeka No. 10, Kelurahan, Kecamatan"
                     value={alamat}
                     onChange={(e) => setAlamat(e.target.value)}
                     required
@@ -224,8 +224,8 @@ export default function ObservationPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                     {DAMPAK_OPTIONS.map((dampak) => (
                       <div key={dampak} className="flex items-center space-x-2 border p-3 rounded-md hover:bg-gray-50 cursor-pointer dark:hover:bg-gray-700 dark:border-gray-700 transition-colors">
-                        <Checkbox 
-                          id={dampak} 
+                        <Checkbox
+                          id={dampak}
                           checked={dampakSelected.includes(dampak)}
                           onCheckedChange={() => handleDampakChange(dampak)}
                         />
@@ -243,9 +243,9 @@ export default function ObservationPage() {
                 {/* 5. Catatan Tambahan */}
                 <div className="space-y-3">
                   <Label htmlFor="catatan">Catatan Tambahan (Opsional)</Label>
-                  <Textarea 
-                    id="catatan" 
-                    placeholder="Misal: Air mulai masuk teras setinggi mata kaki..." 
+                  <Textarea
+                    id="catatan"
+                    placeholder="Misal: Air mulai masuk teras setinggi mata kaki..."
                     value={catatan}
                     onChange={(e) => setCatatan(e.target.value)}
                   />
