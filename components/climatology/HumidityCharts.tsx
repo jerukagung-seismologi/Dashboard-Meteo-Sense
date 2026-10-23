@@ -135,7 +135,7 @@ export const HumidityCharts: React.FC<HumidityChartsProps> = ({
           data: [
             {
               yAxis: Number(era5NormalHum.toFixed(2)),
-              name: "Normal ERA5",
+              name: "Normal Iklim (WMO / ERA5)",
               lineStyle: { color: "#f59e0b", type: "dashed", width: 2 },
               label: {
                 formatter: `Normal Iklim: ${Number(era5NormalHum.toFixed(2))} %`,
@@ -176,7 +176,7 @@ export const HumidityCharts: React.FC<HumidityChartsProps> = ({
 
     if (preset === "yearly" && monthlyNormals && monthlyNormals.length === 12 && points.length <= 12) {
       series.push({
-        name: "Normal Bulanan (ERA5)",
+        name: "Normal Bulanan (WMO / ERA5)",
         type: "line",
         data: monthlyNormals.map((v) => Number(v.toFixed(2))),
         itemStyle: { color: "#3b82f6" },
@@ -185,7 +185,7 @@ export const HumidityCharts: React.FC<HumidityChartsProps> = ({
         symbolSize: 6,
         smooth: true,
       });
-      legendNames.push("Normal Bulanan (ERA5)");
+      legendNames.push("Normal Bulanan (WMO / ERA5)");
     }
 
     return {
@@ -257,7 +257,7 @@ export const HumidityCharts: React.FC<HumidityChartsProps> = ({
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-slate-500 dark:text-slate-400 font-medium">Normal Klimatologis (ERA5)</span>
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Normal Klimatologis (WMO / ERA5)</span>
               <span className="text-sm font-bold text-blue-600 dark:text-blue-400 mt-0.5">
                 {era5NormalHum.toFixed(2)} %
               </span>

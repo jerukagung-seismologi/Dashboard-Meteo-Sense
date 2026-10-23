@@ -310,7 +310,7 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
     return createWeeklyLineOption(
       "hPa",
       { max: maxData, mean: meanData, min: minData },
-      { max: "#f43f5e", mean: "#db2777", min: "#818cf8" },
+      { max: "#4338ca", mean: "#6366f1", min: "#818cf8" },
       { min: pressMin, max: pressMax }
     );
   }, [points, formatEpochTime, createWeeklyLineOption]);
@@ -373,7 +373,7 @@ export const WeeklyAnalysis: React.FC<WeeklyAnalysisProps> = ({
       <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <Gauge className="h-5 w-5 text-pink-500" /> Analisis Tekanan Udara Permukaan Berkala
+            <Gauge className="h-5 w-5 text-indigo-500" /> Analisis Tekanan Udara Permukaan Berkala
           </CardTitle>
           <CardDescription>
             Tren tekanan udara resolusi tinggi (Maksimum, Rata-rata, Minimum) dalam {timezone === "WIB" ? "WIB (Lokal)" : "UTC (Standar WMO)"} — sorot untuk melihat ketiga nilai

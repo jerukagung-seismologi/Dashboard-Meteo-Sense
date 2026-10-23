@@ -172,7 +172,7 @@ export const RainfallCharts: React.FC<RainfallChartsProps> = ({
     // In yearly mode, show normal monthly rainfall bar alongside station bars
     if (isYearlyMode && monthlyNormals) {
       series.push({
-        name: "Normal Bulanan (ERA5)",
+        name: "Normal Bulanan (WMO / ERA5)",
         type: "bar",
         data: monthlyNormals.map((v) => Number(v.toFixed(2))),
         itemStyle: {
@@ -230,7 +230,7 @@ export const RainfallCharts: React.FC<RainfallChartsProps> = ({
       });
 
       series.push({
-        name: "Normal Kumulatif (ERA5)",
+        name: "Normal Kumulatif (WMO / ERA5)",
         type: "line",
         yAxisIndex: 1,
         data: normalCumulative,
@@ -241,7 +241,7 @@ export const RainfallCharts: React.FC<RainfallChartsProps> = ({
     }
 
     const legendData = isYearlyMode
-      ? ["Curah Hujan Interval", "Normal Bulanan (ERA5)", "Akumulasi Total", "Normal Kumulatif (ERA5)"]
+      ? ["Curah Hujan Interval", "Normal Bulanan (WMO / ERA5)", "Akumulasi Total", "Normal Kumulatif (WMO / ERA5)"]
       : ["Curah Hujan Interval", "Akumulasi Total"];
 
     return {
@@ -321,7 +321,7 @@ export const RainfallCharts: React.FC<RainfallChartsProps> = ({
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-slate-500 dark:text-slate-400 font-medium">Normal Klimatologis (ERA5)</span>
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Normal Klimatologis (WMO / ERA5)</span>
               <span className="text-sm font-bold text-teal-600 dark:text-teal-400 mt-0.5">
                 {era5NormalRain.toFixed(2)} mm
               </span>

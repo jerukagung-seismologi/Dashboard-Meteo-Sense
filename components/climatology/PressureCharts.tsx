@@ -106,14 +106,14 @@ export const PressureCharts: React.FC<PressureChartsProps> = ({
         name: "Tekanan Maksimum",
         type: "line",
         data: points.map((p) => p.pressureMax != null ? Number(p.pressureMax.toFixed(2)) : null),
-        itemStyle: { color: "#f43f5e" },
+        itemStyle: { color: "#4338ca" },
         lineStyle: { type: "dashed", width: 1.5 },
         smooth: true,
         markPoint: {
           symbol: "pin",
           symbolSize: 42,
           data: [
-            { type: "max", name: "Pmax Tertinggi", itemStyle: { color: "#f43f5e" } },
+            { type: "max", name: "Pmax Tertinggi", itemStyle: { color: "#4338ca" } },
           ],
           label: {
             formatter: "{c}",
@@ -127,7 +127,7 @@ export const PressureCharts: React.FC<PressureChartsProps> = ({
         name: "Tekanan Rata-rata",
         type: "line",
         data: points.map((p) => p.pressureMean != null ? Number(p.pressureMean.toFixed(2)) : null),
-        itemStyle: { color: "#db2777" },
+        itemStyle: { color: "#6366f1" },
         lineStyle: { width: 3 },
         markLine: era5NormalPress != null && Number.isFinite(era5NormalPress) ? {
           symbol: ["none", "none"],
@@ -135,7 +135,7 @@ export const PressureCharts: React.FC<PressureChartsProps> = ({
           data: [
             {
               yAxis: Number(era5NormalPress.toFixed(2)),
-              name: "Normal ERA5",
+              name: "Normal Iklim (WMO / ERA5)",
               lineStyle: { color: "#f59e0b", type: "dashed", width: 2 },
               label: {
                 formatter: `Normal Iklim: ${Number(era5NormalPress.toFixed(2))} hPa`,
@@ -155,8 +155,8 @@ export const PressureCharts: React.FC<PressureChartsProps> = ({
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: "rgba(219, 39, 119, 0.15)" },
-              { offset: 1, color: "rgba(219, 39, 119, 0.0)" },
+              { offset: 0, color: "rgba(99, 102, 241, 0.18)" },
+              { offset: 1, color: "rgba(99, 102, 241, 0.0)" },
             ],
           },
         },
@@ -166,14 +166,14 @@ export const PressureCharts: React.FC<PressureChartsProps> = ({
         name: "Tekanan Minimum",
         type: "line",
         data: points.map((p) => p.pressureMin != null ? Number(p.pressureMin.toFixed(2)) : null),
-        itemStyle: { color: "#ec4899" },
+        itemStyle: { color: "#818cf8" },
         lineStyle: { type: "dashed", width: 1.5 },
         smooth: true,
         markPoint: {
           symbol: "pin",
           symbolSize: 42,
           data: [
-            { type: "min", name: "Pmin Terendah", itemStyle: { color: "#be185d" } },
+            { type: "min", name: "Pmin Terendah", itemStyle: { color: "#3b82f6" } },
           ],
           label: {
             formatter: "{c}",
@@ -189,16 +189,16 @@ export const PressureCharts: React.FC<PressureChartsProps> = ({
 
     if (preset === "yearly" && monthlyNormals && monthlyNormals.length === 12 && points.length <= 12) {
       series.push({
-        name: "Normal Bulanan (ERA5)",
+        name: "Normal Bulanan (WMO / ERA5)",
         type: "line",
         data: monthlyNormals.map((v) => Number(v.toFixed(2))),
-        itemStyle: { color: "#a855f7" },
+        itemStyle: { color: "#f59e0b" },
         lineStyle: { type: "dotted", width: 2.5 },
         symbol: "circle",
         symbolSize: 6,
         smooth: true,
       });
-      legendNames.push("Normal Bulanan (ERA5)");
+      legendNames.push("Normal Bulanan (WMO / ERA5)");
     }
 
     return {
@@ -247,14 +247,14 @@ export const PressureCharts: React.FC<PressureChartsProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
             <CardTitle className="text-lg font-bold flex items-center gap-2">
-              <Gauge className="h-5 w-5 text-pink-500" /> Analisis Tren Tekanan Udara
+              <Gauge className="h-5 w-5 text-indigo-500" /> Analisis Tren Tekanan Udara
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Tren Tekanan Udara maksimum, rata-rata, dan minimum (Standard Deviasi: ±{stdDev.toFixed(1)} hPa)
             </CardDescription>
           </div>
           {era5NormalPress != null && (
-            <Badge variant="outline" className="text-xs self-start sm:self-auto bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
+            <Badge variant="outline" className="text-xs self-start sm:self-auto bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800">
               <Sparkles className="w-3 h-3 mr-1" /> Benchmark Normal Iklim
             </Badge>
           )}
@@ -270,8 +270,8 @@ export const PressureCharts: React.FC<PressureChartsProps> = ({
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-slate-500 dark:text-slate-400 font-medium">Normal Klimatologis (ERA5)</span>
-              <span className="text-sm font-bold text-purple-600 dark:text-purple-400 mt-0.5">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Normal Klimatologis (WMO / ERA5)</span>
+              <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">
                 {era5NormalPress.toFixed(2)} hPa
               </span>
             </div>
@@ -280,10 +280,10 @@ export const PressureCharts: React.FC<PressureChartsProps> = ({
               <div className="flex items-center gap-1.5 mt-0.5">
                 {anomaly != null ? (
                   <>
-                    <span className={`text-sm font-bold ${anomaly >= 0 ? "text-purple-500" : "text-cyan-500"}`}>
+                    <span className={`text-sm font-bold ${anomaly >= 0 ? "text-indigo-600 dark:text-indigo-400" : "text-sky-600 dark:text-sky-400"}`}>
                       {anomaly >= 0 ? `+${anomaly.toFixed(2)}` : anomaly.toFixed(2)} hPa
                     </span>
-                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-medium ${anomaly >= 0.5 ? "bg-purple-50 dark:bg-purple-950/40 text-purple-600 border-purple-200" : anomaly <= -0.5 ? "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 border-cyan-200" : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 border-emerald-200"}`}>
+                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-medium ${anomaly >= 0.5 ? "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 border-indigo-200" : anomaly <= -0.5 ? "bg-sky-50 dark:bg-sky-950/40 text-sky-600 border-sky-200" : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 border-emerald-200"}`}>
                       {anomaly >= 0.5 ? "Di Atas Normal" : anomaly <= -0.5 ? "Di Bawah Normal" : "Normal"}
                     </Badge>
                   </>
@@ -293,11 +293,11 @@ export const PressureCharts: React.FC<PressureChartsProps> = ({
             <div className="flex flex-col">
               <span className="text-slate-500 dark:text-slate-400 font-medium">Ekstrem Stasiun (Pmin / Pmax)</span>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-sm font-black text-rose-600 dark:text-rose-400">
+                <span className="text-sm font-black text-sky-600 dark:text-sky-400">
                   {pressExtremes.min != null ? `${pressExtremes.min.toFixed(2)} hPa` : "–"}
                 </span>
                 <span className="text-slate-400">/</span>
-                <span className="text-sm font-black text-pink-600 dark:text-pink-400">
+                <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
                   {pressExtremes.max != null ? `${pressExtremes.max.toFixed(2)} hPa` : "–"}
                 </span>
               </div>

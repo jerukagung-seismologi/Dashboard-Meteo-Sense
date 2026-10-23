@@ -135,7 +135,7 @@ export const TemperatureCharts: React.FC<TemperatureChartsProps> = ({
           data: [
             {
               yAxis: Number(era5NormalTemp.toFixed(2)),
-              name: "Normal ERA5",
+              name: "Normal Iklim (WMO / ERA5)",
               lineStyle: { color: "#f59e0b", type: "dashed", width: 2 },
               label: {
                 formatter: `Normal Iklim: ${Number(era5NormalTemp.toFixed(2))} °C`,
@@ -190,7 +190,7 @@ export const TemperatureCharts: React.FC<TemperatureChartsProps> = ({
     // In yearly preset, if 12-month normal data is available, overlay the climatological curve
     if (preset === "yearly" && monthlyNormals && monthlyNormals.length === 12 && points.length <= 12) {
       series.push({
-        name: "Normal Bulanan (ERA5)",
+        name: "Normal Bulanan (WMO / ERA5)",
         type: "line",
         data: monthlyNormals.map((v) => Number(v.toFixed(2))),
         itemStyle: { color: "#f59e0b" },
@@ -199,7 +199,7 @@ export const TemperatureCharts: React.FC<TemperatureChartsProps> = ({
         symbolSize: 6,
         smooth: true,
       });
-      legendNames.push("Normal Bulanan (ERA5)");
+      legendNames.push("Normal Bulanan (WMO / ERA5)");
     }
 
     return {
@@ -271,7 +271,7 @@ export const TemperatureCharts: React.FC<TemperatureChartsProps> = ({
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-slate-500 dark:text-slate-400 font-medium">Normal Klimatologis (ERA5)</span>
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Normal Klimatologis (WMO / ERA5)</span>
               <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
                 {era5NormalTemp.toFixed(2)} °C
               </span>

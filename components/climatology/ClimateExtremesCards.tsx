@@ -269,13 +269,13 @@ export const ClimateExtremesCards: React.FC<ClimateExtremesCardsProps> = ({
         </Card>
 
         {/* 5. Tekanan Udara Terendah (Pmin) */}
-        <Card className="hover:shadow-md transition-all duration-200 border-pink-200/80 dark:border-pink-950 bg-gradient-to-br from-pink-50/70 to-rose-50/40 dark:from-pink-950/20 dark:to-rose-950/10">
+        <Card className="hover:shadow-md transition-all duration-200 border-indigo-200/80 dark:border-indigo-950 bg-gradient-to-br from-slate-50/70 to-indigo-50/40 dark:from-slate-900/40 dark:to-indigo-950/20">
           <CardContent className="p-3.5 flex flex-col justify-between h-[155px]">
             <div className="flex justify-between items-start">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-pink-700 dark:text-pink-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
                 Tekanan Min (Pmin)
               </span>
-              <Gauge className="h-4 w-4 text-pink-500" />
+              <Gauge className="h-4 w-4 text-indigo-500" />
             </div>
 
             <div>
@@ -290,11 +290,11 @@ export const ClimateExtremesCards: React.FC<ClimateExtremesCardsProps> = ({
                 <span className="text-xs font-bold text-slate-500">hPa</span>
               </div>
               <div className="text-[10px] text-slate-600 dark:text-slate-400 font-medium truncate mt-0.5">
-                {extremes.pressure.minObserved?.dateStr || "Rekor ERA5"}
+                {extremes.pressure.minObserved?.dateStr || "Rekor WMO / ERA5"}
               </div>
             </div>
 
-            <div className="pt-1.5 border-t border-pink-200/50 dark:border-pink-900/30 flex flex-col gap-0.5">
+            <div className="pt-1.5 border-t border-indigo-200/50 dark:border-indigo-900/30 flex flex-col gap-0.5">
               {extremes.pressure.isLowPressureTrough ? (
                 <Badge variant="outline" className="text-[9px] px-1 py-0 bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-300 justify-center">
                   ⚠️ Palung Tekanan Rendah (&lt;1008 hPa)

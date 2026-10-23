@@ -90,10 +90,10 @@ export const SummaryCardsAnalysis: React.FC<SummaryCardsAnalysisProps> = ({
       </Card>
 
       {/* 3. Pressure Card */}
-      <Card className="border-none shadow-sm bg-gradient-to-br from-pink-50/70 to-rose-50/30 dark:from-pink-950/20 dark:to-rose-950/10">
+      <Card className="border-none shadow-sm bg-gradient-to-br from-slate-50/70 to-indigo-50/30 dark:from-slate-900/40 dark:to-indigo-950/20">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-sm font-bold uppercase tracking-wider text-pink-600 dark:text-pink-400 flex items-center gap-2">
-            <Gauge className="h-5 w-5 text-pink-500" /> Tekanan Udara ({displayLabel})
+          <CardTitle className="text-sm font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+            <Gauge className="h-5 w-5 text-indigo-500" /> Tekanan Udara ({displayLabel})
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4">
@@ -111,13 +111,13 @@ export const SummaryCardsAnalysis: React.FC<SummaryCardsAnalysisProps> = ({
           </div>
           <div className="flex flex-col">
             <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Maksimum</span>
-            <span className="text-lg font-bold text-rose-600 dark:text-rose-400">
+            <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
               {stats.pressure.max.toFixed(0)} hPa
             </span>
           </div>
           <div className="flex flex-col">
             <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Minimum</span>
-            <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+            <span className="text-lg font-bold text-sky-600 dark:text-sky-400">
               {stats.pressure.min.toFixed(0)} hPa
             </span>
           </div>

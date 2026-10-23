@@ -356,7 +356,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       "Tekanan",
       "hPa",
       { max: maxData, mean: meanData, min: minData },
-      { max: "#f43f5e", mean: "#db2777", min: "#818cf8" },
+      { max: "#4338ca", mean: "#6366f1", min: "#818cf8" },
       { min: pressMin, max: pressMax }
     );
   }, [points, formatEpochTime, createDailyLineOption]);
@@ -657,7 +657,7 @@ export const DailyAnalysis: React.FC<DailyAnalysisProps> = ({
       <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <Gauge className="h-5 w-5 text-pink-500" /> Analisis Tekanan Udara Harian
+            <Gauge className="h-5 w-5 text-indigo-500" /> Analisis Tekanan Udara Harian
           </CardTitle>
           <CardDescription>
             Tekanan maksimum, rata-rata, dan minimum setiap jam ({timezone === "WIB" ? "WIB / Lokal UTC+7" : "UTC / Standar WMO 00Z-23Z"}) — sorot untuk melihat ketiga nilai

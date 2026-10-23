@@ -266,7 +266,7 @@ export const ClimateRepresentativenessOverview: React.FC<ClimateRepresentativene
                     <span className="text-xl font-black font-mono text-white">
                       {tempAnomaly.deltaT > 0 ? `+${tempAnomaly.deltaT}` : tempAnomaly.deltaT}°C
                     </span>
-                    <span className="text-[10px] text-slate-400">vs Normal ERA5</span>
+                    <span className="text-[10px] text-slate-400">vs Normal WMO/ERA5</span>
                   </div>
                   <div className="text-[10px] text-slate-300 mt-0.5">
                     Rerata: <strong className="text-white">{observedTempMean?.toFixed(1) ?? "-"}°C</strong> (Norm: {normalTempMean?.toFixed(1) ?? "-"}°C)

@@ -228,11 +228,11 @@ export const DistributionAnalysis: React.FC<DistributionAnalysisProps> = ({
       <SingleHistogram
         title="Distribusi Tekanan Udara"
         description={`Frekuensi kemunculan tekanan udara selama ${periodLabel}`}
-        icon={<Gauge className="h-5 w-5 text-pink-500" />}
+        icon={<Gauge className="h-5 w-5 text-indigo-500" />}
         bins={press.bins}
         stats={press.stats}
         isDarkMode={isDarkMode}
-        colorGradient={["#f472b6", "#ec4899"]}
+        colorGradient={["#818cf8", "#6366f1"]}
         yAxisName="Jumlah Sampel"
         unit="hPa"
       />

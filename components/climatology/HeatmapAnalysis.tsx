@@ -126,7 +126,7 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({ heatmaps, isDa
       desc: "Distribusi tekanan permukaan laut terhadap rentang hari observasi",
       unit: "hPa",
       paramLabel: "Tekanan MSL",
-      icon: <Gauge className="h-5 w-5 text-pink-500" />,
+      icon: <Gauge className="h-5 w-5 text-indigo-500" />,
       colorScale: [
         "#440154",
         "#482878",
@@ -139,7 +139,7 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({ heatmaps, isDa
         "#b5de2b",
         "#fde725",
       ],
-      highlightColor: "#ec4899",
+      highlightColor: "#6366f1",
     },
   };
 
@@ -447,7 +447,7 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({ heatmaps, isDa
                 onClick={() => setActiveParam("pressure")}
                 className={`px-3 py-1.5 font-semibold rounded-md transition-all duration-200 ${
                   activeParam === "pressure"
-                    ? "bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 shadow-sm"
+                    ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
                     : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                 }`}
               >

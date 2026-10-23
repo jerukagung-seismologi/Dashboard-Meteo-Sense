@@ -127,19 +127,19 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ stats }) => {
       </Card>
 
       {/* 7. Average Pressure */}
-      <Card className="hover:shadow-md transition-all duration-200 border-none bg-gradient-to-br from-pink-50 to-rose-50/50 dark:from-pink-950/20 dark:to-rose-950/10">
+      <Card className="hover:shadow-md transition-all duration-200 border-none bg-gradient-to-br from-slate-50 to-indigo-50/50 dark:from-slate-900/60 dark:to-indigo-950/20">
         <CardContent className="p-4 flex flex-col justify-between h-[110px]">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-bold uppercase tracking-wider text-pink-600 dark:text-pink-400">Tekanan Rerata</span>
-            <Gauge className="h-4 h-4 text-pink-500" />
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Tekanan Rerata</span>
+            <Gauge className="h-4 h-4 text-indigo-500" />
           </div>
           <div className="mt-2">
             <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-50">
-              {stats.pressure.mean.toFixed(0)}<span className="text-sm font-semibold">hPa</span>
+              {stats.pressure.mean.toFixed(0)}<span className="text-sm font-semibold"> hPa</span>
             </span>
           </div>
           <div className="text-[10px] text-slate-500 dark:text-slate-400">
-            Min: {stats.pressure.min.toFixed(0)} | Max: {stats.pressure.max.toFixed(0)}
+            Min: {stats.pressure.min.toFixed(0)} | Max: {stats.pressure.max.toFixed(0)} hPa
           </div>
         </CardContent>
       </Card>
