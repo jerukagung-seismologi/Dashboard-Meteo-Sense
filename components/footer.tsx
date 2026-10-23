@@ -95,7 +95,7 @@ export default async function Footer() {
       </div>
       <a href="https://showyourstripes.info/" target="_blank" rel="noopener noreferrer" className="block w-full">
         <Image
-          src="https://showyourstripes.info/stripes/ASIA-Indonesia-Yogyakarta-1866-2024-BK.png"
+          src="/images/warming-stripes.png"
           alt="Global warming stripes by Professor Ed Hawkins (University of Reading)"
           width={1000}
           height={30}
