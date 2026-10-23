@@ -121,12 +121,46 @@ export async function GET(request: Request) {
     let amkDasarian: { number: number; name: string; rain: number } | null = null;
 
     const doubleDas = [...das, ...das];
+    // Cari transisi awal musim BMKG (AMH: kemarau -> hujan; AMK: hujan -> kemarau)
     for (let i = 0; i < 36; i++) {
-      if (!amhDasarian && doubleDas[i].precipMean >= 50 && doubleDas[i + 1].precipMean >= 50 && doubleDas[i + 2].precipMean >= 50) {
+      const prevDasRain = doubleDas[i + 36 - 1].precipMean;
+      // AMH: dasarian sebelumnya < 50 mm (fase kemarau), lalu 3 dasarian berturut-turut >= 50 mm
+      if (
+        !amhDasarian &&
+        prevDasRain < 50 &&
+        doubleDas[i].precipMean >= 50 &&
+        doubleDas[i + 1].precipMean >= 50 &&
+        doubleDas[i + 2].precipMean >= 50
+      ) {
         amhDasarian = { number: das[i].dasarianNumber, name: das[i].name, rain: das[i].precipMean };
       }
-      if (!amkDasarian && doubleDas[i].precipMean < 50 && doubleDas[i + 1].precipMean < 50 && doubleDas[i + 2].precipMean < 50) {
+      // AMK: dasarian sebelumnya >= 50 mm (fase hujan), lalu 3 dasarian berturut-turut < 50 mm
+      if (
+        !amkDasarian &&
+        prevDasRain >= 50 &&
+        doubleDas[i].precipMean < 50 &&
+        doubleDas[i + 1].precipMean < 50 &&
+        doubleDas[i + 2].precipMean < 50
+      ) {
         amkDasarian = { number: das[i].dasarianNumber, name: das[i].name, rain: das[i].precipMean };
+      }
+    }
+
+    // Fallback jika tidak ditemukan batas tegas (misal wilayah ekuatorial / satu musim)
+    if (!amhDasarian) {
+      for (let i = 0; i < 36; i++) {
+        if (doubleDas[i].precipMean >= 50 && doubleDas[i + 1].precipMean >= 50 && doubleDas[i + 2].precipMean >= 50) {
+          amhDasarian = { number: das[i].dasarianNumber, name: das[i].name, rain: das[i].precipMean };
+          break;
+        }
+      }
+    }
+    if (!amkDasarian) {
+      for (let i = 0; i < 36; i++) {
+        if (doubleDas[i].precipMean < 50 && doubleDas[i + 1].precipMean < 50 && doubleDas[i + 2].precipMean < 50) {
+          amkDasarian = { number: das[i].dasarianNumber, name: das[i].name, rain: das[i].precipMean };
+          break;
+        }
       }
     }
 

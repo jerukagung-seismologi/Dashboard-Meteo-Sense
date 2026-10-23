@@ -64,23 +64,37 @@ export function calculateOldeman(monthlyRain: number[]): OldemanResult {
   let maxConsecutiveDry = 0;
   let currentConsecutiveDry = 0;
 
+  // 1. Akumulasi total bulan basah, lembap, dan kering sepanjang 12 bulan kalender
   monthlyRain.forEach((rain) => {
     if (rain > 200) {
       wetMonths++;
+    } else if (rain >= 100) {
+      humidMonths++;
+    } else {
+      dryMonths++;
+    }
+  });
+
+  // 2. Evaluasi bulan berurutan secara siklikal (tropis: musim hujan berlanjut melintasi pergantian tahun Nov-Mar)
+  const cyclicRain = [...monthlyRain, ...monthlyRain];
+  cyclicRain.forEach((rain) => {
+    if (rain > 200) {
       currentConsecutiveWet++;
       maxConsecutiveWet = Math.max(maxConsecutiveWet, currentConsecutiveWet);
       currentConsecutiveDry = 0;
     } else if (rain >= 100) {
-      humidMonths++;
       currentConsecutiveWet = 0;
       currentConsecutiveDry = 0;
     } else {
-      dryMonths++;
       currentConsecutiveDry++;
       maxConsecutiveDry = Math.max(maxConsecutiveDry, currentConsecutiveDry);
       currentConsecutiveWet = 0;
     }
   });
+
+  // Batasi nilai maksimum pada 12 bulan (panjang satu siklus tahunan)
+  maxConsecutiveWet = Math.min(12, maxConsecutiveWet);
+  maxConsecutiveDry = Math.min(12, maxConsecutiveDry);
 
   // Penentuan Zona Utama berdasarkan jumlah bulan basah berurutan
   let zone: "A" | "B" | "C" | "D" | "E" = "C";

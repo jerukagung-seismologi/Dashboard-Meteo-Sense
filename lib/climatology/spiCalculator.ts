@@ -296,8 +296,19 @@ export function calculateSpiSeries(
       // Simulasikan variabilitas historis berdasarkan normal
       let baselineSum = 0;
       for (let k = 0; k < timescale; k++) {
-        // Asumsi data bulanan memiliki format nama/urutan
-        baselineSum += historicalNormalRain[(i - k) % 12];
+        // Ambil indeks bulan (0..11) berdasarkan dateStr aktual ("YYYY-MM") agar tidak bergantung pada bulan awal deret
+        const ptDateStr = monthlyData[i - k]?.dateStr;
+        let monthIdx = -1;
+        if (ptDateStr && ptDateStr.length >= 7) {
+          const mNum = parseInt(ptDateStr.substring(5, 7), 10);
+          if (mNum >= 1 && mNum <= 12) {
+            monthIdx = mNum - 1;
+          }
+        }
+        if (monthIdx === -1) {
+          monthIdx = ((i - k) % 12 + 12) % 12;
+        }
+        baselineSum += historicalNormalRain[monthIdx];
       }
       // Buat distribusi acuan sintetis terkalibrasi normal WMO
       const factors = [0.55, 0.70, 0.85, 0.95, 1.0, 1.05, 1.15, 1.30, 1.50];
