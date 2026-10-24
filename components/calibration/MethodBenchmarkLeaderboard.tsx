@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,8 @@ import {
   ArrowRight,
   Calculator,
   Sliders,
+  Filter,
+  Info,
 } from "lucide-react";
 import { CorrectionMethod } from "@/lib/bias-correction/types";
 import { MethodBenchmarkSummary } from "@/lib/bias-correction/correction/CorrectionEngine";
@@ -26,6 +28,20 @@ interface MethodBenchmarkLeaderboardProps {
   variableUnit: string;
 }
 
+const METHOD_EXPLANATIONS: Record<string, string> = {
+  polynomial_regression: "Koreksi lengkung termal non-linear derajat 2",
+  robust_huber: "Kebal terhadap lonjakan outlier ekstrem (Huber Loss)",
+  quantile_delta_mapping: "Mempertahankan tren sinyal iklim (Standar IPCC QDM)",
+  linear_regression: "Penskalaan linier kuadrat terkecil OLS (Scale + Offset)",
+  quantile_mapping: "Penyelarasan distribusi kumulatif probabilitas empiris (EQM)",
+  mean_bias: "Offset aditif tunggal untuk pergeseran sistematis (MBE)",
+  two_point: "Interpolasi dua titik acuan ground truth (P1 & P2)",
+  power_law: "Model pangkat eksponensial (kecepatan angin)",
+  diurnal_mbe: "Profil kompensasi galat 24-jam siklus diurnal",
+  zero_aware_rain: "Koreksi khusus curah hujan dengan ambang hari basah",
+  circular_wind: "Kalkulasi trigonometri vektor sudut sirkular",
+};
+
 export const MethodBenchmarkLeaderboard: React.FC<MethodBenchmarkLeaderboardProps> = ({
   benchmarks,
   selectedMethod,
@@ -34,13 +50,15 @@ export const MethodBenchmarkLeaderboard: React.FC<MethodBenchmarkLeaderboardProp
   onApplyToSensor,
   variableUnit,
 }) => {
-  const [recentlyApplied, setRecentlyApplied] = React.useState<CorrectionMethod | null>(null);
+  const [recentlyApplied, setRecentlyApplied] = useState<CorrectionMethod | null>(null);
+  const [onlyTop3, setOnlyTop3] = useState(false);
 
   const handleApply = (method: CorrectionMethod, fitParams: any) => {
     onApplyToSensor(method, fitParams);
     setRecentlyApplied(method);
     setTimeout(() => setRecentlyApplied(null), 2500);
   };
+
   if (!benchmarks || benchmarks.length === 0) {
     return (
       <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
@@ -52,6 +70,7 @@ export const MethodBenchmarkLeaderboard: React.FC<MethodBenchmarkLeaderboardProp
   }
 
   const bestMethod = benchmarks.find(b => b.isBest) || benchmarks[0];
+  const displayedBenchmarks = onlyTop3 ? benchmarks.slice(0, 3) : benchmarks;
 
   return (
     <Card className="border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900">
@@ -72,17 +91,45 @@ export const MethodBenchmarkLeaderboard: React.FC<MethodBenchmarkLeaderboardProp
             </CardDescription>
           </div>
 
-          {bestMethod && (
-            <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 px-3 py-1.5 rounded-lg text-emerald-700 dark:text-emerald-300">
-              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <div className="text-xs">
-                <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 block uppercase font-bold tracking-wider">
-                  Rekomendasi Terbaik
-                </span>
-                <span className="font-semibold">{bestMethod.name}</span>
-              </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Filter Toggle */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs">
+              <button
+                type="button"
+                onClick={() => setOnlyTop3(false)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                  !onlyTop3
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                }`}
+              >
+                Semua ({benchmarks.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setOnlyTop3(true)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                  onlyTop3
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                }`}
+              >
+                Top 3 Terbaik
+              </button>
             </div>
-          )}
+
+            {bestMethod && (
+              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 px-3 py-1.5 rounded-lg text-emerald-700 dark:text-emerald-300">
+                <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div className="text-xs">
+                  <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 block uppercase font-bold tracking-wider">
+                    Rekomendasi Terbaik
+                  </span>
+                  <span className="font-semibold">{bestMethod.name}</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </CardHeader>
 
@@ -102,9 +149,10 @@ export const MethodBenchmarkLeaderboard: React.FC<MethodBenchmarkLeaderboardProp
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {benchmarks.map((item, index) => {
+              {displayedBenchmarks.map((item, index) => {
                 const isSelected = selectedMethod === item.method;
                 const isWinner = item.isBest;
+                const note = METHOD_EXPLANATIONS[item.method] || item.category;
 
                 return (
                   <tr
@@ -120,38 +168,40 @@ export const MethodBenchmarkLeaderboard: React.FC<MethodBenchmarkLeaderboardProp
                     {/* Rank */}
                     <td className="py-3 px-4 text-center font-mono">
                       {index === 0 ? (
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-xs font-bold">
-                          1
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-xs font-bold shadow-xs">
+                          🥇
                         </span>
                       ) : index === 1 ? (
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold">
-                          2
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold">
+                          🥈
                         </span>
                       ) : index === 2 ? (
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-900/20 text-amber-800 dark:text-amber-400 text-xs font-bold">
-                          3
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-900/20 text-amber-800 dark:text-amber-400 text-xs font-bold">
+                          🥉
                         </span>
                       ) : (
-                        <span className="text-slate-400">{index + 1}</span>
+                        <span className="text-slate-400 font-semibold">{index + 1}</span>
                       )}
                     </td>
 
                     {/* Method Name & Category */}
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-slate-800 dark:text-slate-200">{item.name}</span>
                         {isWinner && (
-                          <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] px-1.5 py-0">
-                            Terbaik
+                          <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] px-1.5 py-0 font-bold">
+                            Top 1
                           </Badge>
                         )}
                         {isSelected && (
-                          <Badge variant="outline" className="text-[9px] border-blue-400 text-blue-600 dark:text-blue-400 px-1.5 py-0">
+                          <Badge variant="outline" className="text-[9px] border-blue-400 text-blue-600 dark:text-blue-400 px-1.5 py-0 font-bold">
                             Aktif
                           </Badge>
                         )}
                       </div>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">{item.category}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                        {note}
+                      </span>
                     </td>
 
                     {/* Formula */}

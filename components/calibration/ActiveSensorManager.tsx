@@ -145,6 +145,7 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
 
   // Table Filters & Search
   const [onlyActiveFilter, setOnlyActiveFilter] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<"all" | "core" | "wind_rain" | "agro_power">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Manual Edit Dialog State
@@ -447,6 +448,10 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
   // Filtered variables based on search & active filter
   const filteredVariables = useMemo(() => {
     return SENSOR_VARIABLES.filter(v => {
+      if (selectedCategory !== "all" && v.category !== selectedCategory) {
+        return false;
+      }
+
       const isEnabled = (currentFormValues as any)?.[v.key]?.enabled;
       const isStaged = Boolean(stagedCalibrations?.[v.key]);
 
@@ -464,7 +469,7 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
 
       return true;
     });
-  }, [onlyActiveFilter, searchQuery, currentFormValues, stagedCalibrations]);
+  }, [onlyActiveFilter, selectedCategory, searchQuery, currentFormValues, stagedCalibrations]);
 
   const activeEditingVar = SENSOR_VARIABLES.find(v => v.key === editingSensorKey);
   const activeEditingConfig = editingSensorKey ? (currentFormValues as any)?.[editingSensorKey] : null;
@@ -724,7 +729,7 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
             </div>
 
             {/* Quick Filter Controls */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <div className="flex items-center space-x-2 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 text-xs">
                 <Switch
                   checked={onlyActiveFilter}
@@ -737,7 +742,7 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
                 </Label>
               </div>
 
-              <div className="relative w-full sm:w-48">
+              <div className="relative w-full sm:w-44">
                 <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <Input
                   type="text"
@@ -748,6 +753,47 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
                 />
               </div>
             </div>
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <span className="text-[11px] font-semibold text-slate-500 mr-1">Kategori:</span>
+            <Button
+              type="button"
+              variant={selectedCategory === "all" ? "default" : "outline"}
+              size="sm"
+              className="h-6 text-[11px] px-2.5 rounded-lg"
+              onClick={() => setSelectedCategory("all")}
+            >
+              Semua ({SENSOR_VARIABLES.length})
+            </Button>
+            <Button
+              type="button"
+              variant={selectedCategory === "core" ? "default" : "outline"}
+              size="sm"
+              className="h-6 text-[11px] px-2.5 rounded-lg"
+              onClick={() => setSelectedCategory("core")}
+            >
+              Inti (4)
+            </Button>
+            <Button
+              type="button"
+              variant={selectedCategory === "wind_rain" ? "default" : "outline"}
+              size="sm"
+              className="h-6 text-[11px] px-2.5 rounded-lg"
+              onClick={() => setSelectedCategory("wind_rain")}
+            >
+              Angin &amp; Hujan (4)
+            </Button>
+            <Button
+              type="button"
+              variant={selectedCategory === "agro_power" ? "default" : "outline"}
+              size="sm"
+              className="h-6 text-[11px] px-2.5 rounded-lg"
+              onClick={() => setSelectedCategory("agro_power")}
+            >
+              Agro &amp; Daya (3)
+            </Button>
           </div>
         </CardHeader>
 

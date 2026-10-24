@@ -46,6 +46,11 @@ import {
   Clock,
   LineChart,
   TrendingUp,
+  ChevronRight,
+  Info,
+  HelpCircle,
+  Activity,
+  Zap,
 } from "lucide-react";
 
 import {
@@ -78,6 +83,8 @@ import { ExportModal } from "@/components/validasi-bias/ExportModal";
 import { MethodBenchmarkLeaderboard } from "@/components/calibration/MethodBenchmarkLeaderboard";
 import { ActiveSensorManager } from "@/components/calibration/ActiveSensorManager";
 import { ModelParameterInspector } from "@/components/calibration/ModelParameterInspector";
+import { QuickVariableSelector } from "@/components/calibration/QuickVariableSelector";
+import { CalibrationWorkflowGuide } from "@/components/calibration/CalibrationWorkflowGuide";
 import { fitSensorCalibrationFromERA5 } from "@/lib/calibration/sensorCalibrationFit";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -486,7 +493,6 @@ function UnifiedCalibrationContent() {
   };
 
   // Convert bias correction fit parameters to IoT Sensor calibration schema (AWS Raw -> ERA5 Reference)
-  // Non-disruptive 1-Click Apply: Staged immediately without forcing tab navigation
   const handle1ClickApply = (method: CorrectionMethod, fitParams: any) => {
     const sensorKey = activeVarConfig.sensorKey;
     const calPairs = matchedPairs
@@ -519,9 +525,13 @@ function UnifiedCalibrationContent() {
 
     toast({
       title: `✓ Kalibrasi ${activeVarConfig.label} Berhasil Disimpan ke Draft`,
-      description: `Formula ${methodName} telah diterapkan ke stasiun ${stationName}. Buka Tab 3 "Parameter Sensor Aktif" saat siap menyimpan ke Firestore.`,
+      description: `Formula ${methodName} telah disiapkan untuk stasiun ${stationName}. Buka Langkah 3 "Parameter Sensor Aktif" saat siap menyimpan ke Firestore.`,
     });
   };
+
+  const stagedCountForCurrentStation = stagedCalibrations[selectedStationId]
+    ? Object.keys(stagedCalibrations[selectedStationId]).length
+    : 0;
 
   return (
     <div className="space-y-6 pb-12">
@@ -530,9 +540,11 @@ function UnifiedCalibrationContent() {
         gradient="blue"
         icon={SlidersHorizontal}
         title="Kalibrasi & Validasi Bias"
-        subtitle="Penyatuan sistem validasi ilmiah reanalisis ERA5 ECMWF, benchmark model kalibrasi otomatis, dan manajemen sensor IoT aktif stasiun."
+        subtitle="Sistem terpadu validasi ilmiah reanalisis ECMWF ERA5-Land, benchmark model kalibrasi otomatis, dan manajemen sensor IoT aktif stasiun."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <CalibrationWorkflowGuide />
+
             <Button
               variant="outline"
               size="sm"
@@ -543,6 +555,7 @@ function UnifiedCalibrationContent() {
               <RefreshCw className={`w-3.5 h-3.5 text-blue-400 ${loading ? "animate-spin" : ""}`} />
               Muat Ulang
             </Button>
+
             <Button
               size="sm"
               className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 font-semibold shadow-sm gap-1.5"
@@ -556,217 +569,255 @@ function UnifiedCalibrationContent() {
         }
       />
 
-      {/* Main Navigation Tabs */}
-      <Tabs value={activeMainTab} onValueChange={handleTabChange} className="w-full space-y-6">
-        <TabsList className="grid grid-cols-1 sm:grid-cols-3 w-full max-w-4xl bg-slate-100/90 dark:bg-slate-800/80 p-1.5 rounded-xl gap-1">
-          <TabsTrigger value="validation" className="text-xs font-semibold py-2.5 flex items-center justify-center gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
-            <Layers className="w-4 h-4 text-blue-500 shrink-0" />
-            <span>1. Validasi &amp; Komparasi Bias</span>
+      {/* Floating / Sticky Staging Quick Bar if drafts exist */}
+      {stagedCountForCurrentStation > 0 && activeMainTab !== "sensor-settings" && (
+        <div className="sticky top-16 z-20 transition-all duration-300">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-gradient-to-r from-amber-500/90 via-orange-500/90 to-amber-600/90 text-white shadow-lg backdrop-blur-md border border-amber-400/40">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-white/20 text-white">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+              </div>
+              <div className="text-xs">
+                <span className="font-bold">
+                  {stagedCountForCurrentStation} Draf Kalibrasi Siap Di-Commit untuk {stationName}
+                </span>
+                <p className="text-[11px] text-amber-100 opacity-90 hidden sm:block">
+                  Variabel: {Object.values(stagedCalibrations[selectedStationId]).map(i => i.variableLabel).join(", ")}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={() => handleTabChange("sensor-settings")}
+              className="bg-white hover:bg-amber-50 text-amber-900 font-bold text-xs h-8 shadow-sm gap-1.5"
+            >
+              <span>Lanjut ke Langkah 3: Review &amp; Simpan</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Guided Stepper Navigation Tabs */}
+      <Tabs value={activeMainTab} onValueChange={handleTabChange} className="w-full space-y-5">
+        <TabsList className="grid grid-cols-1 sm:grid-cols-3 w-full bg-slate-100/90 dark:bg-slate-800/80 p-1.5 rounded-2xl gap-1.5 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          {/* Step 1 */}
+          <TabsTrigger
+            value="validation"
+            className="text-left py-3 px-3.5 rounded-xl flex items-center gap-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all"
+          >
+            <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs shrink-0">
+              1
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span>Validasi &amp; Komparasi Bias</span>
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                Diagnosis Ground Truth vs ERA5
+              </p>
+            </div>
           </TabsTrigger>
-          <TabsTrigger value="model-calibration" className="text-xs font-semibold py-2.5 flex items-center justify-center gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
-            <Trophy className="w-4 h-4 text-indigo-500 shrink-0" />
-            <span>2. Model Kalibrasi &amp; Leaderboard</span>
+
+          {/* Step 2 */}
+          <TabsTrigger
+            value="model-calibration"
+            className="text-left py-3 px-3.5 rounded-xl flex items-center gap-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all"
+          >
+            <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
+              2
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-1.5">
+                <Trophy className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <span>Model &amp; Leaderboard</span>
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                Benchmark 11 Algoritma Otomatis
+              </p>
+            </div>
           </TabsTrigger>
-          <TabsTrigger value="sensor-settings" className="text-xs font-semibold py-2.5 relative flex items-center justify-center gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
-            <Settings2 className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span className="truncate">3. Parameter Sensor Aktif</span>
-            {stagedCalibrations[selectedStationId] && Object.keys(stagedCalibrations[selectedStationId]).length > 0 && (
-              <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1.5 py-0 h-4 rounded-full font-bold ml-1 animate-pulse shrink-0">
-                {Object.keys(stagedCalibrations[selectedStationId]).length} Draf
-              </Badge>
-            )}
+
+          {/* Step 3 */}
+          <TabsTrigger
+            value="sensor-settings"
+            className="text-left py-3 px-3.5 rounded-xl flex items-center gap-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all relative"
+          >
+            <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
+              3
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-1.5">
+                <Settings2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span>Parameter Sensor Aktif</span>
+                {stagedCountForCurrentStation > 0 && (
+                  <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1.5 py-0 h-4 rounded-full font-bold ml-auto shrink-0 animate-pulse">
+                    {stagedCountForCurrentStation} Draf
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                Sinkronisasi &amp; Deploy ke Firestore
+              </p>
+            </div>
           </TabsTrigger>
         </TabsList>
 
         {/* Global Control Filter Bar (Shared across Tab 1 and Tab 2) */}
         {activeMainTab !== "sensor-settings" && (
-          <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
-            <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <Calendar className="w-4 h-4 text-blue-600" />
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Rentang Waktu:</span>
-                <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-800/70 p-0.5 rounded-lg max-w-full">
-                  <Button
-                    variant={timePreset === "1m" ? "default" : "ghost"}
-                    size="sm"
-                    className="h-6 text-[11px] px-2.5"
-                    onClick={() => handlePresetChange("1m")}
-                  >
-                    1 Bulan (Optimal)
-                  </Button>
-                  <Button
-                    variant={timePreset === "3m" ? "default" : "ghost"}
-                    size="sm"
-                    className="h-6 text-[11px] px-2.5"
-                    onClick={() => handlePresetChange("3m")}
-                  >
-                    3 Bulan
-                  </Button>
-                  <Button
-                    variant={timePreset === "6m" ? "default" : "ghost"}
-                    size="sm"
-                    className="h-6 text-[11px] px-2.5"
-                    onClick={() => handlePresetChange("6m")}
-                  >
-                    6 Bulan
-                  </Button>
-                  <Button
-                    variant={timePreset === "1y" ? "default" : "ghost"}
-                    size="sm"
-                    className="h-6 text-[11px] px-2.5"
-                    onClick={() => handlePresetChange("1y")}
-                  >
-                    1 Tahun
-                  </Button>
-                </div>
-              </div>
+          <div className="space-y-4">
+            {/* Quick Meteorological Variable Pills */}
+            <QuickVariableSelector
+              selectedVariable={selectedVariable}
+              onSelectVariable={handleVariableChange}
+              stagedCalibrationsForStation={stagedCalibrations[selectedStationId] || {}}
+              disabled={loading}
+            />
 
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <Database className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Sumber ERA5:</span>
-                  <Select value={era5SourceMode} onValueChange={(val: any) => setEra5SourceMode(val)}>
-                    <SelectTrigger className="h-6 text-[11px] w-[175px] bg-slate-100 dark:bg-slate-800 border-none">
-                      <SelectValue placeholder="Sumber Data" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto" className="text-xs font-medium">Otomatis (Prioritas SQLite)</SelectItem>
-                      <SelectItem value="sqlite" className="text-xs">Hanya SQLite (era5_data.db)</SelectItem>
-                      <SelectItem value="online" className="text-xs">Unduh Online (Open-Meteo)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+            {/* Global Control Filter Card */}
+            <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
+              <CardContent className="p-4 space-y-4">
+                {/* Row 1: Station Selector & ERA5 Data Source */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                  {/* Station Selector */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Cpu className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Stasiun AWS IoT (Ground Truth):</span>
+                    </label>
+                    <Select
+                      value={selectedStationId}
+                      onValueChange={val => {
+                        setSelectedStationId(val);
+                        const opt = stationOptions.find(o => o.value === val);
+                        if (opt) {
+                          setStationName(opt.label);
+                          setStationCoords({ lat: opt.lat, lng: opt.lng });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-9 text-xs font-medium">
+                        <SelectValue placeholder="Pilih Stasiun AWS" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stationOptions.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
-                  <span>{dateRange.start}</span>
-                  <span>s/d</span>
-                  <span>{dateRange.end}</span>
-                </div>
-              </div>
-            </div>
-
-            <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-              {/* Station Selection */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Stasiun AWS IoT (Ground Truth)</label>
-                <Select
-                  value={selectedStationId}
-                  onValueChange={val => {
-                    setSelectedStationId(val);
-                    const opt = stationOptions.find(o => o.value === val);
-                    if (opt) {
-                      setStationName(opt.label);
-                      setStationCoords({ lat: opt.lat, lng: opt.lng });
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="Pilih Stasiun AWS" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stationOptions.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Variable Selection */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Parameter Meteorologi</label>
-                <Select value={selectedVariable} onValueChange={val => handleVariableChange(val as MeteorologicalVariable)}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="Pilih Parameter" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VARIABLES_CONFIG.map(v => {
-                      const IconComp = v.icon;
-                      return (
-                        <SelectItem key={v.id} value={v.id} className="text-xs">
-                          <div className="flex items-center gap-2">
-                            <IconComp className="w-3.5 h-3.5 text-blue-500" />
-                            <span>{v.label}</span>
-                          </div>
+                  {/* ERA5 Data Source Mode */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Database className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Sumber Reanalisis ERA5:</span>
+                    </label>
+                    <Select value={era5SourceMode} onValueChange={(val: any) => setEra5SourceMode(val)}>
+                      <SelectTrigger className="h-9 text-xs font-medium">
+                        <SelectValue placeholder="Sumber Data ERA5" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto" className="text-xs font-medium">
+                          Otomatis (Prioritas SQLite Lokal)
                         </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
+                        <SelectItem value="sqlite" className="text-xs">
+                          Hanya SQLite (era5_data.db)
+                        </SelectItem>
+                        <SelectItem value="online" className="text-xs">
+                          Unduh Online (Open-Meteo Archive)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              {/* Method Selection */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Metode Kalibrasi Aktif</label>
-                <Select value={selectedMethod} onValueChange={val => setSelectedMethod(val as CorrectionMethod)}>
-                  <SelectTrigger className="h-9 text-xs font-medium">
-                    <SelectValue placeholder="Pilih Metode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="polynomial_regression" className="text-xs">
-                      Polynomial Regression (Derajat 2: a·x² + b·x + c)
-                    </SelectItem>
-                    <SelectItem value="robust_huber" className="text-xs">
-                      Robust Huber Regression (Tahan Outlier)
-                    </SelectItem>
-                    <SelectItem value="quantile_delta_mapping" className="text-xs">
-                      Quantile Delta Mapping (QDM Standar IPCC)
-                    </SelectItem>
-                    <SelectItem value="linear_regression" className="text-xs">
-                      Linear Regression (OLS Scale + Offset)
-                    </SelectItem>
-                    <SelectItem value="quantile_mapping" className="text-xs">
-                      Empirical Quantile Mapping (EQM)
-                    </SelectItem>
-                    <SelectItem value="mean_bias" className="text-xs">
-                      Mean Bias Error / MBE (Additive Offset)
-                    </SelectItem>
-                    <SelectItem value="two_point" className="text-xs">
-                      Two-Point Interpolation Calibration
-                    </SelectItem>
-                    <SelectItem value="power_law" className="text-xs">
-                      Power Law Scaling (y = a · x^b)
-                    </SelectItem>
-                    <SelectItem value="diurnal_mbe" className="text-xs">
-                      Diurnal Hourly MBE (Profil 24-Jam)
-                    </SelectItem>
-                    {selectedVariable === "precipitation" && (
-                      <SelectItem value="zero_aware_rain" className="text-xs">
-                        Zero-Aware Rain Correction
-                      </SelectItem>
-                    )}
-                    {(selectedVariable === "wind_direction" || selectedVariable === "wind_speed") && (
-                      <SelectItem value="circular_wind" className="text-xs">
-                        Circular Wind Statistics
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+                  {/* Date Range & Metadata indicator */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Rentang Tanggal Aktif:</span>
+                    </label>
+                    <div className="h-9 px-3 rounded-md bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs font-mono text-slate-600 dark:text-slate-300">
+                      <span>{dateRange.start}</span>
+                      <span className="text-slate-400">s/d</span>
+                      <span>{dateRange.end}</span>
+                    </div>
+                  </div>
+                </div>
 
-              {/* Train / Validation Split Slider */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  <span>Split Data Kalibrasi</span>
-                  <span className="font-mono text-blue-600 dark:text-blue-400 font-bold text-[11px] bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-900">
-                    {trainSplitRatio}% Train / {100 - trainSplitRatio}% Test
-                  </span>
+                {/* Row 2: Presets & Split Data Slider */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  {/* Preset Buttons */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                      Preset Periode:
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                      <Button
+                        variant={timePreset === "1m" ? "default" : "ghost"}
+                        size="sm"
+                        className="h-7 text-xs px-3 rounded-lg"
+                        onClick={() => handlePresetChange("1m")}
+                      >
+                        1 Bulan (Optimal)
+                      </Button>
+                      <Button
+                        variant={timePreset === "3m" ? "default" : "ghost"}
+                        size="sm"
+                        className="h-7 text-xs px-3 rounded-lg"
+                        onClick={() => handlePresetChange("3m")}
+                      >
+                        3 Bulan
+                      </Button>
+                      <Button
+                        variant={timePreset === "6m" ? "default" : "ghost"}
+                        size="sm"
+                        className="h-7 text-xs px-3 rounded-lg"
+                        onClick={() => handlePresetChange("6m")}
+                      >
+                        6 Bulan
+                      </Button>
+                      <Button
+                        variant={timePreset === "1y" ? "default" : "ghost"}
+                        size="sm"
+                        className="h-7 text-xs px-3 rounded-lg"
+                        onClick={() => handlePresetChange("1y")}
+                      >
+                        1 Tahun
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Split Data Slider */}
+                  <div className="w-full md:w-[320px] space-y-1.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                        <span>Split Kalibrasi / Validasi:</span>
+                      </span>
+                      <span className="font-mono text-blue-600 dark:text-blue-400 font-bold text-[11px] bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-900">
+                        {trainSplitRatio}% Train / {100 - trainSplitRatio}% Test
+                      </span>
+                    </div>
+                    <div className="h-8 flex items-center px-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-lg">
+                      <input
+                        type="range"
+                        value={trainSplitRatio}
+                        onChange={e => setTrainSplitRatio(Number(e.target.value))}
+                        min={40}
+                        max={90}
+                        step={5}
+                        className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="h-9 flex items-center px-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-md">
-                  <input
-                    type="range"
-                    value={trainSplitRatio}
-                    onChange={e => setTrainSplitRatio(Number(e.target.value))}
-                    min={40}
-                    max={90}
-                    step={5}
-                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* ========================================================================= */}
@@ -913,6 +964,30 @@ function UnifiedCalibrationContent() {
               />
             </TabsContent>
           </Tabs>
+
+          {/* Seamless Bridge to Step 2 */}
+          <Card className="border-indigo-200 dark:border-indigo-900/60 bg-gradient-to-r from-blue-50/70 via-indigo-50/60 to-purple-50/40 dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-purple-950/20 shadow-sm">
+            <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-indigo-600 text-white text-[10px] font-bold">Langkah Selanjutnya</Badge>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    Optimalkan Kalibrasi {activeVarConfig.label}
+                  </h4>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  Sistem telah menjalankan benchmark otomatis pada 11 algoritma regresi &amp; kuantil. Buka Leaderboard untuk melihat model dengan akurasi tertinggi.
+                </p>
+              </div>
+              <Button
+                onClick={() => handleTabChange("model-calibration")}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-9 font-semibold gap-1.5 shrink-0"
+              >
+                <span>Buka Leaderboard Algoritma (Langkah 2)</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ========================================================================= */}
@@ -956,27 +1031,29 @@ function UnifiedCalibrationContent() {
                 </CardDescription>
               </div>
 
-              <Button
-                size="sm"
-                className={`text-white text-xs h-9 font-semibold transition-all ${
-                  stagedCalibrations[selectedStationId]?.[activeVarConfig.sensorKey]?.method === selectedMethod
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
-                onClick={() => handle1ClickApply(selectedMethod, evaluationResult?.provenance?.fitParameters)}
-              >
-                {stagedCalibrations[selectedStationId]?.[activeVarConfig.sensorKey]?.method === selectedMethod ? (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-200" />
-                    Diterapkan di Draft Staging
-                  </>
-                ) : (
-                  <>
-                    <Sliders className="w-3.5 h-3.5 mr-1.5" />
-                    Terapkan Parameter ke Sensor Stasiun Ini
-                  </>
-                )}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  className={`text-white text-xs h-9 font-semibold transition-all ${
+                    stagedCalibrations[selectedStationId]?.[activeVarConfig.sensorKey]?.method === selectedMethod
+                      ? "bg-emerald-600 hover:bg-emerald-700"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
+                  onClick={() => handle1ClickApply(selectedMethod, evaluationResult?.provenance?.fitParameters)}
+                >
+                  {stagedCalibrations[selectedStationId]?.[activeVarConfig.sensorKey]?.method === selectedMethod ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-200" />
+                      Diterapkan di Draft Staging
+                    </>
+                  ) : (
+                    <>
+                      <Sliders className="w-3.5 h-3.5 mr-1.5" />
+                      Terapkan Parameter ke Sensor Ini
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardHeader>
 
             <CardContent className="p-4 space-y-4">
@@ -997,6 +1074,32 @@ function UnifiedCalibrationContent() {
                   trainingPeriod: evaluationResult?.provenance?.calibrationPeriod,
                 }}
               />
+            </CardContent>
+          </Card>
+
+          {/* Seamless Bridge to Step 3 */}
+          <Card className="border-emerald-200 dark:border-emerald-900/60 bg-gradient-to-r from-emerald-50/70 via-teal-50/60 to-blue-50/40 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-blue-950/20 shadow-sm">
+            <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-emerald-600 text-white text-[10px] font-bold">Langkah Selanjutnya</Badge>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    Tinjau &amp; Deploy Parameter ke Sensor IoT
+                  </h4>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  {stagedCountForCurrentStation > 0
+                    ? `Terdapat ${stagedCountForCurrentStation} parameter dalam draf kalibrasi yang siap dikonfirmasi dan disimpan ke Firestore.`
+                    : "Setelah memilih dan menerapkan parameter model ke draft, lanjutkan ke modul manajemen sensor aktif."}
+                </p>
+              </div>
+              <Button
+                onClick={() => handleTabChange("sensor-settings")}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-9 font-semibold gap-1.5 shrink-0"
+              >
+                <span>Buka Parameter Sensor Aktif (Langkah 3)</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1052,4 +1155,3 @@ export default function UnifiedCalibrationPage() {
     </React.Suspense>
   );
 }
-
