@@ -5,7 +5,7 @@ import React, { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CloudSun, Info, Mountain, Thermometer, Droplets, Compass, ShieldAlert } from "lucide-react";
+import { CloudSun, CloudRain, Info, Mountain, Thermometer, Droplets, Compass, ShieldAlert } from "lucide-react";
 import type { Wmo30YearNormals } from "@/lib/climatology/wmoNormals";
 
 interface WalterLiethClimographProps {
@@ -28,23 +28,27 @@ export function WalterLiethClimograph({
     const months = normals.monthly.map((m) => m.monthName);
     const temps = normals.monthly.map((m) => m.tempMean);
     const rains = normals.monthly.map((m) => m.precipMean);
-    // Ambang batas ariditas Walter-Lieth (P = 2T) dalam satuan mm (sumbu kiri)
-    const aridThresholds = temps.map((t) => Number((t * 2).toFixed(1)));
 
-    // Skala hujan maksimal bulat ke atas kelipatan 50, minimal 150 mm
-    const maxRain = Math.max(...rains);
-    const rainMaxAxis = Math.max(150, Math.ceil(maxRain / 50) * 50);
+    // Standar Bioklimatologi Walter-Lieth (Heinrich Walter & Helmut Lieth, 1960–1967; WMO No. 1203):
+    // 1. Rasio skala dasar: 10°C = 20 mm presipitasi (1°C = 2 mm) untuk rentang 0 s.d. 100 mm.
+    // 2. Di atas 100 mm (wilayah tropis basah/hujan lebat), skala presipitasi dikompresi agar grafik tidak terdistorsi.
+    //    Kita gunakan kompresi 1:5 di atas 100 mm (setiap 100 mm aktual = 20 unit grafis).
+    // 3. Suhu udara (T) diplot pada T_plot = T * 2, sehingga kurva suhu SECARA ALAMI menjadi garis ambang batas 2T!
+    //    Jika kurva presipitasi (P) berada DI BAWAH kurva suhu (T), terjadi PERIODE ARID (P < 2T).
+    //    Jika P berada DI ATAS T, terjadi PERIODE HUMID (P >= 2T).
+    //    Jika P > 100 mm, masuk ZONA PER-HUMID (ekstra basah).
+    const rainToY = (p: number): number => {
+      if (p <= 100) return p;
+      return Number((100 + (p - 100) / 5).toFixed(2));
+    };
 
-    // Skala suhu udara WMO: 0 s.d. 50 °C (rentang meteorologis bumi yang realistis & standar WMO)
-    const tempMinAxis = 0;
-    const tempMaxAxis = 50;
+    const tempToY = (t: number): number => Number((t * 2).toFixed(2));
 
-    // Identifikasi rentang bulan arid (P < 2T) untuk shading visual latar belakang standar Walter-Lieth
+    // Identifikasi rentang bulan arid (P < 2T) untuk penanda visual standar Walter-Lieth
     const aridMonthIndices = normals.monthly
       .map((m, idx) => (m.precipMean < m.tempMean * 2 ? idx : -1))
       .filter((idx) => idx !== -1);
 
-    // Kelompokkan bulan-bulan arid berurutan
     const markAreaPieces: any[] = [];
     if (aridMonthIndices.length > 0) {
       let runStart = aridMonthIndices[0];
@@ -59,7 +63,7 @@ export function WalterLiethClimograph({
               name: "Periode Arid",
               xAxis: months[runStart],
               itemStyle: {
-                color: isDarkMode ? "rgba(245, 158, 11, 0.12)" : "rgba(245, 158, 11, 0.16)",
+                color: isDarkMode ? "rgba(245, 158, 11, 0.15)" : "rgba(245, 158, 11, 0.18)",
               },
               label: {
                 show: true,
@@ -83,7 +87,7 @@ export function WalterLiethClimograph({
           name: "Periode Arid",
           xAxis: months[runStart],
           itemStyle: {
-            color: isDarkMode ? "rgba(245, 158, 11, 0.12)" : "rgba(245, 158, 11, 0.16)",
+            color: isDarkMode ? "rgba(245, 158, 11, 0.15)" : "rgba(245, 158, 11, 0.18)",
           },
           label: {
             show: true,
@@ -113,10 +117,21 @@ export function WalterLiethClimograph({
           const monthIdx = params[0].dataIndex;
           const mData = normals.monthly[monthIdx];
           const isArid = mData.precipMean < mData.tempMean * 2;
+          const isPerHumid = mData.precipMean > 100;
           const netWater = mData.precipMean - mData.tempMean * 2;
 
+          let statusText = `Periode Humid / Basah (+${netWater.toFixed(1)} mm)`;
+          let statusColor = "#0284c7";
+          if (isArid) {
+            statusText = `Periode Arid / Kering (${netWater.toFixed(1)} mm)`;
+            statusColor = "#ea580c";
+          } else if (isPerHumid) {
+            statusText = `Periode Per-Humid / Sangat Basah (+${netWater.toFixed(1)} mm)`;
+            statusColor = "#0369a1";
+          }
+
           return `
-            <div style="font-family: inherit; font-size: 12px; padding: 6px; min-width: 230px;">
+            <div style="font-family: inherit; font-size: 12px; padding: 6px; min-width: 240px;">
               <strong style="font-size: 13px; color: ${isDarkMode ? "#fff" : "#0f172a"}; display: block; border-bottom: 1px solid ${isDarkMode ? "#334155" : "#e2e8f0"}; padding-bottom: 4px; margin-bottom: 6px;">
                 ${mData.fullName} (Normal WMO 1991–2020)
               </strong>
@@ -130,17 +145,17 @@ export function WalterLiethClimograph({
                   <strong style="color: #0284c7;">${mData.precipMean.toFixed(1)} mm</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 16px;">
-                  <span style="color: #f59e0b; font-weight: 600;">● Ambang Kritis Ariditas (2T):</span>
+                  <span style="color: #f59e0b; font-weight: 600;">● Ambang Bioklimat (2T):</span>
                   <strong style="color: #f59e0b;">${(mData.tempMean * 2).toFixed(1)} mm</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 16px; margin-top: 2px;">
                   <span style="color: #64748b;">Kondisi Bioklimat:</span>
-                  <strong style="color: ${isArid ? "#ea580c" : "#0284c7"};">
-                    ${isArid ? `Periode Arid / Kering (${netWater.toFixed(1)} mm)` : `Periode Humid / Basah (+${netWater.toFixed(1)} mm)`}
+                  <strong style="color: ${statusColor}; font-weight: 700;">
+                    ${statusText}
                   </strong>
                 </div>
                 <div style="font-size: 10px; color: #94a3b8; border-top: 1px solid ${isDarkMode ? "#334155" : "#e2e8f0"}; padding-top: 4px; margin-top: 4px;">
-                  Ekstremitas: ${mData.tempMinMean}°C s.d. ${mData.tempMaxMean}°C · Hari Hujan: ${mData.rainDaysMean} hari
+                  Suhu Ekstrem: ${mData.tempMinMean}°C s.d. ${mData.tempMaxMean}°C · Hari Hujan: ${mData.rainDaysMean} hari
                 </div>
               </div>
             </div>
@@ -148,15 +163,15 @@ export function WalterLiethClimograph({
         },
       },
       legend: {
-        data: ["Curah Hujan (P)", "Suhu Udara (T)", "Ambang Ariditas Walter-Lieth (P = 2T)"],
+        data: ["Curah Hujan (P)", "Suhu Udara (T) & Ambang 2T"],
         textStyle: { color: textColor, fontSize: 11 },
         top: "2%",
       },
       grid: {
         left: "5%",
-        right: "5%",
+        right: "6%",
         bottom: "12%",
-        top: "20%",
+        top: "18%",
         containLabel: true,
       },
       xAxis: {
@@ -170,27 +185,39 @@ export function WalterLiethClimograph({
         {
           type: "value",
           name: "Curah Hujan (mm)",
+          nameTextStyle: { color: "#0284c7", fontWeight: "bold" },
           min: 0,
-          max: rainMaxAxis,
+          max: 180,
+          interval: 20,
           position: "left",
+          axisLine: { show: true, lineStyle: { color: "#0284c7" } },
           axisLabel: {
             color: "#0284c7",
             fontWeight: "bold",
-            formatter: "{value} mm",
+            formatter: (val: number) => {
+              if (val <= 100) return `${val} mm`;
+              const realRain = Math.round(100 + (val - 100) * 5);
+              return `${realRain} mm`;
+            },
           },
           splitLine: { lineStyle: { color: gridColor } },
         },
         {
           type: "value",
-          name: "Suhu Udara (°C)",
-          min: tempMinAxis,
-          max: tempMaxAxis,
-          interval: 10,
+          name: "Suhu Udara (°C) [1°C = 2 mm]",
+          nameTextStyle: { color: "#ef4444", fontWeight: "bold" },
+          min: 0,
+          max: 180,
+          interval: 20,
           position: "right",
+          axisLine: { show: true, lineStyle: { color: "#ef4444" } },
           axisLabel: {
             color: "#ef4444",
             fontWeight: "bold",
-            formatter: "{value} °C",
+            formatter: (val: number) => {
+              if (val <= 100) return `${val / 2} °C`;
+              return ""; // Kosong di atas 50°C
+            },
           },
           splitLine: { show: false },
         },
@@ -200,12 +227,17 @@ export function WalterLiethClimograph({
           name: "Curah Hujan (P)",
           type: "line",
           yAxisIndex: 0,
-          data: rains.map((r, idx) => ({
-            value: r,
-            itemStyle: {
-              color: r < aridThresholds[idx] ? "#ea580c" : "#0284c7",
-            },
-          })),
+          data: rains.map((r, idx) => {
+            const isArid = r < temps[idx] * 2;
+            return {
+              value: rainToY(r),
+              itemStyle: {
+                color: isArid ? "#ea580c" : "#0284c7",
+                borderColor: isArid ? "#c2410c" : "#0369a1",
+                borderWidth: isArid ? 2 : 1,
+              },
+            };
+          }),
           smooth: true,
           symbol: "circle",
           symbolSize: 8,
@@ -219,8 +251,8 @@ export function WalterLiethClimograph({
               y2: 1,
               colorStops: [
                 { offset: 0, color: "rgba(2, 132, 199, 0.40)" },
-                { offset: 0.8, color: "rgba(2, 132, 199, 0.10)" },
-                { offset: 1, color: "rgba(2, 132, 199, 0.01)" },
+                { offset: 0.6, color: "rgba(2, 132, 199, 0.20)" },
+                { offset: 1, color: "rgba(2, 132, 199, 0.02)" },
               ],
             },
           },
@@ -231,11 +263,12 @@ export function WalterLiethClimograph({
             data: [
               {
                 yAxis: 100,
-                lineStyle: { color: "#38bdf8", type: "dotted", width: 1.5 },
+                lineStyle: { color: "#0284c7", type: "solid", width: 1.5 },
                 label: {
-                  formatter: "Bulan Basah Mohr (100 mm) / Per-Humid",
+                  formatter: "Batas Per-Humid Walter-Lieth (100 mm) · Skala Kompresi 1:5",
                   position: "insideEndTop",
                   fontSize: 10,
+                  fontWeight: "bold",
                   color: "#0284c7",
                 },
               },
@@ -243,7 +276,7 @@ export function WalterLiethClimograph({
                 yAxis: 60,
                 lineStyle: { color: "#f59e0b", type: "dotted", width: 1.5 },
                 label: {
-                  formatter: "Bulan Kering Mohr (60 mm)",
+                  formatter: "Bulan Kering Mohr / SF (60 mm)",
                   position: "insideEndBottom",
                   fontSize: 10,
                   color: "#f59e0b",
@@ -253,21 +286,10 @@ export function WalterLiethClimograph({
           },
         },
         {
-          name: "Ambang Ariditas Walter-Lieth (P = 2T)",
-          type: "line",
-          yAxisIndex: 0,
-          data: aridThresholds,
-          smooth: true,
-          symbol: "circle",
-          symbolSize: 5,
-          itemStyle: { color: "#f59e0b" },
-          lineStyle: { width: 2, type: "dashed", color: "#f59e0b" },
-        },
-        {
-          name: "Suhu Udara (T)",
+          name: "Suhu Udara (T) & Ambang 2T",
           type: "line",
           yAxisIndex: 1,
-          data: temps,
+          data: temps.map((t) => tempToY(t)),
           smooth: true,
           symbol: "diamond",
           symbolSize: 8,
@@ -282,9 +304,10 @@ export function WalterLiethClimograph({
     return null;
   }
 
-  // Identifikasi bulan kering vs lembap
+  // Identifikasi bulan kering vs lembap vs per-humid
   const aridMonths = normals.monthly.filter((m) => m.precipMean < m.tempMean * 2);
   const humidMonths = normals.monthly.filter((m) => m.precipMean >= m.tempMean * 2);
+  const perHumidMonths = normals.monthly.filter((m) => m.precipMean > 100);
 
   return (
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white overflow-hidden">
@@ -299,13 +322,16 @@ export function WalterLiethClimograph({
               <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 text-[10px]">
                 Periode Normal: 1991–2020 (30 Tahun)
               </Badge>
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800 text-[10px]">
+                Skala Walter-Lieth (1°C = 2 mm · Kompresi &gt;100 mm)
+              </Badge>
             </div>
             <CardTitle className="text-lg font-extrabold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
               <CloudSun className="h-5 w-5 text-blue-500" />
               Diagram Iklim Walter-Lieth (Climograph WMO)
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-              Bioklimatologi rasio standar P = 2T (1°C = 2 mm): visualisasi simultan dinamika termal (0–50°C) dan ketersediaan air ekologis.
+              Bioklimatologi rasio standar P = 2T (1°C = 2 mm): Kurva suhu (T) sekaligus berfungsi sebagai ambang batas aridity 2T. Presipitasi &gt; 100 mm dikompresi 1:5 sesuai kaidah Heinrich Walter &amp; Helmut Lieth.
             </CardDescription>
           </div>
 
@@ -352,7 +378,7 @@ export function WalterLiethClimograph({
 
       <CardContent className="p-4 space-y-4">
         {/* Main Climograph Chart */}
-        <div className="h-[360px] w-full">
+        <div className="h-[370px] w-full">
           <ReactECharts
             option={chartOption}
             style={{ height: "100%", width: "100%" }}
@@ -361,32 +387,40 @@ export function WalterLiethClimograph({
         </div>
 
         {/* Bioclimatic Summary Strip */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t dark:border-slate-800 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t dark:border-slate-800 text-xs">
           <div className="p-3 bg-blue-50/60 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-900/40 space-y-1">
             <span className="font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
               <Droplets className="h-3.5 w-3.5 text-blue-500" /> Periode Humid (Surplus Air)
             </span>
             <p className="text-[11px] text-blue-700 dark:text-blue-300">
-              Terjadi selama <strong>{humidMonths.length} bulan</strong> ({humidMonths.map((m) => m.monthName).join(", ") || "Nihil"}), di mana presipitasi melampaui kurva suhu (P &ge; 2T). Ketersediaan air tanah berada dalam fase surplus optimal.
+              Terjadi selama <strong>{humidMonths.length} bulan</strong> ({humidMonths.map((m) => m.monthName).join(", ") || "Nihil"}), di mana kurva presipitasi berada di atas garis suhu (P &ge; 2T).
             </p>
           </div>
 
           <div className="p-3 bg-amber-50/60 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-900/40 space-y-1">
             <span className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-              <CloudSun className="h-3.5 w-3.5 text-amber-500" /> Periode Arid (Defisit / Cekaman Kering)
+              <CloudSun className="h-3.5 w-3.5 text-amber-500" /> Periode Arid (Defisit Kering)
             </span>
             <p className="text-[11px] text-amber-700 dark:text-amber-300">
-              Terjadi selama <strong>{aridMonths.length} bulan</strong> ({aridMonths.map((m) => m.monthName).join(", ") || "Tidak ada bulan arid"}), di mana curah hujan berada di bawah garis kritis 2T (P &lt; 2T).
+              Terjadi selama <strong>{aridMonths.length} bulan</strong> ({aridMonths.map((m) => `${m.monthName} (${m.precipMean.toFixed(1)} mm)`).join(", ") || "Tidak ada bulan arid"}), di mana presipitasi berada di bawah kurva suhu (P &lt; 2T).
+            </p>
+          </div>
+
+          <div className="p-3 bg-sky-50/60 dark:bg-sky-950/30 rounded-xl border border-sky-200 dark:border-sky-900/40 space-y-1">
+            <span className="font-bold text-sky-900 dark:text-sky-200 flex items-center gap-1.5">
+              <CloudRain className="h-3.5 w-3.5 text-sky-500" /> Zona Per-Humid (P &gt; 100 mm)
+            </span>
+            <p className="text-[11px] text-sky-700 dark:text-sky-300">
+              Terjadi selama <strong>{perHumidMonths.length} bulan</strong> ({perHumidMonths.map((m) => m.monthName).join(", ")}). Presipitasi melimpah melebihi ambang batas infiltrasi tanah dan mendukung biomassa tropis lebat.
             </p>
           </div>
 
           <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1">
             <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-              <Info className="h-3.5 w-3.5 text-slate-500" /> Ekstremitas Musiman
+              <Info className="h-3.5 w-3.5 text-slate-500" /> Evaluasi Kewajaran Meteorologis
             </span>
             <p className="text-[11px] text-slate-600 dark:text-slate-400">
-              Bulan Terbasah: <strong className="text-blue-600 dark:text-blue-400">{normals.annual.wettestMonth.name} ({normals.annual.wettestMonth.rain.toFixed(0)} mm)</strong><br />
-              Bulan Terkering: <strong className="text-amber-600 dark:text-amber-400">{normals.annual.driestMonth.name} ({normals.annual.driestMonth.rain.toFixed(0)} mm)</strong>
+              Total Hujan: <strong className="text-blue-600 dark:text-blue-400">{normals.annual.precipMean.toFixed(0)} mm/th</strong> (Sangat wajar untuk pesisir selatan Jawa Tengah; normal BMKG: 2.200–2.800 mm). Bulan terbasah {normals.annual.wettestMonth.name} ({normals.annual.wettestMonth.rain.toFixed(0)} mm) &amp; terkering {normals.annual.driestMonth.name} ({normals.annual.driestMonth.rain.toFixed(0)} mm).
             </p>
           </div>
         </div>
