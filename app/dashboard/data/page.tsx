@@ -34,6 +34,11 @@ import Loading from "@/app/loading";
 import { fetchAllDevices, Device } from "@/lib/FetchingDevice";
 import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner";
 import {
+  getStoredActiveSensorId,
+  setStoredActiveSensorId,
+  resolveActiveSensorId,
+} from "@/lib/activeSensorStorage";
+import {
   SensorDate,
   deleteSensorData,
   editSensorDataByTimestamp,
@@ -170,7 +175,7 @@ export default function DataPage() {
 
   // State untuk sensor dan jumlah data
   const [sensorOptions, setSensorOptions] = useState<SensorOption[]>([]);
-  const [sensorId, setSensorId] = useState<string>("");
+  const [sensorId, setSensorId] = useState<string>(() => getStoredActiveSensorId() || "");
   const [selectedPeriod, setSelectedPeriod] = useState<Period>(periods[1]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
@@ -206,7 +211,10 @@ export default function DataPage() {
 
             if (options.length > 0) {
               setSensorOptions(options);
-              setSensorId(options[0].value);
+              const activeId = resolveActiveSensorId(options);
+              setSensorId(activeId);
+              const matched = options.find((o) => o.value === activeId);
+              setStoredActiveSensorId(activeId, { label: matched?.label });
             } else {
               setError("Tidak ada sensor yang dapat ditampilkan. Pastikan perangkat Anda memiliki authToken.");
               setSensorOptions([]);
@@ -782,7 +790,11 @@ export default function DataPage() {
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
             <Select
               value={sensorId}
-              onValueChange={setSensorId}
+              onValueChange={(val) => {
+                setSensorId(val);
+                const matched = sensorOptions.find((o) => o.value === val);
+                setStoredActiveSensorId(val, { label: matched?.label });
+              }}
               disabled={!sensorId}
             >
               <SelectTrigger className="w-full sm:w-[180px]">

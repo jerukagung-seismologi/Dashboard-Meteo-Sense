@@ -14,6 +14,11 @@ import LaporanHarian from "@/components/pelaporan/LaporanHarian"
 import ExportWOWMetOffice from "@/components/pelaporan/ExportWOWMetOffice"
 import { FileText } from "lucide-react"
 import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner"
+import {
+  getStoredActiveSensorId,
+  setStoredActiveSensorId,
+  resolveActiveSensorId,
+} from "@/lib/activeSensorStorage"
 
 // --- MAIN PAGE COMPONENT ---
 export default function PelaporanPage() {
@@ -21,7 +26,7 @@ export default function PelaporanPage() {
   const displayName = profile?.displayName || user?.displayName || "Pengamat Cuaca";
 
   const [sensorOptions, setSensorOptions] = useState<{ label: string; value: string; lat?: number; lng?: number }[]>([]);
-  const [sensorId, setSensorId] = useState("");
+  const [sensorId, setSensorId] = useState<string>(() => getStoredActiveSensorId() || "");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +49,10 @@ export default function PelaporanPage() {
 
             if (options.length > 0) {
               setSensorOptions(options);
-              setSensorId(options[0].value);
+              const activeId = resolveActiveSensorId(options);
+              setSensorId(activeId);
+              const matched = options.find((o) => o.value === activeId);
+              setStoredActiveSensorId(activeId, { label: matched?.label });
               setError(null);
             } else {
               setError("Tidak ada sensor yang dapat ditampilkan. Pastikan perangkat Anda memiliki authToken.");
@@ -83,7 +91,15 @@ export default function PelaporanPage() {
           subtitle="Buat dan cetak laporan data sensor harian, bulanan, klimatologi, serta ekspor observasi global WOW Met Office."
           actions={
             <div className="flex items-center gap-2">
-              <Select value={sensorId} onValueChange={setSensorId} disabled={loading || sensorOptions.length === 0}>
+              <Select
+                value={sensorId}
+                onValueChange={(val) => {
+                  setSensorId(val);
+                  const matched = sensorOptions.find((o) => o.value === val);
+                  setStoredActiveSensorId(val, { label: matched?.label });
+                }}
+                disabled={loading || sensorOptions.length === 0}
+              >
                 <SelectTrigger className="w-full sm:w-[220px] bg-slate-900/80 border-slate-700 text-white text-xs h-8">
                   <SelectValue placeholder={loading ? "Memuat sensor..." : "Pilih Sensor"} />
                 </SelectTrigger>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchDevice, Device } from "@/lib/FetchingDevice";
 import { fetchSensorMetadata, fetchSensorData } from "@/lib/apiClient";
+import { setStoredActiveSensorId } from "@/lib/activeSensorStorage";
 import type { SensorDate } from "@/lib/FetchingSensorData";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -211,6 +212,7 @@ export default function DeviceDetailPage() {
         }
 
         const sensorToken = deviceData.authToken || deviceData.id;
+        setStoredActiveSensorId(sensorToken, { label: deviceData.name });
         const [metadata, latestDataArr] = await Promise.all([
           fetchSensorMetadata(sensorToken),
           fetchSensorData(sensorToken, 2), 

@@ -25,6 +25,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchAllDevices } from "@/lib/FetchingDevice";
+import {
+  getStoredActiveSensorId,
+  setStoredActiveSensorId,
+  resolveActiveSensor,
+} from "@/lib/activeSensorStorage";
 import ReactECharts from "echarts-for-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -109,7 +114,13 @@ export default function AgrometPage() {
               lng: device.coordinates?.lng || 106.8,
             }));
           setSensorOptions(options);
-          if (options.length > 0) setSelectedSensor(options[0]);
+          if (options.length > 0) {
+            const chosen = resolveActiveSensor(options);
+            setSelectedSensor(chosen);
+            if (chosen) {
+              setStoredActiveSensorId(chosen.value, { label: chosen.label });
+            }
+          }
         } catch (err) {
           console.error("Gagal memuat daftar perangkat.", err);
         }
@@ -311,7 +322,10 @@ export default function AgrometPage() {
               value={selectedSensor?.value}
               onValueChange={(val) => {
                 const sensor = sensorOptions.find((s) => s.value === val);
-                if (sensor) setSelectedSensor(sensor);
+                if (sensor) {
+                  setSelectedSensor(sensor);
+                  setStoredActiveSensorId(sensor.value, { label: sensor.label });
+                }
               }}
             >
               <SelectTrigger className="w-full bg-slate-900/80 border-white/20 text-white text-xs h-8">

@@ -44,6 +44,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchAllDevices } from "@/lib/FetchingDevice";
+import {
+  getStoredActiveSensorId,
+  setStoredActiveSensorId,
+  resolveActiveSensorId,
+} from "@/lib/activeSensorStorage";
 import ReactECharts from "echarts-for-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -199,7 +204,9 @@ function KlimatologiInner() {
   // ═══════════════════════════════════════════════════════════════════════════
   const [locationMode, setLocationMode] = useState<"station" | "region">("station");
   const [devices, setDevices] = useState<DeviceOption[]>([]);
-  const [sensorId, setSensorId] = useState<string>("");
+  const [sensorId, setSensorId] = useState<string>(
+    () => searchParams.get("sensorId") || getStoredActiveSensorId() || ""
+  );
 
   // Arbitrary Free Region States
   const [customCoords, setCustomCoords] = useState<{ lat: number; lng: number }>({ lat: -6.2146, lng: 106.8451 });
@@ -227,7 +234,10 @@ function KlimatologiInner() {
             }));
           setDevices(options);
           if (options.length > 0) {
-            setSensorId(options[0].value);
+            const activeId = resolveActiveSensorId(options, searchParams.get("sensorId"));
+            setSensorId(activeId);
+            const matched = options.find((o) => o.value === activeId);
+            setStoredActiveSensorId(activeId, { label: matched?.label });
           } else {
             setLocationMode("region");
           }
@@ -238,7 +248,7 @@ function KlimatologiInner() {
       };
       loadDevices();
     }
-  }, [user]);
+  }, [user, searchParams]);
 
   // Load favorites & geolocation
   useEffect(() => {
@@ -865,7 +875,15 @@ function KlimatologiInner() {
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex flex-col gap-1 w-full sm:w-[280px]">
                 <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Pilih Stasiun Cuaca Terdaftar</label>
-                <Select value={sensorId} onValueChange={setSensorId} disabled={devices.length === 0}>
+                <Select
+                  value={sensorId}
+                  onValueChange={(val) => {
+                    setSensorId(val);
+                    const matched = devices.find((d) => d.value === val);
+                    setStoredActiveSensorId(val, { label: matched?.label });
+                  }}
+                  disabled={devices.length === 0}
+                >
                   <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 h-9 text-xs">
                     <MapPin className="w-3.5 h-3.5 mr-1.5 text-teal-500" />
                     <SelectValue placeholder={devices.length === 0 ? "Tidak ada stasiun terdaftar" : "Pilih Stasiun Sensor"} />

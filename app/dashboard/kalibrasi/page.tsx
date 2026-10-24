@@ -91,6 +91,11 @@ import {
   aggregateSensorToHourly,
   mapSensorToAWSRawObservations,
 } from "@/lib/bias-correction/preprocessing/hourlyAggregation";
+import {
+  getStoredActiveSensorId,
+  setStoredActiveSensorId,
+  resolveActiveSensorId,
+} from "@/lib/activeSensorStorage";
 
 export const DEFAULT_STATION_OPTIONS = [
   { label: "Node ID-01 (Jerukagung Utama)", value: "id-01", lat: -7.7121, lng: 109.6892 },
@@ -158,9 +163,31 @@ function UnifiedCalibrationContent() {
 
   // Station States
   const [stationOptions, setStationOptions] = useState<{ label: string; value: string; lat: number; lng: number }[]>(DEFAULT_STATION_OPTIONS);
-  const [selectedStationId, setSelectedStationId] = useState<string>("id-01");
-  const [stationName, setStationName] = useState<string>("Node ID-01 (Jerukagung)");
-  const [stationCoords, setStationCoords] = useState<{ lat: number; lng: number }>({ lat: -7.7121, lng: 109.6892 });
+  const [selectedStationId, setSelectedStationId] = useState<string>(() => {
+    return resolveActiveSensorId(
+      DEFAULT_STATION_OPTIONS,
+      searchParams.get("sensorId") || searchParams.get("stationId"),
+      "id-01"
+    );
+  });
+  const [stationName, setStationName] = useState<string>(() => {
+    const active = resolveActiveSensorId(
+      DEFAULT_STATION_OPTIONS,
+      searchParams.get("sensorId") || searchParams.get("stationId"),
+      "id-01"
+    );
+    const match = DEFAULT_STATION_OPTIONS.find((o) => o.value === active);
+    return match?.label || "Node ID-01 (Jerukagung)";
+  });
+  const [stationCoords, setStationCoords] = useState<{ lat: number; lng: number }>(() => {
+    const active = resolveActiveSensorId(
+      DEFAULT_STATION_OPTIONS,
+      searchParams.get("sensorId") || searchParams.get("stationId"),
+      "id-01"
+    );
+    const match = DEFAULT_STATION_OPTIONS.find((o) => o.value === active);
+    return match ? { lat: match.lat, lng: match.lng } : { lat: -7.7121, lng: 109.6892 };
+  });
 
   // Parameter & Method States
   const [selectedVariable, setSelectedVariable] = useState<MeteorologicalVariable>("air_temperature");
@@ -282,12 +309,24 @@ function UnifiedCalibrationContent() {
               const existingIds = new Set(valid.map(v => v.value));
               const merged = [...valid, ...DEFAULT_STATION_OPTIONS.filter(d => !existingIds.has(d.value))];
               setStationOptions(merged);
+              const activeId = resolveActiveSensorId(
+                merged,
+                searchParams.get("sensorId") || searchParams.get("stationId"),
+                merged[0].value
+              );
+              setSelectedStationId(activeId);
+              const matched = merged.find(m => m.value === activeId);
+              if (matched) {
+                setStationName(matched.label);
+                setStationCoords({ lat: matched.lat, lng: matched.lng });
+                setStoredActiveSensorId(activeId, { label: matched.label });
+              }
             }
           }
         })
         .catch(err => console.error("Error loading devices:", err));
     }
-  }, [user]);
+  }, [user, searchParams]);
 
   // Main Pipeline: Fetch & Process Data
   const runPipeline = async () => {
@@ -695,6 +734,7 @@ function UnifiedCalibrationContent() {
                         if (opt) {
                           setStationName(opt.label);
                           setStationCoords({ lat: opt.lat, lng: opt.lng });
+                          setStoredActiveSensorId(val, { label: opt.label });
                         }
                       }}
                     >

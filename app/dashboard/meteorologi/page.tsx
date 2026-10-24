@@ -24,6 +24,11 @@ import {
 
 import { useAuth } from "@/hooks/useAuth";
 import { fetchAllDevices } from "@/lib/FetchingDevice";
+import {
+  getStoredActiveSensorId,
+  setStoredActiveSensorId,
+  resolveActiveSensorId,
+} from "@/lib/activeSensorStorage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -65,7 +70,7 @@ export default function AnalisisDashboardPage() {
   
   // State variables
   const [devices, setDevices] = useState<DeviceOption[]>([]);
-  const [sensorId, setSensorId] = useState<string>("");
+  const [sensorId, setSensorId] = useState<string>(() => getStoredActiveSensorId() || "");
   const [activeTab, setActiveTab] = useState<string>("daily");
   const [timezone, setTimezone] = useState<"WIB" | "UTC">("WIB");
   const getCalendarDate = useCallback((tz: "WIB" | "UTC", timestamp = Date.now()) => {
@@ -214,7 +219,10 @@ export default function AnalisisDashboardPage() {
             }));
           setDevices(options);
           if (options.length > 0) {
-            setSensorId(options[0].value);
+            const activeId = resolveActiveSensorId(options);
+            setSensorId(activeId);
+            const matched = options.find((d) => d.value === activeId);
+            setStoredActiveSensorId(activeId, { label: matched?.label });
           }
         } catch (err) {
           console.error("Gagal memuat daftar perangkat:", err);
@@ -383,7 +391,15 @@ export default function AnalisisDashboardPage() {
         <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
             {/* Device selector */}
-            <Select value={sensorId} onValueChange={setSensorId} disabled={devices.length === 0}>
+            <Select
+              value={sensorId}
+              onValueChange={(val) => {
+                setSensorId(val);
+                const matched = devices.find((d) => d.value === val);
+                setStoredActiveSensorId(val, { label: matched?.label });
+              }}
+              disabled={devices.length === 0}
+            >
               <SelectTrigger className="w-full sm:w-[220px]">
                 <SelectValue placeholder="Pilih Stasiun Cuaca" />
               </SelectTrigger>
