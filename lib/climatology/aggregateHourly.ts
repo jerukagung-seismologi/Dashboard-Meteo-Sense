@@ -90,7 +90,7 @@ export function aggregateHourly(rawPoints: SensorDate[]): AggregatedPoint[] {
     for (const item of items) {
       // Temperature
       const t = Number(item.temperature);
-      if (Number.isFinite(t)) {
+      if (Number.isFinite(t) && t > 0) {
         tempSum += t;
         tempCount++;
         if (t < tempMin) tempMin = t;
@@ -99,7 +99,7 @@ export function aggregateHourly(rawPoints: SensorDate[]): AggregatedPoint[] {
 
       // Humidity
       const h = Number(item.humidity);
-      if (Number.isFinite(h)) {
+      if (Number.isFinite(h) && h > 0) {
         humSum += h;
         humCount++;
         if (h < humMin) humMin = h;
@@ -108,7 +108,7 @@ export function aggregateHourly(rawPoints: SensorDate[]): AggregatedPoint[] {
 
       // Pressure
       const p = Number(item.pressure);
-      if (Number.isFinite(p)) {
+      if (Number.isFinite(p) && p > 800) {
         pressSum += p;
         pressCount++;
         if (p < pressMin) pressMin = p;
@@ -120,7 +120,7 @@ export function aggregateHourly(rawPoints: SensorDate[]): AggregatedPoint[] {
       if (Number.isFinite(d)) {
         dewSum += d;
         dewCount++;
-        if (d < dewMin) dewMin = d;
+        if (d > -20 && d < dewMin) dewMin = d;
         if (d > dewMax) dewMax = d;
       }
 

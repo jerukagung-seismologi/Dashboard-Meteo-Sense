@@ -44,36 +44,36 @@ export function calculateStats(
   let dewMax = -Infinity;
 
   for (const r of rawPoints) {
-    // Temperature
+    // Temperature (valid range in tropical/station context: > 0°C and < 60°C)
     const t = Number(r.temperature);
-    if (Number.isFinite(t)) {
+    if (Number.isFinite(t) && t > 0 && t < 60) {
       tempSum += t;
       tempCount++;
       if (t < tempMin) tempMin = t;
       if (t > tempMax) tempMax = t;
     }
 
-    // Humidity
+    // Humidity (valid range: > 0% and <= 100%)
     const h = Number(r.humidity);
-    if (Number.isFinite(h)) {
+    if (Number.isFinite(h) && h > 0 && h <= 100) {
       humSum += h;
       humCount++;
       if (h < humMin) humMin = h;
       if (h > humMax) humMax = h;
     }
 
-    // Pressure
+    // Pressure (valid atmospheric range: > 800 hPa and < 1100 hPa)
     const p = Number(r.pressure);
-    if (Number.isFinite(p)) {
+    if (Number.isFinite(p) && p > 800 && p < 1100) {
       pressSum += p;
       pressCount++;
       if (p < pressMin) pressMin = p;
       if (p > pressMax) pressMax = p;
     }
 
-    // Dew Point
+    // Dew Point (valid range: > -10°C and < 40°C)
     const d = Number(r.dew);
-    if (Number.isFinite(d)) {
+    if (Number.isFinite(d) && d > -10 && d < 40) {
       dewSum += d;
       dewCount++;
       if (d < dewMin) dewMin = d;

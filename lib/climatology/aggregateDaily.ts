@@ -56,33 +56,33 @@ export function aggregateDaily(rawPoints: SensorDate[]): AggregatedPoint[] {
       const t = Number(item.temperature);
       const tMax = (item as any).tempMax != null && Number.isFinite((item as any).tempMax) ? (item as any).tempMax : t;
       const tMin = (item as any).tempMin != null && Number.isFinite((item as any).tempMin) ? (item as any).tempMin : t;
-      if (Number.isFinite(t)) {
+      if (Number.isFinite(t) && t > 0) {
         tempSum += t;
         tempCount++;
       }
-      if (Number.isFinite(tMin) && tMin < tempMin) tempMin = tMin;
+      if (Number.isFinite(tMin) && tMin > 0 && tMin < tempMin) tempMin = tMin;
       if (Number.isFinite(tMax) && tMax > tempMax) tempMax = tMax;
 
       // Humidity
       const h = Number(item.humidity);
       const hMax = (item as any).humMax != null && Number.isFinite((item as any).humMax) ? (item as any).humMax : h;
       const hMin = (item as any).humMin != null && Number.isFinite((item as any).humMin) ? (item as any).humMin : h;
-      if (Number.isFinite(h)) {
+      if (Number.isFinite(h) && h > 0) {
         humSum += h;
         humCount++;
       }
-      if (Number.isFinite(hMin) && hMin < humMin) humMin = hMin;
+      if (Number.isFinite(hMin) && hMin > 0 && hMin < humMin) humMin = hMin;
       if (Number.isFinite(hMax) && hMax > humMax) humMax = hMax;
 
       // Pressure
       const p = Number(item.pressure);
       const pMax = (item as any).pressMax != null && Number.isFinite((item as any).pressMax) ? (item as any).pressMax : p;
       const pMin = (item as any).pressMin != null && Number.isFinite((item as any).pressMin) ? (item as any).pressMin : p;
-      if (Number.isFinite(p)) {
+      if (Number.isFinite(p) && p > 800) {
         pressSum += p;
         pressCount++;
       }
-      if (Number.isFinite(pMin) && pMin < pressMin) pressMin = pMin;
+      if (Number.isFinite(pMin) && pMin > 800 && pMin < pressMin) pressMin = pMin;
       if (Number.isFinite(pMax) && pMax > pressMax) pressMax = pMax;
 
       // Dew Point
@@ -93,7 +93,7 @@ export function aggregateDaily(rawPoints: SensorDate[]): AggregatedPoint[] {
         dewSum += d;
         dewCount++;
       }
-      if (Number.isFinite(dMin) && dMin < dewMin) dewMin = dMin;
+      if (Number.isFinite(dMin) && dMin > -20 && dMin < dewMin) dewMin = dMin;
       if (Number.isFinite(dMax) && dMax > dewMax) dewMax = dMax;
 
       // Rain

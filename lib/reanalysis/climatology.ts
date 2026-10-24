@@ -138,9 +138,43 @@ export function processERA5Hourly(rawJson: any): ClimatologySummary {
 
   const rawHourly = rawJson.hourly || {};
   const times: string[] = rawHourly.time || [];
-  
-  // Extract lists with priority on ERA5-Land (9km high resolution)
   const len = times.length;
+
+  // Detect valid assimilated hours (exclude trailing/leading padding where all meteorologic variables are null)
+  const isHourAvailable = (i: number): boolean => {
+    const checkKey = (key: string) => {
+      const v = rawHourly[key]?.[i];
+      const vLand = rawHourly[`${key}_era5_land`]?.[i];
+      const vEra5 = rawHourly[`${key}_era5`]?.[i];
+      return (
+        (v != null && Number.isFinite(v)) ||
+        (vLand != null && Number.isFinite(vLand)) ||
+        (vEra5 != null && Number.isFinite(vEra5))
+      );
+    };
+    return (
+      checkKey("temperature_2m") ||
+      checkKey("relative_humidity_2m") ||
+      checkKey("dew_point_2m") ||
+      checkKey("surface_pressure") ||
+      checkKey("pressure_msl")
+    );
+  };
+
+  let lastValidIdx = len - 1;
+  while (lastValidIdx >= 0 && !isHourAvailable(lastValidIdx)) {
+    lastValidIdx--;
+  }
+
+  let firstValidIdx = 0;
+  while (firstValidIdx <= lastValidIdx && !isHourAvailable(firstValidIdx)) {
+    firstValidIdx++;
+  }
+
+  const validTimes = lastValidIdx >= firstValidIdx ? times.slice(firstValidIdx, lastValidIdx + 1) : [];
+  const validLen = validTimes.length;
+
+  // Extract lists with priority on ERA5-Land (9km high resolution)
   const getArray = (key: string): number[] => {
     const direct = rawHourly[key];
     const land = rawHourly[`${key}_era5_land`];
@@ -153,22 +187,41 @@ export function processERA5Hourly(rawJson: any): ClimatologySummary {
     const standardAlt = altKey ? rawHourly[`${altKey}_era5`] : null;
 
     const result: number[] = [];
-    for (let i = 0; i < len; i++) {
-      // 1. Prioritize ERA5-Land
-      if (land && land[i] != null && !isNaN(land[i])) {
-        result.push(land[i]);
-      } else if (landAlt && landAlt[i] != null && !isNaN(landAlt[i])) {
-        result.push(landAlt[i]);
-      } else if (direct && direct[i] != null && !isNaN(direct[i])) {
-        result.push(direct[i]);
-      } else if (directAlt && directAlt[i] != null && !isNaN(directAlt[i])) {
-        result.push(directAlt[i]);
-      } else if (standard && standard[i] != null && !isNaN(standard[i])) {
-        result.push(standard[i]);
-      } else if (standardAlt && standardAlt[i] != null && !isNaN(standardAlt[i])) {
-        result.push(standardAlt[i]);
+    for (let i = firstValidIdx; i <= lastValidIdx; i++) {
+      let val: number | null = null;
+      if (land && land[i] != null && Number.isFinite(land[i])) {
+        val = land[i];
+      } else if (landAlt && landAlt[i] != null && Number.isFinite(landAlt[i])) {
+        val = landAlt[i];
+      } else if (direct && direct[i] != null && Number.isFinite(direct[i])) {
+        val = direct[i];
+      } else if (directAlt && directAlt[i] != null && Number.isFinite(directAlt[i])) {
+        val = directAlt[i];
+      } else if (standard && standard[i] != null && Number.isFinite(standard[i])) {
+        val = standard[i];
+      } else if (standardAlt && standardAlt[i] != null && Number.isFinite(standardAlt[i])) {
+        val = standardAlt[i];
+      }
+
+      if (val != null) {
+        result.push(val);
       } else {
-        result.push(0);
+        // Safe physical fallback for internal missing hours:
+        if (
+          key === "rain" ||
+          key === "precipitation" ||
+          key === "shortwave_radiation" ||
+          key === "cloud_cover" ||
+          key === "wind_gusts_10m" ||
+          key === "cape"
+        ) {
+          result.push(0);
+        } else if (result.length > 0) {
+          result.push(result[result.length - 1]);
+        } else {
+          const defaultVal = key.includes("temp") ? 25 : key.includes("humidity") ? 80 : key.includes("pressure") ? 1012 : 0;
+          result.push(defaultVal);
+        }
       }
     }
     return result;
@@ -187,16 +240,15 @@ export function processERA5Hourly(rawJson: any): ClimatologySummary {
   const rawWindDir = getArray("wind_direction_10m");
   const rawCloud = getArray("cloud_cover");
   const rawShortwave = getArray("shortwave_radiation");
-  const rawLongwave = Array(len).fill(0);
+  const rawLongwave = Array(validLen).fill(0);
   const rawSoilTemp = getArray("soil_temperature_0_to_7cm");
   const rawSoilMoist = getArray("soil_moisture_0_to_7cm");
-  const rawCape = rawHourly.cape || rawHourly.cape_era5 || Array(len).fill(0); // Optional convective potential
+  const rawCape = (rawHourly.cape || rawHourly.cape_era5 || []).slice(firstValidIdx, lastValidIdx + 1);
 
   // 1. Map to structured timeline array
   const points: ReanalysisDataPoint[] = [];
-  for (let i = 0; i < len; i++) {
-    const timeStr = times[i];
-    const timestamp = new Date(timeStr + "Z").getTime() - (7 * 3600 * 1000); // adjust since open-meteo response has local or UTC keys. Z appending treats it as UTC.
+  for (let i = 0; i < validLen; i++) {
+    const timeStr = validTimes[i];
     
     points.push({
       timestamp: new Date(timeStr + ":00.000Z").getTime(), // Treat time key as UTC epoch source
@@ -214,24 +266,24 @@ export function processERA5Hourly(rawJson: any): ClimatologySummary {
       longwaveRad: rawLongwave[i],
       soilTemp: rawSoilTemp[i],
       soilMoisture: rawSoilMoist[i],
-      cape: rawCape[i]
+      cape: rawCape[i] || 0
     });
   }
 
   // Ensure points are sorted chronologically
   points.sort((a, b) => a.timestamp - b.timestamp);
 
-  // 2. Statistics Panel calculations
+  // 2. Statistics Panel calculations (filtered for true physical validity)
   const stats = {
-    temperature: calculateStats(points.map(p => p.temperature)),
-    humidity: calculateStats(points.map(p => p.humidity)),
-    pressure: calculateStats(points.map(p => p.mslPressure)),
-    windSpeed: calculateStats(points.map(p => p.windSpeed)),
-    rain: calculateStats(points.map(p => p.rain))
+    temperature: calculateStats(points.map(p => p.temperature).filter(v => v > -30 && v < 60)),
+    humidity: calculateStats(points.map(p => p.humidity).filter(v => v > 0 && v <= 100)),
+    pressure: calculateStats(points.map(p => p.mslPressure).filter(v => v >= 800 && v <= 1100)),
+    windSpeed: calculateStats(points.map(p => p.windSpeed).filter(v => v >= 0)),
+    rain: calculateStats(points.map(p => p.rain).filter(v => v >= 0))
   };
 
   // 3. Current Conditions / Latest observation
-  const latest = points[len - 1] || {
+  const latest = points[validLen - 1] || {
     temperature: 0, humidity: 0, mslPressure: 0, windSpeed: 0, windGust: 0, windDirection: 0, rain: 0
   };
   const todayStart = Date.now() - 24 * 3600 * 1000;
@@ -610,8 +662,8 @@ export function processERA5Hourly(rawJson: any): ClimatologySummary {
   };
 
   const hourly = {
-    times: rawJson.hourly?.time || [],
-    time: rawJson.hourly?.time || [],
+    times: validTimes,
+    time: validTimes,
     temperature: rawTemp,
     humidity: rawHum,
     dewPoint: rawDew,
@@ -625,8 +677,8 @@ export function processERA5Hourly(rawJson: any): ClimatologySummary {
     radiation: rawShortwave
   };
 
-  const startDate = times[0]?.substring(0, 10) || "";
-  const endDate = times[len - 1]?.substring(0, 10) || "";
+  const startDate = validTimes[0]?.substring(0, 10) || "";
+  const endDate = validTimes[validLen - 1]?.substring(0, 10) || "";
 
   return {
     latitude,

@@ -783,8 +783,13 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
     if (!era5Data?.hourly) return null;
     const { temperature, humidity, pressure, windSpeed, windGust, rain } = era5Data.hourly;
 
-    const calcP = (raw?: (number | null | undefined)[]) => {
-      const sorted = (raw || []).filter((v): v is number => v != null && Number.isFinite(v)).sort((a, b) => a - b);
+    const calcP = (
+      raw?: (number | null | undefined)[],
+      filterFn?: (v: number) => boolean
+    ) => {
+      const sorted = (raw || [])
+        .filter((v): v is number => v != null && Number.isFinite(v) && (filterFn ? filterFn(v) : true))
+        .sort((a, b) => a - b);
       if (sorted.length === 0) {
         return { min: 0, p5: 0, p25: 0, p50: 0, p75: 0, p95: 0, p99: 0, max: 0 };
       }
@@ -805,12 +810,12 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
     };
 
     return {
-      temperature: calcP(temperature),
-      humidity: calcP(humidity),
-      pressure: calcP(pressure),
-      windSpeed: calcP(windSpeed),
-      windGust: calcP(windGust),
-      rain: calcP(rain),
+      temperature: calcP(temperature, (v) => v > 0),
+      humidity: calcP(humidity, (v) => v > 5 && v <= 100),
+      pressure: calcP(pressure, (v) => v >= 800 && v <= 1100),
+      windSpeed: calcP(windSpeed, (v) => v >= 0),
+      windGust: calcP(windGust, (v) => v >= 0),
+      rain: calcP(rain, (v) => v >= 0),
     };
   }, [era5Data]);
 
@@ -842,11 +847,11 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
       const d = new Date(tStr);
       const m = d.getUTCMonth();
       if (m >= 0 && m < 12) {
-        if (Number.isFinite(temperature?.[idx])) monthBuckets[m].temperature.push(temperature[idx]);
-        if (Number.isFinite(humidity?.[idx])) monthBuckets[m].humidity.push(humidity[idx]);
-        if (Number.isFinite(pressure?.[idx])) monthBuckets[m].pressure.push(pressure[idx]);
-        if (Number.isFinite(rain?.[idx])) monthBuckets[m].rain.push(rain[idx]);
-        if (Number.isFinite(windSpeed?.[idx])) monthBuckets[m].windSpeed.push(windSpeed[idx]);
+        if (Number.isFinite(temperature?.[idx]) && temperature[idx] > 0) monthBuckets[m].temperature.push(temperature[idx]);
+        if (Number.isFinite(humidity?.[idx]) && humidity[idx] > 5) monthBuckets[m].humidity.push(humidity[idx]);
+        if (Number.isFinite(pressure?.[idx]) && pressure[idx] >= 800) monthBuckets[m].pressure.push(pressure[idx]);
+        if (Number.isFinite(rain?.[idx]) && rain[idx] >= 0) monthBuckets[m].rain.push(rain[idx]);
+        if (Number.isFinite(windSpeed?.[idx]) && windSpeed[idx] >= 0) monthBuckets[m].windSpeed.push(windSpeed[idx]);
       }
     });
 

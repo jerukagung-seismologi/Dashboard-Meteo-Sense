@@ -142,7 +142,7 @@ export function computeClimateExtremes(
         }
       }
 
-      if (Number.isFinite(p.temperatureMin)) {
+      if (Number.isFinite(p.temperatureMin) && p.temperatureMin > 0) {
         if (p.temperatureMin < tMin) {
           tMin = p.temperatureMin;
           tMinPt = p;
@@ -152,7 +152,7 @@ export function computeClimateExtremes(
         }
       }
 
-      if (Number.isFinite(p.temperatureMax) && Number.isFinite(p.temperatureMin)) {
+      if (Number.isFinite(p.temperatureMax) && Number.isFinite(p.temperatureMin) && p.temperatureMin > 0) {
         const dtr = p.temperatureMax - p.temperatureMin;
         if (dtr > maxDtr) {
           maxDtr = dtr;
@@ -175,7 +175,7 @@ export function computeClimateExtremes(
       }
 
       // Humidity Extremes
-      if (Number.isFinite(p.humidityMin)) {
+      if (Number.isFinite(p.humidityMin) && p.humidityMin > 5) {
         if (p.humidityMin < hMin) {
           hMin = p.humidityMin;
           hMinPt = p;
@@ -369,6 +369,8 @@ export function computeClimateExtremes(
       let botTempIdx = -1;
       let botPress = Infinity;
       let botPressIdx = -1;
+      let botHum = Infinity;
+      let botHumIdx = -1;
 
       for (let i = 0; i < len; i++) {
         // Filter by date range if provided
@@ -389,7 +391,7 @@ export function computeClimateExtremes(
           topRain = rain[i];
           topRainIdx = i;
         }
-        if (temperature && temperature[i] != null) {
+        if (temperature && temperature[i] != null && temperature[i] > 0) {
           if (temperature[i] > topTemp) {
             topTemp = temperature[i];
             topTempIdx = i;
@@ -403,6 +405,12 @@ export function computeClimateExtremes(
           if (pressure[i] < botPress) {
             botPress = pressure[i];
             botPressIdx = i;
+          }
+        }
+        if (humidity && humidity[i] != null && humidity[i] > 5) {
+          if (humidity[i] < botHum) {
+            botHum = humidity[i];
+            botHumIdx = i;
           }
         }
       }
@@ -456,6 +464,13 @@ export function computeClimateExtremes(
           value: Number(botPress.toFixed(2)),
           dateStr: formatIso(times[botPressIdx]),
         };
+      }
+      if (botHumIdx >= 0) {
+        result.humidity.minEra5 = {
+          value: Number(botHum.toFixed(2)),
+          dateStr: formatIso(times[botHumIdx]),
+        };
+        result.humidity.isSevereDryAir = botHum < 45;
       }
     }
   }
