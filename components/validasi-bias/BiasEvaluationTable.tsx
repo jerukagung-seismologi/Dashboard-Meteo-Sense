@@ -77,7 +77,7 @@ export const BiasEvaluationTable: React.FC<BiasEvaluationTableProps> = ({
 
         {/* Metrics Comparative Grid / Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse">
+          <table className="w-full min-w-[540px] text-xs text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-slate-500">
                 <th className="py-2.5 px-3 font-semibold">Parameter Statistik</th>

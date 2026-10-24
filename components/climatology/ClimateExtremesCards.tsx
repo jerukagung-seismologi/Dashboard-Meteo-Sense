@@ -108,7 +108,7 @@ export const ClimateExtremesCards: React.FC<ClimateExtremesCardsProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
         {/* 1. Rekor Suhu Maksimum (Tmax) */}
         <Card className="hover:shadow-md transition-all duration-200 border-red-200/80 dark:border-red-950 bg-gradient-to-br from-red-50/70 to-orange-50/40 dark:from-red-950/20 dark:to-orange-950/10">
-          <CardContent className="p-3.5 flex flex-col justify-between h-[155px]">
+          <CardContent className="p-3.5 flex flex-col justify-between min-h-[155px] h-auto">
             <div className="flex justify-between items-start">
               <span className="text-[11px] font-bold uppercase tracking-wider text-red-700 dark:text-red-400">
                 Suhu Maks (Tmax)
@@ -152,7 +152,7 @@ export const ClimateExtremesCards: React.FC<ClimateExtremesCardsProps> = ({
 
         {/* 2. Rekor Suhu Minimum (Tmin) */}
         <Card className="hover:shadow-md transition-all duration-200 border-blue-200/80 dark:border-blue-950 bg-gradient-to-br from-blue-50/70 to-cyan-50/40 dark:from-blue-950/20 dark:to-cyan-950/10">
-          <CardContent className="p-3.5 flex flex-col justify-between h-[155px]">
+          <CardContent className="p-3.5 flex flex-col justify-between min-h-[155px] h-auto">
             <div className="flex justify-between items-start">
               <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
                 Suhu Min (Tmin)
@@ -192,7 +192,7 @@ export const ClimateExtremesCards: React.FC<ClimateExtremesCardsProps> = ({
 
         {/* 3. Curah Hujan Harian Tertinggi (Rx1day) */}
         <Card className="hover:shadow-md transition-all duration-200 border-indigo-200/80 dark:border-indigo-950 bg-gradient-to-br from-indigo-50/70 to-sky-50/40 dark:from-indigo-950/20 dark:to-sky-950/10">
-          <CardContent className="p-3.5 flex flex-col justify-between h-[155px]">
+          <CardContent className="p-3.5 flex flex-col justify-between min-h-[155px] h-auto">
             <div className="flex justify-between items-start">
               <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
                 Hujan Harian Maks (Rx1day)
@@ -226,7 +226,7 @@ export const ClimateExtremesCards: React.FC<ClimateExtremesCardsProps> = ({
 
         {/* 4. Hembusan Angin Puncak (Gust ERA5) */}
         <Card className="hover:shadow-md transition-all duration-200 border-violet-200/80 dark:border-violet-950 bg-gradient-to-br from-violet-50/70 to-purple-50/40 dark:from-violet-950/20 dark:to-purple-950/10">
-          <CardContent className="p-3.5 flex flex-col justify-between h-[155px]">
+          <CardContent className="p-3.5 flex flex-col justify-between min-h-[155px] h-auto">
             <div className="flex justify-between items-start">
               <span className="text-[11px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-400">
                 Puncak Hembusan (Gust ERA5)
@@ -270,7 +270,7 @@ export const ClimateExtremesCards: React.FC<ClimateExtremesCardsProps> = ({
 
         {/* 5. Tekanan Udara Terendah (Pmin) */}
         <Card className="hover:shadow-md transition-all duration-200 border-indigo-200/80 dark:border-indigo-950 bg-gradient-to-br from-slate-50/70 to-indigo-50/40 dark:from-slate-900/40 dark:to-indigo-950/20">
-          <CardContent className="p-3.5 flex flex-col justify-between h-[155px]">
+          <CardContent className="p-3.5 flex flex-col justify-between min-h-[155px] h-auto">
             <div className="flex justify-between items-start">
               <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
                 Tekanan Min (Pmin)
@@ -310,7 +310,7 @@ export const ClimateExtremesCards: React.FC<ClimateExtremesCardsProps> = ({
 
         {/* 6. Kelembaban Relatif Terendah (RHmin) */}
         <Card className="hover:shadow-md transition-all duration-200 border-emerald-200/80 dark:border-emerald-950 bg-gradient-to-br from-emerald-50/70 to-teal-50/40 dark:from-emerald-950/20 dark:to-teal-950/10">
-          <CardContent className="p-3.5 flex flex-col justify-between h-[155px]">
+          <CardContent className="p-3.5 flex flex-col justify-between min-h-[155px] h-auto">
             <div className="flex justify-between items-start">
               <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                 Kelembaban Min (RHmin)

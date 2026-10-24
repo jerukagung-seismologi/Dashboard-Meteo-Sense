@@ -569,12 +569,12 @@ function UnifiedCalibrationContent() {
         }
       />
 
-      {/* Floating / Sticky Staging Quick Bar if drafts exist */}
+      {/* In-flow Staging Quick Notification Banner if drafts exist (No sticky collision) */}
       {stagedCountForCurrentStation > 0 && activeMainTab !== "sensor-settings" && (
-        <div className="sticky top-16 z-20 transition-all duration-300">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-gradient-to-r from-amber-500/90 via-orange-500/90 to-amber-600/90 text-white shadow-lg backdrop-blur-md border border-amber-400/40">
+        <div className="relative z-10 transition-all duration-300">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white shadow-md border border-amber-400/50">
             <div className="flex items-center gap-2.5">
-              <div className="p-1.5 rounded-lg bg-white/20 text-white">
+              <div className="p-2 rounded-lg bg-white/20 text-white shrink-0">
                 <Sparkles className="w-4 h-4 animate-pulse" />
               </div>
               <div className="text-xs">
@@ -582,7 +582,7 @@ function UnifiedCalibrationContent() {
                   {stagedCountForCurrentStation} Draf Kalibrasi Siap Di-Commit untuk {stationName}
                 </span>
                 <p className="text-[11px] text-amber-100 opacity-90 hidden sm:block">
-                  Variabel: {Object.values(stagedCalibrations[selectedStationId]).map(i => i.variableLabel).join(", ")}
+                  Variabel: {Object.values(stagedCalibrations[selectedStationId] || {}).map(i => i.variableLabel).join(", ")}
                 </p>
               </div>
             </div>
@@ -590,7 +590,7 @@ function UnifiedCalibrationContent() {
             <Button
               size="sm"
               onClick={() => handleTabChange("sensor-settings")}
-              className="bg-white hover:bg-amber-50 text-amber-900 font-bold text-xs h-8 shadow-sm gap-1.5"
+              className="bg-white hover:bg-amber-50 text-amber-950 font-bold text-xs h-8 shadow-sm gap-1.5 ml-auto"
             >
               <span>Lanjut ke Langkah 3: Review &amp; Simpan</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -601,16 +601,16 @@ function UnifiedCalibrationContent() {
 
       {/* Main Guided Stepper Navigation Tabs */}
       <Tabs value={activeMainTab} onValueChange={handleTabChange} className="w-full space-y-5">
-        <TabsList className="grid grid-cols-1 sm:grid-cols-3 w-full bg-slate-100/90 dark:bg-slate-800/80 p-1.5 rounded-2xl gap-1.5 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        <TabsList className="h-auto w-full grid grid-cols-1 md:grid-cols-3 bg-slate-100/90 dark:bg-slate-800/80 p-1.5 rounded-2xl gap-2 border border-slate-200/80 dark:border-slate-800 shadow-xs">
           {/* Step 1 */}
           <TabsTrigger
             value="validation"
-            className="text-left py-3 px-3.5 rounded-xl flex items-center gap-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all"
+            className="h-auto w-full text-left py-2.5 px-3 rounded-xl flex items-center gap-3 whitespace-normal data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm transition-all"
           >
             <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs shrink-0">
               1
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 <span>Validasi &amp; Komparasi Bias</span>
@@ -624,12 +624,12 @@ function UnifiedCalibrationContent() {
           {/* Step 2 */}
           <TabsTrigger
             value="model-calibration"
-            className="text-left py-3 px-3.5 rounded-xl flex items-center gap-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all"
+            className="h-auto w-full text-left py-2.5 px-3 rounded-xl flex items-center gap-3 whitespace-normal data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm transition-all"
           >
             <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
               2
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-1.5">
                 <Trophy className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                 <span>Model &amp; Leaderboard</span>
@@ -643,7 +643,7 @@ function UnifiedCalibrationContent() {
           {/* Step 3 */}
           <TabsTrigger
             value="sensor-settings"
-            className="text-left py-3 px-3.5 rounded-xl flex items-center gap-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all relative"
+            className="h-auto w-full text-left py-2.5 px-3 rounded-xl flex items-center gap-3 whitespace-normal data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm transition-all relative"
           >
             <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
               3
@@ -680,7 +680,7 @@ function UnifiedCalibrationContent() {
             <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
               <CardContent className="p-4 space-y-4">
                 {/* Row 1: Station Selector & ERA5 Data Source */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                   {/* Station Selector */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
@@ -750,7 +750,7 @@ function UnifiedCalibrationContent() {
                 </div>
 
                 {/* Row 2: Presets & Split Data Slider */}
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                   {/* Preset Buttons */}
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
@@ -793,7 +793,7 @@ function UnifiedCalibrationContent() {
                   </div>
 
                   {/* Split Data Slider */}
-                  <div className="w-full md:w-[320px] space-y-1.5">
+                  <div className="w-full lg:w-[320px] space-y-1.5">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                         <span>Split Kalibrasi / Validasi:</span>
@@ -895,24 +895,39 @@ function UnifiedCalibrationContent() {
 
           {/* Detailed Analytical Visualization Tabs */}
           <Tabs defaultValue="timeseries" className="w-full">
-            <TabsList className="flex flex-wrap sm:grid sm:grid-cols-5 w-full max-w-3xl bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl gap-1">
-              <TabsTrigger value="timeseries" className="text-xs py-2 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
+            <TabsList className="h-auto min-h-10 flex flex-wrap sm:grid sm:grid-cols-5 w-full max-w-3xl bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl gap-1">
+              <TabsTrigger
+                value="timeseries"
+                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
+              >
                 <LineChart className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 Deret Waktu
               </TabsTrigger>
-              <TabsTrigger value="diurnal" className="text-xs py-2 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
+              <TabsTrigger
+                value="diurnal"
+                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
+              >
                 <Clock className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                 Siklus Diurnal
               </TabsTrigger>
-              <TabsTrigger value="scatter" className="text-xs py-2 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
+              <TabsTrigger
+                value="scatter"
+                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
+              >
                 <ScatterChart className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                 Scatter 1:1
               </TabsTrigger>
-              <TabsTrigger value="distribution" className="text-xs py-2 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
+              <TabsTrigger
+                value="distribution"
+                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
+              >
                 <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                 Distribusi ECDF
               </TabsTrigger>
-              <TabsTrigger value="residual" className="text-xs py-2 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
+              <TabsTrigger
+                value="residual"
+                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
+              >
                 <SlidersHorizontal className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 Residual Error
               </TabsTrigger>

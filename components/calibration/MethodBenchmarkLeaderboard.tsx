@@ -135,7 +135,7 @@ export const MethodBenchmarkLeaderboard: React.FC<MethodBenchmarkLeaderboardProp
 
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full min-w-[850px] text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50/75 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
                 <th className="py-2.5 px-4 w-12 text-center">Rank</th>

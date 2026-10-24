@@ -156,7 +156,7 @@ export function WalterLiethClimograph({
         left: "5%",
         right: "5%",
         bottom: "12%",
-        top: "16%",
+        top: "20%",
         containLabel: true,
       },
       xAxis: {
@@ -290,7 +290,7 @@ export function WalterLiethClimograph({
     <Card className="border-none shadow-sm dark:bg-slate-900 bg-white overflow-hidden">
       {/* Header Standar WMO Klimadiagramm */}
       <CardHeader className="pb-3 border-b border-slate-200/80 bg-slate-50/90 dark:border-slate-800 dark:bg-slate-900/90">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800 text-[10px] font-bold">
