@@ -22,6 +22,9 @@ interface MonsoonIndicesSummaryCardsProps {
 }
 
 const getStatusBadgeClass = (status: string) => {
+  if (status === "Seruakan Aktif") {
+    return "bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 border-rose-500 font-bold animate-pulse shadow-sm";
+  }
   if (status === "Positif") {
     return "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/80 font-semibold";
   }
@@ -29,7 +32,7 @@ const getStatusBadgeClass = (status: string) => {
     return "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800/80 font-semibold";
   }
   if (status === "Waspada") {
-    return "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800/80 font-semibold animate-pulse";
+    return "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-200 border-amber-400 font-bold";
   }
   return "bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 font-medium";
 };

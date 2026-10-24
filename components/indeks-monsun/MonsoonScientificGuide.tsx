@@ -189,8 +189,8 @@ export const MonsoonScientificGuide: React.FC = () => {
       id: "easmi",
       number: "7",
       name: "EASMI (East Asian Summer Monsoon Index)",
-      author: "Zhang et al. (2003) / Wang et al. (2008)",
-      formula: "Geser angin musiman di Laut Cina Timur pada 20°N–40°N, 110°E–130°E",
+      author: "Li & Zeng (2002) / Wang et al. (2008) / Zhang et al. (2003)",
+      formula: "Komponen angin meridional V850 pada 20°N–40°N, 110°E–125°E (penetrasi aliran selatan ke front Meiyu-Baiu)",
       icon: Waves,
       badgeText: "Asia Timur & Front Meiyu-Baiu",
       positiveState: {
@@ -216,7 +216,7 @@ export const MonsoonScientificGuide: React.FC = () => {
       number: "8",
       name: "BSISO1 (Boreal Summer Intraseasonal Oscillation 1)",
       author: "Lee et al. (2013) / APCC",
-      formula: "Komponen EOF1-2 anomali OLR dan U850 (Siklus 30–60 hari, perambatan utara)",
+      formula: "Proyeksi dinamis sirkulasi angin sinoptik mode intraseasonal 30–60 hari (perambatan awan monsun ke utara)",
       icon: Layers,
       badgeText: "Osilasi Intraseasonal 30–60 Hari",
       positiveState: {
@@ -244,7 +244,7 @@ export const MonsoonScientificGuide: React.FC = () => {
       number: "9",
       name: "BSISO2 (Boreal Summer Intraseasonal Oscillation 2)",
       author: "Lee et al. (2013) / APCC",
-      formula: "Komponen EOF3-4 anomali OLR dan U850 (Siklus kuasi dua-mingguan 10–23 hari)",
+      formula: "Proyeksi dinamis sirkulasi angin sinoptik mode kuasi dua-mingguan 10–23 hari (pemicu onset)",
       icon: Sparkles,
       badgeText: "Osilasi Kuasi 2-Mingguan / Onset",
       positiveState: {

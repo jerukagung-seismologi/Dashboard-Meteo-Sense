@@ -267,7 +267,7 @@ export async function GET(req: NextRequest) {
         csi: {
           value: current.csi,
           unit: "m/s",
-          status: current.csi <= -8.0 ? "Positif" : current.csi <= -5.0 ? "Waspada" : "Netral",
+          status: current.csi <= -8.0 ? "Seruakan Aktif" : current.csi <= -5.0 ? "Waspada" : "Aliran Tenang",
           isSurgeActive: current.csi <= -8.0,
           description: "Komponen angin meridional V di Laut Cina Selatan (12.5°N). Nilai negatif tajam (< -8 m/s) menandakan seruakan dingin Siberia menembus Laut Jawa.",
         },
