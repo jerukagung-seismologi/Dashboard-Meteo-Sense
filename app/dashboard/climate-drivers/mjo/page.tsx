@@ -3,8 +3,10 @@
 
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
-import { Loader2, CloudRain, Activity, Compass, Zap } from "lucide-react";
+import Link from "next/link";
+import { Loader2, CloudRain, Activity, Compass, Zap, ArrowRight, Waves, Layers, BookOpen, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubpageHeader } from "@/components/climate-drivers/SubpageHeader";
 import { StatusBadge } from "@/components/climate-drivers/StatusBadge";
 import { MJOCharts } from "@/components/climate-drivers/MJOCharts";
@@ -165,42 +167,104 @@ export default function MjoSubpage() {
         </Card>
       </div>
 
-      {/* Interactive Visualizations */}
-      <MJOCharts data={data} isDarkMode={isDarkMode} />
-
-      {/* ECMWF Extended-Range Ensemble MJO Forecast (46 Days) */}
-      <EcmwfMjoViewer />
-
-      {/* BOM Australia Tropical Atmospheric Waves Monitoring (Diagram & Peta MJO, Kelvin, ER, MRG) */}
-      <div className="pt-2">
-        <TropicalWavesViewer />
+      {/* Banner Rekomendasi Menu Mandiri Dinamika Tropis */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-200 dark:border-emerald-800 rounded-2xl gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
+            <Waves className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <span>Tersedia Menu Khusus: Dinamika Atmosfer Tropis</span>
+              <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">
+                Menu Baru
+              </span>
+            </div>
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+              Analisis gelombang ekuatorial (Kelvin, Rossby, MRG, Hovmöller) kini dapat diakses langsung dari menu bilah sisi kiri secara mandiri.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/dashboard/tropical-dynamics"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shrink-0 shadow-xs"
+        >
+          <span>Buka Dinamika Tropis</span>
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
 
-      {/* 5-Year Server Historical Data Table with Load More */}
-      <HistoryTable
-        type="mjo"
-        title="Riwayat Historis MJO (Wheeler-Hendon RMM Index)"
-        description="Data histori harian RMM1, RMM2, Fase MJO, Amplitudo, dan dampak terhadap konveksi Indonesia"
-        data={mjoHistoryData?.data || []}
-        yearsLoaded={mjoHistoryData?.daysLoaded ? Math.round(mjoHistoryData.daysLoaded / 365) : mjoYears}
-        hasMore={mjoHistoryData?.hasMore ?? true}
-        onLoadMore={handleLoadMoreMjo}
-        isLoadingMore={loadingMoreMjo}
-      />
+      {/* Modular Tab Navigation (Anti-Long-Scroll) */}
+      <Tabs defaultValue="overview" className="w-full space-y-4">
+        <TabsList className="grid grid-cols-2 md:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+          <TabsTrigger
+            value="overview"
+            className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight"
+          >
+            <Compass className="h-4 w-4 text-indigo-500" />
+            <span>Fase RMM &amp; ECMWF</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="waves"
+            className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight"
+          >
+            <Waves className="h-4 w-4 text-emerald-500" />
+            <span>Gelombang Tropis BOM</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="ncics"
+            className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight"
+          >
+            <Layers className="h-4 w-4 text-blue-500" />
+            <span>Satelit NCICS &amp; Hovmöller</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="history"
+            className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight"
+          >
+            <TrendingUp className="h-4 w-4 text-amber-500" />
+            <span>Riwayat &amp; Edukasi</span>
+          </TabsTrigger>
+        </TabsList>
 
-      {/* NCICS Satellite & Wave Diagnostics Map Section */}
-      <div className="pt-2">
-        <NcicsMapViewer />
-      </div>
+        {/* Tab 1: MJO RMM & ECMWF 46-Days */}
+        <TabsContent value="overview" className="mt-0 space-y-6">
+          <MJOCharts data={data} isDarkMode={isDarkMode} />
+          <EcmwfMjoViewer />
+        </TabsContent>
 
-      {/* Educational & Scientific Explanation */}
-      <EducationalPanel
-        title="MJO"
-        whatIsIt={data.interpretation.whatIsIt}
-        indonesiaImpact={data.interpretation.indonesiaImpact}
-        phaseMeanings={data.interpretation.phaseMeanings}
-        currentAssessment={data.interpretation.currentAssessment}
-      />
+        {/* Tab 2: BOM Tropical Waves */}
+        <TabsContent value="waves" className="mt-0">
+          <TropicalWavesViewer />
+        </TabsContent>
+
+        {/* Tab 3: NCICS Satellite Maps */}
+        <TabsContent value="ncics" className="mt-0">
+          <NcicsMapViewer />
+        </TabsContent>
+
+        {/* Tab 4: History Table & Education */}
+        <TabsContent value="history" className="mt-0 space-y-6">
+          <HistoryTable
+            type="mjo"
+            title="Riwayat Historis MJO (Wheeler-Hendon RMM Index)"
+            description="Data histori harian RMM1, RMM2, Fase MJO, Amplitudo, dan dampak terhadap konveksi Indonesia"
+            data={mjoHistoryData?.data || []}
+            yearsLoaded={mjoHistoryData?.daysLoaded ? Math.round(mjoHistoryData.daysLoaded / 365) : mjoYears}
+            hasMore={mjoHistoryData?.hasMore ?? true}
+            onLoadMore={handleLoadMoreMjo}
+            isLoadingMore={loadingMoreMjo}
+          />
+
+          <EducationalPanel
+            title="MJO"
+            whatIsIt={data.interpretation.whatIsIt}
+            indonesiaImpact={data.interpretation.indonesiaImpact}
+            phaseMeanings={data.interpretation.phaseMeanings}
+            currentAssessment={data.interpretation.currentAssessment}
+          />
+        </TabsContent>
+      </Tabs>
         </>
       )}
     </div>
