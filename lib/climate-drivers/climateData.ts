@@ -292,48 +292,49 @@ export function getMjoData(): MjoData {
  */
 export function getIodData(): IodData {
   const historicalDmi = [
-    { date: "2025-08", dmi: 0.12 },
-    { date: "2025-09", dmi: 0.25 },
-    { date: "2025-10", dmi: 0.48 },
-    { date: "2025-11", dmi: 0.52 },
-    { date: "2025-12", dmi: 0.38 },
-    { date: "2026-01", dmi: 0.18 },
-    { date: "2026-02", dmi: 0.05 },
-    { date: "2026-03", dmi: -0.12 },
-    { date: "2026-04", dmi: 0.15 },
-    { date: "2026-05", dmi: 0.32 },
-    { date: "2026-06", dmi: 0.45 },
-    { date: "2026-07", dmi: 0.51 },
-    { date: "2026-08", dmi: 0.54 },
+    { date: "2025-09", dmi: -1.22 },
+    { date: "2025-10", dmi: -1.45 },
+    { date: "2025-11", dmi: -1.13 },
+    { date: "2025-12", dmi: -0.19 },
+    { date: "2026-01", dmi: 0.14 },
+    { date: "2026-02", dmi: 0.54 },
+    { date: "2026-03", dmi: 0.33 },
+    { date: "2026-04", dmi: -0.01 },
+    { date: "2026-05", dmi: -0.20 },
+    { date: "2026-06", dmi: -0.13 },
+    { date: "2026-07", dmi: 0.11 },
+    { date: "2026-08", dmi: 0.31 },
+    { date: "2026-09", dmi: 0.57 },
+    { date: "2026-10", dmi: 0.78 },
   ];
 
   const historicalPeriods = [
-    { date: "2025 Q3", dmi: 0.25, type: "Neutral" as const },
-    { date: "2025 Q4", dmi: 0.52, type: "Positive" as const },
-    { date: "2026 Q1", dmi: 0.18, type: "Neutral" as const },
-    { date: "2026 Q2", dmi: 0.32, type: "Neutral" as const },
-    { date: "2026 Q3 (Kini)", dmi: 0.54, type: "Positive" as const },
+    { date: "2025 Q4", dmi: -0.94, type: "Negative" as const },
+    { date: "2026 Q1", dmi: 0.34, type: "Neutral" as const },
+    { date: "2026 Q2", dmi: -0.12, type: "Neutral" as const },
+    { date: "2026 Q3", dmi: 0.33, type: "Neutral" as const },
+    { date: "2026 Q4 (Kini)", dmi: 0.78, type: "Positive" as const },
   ];
 
-  const dmi = 0.54;
+  const dmi = 0.88;
   const status: "Positive" | "Negative" | "Neutral" =
     dmi >= 0.4 ? "Positive" : dmi <= -0.4 ? "Negative" : "Neutral";
 
   return {
     dmi,
     status,
-    lastUpdated: "Agustus 2026",
+    lastUpdated: "18 Oktober 2026",
     dataSource: OFFICIAL_SOURCES.IOD.name,
     sourceUrl: OFFICIAL_SOURCES.IOD.url,
-    summary: `Kondisi IOD saat ini berada dalam fase Positif (DMI BOM: +0.54°C). Suhu Samudra Hindia bagian timur dekat Sumatra/Jawa lebih dingin dibanding bagian barat dekat Afrika.`,
+    summary: `Kondisi IOD saat ini berada dalam fase Positif (DMI BOM: +0.88°C). Suhu Samudra Hindia bagian timur dekat Sumatra/Jawa lebih dingin dibanding bagian barat dekat Afrika.`,
     historicalDmi,
     historicalPeriods,
     interpretation: {
       whatIsIt: "IOD (Indian Ocean Dipole) dipantau resmi oleh Australian Bureau of Meteorology (BOM) melalui Dipole Mode Index (DMI), yaitu selisih suhu permukaan laut Samudra Hindia Barat dan Timur.",
-      positiveIod: "🟠 IOD Positif (DMI ≥ +0.4°C): Suhu perairan pantai barat Sumatra/Jawa lebih dingin dari normal. Penguapan berkurang, pasokan uap air menurun, memicu berkurangnya curah hujan dan kekeringan di Indonesia barat.",
-      negativeIod: "🔵 IOD Negatif (DMI ≤ -0.4°C): Suhu perairan dekat Indonesia memanas. Penguapan melimpah, meningkatkan curah hujan dan potensi musim hujan basah di Indonesia.",
+      positiveIod: "IOD Positif (DMI ≥ +0.4°C): Suhu perairan pantai barat Sumatra/Jawa lebih dingin dari normal. Penguapan berkurang, pasokan uap air menurun, memicu berkurangnya curah hujan dan potensi kekeringan di Indonesia barat.",
+      negativeIod: "IOD Negatif (DMI ≤ -0.4°C): Suhu perairan dekat Indonesia memanas. Penguapan melimpah, meningkatkan curah hujan dan potensi musim hujan basah di Indonesia.",
       indonesiaImpact: "Pengaruh IOD dirasakan terutama pada musim kemarau hingga awal musim hujan (Juli-November) di bagian barat dan selatan Indonesia (Sumatra, Jawa, Bali, Nusa Tenggara).",
-      currentAssessment: "Indeks DMI BOM tercatat +0.54°C (melebihi ambang +0.4°C), mengonfirmasi berjalannya IOD Positif. Kondisi ini menekan curah hujan harian di Sumatra bagian selatan dan Jawa.",
+      currentAssessment: "Indeks DMI BOM tercatat +0.88°C (melebihi ambang +0.4°C), mengonfirmasi berjalannya fase IOD Positif. Kondisi ini menekan pembentukan awan konvektif di Sumatra bagian selatan dan Jawa.",
     },
   };
 }

@@ -318,10 +318,12 @@ export async function parseIodData(): Promise<IodParsedOutput> {
       { year: 2026, month: 4, dmi: 0.15 },
       { year: 2026, month: 5, dmi: 0.32 },
       { year: 2026, month: 6, dmi: 0.45 },
-      { year: 2026, month: 7, dmi: 0.51 },
-      { year: 2026, month: 8, dmi: 0.44 },
+      { year: 2026, month: 7, dmi: 0.11 },
+      { year: 2026, month: 8, dmi: 0.31 },
+      { year: 2026, month: 9, dmi: 0.57 },
+      { year: 2026, month: 10, dmi: 0.78 },
     ];
-    latestDmi = 0.44;
+    latestDmi = 0.88;
   }
 
   const status: "Positive" | "Negative" | "Neutral" =

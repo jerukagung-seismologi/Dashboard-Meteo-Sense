@@ -232,48 +232,100 @@ export async function fetchLiveMjoData(): Promise<MjoData> {
 }
 
 /**
- * Live Fetcher for IOD Dipole Mode Index (DMI).
+ * Live Fetcher for IOD Dipole Mode Index (DMI) from BOM Australia.
+ * Source: http://www.bom.gov.au/clim_data/IDCK000072/iod_1.txt
  */
 export async function fetchLiveIodData(): Promise<IodData> {
   const fallback = getFallbackIod();
   try {
-    const res = await fetch("https://psl.noaa.gov/gcos_wgsp/Timeseries/Data/dmi.hadisot.data", {
-      next: { revalidate: 3600 },
-      headers: { "User-Agent": "MeteoSense-Dashboard/2.1" },
-    });
-
-    if (!res.ok) return fallback;
-
-    const text = await res.text();
-    const lines = text.trim().split("\n");
-    // Parse valid numeric rows
-    const dataRows = lines.filter((l) => /^\s*\d{4}\s+/.test(l));
-    if (dataRows.length === 0) return fallback;
-
-    const lastRow = dataRows[dataRows.length - 1];
-    const parts = lastRow.trim().split(/\s+/);
-    const year = parts[0];
-    // Find last non-missing value (-99.99 or -999)
-    let latestDmi = fallback.dmi;
-    let monthIdx = 1;
-    for (let i = 1; i <= 12; i++) {
-      const val = parseFloat(parts[i] || "-999");
-      if (!Number.isNaN(val) && val > -50) {
-        latestDmi = val;
-        monthIdx = i;
-      }
+    let text = "";
+    try {
+      const res = await fetch("https://www.bom.gov.au/clim_data/IDCK000072/iod_1.txt", {
+        next: { revalidate: 3600 },
+        headers: { "User-Agent": "MeteoSense-Dashboard/2.1" },
+      });
+      if (res.ok) text = await res.text();
+    } catch {
+      // Fallback to HTTP if HTTPS fails
+      const res = await fetch("http://www.bom.gov.au/clim_data/IDCK000072/iod_1.txt", {
+        next: { revalidate: 3600 },
+        headers: { "User-Agent": "MeteoSense-Dashboard/2.1" },
+      });
+      if (res.ok) text = await res.text();
     }
 
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+    if (!text) return fallback;
+
+    const lines = text.trim().split("\n").filter((l) => l.includes(","));
+    if (lines.length === 0) return fallback;
+
+    const parsedWeeks: Array<{ y: number; m: number; d: number; val: number }> = [];
+    const monthlyMap = new Map<string, number[]>();
+    const quarterMap = new Map<string, number[]>();
+
+    for (const line of lines) {
+      const parts = line.trim().split(",");
+      if (parts.length < 3) continue;
+      const end = parts[1]; // YYYYMMDD
+      const val = parseFloat(parts[2]);
+      if (Number.isNaN(val)) continue;
+
+      const y = parseInt(end.slice(0, 4), 10);
+      const m = parseInt(end.slice(4, 6), 10);
+      const d = parseInt(end.slice(6, 8), 10);
+      const ym = `${end.slice(0, 4)}-${end.slice(4, 6)}`;
+      const q = `Q${Math.ceil(m / 3)}`;
+      const yq = `${y} ${q}`;
+
+      parsedWeeks.push({ y, m, d, val });
+
+      if (!monthlyMap.has(ym)) monthlyMap.set(ym, []);
+      monthlyMap.get(ym)!.push(val);
+
+      if (!quarterMap.has(yq)) quarterMap.set(yq, []);
+      quarterMap.get(yq)!.push(val);
+    }
+
+    if (parsedWeeks.length === 0) return fallback;
+
+    const latestWeek = parsedWeeks[parsedWeeks.length - 1];
+    const latestDmi = latestWeek.val;
+    const monthNamesId = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+    const latestDateFormatted = `${latestWeek.d} ${monthNamesId[latestWeek.m - 1]} ${latestWeek.y}`;
+
     const status: "Positive" | "Negative" | "Neutral" =
       latestDmi >= 0.4 ? "Positive" : latestDmi <= -0.4 ? "Negative" : "Neutral";
+
+    // Monthly average time series for the last 14 months
+    const historicalDmi = Array.from(monthlyMap.entries()).slice(-14).map(([date, vals]) => {
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      return { date, dmi: Math.round(avg * 100) / 100 };
+    });
+
+    // Quarterly comparison periods for the last 5 quarters
+    const quarterKeys = Array.from(quarterMap.keys()).slice(-5);
+    const historicalPeriods = quarterKeys.map((qKey, idx) => {
+      const vals = quarterMap.get(qKey)!;
+      const avg = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100;
+      const isLatest = idx === quarterKeys.length - 1;
+      const dateLabel = isLatest ? `${qKey} (Kini)` : qKey;
+      const type: "Positive" | "Negative" | "Neutral" =
+        avg >= 0.4 ? "Positive" : avg <= -0.4 ? "Negative" : "Neutral";
+      return { date: dateLabel, dmi: avg, type };
+    });
 
     return {
       ...fallback,
       dmi: latestDmi,
       status,
-      lastUpdated: `BOM / NOAA (${monthNames[monthIdx - 1]} ${year})`,
-      summary: `Indeks IOD DMI terkini mencatat ${latestDmi >= 0 ? "+" : ""}${latestDmi.toFixed(2)}°C (${status} IOD).`,
+      lastUpdated: `BOM Australia (${latestDateFormatted})`,
+      summary: `Indeks IOD DMI terkini dari BOM Australia mencatat ${latestDmi >= 0 ? "+" : ""}${latestDmi.toFixed(2)}°C (${status} IOD).`,
+      historicalDmi,
+      historicalPeriods,
+      interpretation: {
+        ...fallback.interpretation,
+        currentAssessment: `Indeks DMI BOM tercatat ${latestDmi >= 0 ? "+" : ""}${latestDmi.toFixed(2)}°C (${status === "Positive" ? "melebihi ambang +0.4°C" : status === "Negative" ? "di bawah ambang -0.4°C" : "dalam rentang netral"}), mengonfirmasi berlangsungnya fase ${status === "Positive" ? "IOD Positif" : status === "Negative" ? "IOD Negatif" : "IOD Netral"}.`,
+      },
     };
   } catch (err) {
     console.warn("Live IOD DMI fetch failed, using fallback:", err);
