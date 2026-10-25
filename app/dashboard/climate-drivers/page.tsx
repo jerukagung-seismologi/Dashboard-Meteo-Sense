@@ -3,8 +3,7 @@
 
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
-import Link from "next/link";
-import { Loader2, Globe, Sparkles, AlertCircle, Compass, Waves, CloudRain, Wind, ArrowRight } from "lucide-react";
+import { Loader2, Globe, Sparkles, AlertCircle, Compass, Waves, CloudRain, Wind } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubpageHeader } from "@/components/climate-drivers/SubpageHeader";
 import { SummaryCards } from "@/components/climate-drivers/SummaryCards";
@@ -90,33 +89,6 @@ export default function ClimateDriversPage() {
         </div>
       ) : (
         <>
-      {/* Banner Akses Menu Mandiri Dinamika Atmosfer Tropis */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-200 dark:border-emerald-800 rounded-2xl gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
-            <Waves className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <span>Menu Mandiri: Dinamika Atmosfer Tropis</span>
-              <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">
-                Menu Baru
-              </span>
-            </div>
-            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-              Analisis Gelombang Kelvin, Rossby (ER), MRG, diagram teori Matsuno, dan diagnostik Hovmöller telah dipisahkan ke menu tersendiri agar halaman ini tetap ringkas dan terfokus.
-            </p>
-          </div>
-        </div>
-        <Link
-          href="/dashboard/tropical-dynamics"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shrink-0 shadow-xs"
-        >
-          <span>Buka Dinamika Tropis</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </div>
-
       {/* 3 Summary Dashboard Cards */}
       <SummaryCards summary={summary} />
 
@@ -159,25 +131,8 @@ export default function ClimateDriversPage() {
               <MonsoonCharts data={monsoonApiData || getMonsoonData()} isDarkMode={isDarkMode} />
             </TabsContent>
 
-            <TabsContent value="mjo" className="mt-0 space-y-4">
+            <TabsContent value="mjo" className="mt-0">
               <MJOCharts data={mjoData} isDarkMode={isDarkMode} />
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
-                    Ingin Memantau Gelombang Kelvin, Rossby (ER), MRG &amp; Hovmöller?
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Seluruh peta operasional harian BOM Australia, diagram fase ECMWF 46-hari, dan diagnostik satelit NCICS dapat diakses di menu mandiri.
-                  </p>
-                </div>
-                <Link
-                  href="/dashboard/tropical-dynamics"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shrink-0"
-                >
-                  <span>Buka Dinamika Tropis Lengkap</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
             </TabsContent>
           </Tabs>
         </CardContent>

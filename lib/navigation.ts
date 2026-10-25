@@ -42,7 +42,7 @@ export const dashboardNavigation: NavigationItem[] = [
   { name: "Klimatologis", href: "/dashboard/klimatologi", icon: TrendingUp, roles: ['Admin', 'User'] },
   { name: "Indeks Iklim Global", href: "/dashboard/climate-drivers", icon: Globe, roles: ['Admin', 'User'] },
   { name: "Indeks Monsun", href: "/dashboard/indeks-monsun", icon: Wind, badge: "Regional", roles: ['Admin', 'User'] },
-  { name: "Dinamika Tropis", href: "/dashboard/tropical-dynamics", icon: Waves, badge: "Gelombang", roles: ['Admin', 'User'] },
+  { name: "Dinamika Tropis", href: "/dashboard/tropical-dynamics", icon: Waves, roles: ['Admin', 'User'] },
   { name: "Kualitas Udara", href: "/dashboard/air-quality", icon: Wind, badge: "CAMS", roles: ['Admin', 'User'] },
   { name: "Kalibrasi & Validasi", href: "/dashboard/kalibrasi", icon: SlidersHorizontal, roles: ['Admin'] },
   { name: "Basis Data", href: "/dashboard/data", icon: Database, roles: ['Admin'] },

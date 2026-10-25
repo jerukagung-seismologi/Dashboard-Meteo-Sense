@@ -3,8 +3,7 @@
 
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
-import Link from "next/link";
-import { Loader2, CloudRain, Activity, Compass, Zap, ArrowRight, Waves, Layers, BookOpen, TrendingUp } from "lucide-react";
+import { Loader2, CloudRain, Activity, Compass, Zap, Waves, Layers, BookOpen, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubpageHeader } from "@/components/climate-drivers/SubpageHeader";
@@ -165,33 +164,6 @@ export default function MjoSubpage() {
             <span className="text-[11px] text-slate-400 font-medium">Benua Maritim (MC)</span>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Banner Rekomendasi Menu Mandiri Dinamika Tropis */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-200 dark:border-emerald-800 rounded-2xl gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
-            <Waves className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <span>Tersedia Menu Khusus: Dinamika Atmosfer Tropis</span>
-              <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">
-                Menu Baru
-              </span>
-            </div>
-            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-              Analisis gelombang ekuatorial (Kelvin, Rossby, MRG, Hovmöller) kini dapat diakses langsung dari menu bilah sisi kiri secara mandiri.
-            </p>
-          </div>
-        </div>
-        <Link
-          href="/dashboard/tropical-dynamics"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shrink-0 shadow-xs"
-        >
-          <span>Buka Dinamika Tropis</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
       </div>
 
       {/* Modular Tab Navigation (Anti-Long-Scroll) */}
