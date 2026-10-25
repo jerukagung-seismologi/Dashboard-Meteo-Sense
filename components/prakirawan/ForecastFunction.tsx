@@ -20,6 +20,13 @@ import { ForecastHistoryList } from "@/components/prakirawan/ForecastHistoryList
 import { ForecastDetailModal } from "@/components/prakirawan/ForecastDetailModal"
 import { getLucideIconForCondition } from "@/components/prakirawan/WeatherIcons"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useTheme } from "next-themes"
 import { EnsembleProbabilityChart, EnsembleHourlyItem } from "@/components/prakirawan/EnsembleProbabilityChart"
 import {
@@ -27,6 +34,10 @@ import {
   Trash2,
   Save,
   Download,
+  Share2,
+  Send,
+  ExternalLink,
+  ChevronDown,
   Calendar,
   Clock,
   Copy,
@@ -427,6 +438,7 @@ export default function ForecastForm() {
   } | null>(null)
 
   const [loadingFetch, setLoadingFetch] = React.useState<boolean>(false)
+  const [isSharing, setIsSharing] = React.useState<boolean>(false)
 
   const printRef = React.useRef<HTMLDivElement>(null)
   const isEditingHistoryRef = React.useRef<boolean>(false)
@@ -754,6 +766,176 @@ export default function ForecastForm() {
     } catch (error) {
       console.error("Error generating image:", error);
       toast({ title: "Gagal", description: "Terjadi kesalahan.", variant: "destructive" });
+    }
+  };
+
+  // Helper untuk merender infografis kartu outlook ke blob PNG
+  const getInfographicBlob = async (): Promise<{ blob: Blob; fileName: string; canvas: HTMLCanvasElement } | null> => {
+    if (!printRef.current) return null;
+    const canvas = await html2canvas(printRef.current, {
+      scale: 3,
+      backgroundColor: "#ffffff",
+      logging: false,
+      useCORS: true,
+      width: 800,
+      windowWidth: 1200,
+    });
+
+    const cleanLoc = (currentLocationName || "Kota").replace(/\s+/g, "_");
+    const fileName = `Outlook_${cleanLoc}_${targetDateIsoStr}.png`;
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve({ blob, fileName, canvas });
+        } else {
+          resolve(null);
+        }
+      }, "image/png");
+    });
+  };
+
+  // Handler berbagi ke media sosial (Mobile Web Share API + Desktop Clipboard & Web Intent Fallback)
+  const handleShareSocial = async (target: "native" | "whatsapp" | "twitter" | "clipboard" = "native") => {
+    if (!printRef.current) return;
+    setIsSharing(true);
+
+    try {
+      toast({
+        title: "Menyiapkan Media...",
+        description: "Merender infografis kartu cuaca...",
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const result = await getInfographicBlob();
+
+      if (!result) {
+        throw new Error("Gagal merender gambar infografis.");
+      }
+
+      const { blob, fileName, canvas } = result;
+      const file = new File([blob], fileName, { type: "image/png" });
+
+      // 1. Target: WhatsApp Web
+      if (target === "whatsapp") {
+        try {
+          if (navigator.clipboard && window.ClipboardItem) {
+            await navigator.clipboard.write([
+              new ClipboardItem({ "image/png": blob }),
+            ]);
+            toast({
+              title: "Gambar Tersalin ke Clipboard!",
+              description: "Membuka WhatsApp... Tekan Ctrl + V di kolom chat untuk menempelkan gambar.",
+            });
+          }
+        } catch (clipErr) {
+          console.warn("Clipboard write failed:", clipErr);
+        }
+        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(autoNarrative)}`;
+        window.open(waUrl, "_blank");
+        return;
+      }
+
+      // 2. Target: Twitter / X
+      if (target === "twitter") {
+        try {
+          if (navigator.clipboard && window.ClipboardItem) {
+            await navigator.clipboard.write([
+              new ClipboardItem({ "image/png": blob }),
+            ]);
+            toast({
+              title: "Gambar Tersalin ke Clipboard!",
+              description: "Membuka X (Twitter)... Tekan Ctrl + V untuk melampirkan gambar.",
+            });
+          }
+        } catch (clipErr) {
+          console.warn("Clipboard write failed:", clipErr);
+        }
+        const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(autoNarrative)}`;
+        window.open(tweetUrl, "_blank");
+        return;
+      }
+
+      // 3. Target: Clipboard Saja
+      if (target === "clipboard") {
+        if (navigator.clipboard && window.ClipboardItem) {
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob }),
+          ]);
+          toast({
+            title: "✓ Gambar Tersalin ke Clipboard!",
+            description: "Gambar infografis siap ditempel (Ctrl + V) di WhatsApp, Telegram, atau Medsos.",
+          });
+        } else {
+          const link = document.createElement("a");
+          link.href = canvas.toDataURL("image/png");
+          link.download = fileName;
+          link.click();
+          toast({
+            title: "✓ Gambar Diunduh",
+            description: "Browser tidak mengizinkan salin clipboard langsung, berkas telah diunduh.",
+          });
+        }
+        return;
+      }
+
+      // 4. Target: Native Share (Ponsel Android / iOS)
+      if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: `Prakiraan Cuaca ${currentLocationName} - ${forecastDisplayDateStr}`,
+            text: autoNarrative,
+            files: [file],
+          });
+          toast({
+            title: "✓ Berhasil Dibagikan",
+            description: "Infografis dan narasi berhasil dikirim ke aplikasi pilihan Anda.",
+          });
+        } catch (shareErr: any) {
+          if (shareErr?.name !== "AbortError") {
+            console.error("Share error:", shareErr);
+            toast({
+              title: "Gagal membagikan",
+              description: shareErr?.message || "Terjadi kesalahan.",
+              variant: "destructive",
+            });
+          }
+        }
+      } else {
+        // Fallback untuk Desktop PC saat klik opsi utama
+        let clipboardOk = false;
+        try {
+          if (navigator.clipboard && window.ClipboardItem) {
+            await navigator.clipboard.write([
+              new ClipboardItem({ "image/png": blob }),
+            ]);
+            clipboardOk = true;
+          }
+        } catch {
+          clipboardOk = false;
+        }
+
+        const link = document.createElement("a");
+        link.href = canvas.toDataURL("image/png");
+        link.download = fileName;
+        link.click();
+
+        toast({
+          title: clipboardOk ? "✓ Gambar Disalin & Diunduh!" : "✓ Gambar Diunduh",
+          description: clipboardOk
+            ? "Gambar tersalin di clipboard (siap Ctrl+V di WhatsApp/Twitter/Medsos) dan file PNG telah tersimpan di folder Unduhan."
+            : "Berkas infografis berhasil diunduh.",
+        });
+      }
+    } catch (err: any) {
+      console.error("Gagal share media sosial:", err);
+      toast({
+        title: "Gagal",
+        description: err?.message || "Terjadi kesalahan saat memproses gambar.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -1274,15 +1456,67 @@ export default function ForecastForm() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 md:max-w-[200px]">
-              <Button variant="default" size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700 w-full"><Plus className="w-4 h-4 mr-1" /> Tambah Jam</Button>
+            <div className="flex flex-col gap-2 md:max-w-[210px]">
+              <Button variant="default" size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700 w-full">
+                <Plus className="w-4 h-4 mr-1" /> Tambah Jam
+              </Button>
               <Button variant="default" size="sm" onClick={() => fetchForecast(true)} className="bg-indigo-600 hover:bg-indigo-700 w-full" disabled={loadingFetch}>
                 <DatabaseZap className="w-4 h-4 mr-1" /> {loadingFetch ? "Mengambil..." : "Ambil Otomatis"}
               </Button>
-              <Button variant="default" size="sm" onClick={onSaveAsImage} className="bg-green-600 hover:bg-green-700 w-full">
-                <Download className="w-4 h-4 mr-1" /> Unduh Gambar
+              <Button variant="outline" size="sm" onClick={onSaveAsImage} className="border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 w-full">
+                <Download className="w-4 h-4 mr-1 text-slate-600 dark:text-slate-400" /> Unduh Gambar (PNG)
               </Button>
-              <Button onClick={onSaveForecast} disabled={saving} className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700">
+
+              {/* TOMBOL BAGIKAN KE MEDSOS & NATIVE SHARE */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    disabled={isSharing}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white w-full shadow-sm flex items-center justify-between"
+                  >
+                    <span className="flex items-center">
+                      <Share2 className="w-4 h-4 mr-1.5" />
+                      {isSharing ? "Menyiapkan..." : "Bagikan Medsos"}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 opacity-80" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-60 shadow-lg border border-slate-200 dark:border-slate-800">
+                  <DropdownMenuItem onClick={() => handleShareSocial("native")} className="cursor-pointer py-2">
+                    <Share2 className="w-4 h-4 mr-2 text-emerald-600" />
+                    <div>
+                      <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">Bagikan Cepat (HP / Medsos)</div>
+                      <div className="text-[10px] text-muted-foreground">Kirim ke Status WA, IG Stories, dll.</div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleShareSocial("clipboard")} className="cursor-pointer py-2">
+                    <Copy className="w-4 h-4 mr-2 text-blue-600" />
+                    <div>
+                      <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">Salin Gambar (Clipboard)</div>
+                      <div className="text-[10px] text-muted-foreground">Siap tempel (Ctrl + V) di mana saja</div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleShareSocial("whatsapp")} className="cursor-pointer py-2">
+                    <Send className="w-4 h-4 mr-2 text-green-600" />
+                    <div>
+                      <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">Kirim via WhatsApp Web</div>
+                      <div className="text-[10px] text-muted-foreground">Buka chat WA + auto-copy gambar</div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleShareSocial("twitter")} className="cursor-pointer py-2">
+                    <ExternalLink className="w-4 h-4 mr-2 text-sky-500" />
+                    <div>
+                      <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">Posting ke X (Twitter)</div>
+                      <div className="text-[10px] text-muted-foreground">Buka tweet draft + auto-copy gambar</div>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button onClick={onSaveForecast} disabled={saving} className="w-full mt-3 bg-indigo-600 hover:bg-indigo-700">
                 <Save className="w-4 h-4 mr-1" /> {saving ? "Menyimpan..." : "Simpan Prakiraan"}
               </Button>
             </div>
