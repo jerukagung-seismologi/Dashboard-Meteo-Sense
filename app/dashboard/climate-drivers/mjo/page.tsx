@@ -9,6 +9,7 @@ import { SubpageHeader } from "@/components/climate-drivers/SubpageHeader";
 import { StatusBadge } from "@/components/climate-drivers/StatusBadge";
 import { MJOCharts } from "@/components/climate-drivers/MJOCharts";
 import { EcmwfMjoViewer } from "@/components/climate-drivers/EcmwfMjoViewer";
+import { TropicalWavesViewer } from "@/components/climate-drivers/TropicalWavesViewer";
 import { EducationalPanel } from "@/components/climate-drivers/EducationalPanel";
 import { NcicsMapViewer } from "@/components/climate-drivers/NcicsMapViewer";
 import { HistoryTable } from "@/components/climate-drivers/HistoryTable";
@@ -169,6 +170,11 @@ export default function MjoSubpage() {
 
       {/* ECMWF Extended-Range Ensemble MJO Forecast (46 Days) */}
       <EcmwfMjoViewer />
+
+      {/* BOM Australia Tropical Atmospheric Waves Monitoring (Diagram & Peta MJO, Kelvin, ER, MRG) */}
+      <div className="pt-2">
+        <TropicalWavesViewer />
+      </div>
 
       {/* 5-Year Server Historical Data Table with Load More */}
       <HistoryTable
