@@ -48,6 +48,7 @@ export interface Forecast {
   status: ForecastStatus;
   version: number;
   parentForecastId?: string;
+  engineVersion?: string;
 }
 
 const FORECASTS_COLLECTION = "forecasts";

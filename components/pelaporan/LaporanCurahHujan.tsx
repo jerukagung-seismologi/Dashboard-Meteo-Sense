@@ -18,6 +18,7 @@ import { getCalibrationDocument } from "@/lib/calibration/calibrationCrud";
 import { applyCalibrationToSeries } from "@/lib/calibration/calibrationEngine";
 import type { StationCalibrationDocument } from "@/lib/calibration/calibrationTypes";
 import { ReportPublicationCard } from "./ReportPublicationCard";
+import { APP_CONFIG } from "@/lib/appConfig";
 
 // --- Helper UI: Rain Measuring Cup ---
 const RainMeasuringCup = ({ value, maxValue = 100, unit = "mm" }: { value: number, maxValue?: number, unit?: string }) => {
@@ -403,7 +404,7 @@ Durasi Hujan: ${rainStats.rainDurationHours} Jam`;
 
         <footer className="relative z-10 text-center border-t border-slate-100 dark:border-slate-800 pt-3">
           <p className="text-xs text-slate-400 font-medium">
-            Stasiun: {sensorName} • Meteo Sense 4.0.0
+            Stasiun: {sensorName} • {APP_CONFIG.name} {APP_CONFIG.version}
           </p>
         </footer>
       </main>

@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { formatYMD, formatIdDateDash, WeatherRecord, aggregateDaily } from "@/lib/weatherUtils"
 import { generateCanvasFromDOM, exportAsPNG, exportAsPDF, printCanvas } from "@/lib/exportUtils"
+import { APP_CONFIG } from "@/lib/appConfig"
 import { fetchSensorDataByDateRange } from "@/lib/apiClient"
 import { ERA5CorrectionPanel } from "./ERA5CorrectionPanel"
 import { CorrectionOffsets, applyCorrectionToDailyRecords } from "@/lib/reanalysis/era5Correction"
@@ -572,7 +573,7 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`
                 </div>
                 <div className="flex items-center gap-2 text-slate-400">
                   <Clock className="h-4 w-4" />
-                  <span>Meteo Sense 4.0.0</span>
+                  <span>{APP_CONFIG.name} {APP_CONFIG.version}</span>
                 </div>
               </div>
             </div>
@@ -694,7 +695,7 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`
               </div>
               <div className="flex items-center gap-2 text-slate-400">
                 <Clock className="h-4 w-4" />
-                <span>Meteo Sense 4.0.0</span>
+                <span>{APP_CONFIG.name} {APP_CONFIG.version}</span>
               </div>
             </div>
           </div>

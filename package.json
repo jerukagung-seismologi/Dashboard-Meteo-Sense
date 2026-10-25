@@ -1,6 +1,6 @@
 {
   "name": "sim-jerukagung-seismologi-meteo-sense",
-  "version": "4.0.0",
+  "version": "4.2.5",
   "private": true,
   "scripts": {
     "dev": "next dev",

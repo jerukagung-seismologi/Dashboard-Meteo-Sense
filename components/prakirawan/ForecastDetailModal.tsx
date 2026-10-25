@@ -100,7 +100,10 @@ export function ForecastDetailModal({ forecast, onClose, onEdit }: ForecastDetai
                 Versi & Status
               </div>
               <div className="font-semibold text-sm flex items-center gap-1.5">
-                <span>v{forecast.version}</span>
+                <span>Rev {forecast.version}</span>
+                {forecast.engineVersion && (
+                  <span className="text-[11px] text-slate-400 font-normal">({forecast.engineVersion})</span>
+                )}
                 <Badge
                   variant={
                     forecast.status === "published"

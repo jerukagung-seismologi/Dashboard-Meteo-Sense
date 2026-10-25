@@ -16,6 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/useAuth"
 import { saveForecast, Forecast, ForecastRowData } from "@/lib/forecastService"
+import { APP_CONFIG } from "@/lib/appConfig"
 import { ForecastHistoryList } from "@/components/prakirawan/ForecastHistoryList"
 import { ForecastDetailModal } from "@/components/prakirawan/ForecastDetailModal"
 import { getLucideIconForCondition } from "@/components/prakirawan/WeatherIcons"
@@ -665,7 +666,7 @@ export default function ForecastForm() {
 
   const currentTimeStr = React.useMemo(() => {
     const now = new Date()
-    return now.toLocaleString("id-ID", {
+    const formatted = now.toLocaleString("id-ID", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -674,6 +675,7 @@ export default function ForecastForm() {
       second: "2-digit",
       hour12: false
     })
+    return `${formatted} WIB`
   }, [rows]) // Re-compute setiap kali rows berubah untuk update dinamis
 
   const updateRow = (index: number, patch: Partial<ForecastRow>) => {
@@ -761,6 +763,7 @@ export default function ForecastForm() {
         forecasterId: user?.uid || "anonymous",
         forecasterName: profile?.displayName || user?.email || "Unknown Forecaster",
         forecastSource: forecastSource,
+        engineVersion: APP_CONFIG.version,
         notes: notes,
         status: "published",
         hourlyData: rows.map(r => ({
@@ -2321,7 +2324,7 @@ export default function ForecastForm() {
               <span style={{ fontStyle: "italic" }}>Prediksi Ini Bersifat Eksperimental</span>
             </div>
             <div>
-              <span style={{ opacity: 0.7 }}>Powered by</span> <strong style={{ color: "#1E3A8A" }}>Meteo Sense 4.0.0</strong>
+              <span style={{ opacity: 0.7 }}>Powered by</span> <strong style={{ color: "#1E3A8A" }}>{APP_CONFIG.name} {APP_CONFIG.version}</strong>
             </div>
             <div>
               <span style={{ opacity: 0.7 }}>Waktu Kirim:</span> <strong style={{ color: "#1E3A8A" }}>{currentTimeStr}</strong>
