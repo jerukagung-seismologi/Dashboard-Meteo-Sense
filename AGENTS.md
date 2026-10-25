@@ -20,3 +20,13 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Never stack multiple heavy visualizers (e.g. 4-wave stacked maps, ECMWF 46-day ensemble, NCICS maps, and 5-year historical tables) vertically on a single page.
 - Organize complex scientific and meteorological modules using high-contrast, theme-aware tabs (`Tabs` / `TabsContent`), modular cards, and lightbox modals so that each view remains compact, performant, and legible without excessive vertical scrolling.
 
+### 3. Meteorological Standards: Relative Humidity (RH) Error Correction
+- **Absolute Physical Boundaries (0% - 100%)**:
+  - Neither relative humidity values nor their uncertainty intervals $(RH \pm \Delta RH)$ may ever exceed $100\%$ or fall below $0\%$.
+  - Upper error bounds must be physically clamped: $\Delta RH \le \min(\Delta RH, 100 - RH, RH)$ with a practical floor of $2\%$.
+- **Robust Multi-Model Ensemble Spread**:
+  - Use sample standard deviation ($\sigma$) or IQR across ensemble members rather than the raw $(\max - \min)/2$ range to eliminate distortions from single outlier NWP models.
+- **Diurnal Saturation Consistency**:
+  - Near dew-point saturation ($RH \ge 90\%$, e.g., dawn/night conditions), humidity uncertainty must contract toward the physical saturation ceiling ($\Delta RH \le 5\%$).
+
+

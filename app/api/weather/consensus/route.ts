@@ -192,9 +192,11 @@ function calculateMultiModelConsensus(predictions: SingleModelPrediction[]) {
 
   if (hums.length > 0) {
     const mean = hums.reduce((a, b) => a + b, 0) / hums.length
-    avgHum = Math.round(mean)
-    const maxDiff = Math.max(...hums) - Math.min(...hums)
-    humError = Math.min(15, Math.max(2, Math.round(maxDiff / 2)))
+    avgHum = Math.min(100, Math.max(0, Math.round(mean)))
+    const variance = hums.reduce((sum, h) => sum + Math.pow(h - mean, 2), 0) / hums.length
+    const stdDev = Math.sqrt(variance)
+    const maxPossibleSpread = Math.min(100 - avgHum, avgHum)
+    humError = Math.max(2, Math.min(10, Math.round(stdDev || 3), maxPossibleSpread))
   }
 
   // 4. Indeks Panas & Error

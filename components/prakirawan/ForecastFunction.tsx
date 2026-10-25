@@ -323,9 +323,11 @@ const calculateMultiModelConsensus = (
 
   if (hums.length > 0) {
     const mean = hums.reduce((a, b) => a + b, 0) / hums.length
-    avgHum = Math.round(mean)
-    const maxDiff = Math.max(...hums) - Math.min(...hums)
-    humError = Math.min(15, Math.max(2, Math.round(maxDiff / 2)))
+    avgHum = Math.min(100, Math.max(0, Math.round(mean)))
+    const variance = hums.reduce((sum, h) => sum + Math.pow(h - mean, 2), 0) / hums.length
+    const stdDev = Math.sqrt(variance)
+    const maxPossibleSpread = Math.min(100 - avgHum, avgHum)
+    humError = Math.max(2, Math.min(10, Math.round(stdDev || 3), maxPossibleSpread))
   }
 
   // 4. Indeks Panas & Error
@@ -716,7 +718,10 @@ export default function ForecastForm() {
   }
 
   const updateHumidity = (index: number, value: string) => {
-    const nextHum = toNumberOrEmpty(value)
+    let nextHum = toNumberOrEmpty(value)
+    if (typeof nextHum === "number") {
+      nextHum = Math.min(100, Math.max(0, nextHum))
+    }
     setRows((prev) =>
       prev.map((r, i) => {
         if (i !== index) return r
@@ -724,7 +729,16 @@ export default function ForecastForm() {
           r.temperature !== "" && nextHum !== ""
             ? calculateHeatIndexCelsius(r.temperature, nextHum)
             : ""
-        return { ...r, humidity: nextHum, heatIndex: hi }
+        
+        let adjustedHumError = r.humidityError
+        if (typeof nextHum === "number" && typeof adjustedHumError === "number") {
+          const maxPossibleSpread = Math.min(100 - nextHum, nextHum)
+          if (adjustedHumError > maxPossibleSpread) {
+            adjustedHumError = Math.max(2, maxPossibleSpread)
+          }
+        }
+
+        return { ...r, humidity: nextHum, humidityError: adjustedHumError, heatIndex: hi }
       })
     )
   }
@@ -2029,6 +2043,8 @@ export default function ForecastForm() {
                       <span className="text-xs text-muted-foreground min-w-fit">Nilai:</span>
                       <Input
                         type="number"
+                        min={0}
+                        max={100}
                         value={row.humidity}
                         onChange={(e) => updateHumidity(idx, e.target.value)}
                         className="h-7 text-sm flex-1"
@@ -2039,10 +2055,18 @@ export default function ForecastForm() {
                       <span className="text-xs text-muted-foreground min-w-fit">Error:</span>
                       <Input
                         type="number"
+                        min={1}
+                        max={20}
                         value={row.humidityError}
-                        onChange={(e) =>
-                          updateRow(idx, { humidityError: toNumberOrEmpty(e.target.value) })
-                        }
+                        onChange={(e) => {
+                          const val = toNumberOrEmpty(e.target.value)
+                          let safeVal = val
+                          if (typeof val === "number" && typeof row.humidity === "number") {
+                            const maxSpread = Math.min(100 - row.humidity, row.humidity)
+                            safeVal = Math.min(val, Math.max(2, maxSpread))
+                          }
+                          updateRow(idx, { humidityError: safeVal })
+                        }}
                         className="h-7 text-sm flex-1"
                         placeholder="—"
                       />
