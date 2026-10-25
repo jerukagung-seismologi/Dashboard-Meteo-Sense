@@ -17,6 +17,9 @@ export async function GET(request: Request) {
 
     // 1. Fetch available daily dates
     if (action === "dates") {
+      const now = new Date();
+      const todayStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+
       try {
         const res = await fetch("https://www.bom.gov.au/clim_data/IDCK000080/plot_dates.txt", {
           headers: BOM_HEADERS,
@@ -32,7 +35,7 @@ export async function GET(request: Request) {
             .filter((line) => /^\d{4}-\d{2}-\d{2}$/.test(line));
 
           if (dates.length > 0) {
-            return NextResponse.json({ dates });
+            return NextResponse.json({ dates, today: todayStr });
           }
         }
       } catch (err) {
@@ -41,7 +44,6 @@ export async function GET(request: Request) {
 
       // Fallback: generate last 14 dates up to today
       const fallbackDates: string[] = [];
-      const now = new Date();
       for (let i = 0; i < 14; i++) {
         const d = new Date(now.getTime() - i * 86400000);
         const y = d.getUTCFullYear();
@@ -49,7 +51,7 @@ export async function GET(request: Request) {
         const day = String(d.getUTCDate()).padStart(2, "0");
         fallbackDates.push(`${y}-${m}-${day}`);
       }
-      return NextResponse.json({ dates: fallbackDates.reverse() });
+      return NextResponse.json({ dates: fallbackDates.reverse(), today: todayStr });
     }
 
     // 2. Proxy image requests

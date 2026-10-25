@@ -1,7 +1,7 @@
 // components/climate-drivers/TropicalWavesViewer.tsx
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import useSWR from "swr";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -145,6 +145,16 @@ export const TropicalWavesViewer: React.FC = () => {
   const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
   const [phasePeriod, setPhasePeriod] = useState<"40" | "90">("40");
 
+
+  // Today's date in local YYYY-MM-DD
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, []);
+
   // Fetch available dates from API
   const { data: datesData, isLoading: datesLoading } = useSWR(
     "/api/climate-drivers/tropical-waves?action=dates",
@@ -152,17 +162,65 @@ export const TropicalWavesViewer: React.FC = () => {
     { revalidateOnFocus: false, dedupingInterval: 1800000 }
   );
 
-  const dates: string[] = datesData?.dates || ["2026-10-25", "2026-10-24", "2026-10-23"];
+  const dates: string[] = datesData?.dates || [todayStr];
 
-  // Default to the latest date
+  // Helper to find today or the latest available analysis date (<= today)
+  const defaultDateIndex = useMemo(() => {
+    if (!dates || dates.length === 0) return 0;
+    const exactToday = dates.indexOf(todayStr);
+    if (exactToday !== -1) return exactToday;
+
+    // Find the latest date <= today
+    for (let i = dates.length - 1; i >= 0; i--) {
+      if (dates[i] <= todayStr) {
+        return i;
+      }
+    }
+    return 0;
+  }, [dates, todayStr]);
+
+  // Default to today's date (or latest analysis date <= today) instead of the furthest forecast date!
   useEffect(() => {
     if (dates.length > 0) {
-      setSelectedDateIndex(dates.length - 1);
+      setSelectedDateIndex(defaultDateIndex);
     }
-  }, [dates.length]);
+  }, [dates.length, defaultDateIndex]);
 
-  const currentDateStr = dates[selectedDateIndex] || dates[dates.length - 1] || "2026-10-25";
+  const currentDateStr = dates[selectedDateIndex] || dates[defaultDateIndex] || todayStr;
   const cleanDate = currentDateStr.replace(/-/g, "");
+
+  // Partition dates into analysis (<= today) and forecast (> today)
+  const analysisDates = useMemo(() => dates.filter((d) => d <= todayStr), [dates, todayStr]);
+  const forecastDates = useMemo(() => dates.filter((d) => d > todayStr), [dates, todayStr]);
+
+  const dateCategory = useMemo(() => {
+    if (currentDateStr === todayStr) {
+      return {
+        type: "today",
+        label: "Analisis Observasi Hari Ini (Terkini)",
+        badgeBg: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800",
+        indicator: "bg-emerald-500 animate-pulse",
+      };
+    }
+    if (currentDateStr > todayStr) {
+      const diffTime = Math.abs(new Date(currentDateStr).getTime() - new Date(todayStr).getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return {
+        type: "forecast",
+        label: `Prediksi Model Numerik (+${diffDays} Hari ke Depan)`,
+        badgeBg: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800",
+        indicator: "bg-amber-500",
+      };
+    }
+    const diffTime = Math.abs(new Date(todayStr).getTime() - new Date(currentDateStr).getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return {
+      type: "past",
+      label: `Arsip Analisis Observasi (${diffDays} Hari Lalu)`,
+      badgeBg: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-800",
+      indicator: "bg-blue-500",
+    };
+  }, [currentDateStr, todayStr]);
 
   // Auto-play animation timer
   const animIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -193,6 +251,11 @@ export const TropicalWavesViewer: React.FC = () => {
   const handleStepFirst = () => {
     setIsPlaying(false);
     setSelectedDateIndex(0);
+  };
+
+  const handleStepToday = () => {
+    setIsPlaying(false);
+    setSelectedDateIndex(defaultDateIndex);
   };
 
   const handleStepLatest = () => {
@@ -272,31 +335,48 @@ export const TropicalWavesViewer: React.FC = () => {
             <CardContent className="p-4">
               <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 {/* Left: Date Display & Selector */}
-                <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-emerald-500 shrink-0" />
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Tanggal Analisis:
+                      Tanggal:
                     </span>
                   </div>
-                  <select
-                    value={currentDateStr}
-                    onChange={(e) => {
-                      setIsPlaying(false);
-                      const idx = dates.indexOf(e.target.value);
-                      if (idx !== -1) setSelectedDateIndex(idx);
-                    }}
-                    className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs sm:text-sm font-bold font-mono px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    {dates.map((d, idx) => (
-                      <option key={d} value={d}>
-                        {d} {idx === dates.length - 1 ? "(Terkini)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-[11px] text-slate-400">
-                    ({selectedDateIndex + 1}/{dates.length})
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={currentDateStr}
+                      onChange={(e) => {
+                        setIsPlaying(false);
+                        const idx = dates.indexOf(e.target.value);
+                        if (idx !== -1) setSelectedDateIndex(idx);
+                      }}
+                      className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs sm:text-sm font-bold font-mono px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      {analysisDates.length > 0 && (
+                        <optgroup label="Analisis & Observasi (Historis & Hari Ini)">
+                          {analysisDates.map((d) => (
+                            <option key={d} value={d}>
+                              {d} {d === todayStr ? "(Hari Ini - Analisis Terkini)" : "(Observasi)"}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {forecastDates.length > 0 && (
+                        <optgroup label="Prediksi Model Numerik (Forecast / Outlook)">
+                          {forecastDates.map((d, fIdx) => (
+                            <option key={d} value={d}>
+                              {d} (Prediksi +{fIdx + 1} Hari){fIdx === forecastDates.length - 1 ? " [Prediksi Terjauh]" : ""}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+
+                    <Badge variant="outline" className={`text-xs font-bold gap-1.5 py-1 px-2.5 ${dateCategory.badgeBg}`}>
+                      <span className={`w-2 h-2 rounded-full ${dateCategory.indicator}`} />
+                      <span>{dateCategory.label}</span>
+                    </Badge>
+                  </div>
                 </div>
 
                 {/* Center: Playback Controls */}
@@ -305,7 +385,7 @@ export const TropicalWavesViewer: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-slate-600 dark:text-slate-300"
-                    title="Tanggal Terlama (Awal)"
+                    title="Arsip Terlama (Awal)"
                     onClick={handleStepFirst}
                   >
                     <SkipBack className="h-4 w-4" />
@@ -351,10 +431,24 @@ export const TropicalWavesViewer: React.FC = () => {
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                   <Button
+                    variant={selectedDateIndex === defaultDateIndex ? "default" : "outline"}
+                    size="sm"
+                    className={`h-8 px-2.5 text-xs font-bold gap-1 rounded-lg ${
+                      selectedDateIndex === defaultDateIndex
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : "border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                    }`}
+                    title="Kembali ke Tanggal Hari Ini (Analisis Terkini)"
+                    onClick={handleStepToday}
+                  >
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>Hari Ini</span>
+                  </Button>
+                  <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-slate-600 dark:text-slate-300"
-                    title="Tanggal Terkini (Akhir)"
+                    title="Prediksi Terjauh (+27 Hari)"
                     onClick={handleStepLatest}
                   >
                     <SkipForward className="h-4 w-4" />
@@ -432,7 +526,7 @@ export const TropicalWavesViewer: React.FC = () => {
                           onClick={() =>
                             setLightboxImage({
                               url: imgProxyUrl,
-                              title: `${w.name} (${currentDateStr})`,
+                              title: `${w.name} (${currentDateStr}${currentDateStr > todayStr ? " - Prediksi Model" : " - Analisis"})`,
                               subtitle: `${w.propagation} • Kecepatan: ${w.speed} • Periode: ${w.period}`,
                             })
                           }
@@ -495,7 +589,7 @@ export const TropicalWavesViewer: React.FC = () => {
                         </Badge>
                       </CardTitle>
                       <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Tanggal Analisis: {currentDateStr} • Kecepatan: {currentWaveDef.speed} • Periode: {currentWaveDef.period}
+                        {dateCategory.label}: {currentDateStr} • Kecepatan: {currentWaveDef.speed} • Periode: {currentWaveDef.period}
                       </CardDescription>
                     </div>
 
@@ -507,7 +601,7 @@ export const TropicalWavesViewer: React.FC = () => {
                         onClick={() =>
                           setLightboxImage({
                             url: `/api/climate-drivers/tropical-waves?wave=${selectedWave}&date=${cleanDate}`,
-                            title: `${currentWaveDef.name} (${currentDateStr})`,
+                            title: `${currentWaveDef.name} (${currentDateStr}${currentDateStr > todayStr ? " - Prediksi Model" : " - Analisis"})`,
                             subtitle: `${currentWaveDef.propagation} • ${currentWaveDef.speed}`,
                           })
                         }
@@ -821,7 +915,7 @@ export const TropicalWavesViewer: React.FC = () => {
                     </div>
                     <div className="p-2.5 rounded-lg border-2 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30">
                       <div className="font-bold text-emerald-700 dark:text-emerald-300 mb-0.5">
-                        🔴 Fase 4 &amp; 5 (Indonesia)
+                        Fase 4 &amp; 5 (Indonesia)
                       </div>
                       <div className="text-emerald-800 dark:text-emerald-200 font-medium text-[11px]">
                         Benua Maritim: Konveksi &amp; Hujan Maksimum

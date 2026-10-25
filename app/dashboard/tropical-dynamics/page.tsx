@@ -150,7 +150,7 @@ export default function TropicalDynamicsPage() {
                   Fase {data.phase}
                 </div>
                 <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                  {data.phase === 4 || data.phase === 5 ? "🔴 Berada di Indonesia" : "Luar Wilayah Indonesia"}
+                  {data.phase === 4 || data.phase === 5 ? "Aktif di Wilayah Indonesia" : "Luar Wilayah Indonesia"}
                 </span>
               </CardContent>
             </Card>
