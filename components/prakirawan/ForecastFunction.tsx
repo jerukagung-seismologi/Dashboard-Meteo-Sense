@@ -30,6 +30,11 @@ import {
 import { useTheme } from "next-themes"
 import { EnsembleProbabilityChart, EnsembleHourlyItem } from "@/components/prakirawan/EnsembleProbabilityChart"
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
   Plus,
   Trash2,
   Save,
@@ -44,6 +49,12 @@ import {
   Sparkles,
   MessageSquare,
   Check,
+  MapPin,
+  Search,
+  Loader2,
+  ChevronsUpDown,
+  X,
+  LocateFixed,
 
   Thermometer,
   ThermometerSun,
@@ -109,8 +120,38 @@ const initialTimes = ["07:00", "10:00", "13:00", "16:00", "19:00"]
 const probabilities = ["100", "90", "80", "70", "60", "50", "40", "30", "20", "10", "0"]
 
 // --- CONSTANTS ---
-const KEBUMEN_LAT = -7.7366
-const KEBUMEN_LON = 109.6458
+export const KEBUMEN_LAT = -7.7366
+export const KEBUMEN_LON = 109.6458
+
+export interface LocationPreset {
+  name: string
+  region: string
+  lat: number
+  lon: number
+}
+
+// Preset kota & stasiun meteorologi populer di Indonesia untuk 1-klik pemilihan
+export const INDONESIA_POPULAR_LOCATIONS: LocationPreset[] = [
+  { name: "Kebumen", region: "Jawa Tengah (Stasiun Utama)", lat: -7.7366, lon: 109.6458 },
+  { name: "Semarang", region: "Jawa Tengah", lat: -6.9667, lon: 110.4167 },
+  { name: "Yogyakarta", region: "DI Yogyakarta", lat: -7.7956, lon: 110.3695 },
+  { name: "Surakarta (Solo)", region: "Jawa Tengah", lat: -7.5755, lon: 110.8243 },
+  { name: "Cilacap", region: "Jawa Tengah (Pantai Selatan)", lat: -7.7167, lon: 109.0167 },
+  { name: "Purwokerto", region: "Jawa Tengah (Banyumas)", lat: -7.4244, lon: 109.2306 },
+  { name: "Jakarta", region: "DKI Jakarta", lat: -6.2088, lon: 106.8456 },
+  { name: "Bandung", region: "Jawa Barat", lat: -6.9175, lon: 107.6191 },
+  { name: "Surabaya", region: "Jawa Timur", lat: -7.2575, lon: 112.7521 },
+  { name: "Malang", region: "Jawa Timur", lat: -7.9797, lon: 112.6304 },
+  { name: "Denpasar", region: "Bali", lat: -8.6705, lon: 115.2126 },
+  { name: "Medan", region: "Sumatera Utara", lat: 3.5952, lon: 98.6722 },
+  { name: "Palembang", region: "Sumatera Selatan", lat: -2.9761, lon: 104.7754 },
+  { name: "Makassar", region: "Sulawesi Selatan", lat: -5.1476, lon: 119.4327 },
+  { name: "Balikpapan", region: "Kalimantan Timur (IKN)", lat: -1.2654, lon: 116.8312 },
+  { name: "Pontianak", region: "Kalimantan Barat", lat: -0.0263, lon: 109.3425 },
+  { name: "Kupang", region: "Nusa Tenggara Timur", lat: -10.1772, lon: 123.6070 },
+  { name: "Jayapura", region: "Papua", lat: -2.5337, lon: 140.7181 },
+]
+
 
 // --- GLOBAL NWP & AI ENSEMBLE MODELS FOR CONSENSUS VOTING ---
 export const GLOBAL_NWP_MODELS = [
@@ -418,7 +459,17 @@ export default function ForecastForm() {
     }))
   )
   const [location, setLocation] = React.useState<string>("Kebumen")
+  const [selectedCoords, setSelectedCoords] = React.useState<{ lat: number; lon: number }>({
+    lat: KEBUMEN_LAT,
+    lon: KEBUMEN_LON,
+  })
   const currentLocationName = location || "Kebumen"
+
+  // State untuk Dropdown Search Lokasi
+  const [isLocationOpen, setIsLocationOpen] = React.useState<boolean>(false)
+  const [searchLocationQuery, setSearchLocationQuery] = React.useState<string>("")
+  const [isSearchingLocation, setIsSearchingLocation] = React.useState<boolean>(false)
+  const [locationSuggestions, setLocationSuggestions] = React.useState<any[]>([])
 
   const [forecastSource, setForecastSource] = React.useState<string>("Manual Analysis")
   const [notes, setNotes] = React.useState<string>("")
@@ -447,6 +498,9 @@ export default function ForecastForm() {
   const handleEditFromHistory = (forecast: Forecast) => {
     isEditingHistoryRef.current = true
     if (forecast.deviceName) setLocation(forecast.deviceName)
+    if (forecast.latitude && forecast.longitude) {
+      setSelectedCoords({ lat: forecast.latitude, lon: forecast.longitude })
+    }
     if (forecast.forecastSource) setForecastSource(forecast.forecastSource)
     if (forecast.notes !== undefined) setNotes(forecast.notes || "")
     if (forecast.hourlyData && Array.isArray(forecast.hourlyData)) {
@@ -491,6 +545,8 @@ export default function ForecastForm() {
       }))
     )
     setNotes("")
+    setLocation("Kebumen")
+    setSelectedCoords({ lat: KEBUMEN_LAT, lon: KEBUMEN_LON })
     setActiveTab("input")
     toast({
       title: "Form Baru",
@@ -699,8 +755,8 @@ export default function ForecastForm() {
       const forecastData: Omit<Forecast, "id" | "createdAt" | "version"> = {
         deviceId: "custom",
         deviceName: currentLocationName,
-        latitude: KEBUMEN_LAT, // Or get from device
-        longitude: KEBUMEN_LON, // Or get from device
+        latitude: selectedCoords.lat,
+        longitude: selectedCoords.lon,
         forecastDate: targetDateIsoStr, // Automatically uses selected target date (today, tomorrow, or custom)
         forecasterId: user?.uid || "anonymous",
         forecasterName: profile?.displayName || user?.email || "Unknown Forecaster",
@@ -1071,11 +1127,119 @@ export default function ForecastForm() {
     }
   }
 
+  // Debounce search untuk Dropdown Pencarian Lokasi & Kota
+  React.useEffect(() => {
+    const q = searchLocationQuery.trim()
+    if (q.length < 2) {
+      setLocationSuggestions([])
+      setIsSearchingLocation(false)
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingLocation(true)
+      try {
+        let results: any[] = []
+        // Coba endpoint internal geocode cache
+        try {
+          const res = await fetch(`/api/reanalysis/geocode?name=${encodeURIComponent(q)}`)
+          if (res.ok) {
+            const data = await res.json()
+            results = data.results || []
+          }
+        } catch {
+          // fallback
+        }
+
+        // Jika belum ada hasil, panggil langsung Open-Meteo Geocoding
+        if (results.length === 0) {
+          const directRes = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=10&language=id&format=json`
+          )
+          if (directRes.ok) {
+            const directData = await directRes.json()
+            results = directData.results || []
+          }
+        }
+
+        setLocationSuggestions(results)
+      } catch (err) {
+        console.error("Geocoding search error:", err)
+      } finally {
+        setIsSearchingLocation(false)
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchLocationQuery])
+
+  // Handler memilih lokasi dari dropdown
+  const handleSelectLocation = (loc: { name: string; region?: string; lat: number; lon: number }) => {
+    setLocation(loc.name)
+    setSelectedCoords({ lat: loc.lat, lon: loc.lon })
+    setIsLocationOpen(false)
+    setSearchLocationQuery("")
+    setLocationSuggestions([])
+
+    toast({
+      title: `✓ Lokasi Dipilih: ${loc.name}`,
+      description: `Koordinat: ${loc.lat.toFixed(4)}°, ${loc.lon.toFixed(4)}°. Mengambil konsensus model global...`,
+    })
+
+    fetchForecast(true, loc.lat, loc.lon, loc.name)
+  }
+
+  // Handler memilih custom input teks jika tidak ada di hasil dropdown
+  const handleSelectCustomTypedLocation = (customName: string) => {
+    const trimmed = customName.trim()
+    if (!trimmed) return
+    setIsLocationOpen(false)
+    setSearchLocationQuery("")
+    setLocationSuggestions([])
+    setLocation(trimmed)
+    fetchForecast(true, undefined, undefined, trimmed)
+  }
+
+  // Handler gunakan GPS saat ini
+  const handleUseCurrentGPS = () => {
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      toast({ title: "Mendeteksi GPS...", description: "Mengambil koordinat GPS perangkat Anda..." })
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const lat = pos.coords.latitude
+          const lon = pos.coords.longitude
+          let locName = `Lokasi GPS (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`
+          try {
+            const res = await fetch(
+              `https://geocoding-api.open-meteo.com/v1/search?name=${lat.toFixed(2)},${lon.toFixed(2)}&count=1&language=id`
+            )
+            const data = await res.json()
+            if (data?.results?.[0]?.name) {
+              locName = data.results[0].name
+            }
+          } catch {
+            // fallback
+          }
+          handleSelectLocation({ name: locName, region: "Koordinat GPS Saya", lat, lon })
+        },
+        (err) => {
+          toast({ title: "GPS Gagal", description: err.message || "Akses GPS tidak diizinkan atau dinonaktifkan.", variant: "destructive" })
+        }
+      )
+    }
+  }
+
   // --- FETCH FORECAST VIA EDGE ROUTE HANDLER DENGAN DIRECT FALLBACK ---
-  const fetchForecast = async (isManual = false) => {
-    if (!currentLocationName || currentLocationName.trim() === "") {
+  const fetchForecast = async (
+    isManual = false,
+    overrideLat?: number,
+    overrideLon?: number,
+    overrideLocName?: string
+  ) => {
+    const locNameToUse = (overrideLocName || currentLocationName).trim()
+    if (!locNameToUse) {
       if (isManual) {
-        toast({ title: "Lokasi kosong", description: "Masukkan nama lokasi terlebih dahulu.", variant: "destructive" })
+        toast({ title: "Lokasi kosong", description: "Pilih atau cari nama lokasi terlebih dahulu.", variant: "destructive" })
       }
       return
     }
@@ -1083,23 +1247,20 @@ export default function ForecastForm() {
     setLoadingFetch(true)
 
     try {
-      if (isManual) {
-        toast({
-          title: "Menghubungi Server...",
-          description: `Mengambil konsensus model global untuk ${forecastDisplayDateStr}...`
-        })
-      }
+      let lat = overrideLat !== undefined ? overrideLat : selectedCoords.lat
+      let lon = overrideLon !== undefined ? overrideLon : selectedCoords.lon
+      let locationName = locNameToUse
 
-      let lat = KEBUMEN_LAT
-      let lon = KEBUMEN_LON
-      let locationName = "Kebumen"
-
-      // 1) Geocoding jika bukan Kebumen
-      let locQuery = currentLocationName
-      if (locQuery.toLowerCase() !== "kebumen") {
+      // 1) Geocoding fallback jika koordinat belum spesifik dan bukan Kebumen default
+      if (
+        overrideLat === undefined &&
+        lat === KEBUMEN_LAT &&
+        lon === KEBUMEN_LON &&
+        locNameToUse.toLowerCase() !== "kebumen"
+      ) {
         try {
           const geoRes = await fetch(
-            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locQuery)}&count=1&language=id`
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locNameToUse)}&count=1&language=id`
           )
           const geoJson = await geoRes.json()
 
@@ -1107,21 +1268,22 @@ export default function ForecastForm() {
             const place = geoJson.results[0]
             lat = place.latitude
             lon = place.longitude
-            locationName = place.name || currentLocationName
-            console.log(`✓ Lokasi ditemukan: ${place.name}, ${place.admin1 || place.country}`)
+            locationName = place.name || locNameToUse
+            setSelectedCoords({ lat, lon })
+            console.log(`✓ Lokasi ditemukan via geocoding: ${place.name}, ${place.admin1 || place.country}`)
           } else {
-            console.warn(`✗ Lokasi "${locQuery}" tidak ditemukan. Menggunakan Kebumen default.`)
-            if (isManual) {
-              toast({
-                title: "Lokasi tidak ditemukan",
-                description: `"${locQuery}" tidak ditemukan. Menggunakan Kebumen sebagai default.`,
-                variant: "destructive"
-              })
-            }
+            console.warn(`✗ Lokasi "${locNameToUse}" tidak ditemukan di geocoder. Menggunakan koordinat aktif saat ini.`)
           }
         } catch (geoErr) {
           console.error("Geocoding error:", geoErr)
         }
+      }
+
+      if (isManual) {
+        toast({
+          title: "Menghubungi Server Model...",
+          description: `Mengambil konsensus model global untuk ${locationName} (${forecastDisplayDateStr})...`
+        })
       }
 
       // 2) Panggil Route Handler terpusat dengan tanggal target spesifik
@@ -1198,14 +1360,14 @@ export default function ForecastForm() {
     }
   }
 
-  // Auto-fetch forecast consensus whenever target date or location changes
+  // Auto-fetch forecast consensus whenever target date changes
   React.useEffect(() => {
     if (isEditingHistoryRef.current) {
       isEditingHistoryRef.current = false
       return
     }
-    fetchForecast(false)
-  }, [targetDateIsoStr, currentLocationName])
+    fetchForecast(false, selectedCoords.lat, selectedCoords.lon, location)
+  }, [targetDateIsoStr])
 
   // Helper render dropdown untuk probability dengan kelipatan 10 + custom
   const ProbabilitySelectItems = ({ currentVal }: { currentVal?: string }) => {
@@ -1330,13 +1492,178 @@ export default function ForecastForm() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border">
+                {/* DROPDOWN SEARCH LOCATION & KOTA */}
                 <div className="space-y-1">
-                  <label className="text-sm font-semibold">Lokasi / Kota</label>
-                  <Input
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="Contoh: Kebumen"
-                  />
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-rose-500" />
+                      Lokasi / Kota
+                    </label>
+                    <span className="text-[10px] font-mono text-muted-foreground bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                      {selectedCoords.lat.toFixed(2)}°, {selectedCoords.lon.toFixed(2)}°
+                    </span>
+                  </div>
+
+                  <Popover open={isLocationOpen} onOpenChange={setIsLocationOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={isLocationOpen}
+                        className="w-full justify-between font-normal text-left h-10 px-3 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <MapPin className="w-4 h-4 text-rose-500 shrink-0" />
+                          <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+                            {location || "Pilih atau cari kota..."}
+                          </span>
+                        </div>
+                        <ChevronsUpDown className="w-4 h-4 shrink-0 opacity-50 ml-1" />
+                      </Button>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-[320px] sm:w-[380px] p-2.5 z-50 shadow-xl" align="start">
+                      {/* Search Input Box */}
+                      <div className="relative mb-2">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                        <Input
+                          type="text"
+                          placeholder="Cari kota, kabupaten, kecamatan... (e.g. Bandung, Surabaya)"
+                          value={searchLocationQuery}
+                          onChange={(e) => setSearchLocationQuery(e.target.value)}
+                          className="pl-8 pr-8 text-xs h-9 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                          autoFocus
+                        />
+                        {searchLocationQuery && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSearchLocationQuery("")
+                              setLocationSuggestions([])
+                            }}
+                            className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* GPS Quick Action */}
+                      <div className="mb-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleUseCurrentGPS}
+                          className="h-7 px-2 text-[11px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 w-full justify-start font-medium"
+                        >
+                          <LocateFixed className="w-3.5 h-3.5 mr-1.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                          Gunakan Lokasi GPS Saya Saat Ini
+                        </Button>
+                      </div>
+
+                      {/* Loading state */}
+                      {isSearchingLocation && (
+                        <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                          Mencari wilayah di Indonesia &amp; dunia...
+                        </div>
+                      )}
+
+                      {/* Geocoding Search Results */}
+                      {!isSearchingLocation && locationSuggestions.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-[10px] font-semibold text-slate-400 px-2 py-1 uppercase tracking-wider">
+                            Hasil Pencarian ({locationSuggestions.length})
+                          </div>
+                          <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
+                            {locationSuggestions.map((place, idx) => (
+                              <button
+                                key={`${place.id || idx}-${place.latitude}`}
+                                type="button"
+                                onClick={() =>
+                                  handleSelectLocation({
+                                    name: place.name,
+                                    region: [place.admin2, place.admin1, place.country].filter(Boolean).join(", "),
+                                    lat: place.latitude,
+                                    lon: place.longitude,
+                                  })
+                                }
+                                className="w-full text-left px-2.5 py-1.5 rounded hover:bg-blue-50 dark:hover:bg-slate-800 flex items-center justify-between group transition text-xs"
+                              >
+                                <div className="truncate pr-2">
+                                  <div className="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate">
+                                    {place.name}
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                                    {[place.admin2, place.admin1, place.country].filter(Boolean).join(", ")}
+                                  </div>
+                                </div>
+                                <div className="text-[10px] font-mono text-slate-400 shrink-0 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded">
+                                  {place.latitude.toFixed(2)}°, {place.longitude.toFixed(2)}°
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Empty Search Result Fallback */}
+                      {!isSearchingLocation && searchLocationQuery.trim().length >= 2 && locationSuggestions.length === 0 && (
+                        <div className="text-center py-4 text-xs text-muted-foreground">
+                          Lokasi &quot;{searchLocationQuery}&quot; tidak ditemukan.
+                          <div className="mt-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => handleSelectCustomTypedLocation(searchLocationQuery)}
+                            >
+                              Gunakan &quot;{searchLocationQuery}&quot;
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Preset List (Default when not searching) */}
+                      {(!searchLocationQuery || searchLocationQuery.trim().length < 2) && (
+                        <div>
+                          <div className="text-[10px] font-semibold text-slate-400 px-2 py-1 uppercase tracking-wider flex items-center justify-between">
+                            <span>Kota &amp; Stasiun Populer</span>
+                            <span className="text-[9px] text-blue-500">1-Klik Pilih</span>
+                          </div>
+                          <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
+                            {INDONESIA_POPULAR_LOCATIONS.map((preset) => {
+                              const isSelected = location.toLowerCase() === preset.name.toLowerCase()
+                              return (
+                                <button
+                                  key={preset.name}
+                                  type="button"
+                                  onClick={() => handleSelectLocation(preset)}
+                                  className={cn(
+                                    "w-full text-left px-2.5 py-1.5 rounded flex items-center justify-between text-xs transition",
+                                    isSelected
+                                      ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-medium"
+                                      : "hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200"
+                                  )}
+                                >
+                                  <div className="truncate pr-2">
+                                    <div className="font-semibold">{preset.name}</div>
+                                    <div className="text-[10px] text-slate-400">{preset.region}</div>
+                                  </div>
+                                  <div className="text-[10px] font-mono text-slate-400 shrink-0">
+                                    {preset.lat.toFixed(2)}°, {preset.lon.toFixed(2)}°
+                                  </div>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="space-y-1">

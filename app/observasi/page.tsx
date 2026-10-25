@@ -44,6 +44,62 @@ export default function ObservationPage() {
   const [catatan, setCatatan] = useState("");
   const [lokasi, setLokasi] = useState<{ latitude: number; longitude: number } | null>(null);
   const [alamat, setAlamat] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+
+  // Debounced geocoding search for address
+  useEffect(() => {
+    const q = alamat.trim();
+    if (q.length < 3) {
+      setAddressSuggestions([]);
+      setIsSearchingAddress(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingAddress(true);
+      try {
+        let results: any[] = [];
+        try {
+          const res = await fetch(`/api/reanalysis/geocode?name=${encodeURIComponent(q)}`);
+          if (res.ok) {
+            const data = await res.json();
+            results = data.results || [];
+          }
+        } catch {
+          // fallback
+        }
+
+        if (results.length === 0) {
+          const directRes = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=id&format=json`
+          );
+          if (directRes.ok) {
+            const directData = await directRes.json();
+            results = directData.results || [];
+          }
+        }
+        setAddressSuggestions(results);
+      } catch (err) {
+        console.error("Observasi address geocode error:", err);
+      } finally {
+        setIsSearchingAddress(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [alamat]);
+
+  const handleSelectAddressSuggestion = (place: any) => {
+    const fullAddr = `${place.name}${place.admin2 ? `, ${place.admin2}` : ""}${place.admin1 ? `, ${place.admin1}` : ""}`;
+    setAlamat(fullAddr);
+    setLokasi({
+      latitude: place.latitude,
+      longitude: place.longitude,
+    });
+    setLocationStatus("success");
+    setAddressSuggestions([]);
+  };
 
   // Ambil Lokasi saat halaman dimuat
   useEffect(() => {
@@ -176,16 +232,50 @@ export default function ObservationPage() {
                   )}
                 </div>
 
-                {/* Alamat */}
-                <div className="space-y-3">
-                  <Label htmlFor="alamat">Alamat <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="alamat"
-                    placeholder="Contoh: Jl. Merdeka No. 10, Kelurahan, Kecamatan"
-                    value={alamat}
-                    onChange={(e) => setAlamat(e.target.value)}
-                    required
-                  />
+                {/* Alamat dengan Autocomplete Geocoding */}
+                <div className="space-y-1 relative">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="alamat">Alamat / Wilayah <span className="text-red-500">*</span></Label>
+                    {isSearchingAddress && (
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin text-emerald-500" />
+                        Mencari koordinat...
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id="alamat"
+                      placeholder="Ketik nama kelurahan, kecamatan, atau kota... (e.g. Gombong, Kebumen)"
+                      value={alamat}
+                      onChange={(e) => setAlamat(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  {/* Suggestions Dropdown */}
+                  {addressSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl max-h-52 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                      {addressSuggestions.map((place, idx) => (
+                        <button
+                          key={`${place.id || idx}-${place.latitude}`}
+                          type="button"
+                          onClick={() => handleSelectAddressSuggestion(place)}
+                          className="w-full text-left p-2.5 hover:bg-emerald-50/60 dark:hover:bg-slate-800 flex justify-between items-center transition"
+                        >
+                          <div className="truncate pr-2">
+                            <div className="font-bold text-slate-800 dark:text-slate-100">{place.name}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                              {[place.admin2, place.admin1, place.country].filter(Boolean).join(", ")}
+                            </div>
+                          </div>
+                          <div className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 shrink-0 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                            <MapPin className="h-3 w-3" /> {place.latitude.toFixed(2)}°, {place.longitude.toFixed(2)}°
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* 2. Intensitas Hujan */}

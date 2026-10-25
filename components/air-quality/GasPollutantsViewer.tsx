@@ -15,12 +15,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import {
   Wind,
   Flame,
@@ -34,6 +33,11 @@ import {
   Info,
   TrendingUp,
   AlertTriangle,
+  Search,
+  Loader2,
+  X,
+  ChevronsUpDown,
+  Crosshair,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchAllDevices } from "@/lib/FetchingDevice";
@@ -43,10 +47,12 @@ interface GasPollutantsViewerProps {
 }
 
 const PRESET_CITIES = [
+  { label: "Kebumen (Jawa Tengah)", lat: -7.7366, lon: 109.6458 },
   { label: "Jakarta (DKI Jakarta)", lat: -6.2088, lon: 106.8456 },
   { label: "Surabaya (Jawa Timur)", lat: -7.2575, lon: 112.7521 },
   { label: "Bandung (Jawa Barat)", lat: -6.9175, lon: 107.6191 },
   { label: "Semarang (Jawa Tengah)", lat: -7.0051, lon: 110.4381 },
+  { label: "Yogyakarta (DI Yogyakarta)", lat: -7.7956, lon: 110.3695 },
   { label: "Medan (Sumatra Utara)", lat: 3.5952, lon: 98.6722 },
   { label: "Palembang (Sumatra Selatan)", lat: -2.9761, lon: 104.7754 },
   { label: "IKN Nusantara (Kalimantan Timur)", lat: -0.9733, lon: 116.7088 },
@@ -68,6 +74,92 @@ export const GasPollutantsViewer: React.FC<GasPollutantsViewerProps> = ({
   }>(PRESET_CITIES[0]);
   const [userDevices, setUserDevices] = useState<Array<{ label: string; lat: number; lon: number }>>([]);
   const [activeTab, setActiveTab] = useState<string>("co_co2");
+
+  // Geocoding & Dropdown Popover States
+  const [isLocationOpen, setIsLocationOpen] = useState(false);
+  const [searchLocationQuery, setSearchLocationQuery] = useState("");
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
+  const [geoLoading, setGeoLoading] = useState(false);
+
+  // Debounced geocoding search
+  useEffect(() => {
+    const q = searchLocationQuery.trim();
+    if (q.length < 2) {
+      setLocationSuggestions([]);
+      setIsSearchingLocation(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingLocation(true);
+      try {
+        let results: any[] = [];
+        try {
+          const res = await fetch(`/api/reanalysis/geocode?name=${encodeURIComponent(q)}`);
+          if (res.ok) {
+            const data = await res.json();
+            results = data.results || [];
+          }
+        } catch {
+          // fallback
+        }
+
+        if (results.length === 0) {
+          const directRes = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=id&format=json`
+          );
+          if (directRes.ok) {
+            const directData = await directRes.json();
+            results = directData.results || [];
+          }
+        }
+        setLocationSuggestions(results);
+      } catch (err) {
+        console.error("GasPollutantsViewer geocode error:", err);
+      } finally {
+        setIsSearchingLocation(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchLocationQuery]);
+
+  const handleSelectLocation = (loc: { label: string; lat: number; lon: number }) => {
+    setSelectedLocation(loc);
+    setIsLocationOpen(false);
+    setSearchLocationQuery("");
+    setLocationSuggestions([]);
+  };
+
+  const handleUseCurrentGPS = () => {
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      setGeoLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          setGeoLoading(false);
+          const lat = Number(pos.coords.latitude.toFixed(4));
+          const lon = Number(pos.coords.longitude.toFixed(4));
+          let locLabel = `GPS Saya (${lat}°, ${lon}°)`;
+          try {
+            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${lat},${lon}&count=1&language=id`);
+            const data = await res.json();
+            if (data?.results?.[0]?.name) {
+              locLabel = `${data.results[0].name} (GPS)`;
+            }
+          } catch {
+            // fallback
+          }
+          handleSelectLocation({ label: locLabel, lat, lon });
+        },
+        (err) => {
+          setGeoLoading(false);
+          console.warn("GPS error:", err);
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+  };
 
   // Load user IoT devices if available
   useEffect(() => {
@@ -453,28 +545,172 @@ export const GasPollutantsViewer: React.FC<GasPollutantsViewerProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
-            <Select
-              value={`${selectedLocation.lat},${selectedLocation.lon}`}
-              onValueChange={(val) => {
-                const [latStr, lonStr] = val.split(",");
-                const lat = parseFloat(latStr);
-                const lon = parseFloat(lonStr);
-                const match = allLocations.find((l) => Math.abs(l.lat - lat) < 0.001 && Math.abs(l.lon - lon) < 0.001);
-                if (match) setSelectedLocation(match);
-              }}
-            >
-              <SelectTrigger className="w-[220px] h-8 text-xs bg-slate-50 dark:bg-slate-800">
-                <MapPin className="h-3.5 w-3.5 mr-1 text-orange-500 shrink-0" />
-                <SelectValue placeholder="Pilih Lokasi Wilayah" />
-              </SelectTrigger>
-              <SelectContent>
-                {allLocations.map((loc, idx) => (
-                  <SelectItem key={idx} value={`${loc.lat},${loc.lon}`} className="text-xs">
-                    {loc.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Popover Combobox Searchable Location */}
+            <Popover open={isLocationOpen} onOpenChange={setIsLocationOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={isLocationOpen}
+                  className="w-[240px] sm:w-[280px] h-8 text-xs font-normal justify-between bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                >
+                  <div className="flex items-center gap-1.5 truncate">
+                    <MapPin className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                    <span className="truncate font-medium">{selectedLocation.label}</span>
+                  </div>
+                  <ChevronsUpDown className="h-3.5 w-3.5 opacity-50 shrink-0 ml-1" />
+                </Button>
+              </PopoverTrigger>
+
+              <PopoverContent className="w-[320px] sm:w-[360px] p-2.5 z-50 shadow-xl" align="end">
+                {/* Search Input Box */}
+                <div className="relative mb-2">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Cari kota / wilayah kualitas udara..."
+                    value={searchLocationQuery}
+                    onChange={(e) => setSearchLocationQuery(e.target.value)}
+                    className="pl-8 pr-8 text-xs h-8 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                    autoFocus
+                  />
+                  {searchLocationQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchLocationQuery("");
+                        setLocationSuggestions([]);
+                      }}
+                      className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* GPS Quick Action */}
+                <div className="mb-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleUseCurrentGPS}
+                    disabled={geoLoading}
+                    className="h-7 px-2 text-[11px] text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50 w-full justify-start font-medium"
+                  >
+                    <Crosshair className={`w-3.5 h-3.5 mr-1.5 ${geoLoading ? "animate-spin" : ""}`} />
+                    <span>Gunakan Titik GPS Saya Saat Ini</span>
+                  </Button>
+                </div>
+
+                {/* Loading state */}
+                {isSearchingLocation && (
+                  <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-orange-500" />
+                    Mencari koordinat wilayah di Indonesia &amp; dunia...
+                  </div>
+                )}
+
+                {/* Geocoding Search Results */}
+                {!isSearchingLocation && locationSuggestions.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-semibold text-slate-400 px-2 py-1 uppercase tracking-wider">
+                      Hasil Pencarian ({locationSuggestions.length})
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
+                      {locationSuggestions.map((place, idx) => (
+                        <button
+                          key={`${place.id || idx}-${place.latitude}`}
+                          type="button"
+                          onClick={() =>
+                            handleSelectLocation({
+                              label: `${place.name}${place.admin1 ? `, ${place.admin1}` : ""}`,
+                              lat: place.latitude,
+                              lon: place.longitude,
+                            })
+                          }
+                          className="w-full text-left px-2.5 py-1.5 rounded hover:bg-orange-50 dark:hover:bg-slate-800 flex items-center justify-between group transition text-xs"
+                        >
+                          <div className="truncate pr-2">
+                            <div className="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-orange-600 dark:group-hover:text-orange-400 truncate">
+                              {place.name}
+                            </div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                              {[place.admin2, place.admin1, place.country].filter(Boolean).join(", ")}
+                            </div>
+                          </div>
+                          <div className="text-[10px] font-mono text-slate-400 shrink-0 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded">
+                            {place.latitude.toFixed(2)}°, {place.longitude.toFixed(2)}°
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Default Presets (when not actively searching) */}
+                {(!searchLocationQuery || searchLocationQuery.trim().length < 2) && (
+                  <div className="space-y-2">
+                    {/* User IoT devices if available */}
+                    {userDevices.length > 0 && (
+                      <div>
+                        <div className="text-[10px] font-semibold text-orange-600 dark:text-orange-400 px-2 py-1 uppercase tracking-wider">
+                          Stasiun Sensor Saya ({userDevices.length})
+                        </div>
+                        <div className="max-h-28 overflow-y-auto space-y-0.5 pr-1">
+                          {userDevices.map((dev, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleSelectLocation(dev)}
+                              className="w-full text-left px-2.5 py-1.5 rounded hover:bg-orange-50 dark:hover:bg-slate-800 flex items-center justify-between text-xs transition"
+                            >
+                              <span className="font-medium text-slate-800 dark:text-slate-200 truncate pr-2">
+                                {dev.label}
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                                {dev.lat.toFixed(2)}°, {dev.lon.toFixed(2)}°
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <div className="text-[10px] font-semibold text-slate-400 px-2 py-1 uppercase tracking-wider flex items-center justify-between">
+                        <span>Pilihan Kota Populer</span>
+                        <span className="text-[9px] text-orange-500">1-Klik Pilih</span>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto space-y-0.5 pr-1">
+                        {PRESET_CITIES.map((city, idx) => {
+                          const isSelected =
+                            Math.abs(selectedLocation.lat - city.lat) < 0.001 &&
+                            Math.abs(selectedLocation.lon - city.lon) < 0.001;
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleSelectLocation(city)}
+                              className={`w-full text-left px-2.5 py-1.5 rounded flex items-center justify-between text-xs transition ${
+                                isSelected
+                                  ? "bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 font-medium"
+                                  : "hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200"
+                              }`}
+                            >
+                              <span className="truncate pr-2">{city.label}</span>
+                              <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                                {city.lat.toFixed(2)}°, {city.lon.toFixed(2)}°
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
 
             <Button
               variant="outline"
