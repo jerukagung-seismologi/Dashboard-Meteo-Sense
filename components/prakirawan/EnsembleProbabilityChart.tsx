@@ -16,7 +16,11 @@ import {
   Globe2,
   Cpu,
   Info,
-  Table as TableIcon
+  Table as TableIcon,
+  LayoutGrid,
+  Thermometer,
+  CloudRain,
+  CheckCircle2,
 } from "lucide-react"
 import { WeatherCondition } from "@/components/prakirawan/ForecastFunction"
 import { cn } from "@/lib/utils"
@@ -84,6 +88,7 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
 }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(true)
   const [activeView, setActiveView] = useState<"chart" | "matrix">("chart")
+  const [matrixSubView, setMatrixSubView] = useState<"grid" | "summary">("grid")
 
   // Validasi data
   const hasData = useMemo(() => {
@@ -94,6 +99,48 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
       data.some((d) => d.votingBreakdown && d.votingBreakdown.length > 0)
     )
   }, [data])
+
+  // Total model yang berpartisipasi
+  const totalModelsCount = useMemo(() => {
+    return modelsUsed?.length || data?.[0]?.modelPredictions?.length || 10
+  }, [modelsUsed, data])
+
+  // Daftar model unik yang berpartisipasi
+  const participatingModels = useMemo(() => {
+    if (modelsUsed && modelsUsed.length > 0) return modelsUsed
+    if (data && data[0]?.modelPredictions && data[0].modelPredictions.length > 0) {
+      return data[0].modelPredictions.map((p) => {
+        const isAi = p.modelId.includes("aifs") || p.modelId.includes("aigfs")
+        let cleanName = p.modelName
+        let country = "Global"
+        if (p.modelName.includes("(") && p.modelName.includes(")")) {
+          const parts = p.modelName.split("(")
+          cleanName = parts[0].trim()
+          country = parts[1].replace(")", "").trim()
+        }
+        return {
+          id: p.modelId,
+          name: cleanName,
+          country: country,
+          category: isAi ? "AI Model" : "Physics NWP",
+        }
+      })
+    }
+    return []
+  }, [modelsUsed, data])
+
+  // Pengelompokan model AI vs Physics NWP
+  const aiModels = useMemo(() => {
+    return participatingModels.filter(
+      (m) => m.category?.toLowerCase().includes("ai") || m.id.includes("aifs") || m.id.includes("aigfs")
+    )
+  }, [participatingModels])
+
+  const nwpModels = useMemo(() => {
+    return participatingModels.filter(
+      (m) => !m.category?.toLowerCase().includes("ai") && !m.id.includes("aifs") && !m.id.includes("aigfs")
+    )
+  }, [participatingModels])
 
   // Menghitung Agreement Index (Tingkat Kesepakatan Model)
   const agreementMetrics = useMemo(() => {
@@ -159,6 +206,60 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
     }
   }, [hasData, data])
 
+  // Ringkasan spektrum ensemble (Suhu min-max dan jendela hujan)
+  const ensembleSummary = useMemo(() => {
+    if (!data || data.length === 0) return null
+
+    const allTemps: number[] = []
+    let maxPrecip = 0
+    let maxPrecipTime = ""
+    let maxPrecipModel = ""
+
+    data.forEach((row) => {
+      row.modelPredictions?.forEach((p) => {
+        if (typeof p.temperature === "number" && !isNaN(p.temperature)) {
+          allTemps.push(p.temperature)
+        }
+        if (p.precipitation && p.precipitation > maxPrecip) {
+          maxPrecip = p.precipitation
+          maxPrecipTime = row.time
+          maxPrecipModel = p.modelName.replace(/\(.*?\)/g, "").trim()
+        }
+      })
+    })
+
+    const minTemp = allTemps.length > 0 ? Math.min(...allTemps).toFixed(0) : "-"
+    const maxTemp = allTemps.length > 0 ? Math.max(...allTemps).toFixed(0) : "-"
+
+    // Temukan jam dengan probabilitas hujan tertinggi
+    const rainHours = data
+      .map((row) => {
+        const rainVote = row.votingBreakdown?.find(
+          (vb) =>
+            vb.condition.toLowerCase().includes("hujan") ||
+            vb.condition.toLowerCase().includes("petir")
+        )
+        return {
+          time: row.time,
+          percentage: rainVote ? rainVote.percentage : 0,
+          condition: rainVote ? rainVote.condition : null,
+        }
+      })
+      .filter((rh) => rh.percentage > 0)
+      .sort((a, b) => b.percentage - a.percentage)
+
+    const peakRain = rainHours.length > 0 ? rainHours[0] : null
+
+    return {
+      minTemp,
+      maxTemp,
+      maxPrecip,
+      maxPrecipTime,
+      maxPrecipModel,
+      peakRain,
+    }
+  }, [data])
+
   // Bangun opsi ECharts untuk 100% Stacked Bar Chart
   const chartOption = useMemo(() => {
     if (!hasData || !data) return {}
@@ -174,9 +275,7 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
     })
 
     const uniqueConditions = Array.from(uniqueConditionsSet)
-
-    // Hitung total model rata-rata (default 7)
-    const totalModels = modelsUsed?.length || 7
+    const totalModels = totalModelsCount
 
     // Buat Series tumpukan (Stacked Bar 100%)
     const series = uniqueConditions.map((condition) => {
@@ -263,18 +362,42 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
           if (!params || params.length === 0) return ""
 
           const timeLabel = params[0]?.axisValueLabel || ""
+          const rawHour = timeLabel.replace(" WIB", "").trim()
+          const hourItem = data.find((d) => d.time === rawHour || d.time === timeLabel)
+          const temps =
+            hourItem?.modelPredictions
+              ?.map((p) => p.temperature)
+              .filter((t): t is number => typeof t === "number" && !isNaN(t)) || []
+          const minT = temps.length > 0 ? Math.min(...temps).toFixed(1) : null
+          const maxT = temps.length > 0 ? Math.max(...temps).toFixed(1) : null
+          const meanT = hourItem?.temperature
+
           let html = `
-            <div style="font-family: inherit; min-width: 220px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid ${isDarkMode ? "#334155" : "#E2E8F0"}; padding-bottom: 6px; margin-bottom: 8px;">
-                <span style="font-weight: 700; font-size: 13px; color: ${isDarkMode ? "#38BDF8" : "#0284C7"};">
-                  🕒 Jam ${timeLabel} WIB
+            <div style="font-family: inherit; min-width: 250px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid ${
+                isDarkMode ? "#334155" : "#E2E8F0"
+              }; padding-bottom: 6px; margin-bottom: 8px;">
+                <span style="font-weight: 700; font-size: 13px; color: ${
+                  isDarkMode ? "#38BDF8" : "#0284C7"
+                };">
+                  🕒 Jam ${rawHour} WIB
                 </span>
                 <span style="font-size: 11px; color: #94A3B8;">${totalModels} Model Terlibat</span>
               </div>
-              <div style="display: flex; flex-direction: column; gap: 6px;">
           `
 
-          // Urutkan segmen dari persentase terbesar
+          if (minT !== null && maxT !== null && meanT !== "") {
+            html += `
+              <div style="font-size: 11px; margin-bottom: 8px; padding: 4px 8px; border-radius: 5px; background: ${
+                isDarkMode ? "rgba(56, 189, 248, 0.08)" : "rgba(2, 132, 199, 0.06)"
+              }; color: ${isDarkMode ? "#93C5FD" : "#0369A1"};">
+                🌡️ Suhu Lintas Model: <b>${minT}°C – ${maxT}°C</b> (Mean: ${meanT}°C)
+              </div>
+            `
+          }
+
+          html += `<div style="display: flex; flex-direction: column; gap: 6px;">`
+
           const sorted = [...params].sort(
             (a, b) => (b.data?.value || 0) - (a.data?.value || 0)
           )
@@ -290,18 +413,20 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
             const modelNames = Array.isArray(d.models) ? d.models.join(", ") : ""
 
             html += `
-              <div style="padding: 4px 6px; border-radius: 6px; background: ${isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)"};">
+              <div style="padding: 5px 8px; border-radius: 6px; background: ${
+                isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)"
+              }; border-left: 3px solid ${color};">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                   <span style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
-                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${color};"></span>
                     <span>${conditionName}</span>
                   </span>
                   <span style="font-weight: 700; color: ${color};">${pct}% <span style="font-size: 10px; opacity: 0.8;">(${count}/${totalModels})</span></span>
                 </div>
-                ${modelNames
-                ? `<div style="font-size: 10px; color: #94A3B8; margin-top: 2px; padding-left: 16px;">Model: ${modelNames}</div>`
-                : ""
-              }
+                ${
+                  modelNames
+                    ? `<div style="font-size: 10px; color: #94A3B8; margin-top: 2px;">Model: ${modelNames}</div>`
+                    : ""
+                }
               </div>
             `
           })
@@ -365,7 +490,7 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
       },
       series: series,
     }
-  }, [hasData, data, modelsUsed, isDarkMode])
+  }, [hasData, data, totalModelsCount, isDarkMode])
 
   return (
     <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/90 overflow-hidden transition-all duration-300">
@@ -386,7 +511,7 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
                   )}
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Distribusi voting 100% stacked bar dari 7 model global (Physics NWP & AI DeepMind) per slot jam
+                  Distribusi voting 100% stacked bar dari {totalModelsCount} model global (Physics NWP & AI Deep Learning) per slot jam
                 </CardDescription>
               </div>
             </div>
@@ -480,25 +605,43 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
 
             {/* BADGES PARTICIPATING MODELS */}
             <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-slate-500 dark:text-slate-400">
-              <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
-                <Cpu className="w-3 h-3 text-indigo-500" /> AI:
-              </span>
-              <span className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                Google WeatherNext 2
-              </span>
-              <span className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                ECMWF AIFS
-              </span>
-              <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300 ml-1">
-                <Globe2 className="w-3 h-3 text-sky-500" /> NWP:
-              </span>
-              <span className="bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 px-1.5 py-0.5 rounded border border-sky-200 dark:border-sky-800">
-                ECMWF IFS • GFS • ICON • GEM • JMA
-              </span>
+              {aiModels.length > 0 && (
+                <>
+                  <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                    <Cpu className="w-3 h-3 text-indigo-500" /> AI ({aiModels.length}):
+                  </span>
+                  {aiModels.map((m) => (
+                    <span
+                      key={m.id}
+                      className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 text-[10px]"
+                    >
+                      {m.name}
+                    </span>
+                  ))}
+                </>
+              )}
+              {nwpModels.length > 0 && (
+                <>
+                  <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300 ml-1">
+                    <Globe2 className="w-3 h-3 text-sky-500" /> NWP ({nwpModels.length}):
+                  </span>
+                  <span className="bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 px-1.5 py-0.5 rounded border border-sky-200 dark:border-sky-800 text-[10px]">
+                    {nwpModels.map((m) => m.name.replace(/Deterministic|Seamless|World025|0125°/gi, "").trim()).join(" • ")}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         )}
       </CardHeader>
+
+      {/* STRIP LOADING ANIMATION */}
+      {isLoading && (
+        <div className="p-2.5 bg-blue-50/80 dark:bg-blue-950/40 border-b border-blue-200 dark:border-blue-900/60 flex items-center justify-center gap-2 text-xs text-blue-700 dark:text-blue-300 font-medium animate-pulse">
+          <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600 dark:text-blue-400" />
+          <span>Sedang mensinkronisasi konsensus dari {totalModelsCount} model prediksi cuaca global (ECMWF IFS, AIFS, GFS, AIGFS, ICON, UKMO, ARPEGE, JMA, GEM, CMA)...</span>
+        </div>
+      )}
 
       {isExpanded && (
         <CardContent className="p-3 sm:p-5">
@@ -512,7 +655,7 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
                   Data Probabilitas Ensemble Belum Dimuat
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Silakan klik tombol <strong>"Ambil Otomatis"</strong> di atas form tabel prakiraan untuk mengambil prediksi 7 model global dan menghitung bar chart probabilitas ensemble secara real-time.
+                  Silakan klik tombol <strong>"Ambil Otomatis"</strong> di atas form tabel prakiraan untuk mengambil prediksi {totalModelsCount} model global dan menghitung bar chart probabilitas ensemble secara real-time.
                 </p>
               </div>
               {onRefresh && (
@@ -529,7 +672,56 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
               )}
             </div>
           ) : activeView === "chart" ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* KARTU STATISTIK SPEKTRUM ENSEMBLE */}
+              {ensembleSummary && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200/80 dark:border-slate-700/80">
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase tracking-wider font-semibold">
+                      <Thermometer className="w-3 h-3 text-amber-500" />
+                      Rentang Suhu Model
+                    </div>
+                    <div className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                      {ensembleSummary.minTemp}°C – {ensembleSummary.maxTemp}°C
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200/80 dark:border-slate-700/80">
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase tracking-wider font-semibold">
+                      <CloudRain className="w-3 h-3 text-blue-500" />
+                      Puncak Peluang Hujan
+                    </div>
+                    <div className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                      {ensembleSummary.peakRain
+                        ? `${ensembleSummary.peakRain.time} WIB (${ensembleSummary.peakRain.percentage}%)`
+                        : "Nihil (Kering)"}
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200/80 dark:border-slate-700/80">
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase tracking-wider font-semibold">
+                      <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                      Model Berpartisipasi
+                    </div>
+                    <div className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                      {totalModelsCount} Model Sukses
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200/80 dark:border-slate-700/80">
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase tracking-wider font-semibold">
+                      <CheckCircle2 className="w-3 h-3 text-sky-500" />
+                      Maks Curah Hujan
+                    </div>
+                    <div className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                      {ensembleSummary.maxPrecip > 0
+                        ? `${ensembleSummary.maxPrecip} mm (${ensembleSummary.maxPrecipTime} WIB)`
+                        : "0 mm"}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* ECHARTS CONTAINER */}
               <div className="w-full h-[290px] sm:h-[320px]">
                 <ReactECharts
@@ -543,7 +735,7 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
               <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-1">
                   <Info className="w-3.5 h-3.5 text-blue-500" />
-                  Arahkan kursor (hover) pada batang jam untuk melihat nama-nama model yang memilih kondisi tersebut.
+                  Arahkan kursor (hover) pada batang jam untuk melihat nama-nama model dan rentang suhu.
                 </span>
                 <span className="font-medium text-slate-600 dark:text-slate-300">
                   Tinggi Batang = 100% Total Konsensus
@@ -552,70 +744,224 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
             </div>
           ) : (
             /* MATRIKS MODEL VIEW */
-            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-              <table className="w-full min-w-[550px] text-xs text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-                    <th className="p-2.5 text-center w-24">Jam</th>
-                    <th className="p-2.5">Kondisi Dominan</th>
-                    <th className="p-2.5 text-center">Probabilitas</th>
-                    <th className="p-2.5">Rincian Voting Model</th>
-                    <th className="p-2.5 text-center">Suhu / RH Mean</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {data?.map((row, idx) => {
-                    const dominant = row.votingBreakdown?.[0]
-                    return (
-                      <tr
-                        key={idx}
-                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
-                      >
-                        <td className="p-2.5 text-center font-bold text-slate-800 dark:text-slate-200 bg-slate-50/50 dark:bg-slate-900/50">
-                          {row.time} WIB
-                        </td>
-                        <td className="p-2.5">
-                          <span
-                            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold text-white"
-                            style={{
-                              backgroundColor:
-                                CONDITION_COLOR_MAP[row.conditionMain] || "#64748B",
-                            }}
+            <div className="space-y-3">
+              {/* SUB-VIEW TOGGLE */}
+              <div className="flex items-center justify-between gap-2 pb-1">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <Button
+                    type="button"
+                    variant={matrixSubView === "grid" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setMatrixSubView("grid")}
+                    className={cn(
+                      "h-6 px-2 text-[11px] font-medium rounded",
+                      matrixSubView === "grid"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs"
+                        : "text-slate-600 dark:text-slate-300"
+                    )}
+                  >
+                    <LayoutGrid className="w-3 h-3 mr-1" />
+                    Interkomparasi Per-Model
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={matrixSubView === "summary" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setMatrixSubView("summary")}
+                    className={cn(
+                      "h-6 px-2 text-[11px] font-medium rounded",
+                      matrixSubView === "summary"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs"
+                        : "text-slate-600 dark:text-slate-300"
+                    )}
+                  >
+                    <TableIcon className="w-3 h-3 mr-1" />
+                    Distribusi Voting Kondisi
+                  </Button>
+                </div>
+                <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                  {matrixSubView === "grid"
+                    ? "Menampilkan prediksi cuaca & suhu tiap model bersanding"
+                    : "Menampilkan akumulasi suara kondisi cuaca"}
+                </span>
+              </div>
+
+              {matrixSubView === "grid" ? (
+                /* 1. GRID INTERKOMPARASI DETAIL PER-MODEL */
+                <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                  <table className="w-full min-w-[850px] text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-200 dark:border-slate-700">
+                        <th className="p-2.5 text-center sticky left-0 z-20 bg-slate-100 dark:bg-slate-800 shadow-[1px_0_3px_rgba(0,0,0,0.08)] w-24">
+                          Jam
+                        </th>
+                        <th className="p-2.5 bg-blue-50/70 dark:bg-blue-950/40 border-r border-blue-200 dark:border-blue-900 text-center w-36">
+                          Konsensus Akhir
+                        </th>
+                        {participatingModels.map((m) => (
+                          <th
+                            key={m.id}
+                            className="p-2 text-center min-w-[100px] border-l border-slate-200 dark:border-slate-800 font-semibold"
                           >
-                            {row.conditionMain}
-                          </span>
-                        </td>
-                        <td className="p-2.5 text-center font-bold text-slate-700 dark:text-slate-300">
-                          {dominant?.percentage || row.probMain}%
-                        </td>
-                        <td className="p-2.5">
-                          <div className="flex flex-wrap gap-1.5">
-                            {row.votingBreakdown?.map((vb, vIdx) => (
-                              <span
-                                key={vIdx}
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
-                              >
-                                <span
-                                  className="w-2 h-2 rounded-full inline-block"
-                                  style={{
-                                    backgroundColor:
-                                      CONDITION_COLOR_MAP[vb.condition] || "#94a3b8",
-                                  }}
-                                ></span>
-                                <strong>{vb.condition}</strong>: {vb.percentage}% ({vb.count} model)
+                            <div className="flex flex-col items-center">
+                              <span className="truncate max-w-[105px] font-bold" title={m.name}>
+                                {m.name.replace(/Deterministic|Seamless|World025|0125°/gi, "").trim()}
                               </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="p-2.5 text-center font-mono text-slate-600 dark:text-slate-400">
-                          {row.temperature !== "" ? `${row.temperature}°C` : "-"} /{" "}
-                          {row.humidity !== "" ? `${row.humidity}%` : "-"}
-                        </td>
+                              <span className="text-[9px] text-muted-foreground font-normal">
+                                {m.country}
+                              </span>
+                            </div>
+                          </th>
+                        ))}
                       </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                      {data?.map((row, idx) => (
+                        <tr
+                          key={idx}
+                          className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                        >
+                          {/* STICKY JAM */}
+                          <td className="p-2 text-center font-bold text-slate-900 dark:text-slate-100 sticky left-0 z-10 bg-white dark:bg-slate-900 shadow-[1px_0_3px_rgba(0,0,0,0.08)]">
+                            {row.time} WIB
+                          </td>
+                          {/* KONSENSUS AKHIR */}
+                          <td className="p-2 bg-blue-50/40 dark:bg-blue-950/20 border-r border-blue-200 dark:border-blue-900/60 text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <span
+                                className="px-2 py-0.5 rounded text-[10px] font-bold text-white shadow-xs"
+                                style={{
+                                  backgroundColor:
+                                    CONDITION_COLOR_MAP[row.conditionMain] || "#64748B",
+                                }}
+                              >
+                                {row.conditionMain} ({row.probMain}%)
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-600 dark:text-slate-300">
+                                {row.temperature !== "" ? `${row.temperature}°C` : "-"} /{" "}
+                                {row.humidity !== "" ? `${row.humidity}%` : "-"}
+                              </span>
+                            </div>
+                          </td>
+                          {/* CELL PER MODEL */}
+                          {participatingModels.map((m) => {
+                            const pred = row.modelPredictions?.find((p) => p.modelId === m.id)
+                            if (!pred) {
+                              return (
+                                <td
+                                  key={m.id}
+                                  className="p-2 text-center text-muted-foreground border-l border-slate-100 dark:border-slate-800/60"
+                                >
+                                  —
+                                </td>
+                              )
+                            }
+                            const condColor = CONDITION_COLOR_MAP[pred.condition] || "#64748B"
+                            return (
+                              <td
+                                key={m.id}
+                                className="p-1.5 text-center border-l border-slate-100 dark:border-slate-800/60"
+                              >
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <span
+                                    className="px-1.5 py-0.5 rounded text-[9.5px] font-medium text-white truncate max-w-[95px]"
+                                    style={{ backgroundColor: condColor }}
+                                    title={pred.condition}
+                                  >
+                                    {pred.condition}
+                                  </span>
+                                  <div className="flex items-center gap-1 text-[10px] font-mono text-slate-700 dark:text-slate-300">
+                                    <span>
+                                      {typeof pred.temperature === "number" && !isNaN(pred.temperature)
+                                        ? `${Math.round(pred.temperature)}°`
+                                        : "-"}
+                                    </span>
+                                    {pred.precipitation && pred.precipitation > 0 ? (
+                                      <span
+                                        className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-1 rounded"
+                                        title={`Presipitasi: ${pred.precipitation} mm`}
+                                      >
+                                        💧{pred.precipitation}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                /* 2. RINGKASAN DISTRIBUSI VOTING */
+                <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                  <table className="w-full min-w-[550px] text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                        <th className="p-2.5 text-center w-24">Jam</th>
+                        <th className="p-2.5">Kondisi Dominan</th>
+                        <th className="p-2.5 text-center">Probabilitas</th>
+                        <th className="p-2.5">Rincian Voting Model</th>
+                        <th className="p-2.5 text-center">Suhu / RH Mean</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                      {data?.map((row, idx) => {
+                        const dominant = row.votingBreakdown?.[0]
+                        return (
+                          <tr
+                            key={idx}
+                            className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                          >
+                            <td className="p-2.5 text-center font-bold text-slate-800 dark:text-slate-200 bg-slate-50/50 dark:bg-slate-900/50">
+                              {row.time} WIB
+                            </td>
+                            <td className="p-2.5">
+                              <span
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold text-white"
+                                style={{
+                                  backgroundColor:
+                                    CONDITION_COLOR_MAP[row.conditionMain] || "#64748B",
+                                }}
+                              >
+                                {row.conditionMain}
+                              </span>
+                            </td>
+                            <td className="p-2.5 text-center font-bold text-slate-700 dark:text-slate-300">
+                              {dominant?.percentage || row.probMain}%
+                            </td>
+                            <td className="p-2.5">
+                              <div className="flex flex-wrap gap-1.5">
+                                {row.votingBreakdown?.map((vb, vIdx) => (
+                                  <span
+                                    key={vIdx}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                                  >
+                                    <span
+                                      className="w-2 h-2 rounded-full inline-block"
+                                      style={{
+                                        backgroundColor:
+                                          CONDITION_COLOR_MAP[vb.condition] || "#94a3b8",
+                                      }}
+                                    ></span>
+                                    <strong>{vb.condition}</strong>: {vb.percentage}% ({vb.count} model)
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="p-2.5 text-center font-mono text-slate-600 dark:text-slate-400">
+                              {row.temperature !== "" ? `${row.temperature}°C` : "-"} /{" "}
+                              {row.humidity !== "" ? `${row.humidity}%` : "-"}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
