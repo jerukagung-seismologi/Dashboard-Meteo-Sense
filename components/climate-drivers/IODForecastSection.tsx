@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo } from "react";
 import useSWR from "swr";
-import ReactECharts from "echarts-for-react";
+import { ResponsiveEChart } from "@/components/climate-drivers/ResponsiveEChart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -99,6 +99,11 @@ export const IODForecastSection: React.FC<IODForecastSectionProps> = ({
           html += `</div></div>`;
           return html;
         },
+      },
+      legend: {
+        top: 0,
+        textStyle: { color: isDarkMode ? "#cbd5e1" : "#475569", fontSize: 11 },
+        data: ["Ensemble Mean DMI", "Rentang Keyakinan 50% (P25 - P75)"],
       },
       grid: {
         top: 40,
@@ -412,9 +417,17 @@ export const IODForecastSection: React.FC<IODForecastSectionProps> = ({
 
               <div className="h-[320px] w-full">
                 {viewMode === "plume" ? (
-                  <ReactECharts option={plumeChartOption} style={{ height: "100%", width: "100%" }} />
+                  <ResponsiveEChart
+                    key={`iod-plume-${isDarkMode}`}
+                    chartKey={`iod-plume-${isDarkMode}`}
+                    option={plumeChartOption}
+                  />
                 ) : (
-                  <ReactECharts option={probabilityChartOption} style={{ height: "100%", width: "100%" }} />
+                  <ResponsiveEChart
+                    key={`iod-prob-${isDarkMode}`}
+                    chartKey={`iod-prob-${isDarkMode}`}
+                    option={probabilityChartOption}
+                  />
                 )}
               </div>
             </div>

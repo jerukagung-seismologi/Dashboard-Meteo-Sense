@@ -20,6 +20,7 @@ interface ResponsiveEChartProps {
   theme?: string;
   chartKey?: string;
   onEvents?: Record<string, Function>;
+  lazyUpdate?: boolean;
 }
 
 export const ResponsiveEChart: React.FC<ResponsiveEChartProps> = ({
@@ -29,6 +30,7 @@ export const ResponsiveEChart: React.FC<ResponsiveEChartProps> = ({
   theme,
   chartKey,
   onEvents,
+  lazyUpdate = false,
 }) => {
   const chartInstanceRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -66,7 +68,7 @@ export const ResponsiveEChart: React.FC<ResponsiveEChartProps> = ({
         key={chartKey}
         option={option}
         notMerge={true}
-        lazyUpdate={true}
+        lazyUpdate={lazyUpdate}
         style={style}
         theme={theme}
         onEvents={onEvents}

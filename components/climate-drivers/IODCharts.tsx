@@ -4,17 +4,8 @@
 import React, { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Compass, TrendingUp, Layers } from "lucide-react";
-import dynamic from "next/dynamic";
+import { ResponsiveEChart } from "@/components/climate-drivers/ResponsiveEChart";
 import { IodData } from "@/lib/climate-drivers/types";
-
-const ReactECharts = dynamic(() => import("echarts-for-react"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[300px] w-full flex items-center justify-center text-muted-foreground animate-pulse">
-      Memuat Grafik IOD...
-    </div>
-  ),
-});
 
 interface IODChartsProps {
   data: IodData;
@@ -159,7 +150,10 @@ export const IODCharts: React.FC<IODChartsProps> = ({ data, isDarkMode = false }
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[320px] p-2">
-          <ReactECharts option={dmiOption} style={{ height: "100%", width: "100%" }} />
+          <ResponsiveEChart
+            chartKey={`iod-dmi-${isDarkMode}`}
+            option={dmiOption}
+          />
         </CardContent>
       </Card>
 
@@ -174,7 +168,10 @@ export const IODCharts: React.FC<IODChartsProps> = ({ data, isDarkMode = false }
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[280px] p-2">
-          <ReactECharts option={periodsOption} style={{ height: "100%", width: "100%" }} />
+          <ResponsiveEChart
+            chartKey={`iod-periods-${isDarkMode}`}
+            option={periodsOption}
+          />
         </CardContent>
       </Card>
     </div>
