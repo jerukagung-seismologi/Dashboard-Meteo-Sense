@@ -31,8 +31,11 @@ import {
   BookOpen,
   ArrowRight,
   ShieldCheck,
+  Printer,
+  FileText,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TropicalWavesExportModal } from "./TropicalWavesExportModal";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -136,7 +139,18 @@ const TROPICAL_WAVES: WaveDefinition[] = [
   },
 ];
 
-export const TropicalWavesViewer: React.FC = () => {
+interface TropicalWavesViewerProps {
+  mjoStatus?: {
+    status?: string;
+    phase?: number;
+    amplitude?: number;
+    convectionOverMC?: string;
+    lastUpdated?: string;
+  };
+  onOpenExportModal?: () => void;
+}
+
+export const TropicalWavesViewer: React.FC<TropicalWavesViewerProps> = ({ mjoStatus, onOpenExportModal }) => {
   const [activeTab, setActiveTab] = useState<string>("operational");
   const [selectedWave, setSelectedWave] = useState<"mjo" | "kelvin" | "eq_rossby" | "gravity">("mjo");
   const [viewMode, setViewMode] = useState<"stacked" | "focused">("stacked");
@@ -144,6 +158,15 @@ export const TropicalWavesViewer: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
   const [phasePeriod, setPhasePeriod] = useState<"40" | "90">("40");
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
+
+  const handleOpenExport = () => {
+    if (onOpenExportModal) {
+      onOpenExportModal();
+    } else {
+      setIsExportModalOpen(true);
+    }
+  };
 
 
   // Today's date in local YYYY-MM-DD
@@ -290,12 +313,23 @@ export const TropicalWavesViewer: React.FC = () => {
               </CardDescription>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenExport}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-700 shadow-sm h-8"
+                title="Buka versi cetak atau simpan dokumen PNG / PDF 4 gelombang bertumpuk dengan keterangan"
+              >
+                <Printer className="h-3.5 w-3.5 text-indigo-500" />
+                <span>Cetak / PDF 4 Gelombang</span>
+              </Button>
+
               <a
                 href="https://www.bom.gov.au/climate/mjo/#tabs=Outlooks"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-100/70 hover:bg-emerald-200/80 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 transition-colors"
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-100/70 hover:bg-emerald-200/80 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 transition-colors h-8"
               >
                 <span>Portal Resmi BOM</span>
                 <ExternalLink className="h-3.5 w-3.5" />
@@ -455,8 +489,19 @@ export const TropicalWavesViewer: React.FC = () => {
                   </Button>
                 </div>
 
-                {/* Right: Layout Switcher */}
-                <div className="flex items-center gap-2">
+                {/* Right: Layout Switcher & Export */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenExport}
+                    className="h-8 gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 shadow-sm"
+                    title="Cetak atau simpan versi PDF / PNG 4 gelombang bertumpuk dengan keterangan"
+                  >
+                    <FileText className="h-3.5 w-3.5 text-indigo-500" />
+                    <span className="hidden sm:inline">Cetak / Ekspor 4 Gelombang</span>
+                  </Button>
+
                   <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
                     <button
                       type="button"
@@ -1084,6 +1129,16 @@ export const TropicalWavesViewer: React.FC = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Tropical Waves 4-Stack Export & Print Modal */}
+      <TropicalWavesExportModal
+        open={isExportModalOpen}
+        onOpenChange={setIsExportModalOpen}
+        dates={dates}
+        currentDate={currentDateStr}
+        todayStr={todayStr}
+        mjoStatus={mjoStatus}
+      />
     </div>
   );
 };

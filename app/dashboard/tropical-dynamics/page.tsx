@@ -1,7 +1,7 @@
 // app/dashboard/tropical-dynamics/page.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import useSWR from "swr";
 import {
   Loader2,
@@ -17,7 +17,9 @@ import {
   TrendingUp,
   ExternalLink,
   Sparkles,
+  Printer,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubpageHeader } from "@/components/climate-drivers/SubpageHeader";
@@ -25,6 +27,7 @@ import { StatusBadge } from "@/components/climate-drivers/StatusBadge";
 import { MJOCharts } from "@/components/climate-drivers/MJOCharts";
 import { EcmwfMjoViewer } from "@/components/climate-drivers/EcmwfMjoViewer";
 import { TropicalWavesViewer } from "@/components/climate-drivers/TropicalWavesViewer";
+import { TropicalWavesExportModal } from "@/components/climate-drivers/TropicalWavesExportModal";
 import { NcicsMapViewer } from "@/components/climate-drivers/NcicsMapViewer";
 import { HistoryTable } from "@/components/climate-drivers/HistoryTable";
 import { EducationalPanel } from "@/components/climate-drivers/EducationalPanel";
@@ -35,6 +38,22 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export default function TropicalDynamicsPage() {
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [activeMainTab, setActiveMainTab] = useState<string>("waves");
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
+
+  // Today's date in local YYYY-MM-DD
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  const { data: waveDatesData } = useSWR(
+    "/api/climate-drivers/tropical-waves?action=dates",
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 1800000 }
+  );
 
   const { data: mjoApiData, isLoading, mutate: mutateMjo } = useSWR(
     `/api/climate-drivers/mjo${refreshKey ? `?_t=${refreshKey}&refresh=true` : ""}`,
@@ -90,6 +109,17 @@ export default function TropicalDynamicsPage() {
         subtitle="Analisis terpadu gelombang khatulistiwa ekuatorial: MJO (Madden-Julian Oscillation), Gelombang Kelvin, Rossby Ekuatorial (ER), Mixed Rossby-Gravity (MRG), serta peta diagnostik satelit NCICS."
         onRefresh={handleRefresh}
         isRefreshing={isLoading}
+        actions={
+          <Button
+            size="sm"
+            onClick={() => setIsExportModalOpen(true)}
+            className="gap-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm h-8"
+            title="Buka versi cetak atau simpan dokumen PDF / PNG 4 gelombang bertumpuk dengan keterangan"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Cetak / PDF 4 Gelombang</span>
+          </Button>
+        }
       />
 
       {isLoading && !mjoApiData ? (
@@ -223,7 +253,16 @@ export default function TropicalDynamicsPage() {
 
             {/* TAB 1: PETA GELOMBANG TROPIS OPERASIONAL & SKEMATIK TEORI (BOM) */}
             <TabsContent value="waves" className="mt-0">
-              <TropicalWavesViewer />
+              <TropicalWavesViewer
+                mjoStatus={{
+                  status: data.status,
+                  phase: data.phase,
+                  amplitude: data.amplitude,
+                  convectionOverMC: data.convectionOverMC,
+                  lastUpdated: data.lastUpdated,
+                }}
+                onOpenExportModal={() => setIsExportModalOpen(true)}
+              />
             </TabsContent>
 
             {/* TAB 2: DIAGRAM FASE RMM & PREDIKSI ENSEMBLE ECMWF 46-HARI */}
@@ -259,8 +298,24 @@ export default function TropicalDynamicsPage() {
               />
             </TabsContent>
           </Tabs>
+
+          {/* Tropical Waves 4-Stack Export & Print Modal */}
+          <TropicalWavesExportModal
+            open={isExportModalOpen}
+            onOpenChange={setIsExportModalOpen}
+            dates={waveDatesData?.dates || [todayStr]}
+            currentDate={todayStr}
+            todayStr={todayStr}
+            mjoStatus={{
+              status: data.status,
+              phase: data.phase,
+              amplitude: data.amplitude,
+              convectionOverMC: data.convectionOverMC,
+              lastUpdated: data.lastUpdated,
+            }}
+          />
         </>
       )}
     </div>
   );
-}
+};

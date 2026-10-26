@@ -15,6 +15,7 @@ interface SubpageHeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   lastUpdated?: string;
+  actions?: React.ReactNode;
 }
 
 export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
@@ -23,6 +24,7 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
   onRefresh,
   isRefreshing,
   lastUpdated,
+  actions,
 }) => {
   const pathname = usePathname();
 
@@ -62,6 +64,7 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
 
         {/* Action Buttons & Status */}
         <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto shrink-0">
+          {actions}
           {lastUpdated && (
             <div className="px-3 py-1.5 bg-indigo-950/70 backdrop-blur-md rounded-xl border border-indigo-500/30 text-left shrink-0">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-300 block">Terakhir Diperbarui</span>
