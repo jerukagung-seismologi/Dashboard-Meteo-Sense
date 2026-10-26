@@ -164,7 +164,8 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<string>(currentDate || todayStr);
   const [isExporting, setIsExporting] = useState<"png" | "pdf" | "print" | null>(null);
-  const [includeNotes, setIncludeNotes] = useState<boolean>(true);
+  const [includeWaveAnalysis, setIncludeWaveAnalysis] = useState<boolean>(false);
+  const [includeNotes, setIncludeNotes] = useState<boolean>(false);
   const [notesText, setNotesText] = useState<string>(
     "Analisis Superposisi Gelombang Ekuatorial: Pola anomali Outgoing Longwave Radiation (OLR) terpantau aktif. Rekomendasi kesiapsiagaan peningkatan intensitas hujan, petir, dan potensi genangan di wilayah rentan."
   );
@@ -205,6 +206,7 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
   const forecastDates = useMemo(() => dates.filter((d) => d > todayStr), [dates, todayStr]);
 
   const continuousSheetRef = useRef<HTMLDivElement>(null);
+  const singlePageRef = useRef<HTMLDivElement>(null);
   const page1Ref = useRef<HTMLDivElement>(null);
   const page2Ref = useRef<HTMLDivElement>(null);
 
@@ -267,66 +269,106 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
     }
   };
 
-  // 2. Ekspor ke PDF (A4 Multi-page: Page 1 for Wave 1 & 2, Page 2 for Wave 3 & 4 + Notes)
+  // 2. Ekspor ke PDF (A4 Single Page jika tanpa keterangan analisis, atau Multi-page jika dengan analisis)
   const handleExportPDF = async () => {
-    if (!page1Ref.current || !page2Ref.current) return;
     setIsExporting("pdf");
 
     try {
-      toast({
-        title: "Menyiapkan Dokumen PDF Laporan...",
-        description: "Menghasilkan lembar A4 proporsional dengan kop resmi dan tata letak rapi...",
-      });
+      if (!includeWaveAnalysis && !includeNotes) {
+        if (!singlePageRef.current) return;
+        toast({
+          title: "Menyiapkan Dokumen PDF Laporan...",
+          description: "Menghasilkan lembar A4 ringkas 1 halaman proporsional...",
+        });
 
-      await waitForImagesToLoad(page1Ref.current);
-      await waitForImagesToLoad(page2Ref.current);
-      await new Promise((resolve) => setTimeout(resolve, 350));
+        await waitForImagesToLoad(singlePageRef.current);
+        await new Promise((resolve) => setTimeout(resolve, 350));
 
-      // Render Page 1 (Waves 1 & 2)
-      const canvas1 = await html2canvas(page1Ref.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        width: 1000,
-        windowWidth: 1200,
-      });
+        const canvas = await html2canvas(singlePageRef.current, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+          width: 1000,
+          windowWidth: 1200,
+        });
 
-      // Render Page 2 (Waves 3 & 4 + Notes + Footer)
-      const canvas2 = await html2canvas(page2Ref.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        width: 1000,
-        windowWidth: 1200,
-      });
+        const doc = new jsPDF({
+          orientation: "portrait",
+          unit: "mm",
+          format: "a4",
+        });
 
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
+        const a4Width = 210;
+        const a4Height = 297;
 
-      const a4Width = 210;
-      const a4Height = 297;
+        const imgData = canvas.toDataURL("image/jpeg", 0.98);
+        doc.addImage(imgData, "JPEG", 0, 0, a4Width, a4Height);
 
-      // Add Page 1
-      const imgData1 = canvas1.toDataURL("image/jpeg", 0.98);
-      doc.addImage(imgData1, "JPEG", 0, 0, a4Width, a4Height);
+        const filename = `Laporan_Dinamika_Tropis_4Gelombang_${cleanDate}.pdf`;
+        doc.save(filename);
 
-      // Add Page 2
-      doc.addPage();
-      const imgData2 = canvas2.toDataURL("image/jpeg", 0.98);
-      doc.addImage(imgData2, "JPEG", 0, 0, a4Width, a4Height);
+        toast({
+          title: "✓ Berhasil Menyimpan Dokumen Laporan PDF!",
+          description: `Dokumen ${filename} (1 Halaman A4 Ringkas) telah tersimpan.`,
+        });
+      } else {
+        if (!page1Ref.current || !page2Ref.current) return;
+        toast({
+          title: "Menyiapkan Dokumen PDF Laporan...",
+          description: "Menghasilkan lembar A4 proporsional dengan kop resmi dan keterangan analisis...",
+        });
 
-      const filename = `Laporan_Dinamika_Tropis_4Gelombang_${cleanDate}.pdf`;
-      doc.save(filename);
+        await waitForImagesToLoad(page1Ref.current);
+        await waitForImagesToLoad(page2Ref.current);
+        await new Promise((resolve) => setTimeout(resolve, 350));
 
-      toast({
-        title: "✓ Berhasil Menyimpan Dokumen Laporan PDF!",
-        description: `Dokumen ${filename} (2 Halaman A4) telah tersimpan.`,
-      });
+        // Render Page 1 (Waves 1 & 2)
+        const canvas1 = await html2canvas(page1Ref.current, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+          width: 1000,
+          windowWidth: 1200,
+        });
+
+        // Render Page 2 (Waves 3 & 4 + Notes + Footer)
+        const canvas2 = await html2canvas(page2Ref.current, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+          width: 1000,
+          windowWidth: 1200,
+        });
+
+        const doc = new jsPDF({
+          orientation: "portrait",
+          unit: "mm",
+          format: "a4",
+        });
+
+        const a4Width = 210;
+        const a4Height = 297;
+
+        // Add Page 1
+        const imgData1 = canvas1.toDataURL("image/jpeg", 0.98);
+        doc.addImage(imgData1, "JPEG", 0, 0, a4Width, a4Height);
+
+        // Add Page 2
+        doc.addPage();
+        const imgData2 = canvas2.toDataURL("image/jpeg", 0.98);
+        doc.addImage(imgData2, "JPEG", 0, 0, a4Width, a4Height);
+
+        const filename = `Laporan_Dinamika_Tropis_4Gelombang_${cleanDate}.pdf`;
+        doc.save(filename);
+
+        toast({
+          title: "✓ Berhasil Menyimpan Dokumen Laporan PDF!",
+          description: `Dokumen ${filename} (2 Halaman A4 Lengkap) telah tersimpan.`,
+        });
+      }
     } catch (err: any) {
       console.error("Gagal ekspor PDF:", err);
       toast({
@@ -461,16 +503,26 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
             </span>
           </div>
 
-          {/* Quick Notes Toggle */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1.5 cursor-pointer">
+          {/* Quick Toggles */}
+          <div className="flex items-center gap-3.5 flex-wrap">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs hover:bg-slate-50 transition-colors">
+              <input
+                type="checkbox"
+                checked={includeWaveAnalysis}
+                onChange={(e) => setIncludeWaveAnalysis(e.target.checked)}
+                className="rounded text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5 cursor-pointer"
+              />
+              <span>Sertakan Keterangan Analisis &amp; Teori Fisis</span>
+            </label>
+
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs hover:bg-slate-50 transition-colors">
               <input
                 type="checkbox"
                 checked={includeNotes}
                 onChange={(e) => setIncludeNotes(e.target.checked)}
                 className="rounded text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5 cursor-pointer"
               />
-              <span>Sertakan Catatan Analisis Prakirawan</span>
+              <span>Sertakan Catatan Rekomendasi Prakirawan</span>
             </label>
           </div>
         </div>
@@ -582,7 +634,7 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
             </div>
 
             {/* THE 4 STACKED WAVES (Vertical from Top to Bottom) */}
-            <div className="space-y-6">
+            <div className={includeWaveAnalysis ? "space-y-6" : "space-y-4"}>
               {REPORT_WAVES.map((w) => {
                 const imgProxyUrl = `/api/climate-drivers/tropical-waves?wave=${w.id}&date=${cleanDate}`;
 
@@ -601,7 +653,7 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
                           {w.order}
                         </span>
                         <h2 className="font-extrabold text-sm sm:text-base text-slate-900 tracking-tight">
-                          {w.fullName}
+                          {includeWaveAnalysis ? w.fullName : `${w.order}. ${w.name}`}
                         </h2>
                       </div>
 
@@ -609,12 +661,16 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
                         <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${w.badgeBg}`}>
                           {w.propagation}
                         </span>
-                        <span className="text-[10px] font-semibold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
-                          Kecepatan: {w.speed}
-                        </span>
-                        <span className="text-[10px] font-semibold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
-                          Periode: {w.period}
-                        </span>
+                        {includeWaveAnalysis && (
+                          <>
+                            <span className="text-[10px] font-semibold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                              Kecepatan: {w.speed}
+                            </span>
+                            <span className="text-[10px] font-semibold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                              Periode: {w.period}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -629,33 +685,35 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
                       />
                     </div>
 
-                    {/* Explanatory Caption Panels (Keterangan Masing-masing Gelombang) */}
-                    <div className="p-3.5 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs bg-slate-50/70 border-t border-slate-200">
-                      {/* Left: Dinamika Fisis & Teori */}
-                      <div className="space-y-1 bg-white p-2.5 rounded-lg border border-slate-200/80">
-                        <div className="font-bold text-slate-900 flex items-center gap-1.5 text-[11px]">
-                          <Info className="h-3.5 w-3.5 text-indigo-600" />
-                          <span>Karakteristik &amp; Solusi Dinamika Fisis:</span>
+                    {/* Explanatory Caption Panels (Keterangan Masing-masing Gelombang jika diminta) */}
+                    {includeWaveAnalysis && (
+                      <div className="p-3.5 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs bg-slate-50/70 border-t border-slate-200">
+                        {/* Left: Dinamika Fisis & Teori */}
+                        <div className="space-y-1 bg-white p-2.5 rounded-lg border border-slate-200/80">
+                          <div className="font-bold text-slate-900 flex items-center gap-1.5 text-[11px]">
+                            <Info className="h-3.5 w-3.5 text-indigo-600" />
+                            <span>Karakteristik &amp; Solusi Dinamika Fisis:</span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 leading-relaxed">
+                            {w.physicalDynamics}
+                          </p>
+                          <div className="text-[10px] font-mono text-indigo-700 pt-0.5">
+                            Dasar Teori: {w.mathematicalBasis}
+                          </div>
                         </div>
-                        <p className="text-[11px] text-slate-600 leading-relaxed">
-                          {w.physicalDynamics}
-                        </p>
-                        <div className="text-[10px] font-mono text-indigo-700 pt-0.5">
-                          Dasar Teori: {w.mathematicalBasis}
-                        </div>
-                      </div>
 
-                      {/* Right: Dampak Cuaca Indonesia */}
-                      <div className="space-y-1 bg-amber-50/60 p-2.5 rounded-lg border border-amber-200">
-                        <div className="font-bold text-amber-900 flex items-center gap-1.5 text-[11px]">
-                          <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                          <span>Dampak Sinoptik terhadap Cuaca Indonesia:</span>
+                        {/* Right: Dampak Cuaca Indonesia */}
+                        <div className="space-y-1 bg-amber-50/60 p-2.5 rounded-lg border border-amber-200">
+                          <div className="font-bold text-amber-900 flex items-center gap-1.5 text-[11px]">
+                            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                            <span>Dampak Sinoptik terhadap Cuaca Indonesia:</span>
+                          </div>
+                          <p className="text-[11px] text-amber-900 leading-relaxed font-medium">
+                            {w.indonesiaImpact}
+                          </p>
                         </div>
-                        <p className="text-[11px] text-amber-900 leading-relaxed font-medium">
-                          {w.indonesiaImpact}
-                        </p>
                       </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}
@@ -710,9 +768,127 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
           </div>
 
           {/* =================================================================== */}
-          {/* A4 TWO-PAGE TEMPLATES (Hidden in DOM, used for clean jsPDF Export)   */}
+          {/* A4 TEMPLATES (Hidden in DOM, used for clean jsPDF Export)          */}
           {/* =================================================================== */}
           <div className="hidden">
+            {/* SINGLE PAGE A4 TEMPLATE (Used when includeWaveAnalysis === false & includeNotes === false) */}
+            <div
+              ref={singlePageRef}
+              id="report-single-page"
+              className="w-[1000px] h-[1414px] bg-white text-slate-900 p-8 flex flex-col justify-between"
+              style={{ boxSizing: "border-box", fontFamily: "'Inter', sans-serif" }}
+            >
+              <div className="space-y-3">
+                {/* Header Single Page (Formal Official Kop Standar Laporan Cuaca) */}
+                <div className="border-b-4 border-slate-800 pb-3 flex justify-between items-center">
+                  <div className="flex items-center gap-3.5">
+                    <img
+                      src="/img/logo.webp"
+                      alt="Logo Jerukagung Seismologi & Meteorologi"
+                      className="h-13 w-13 object-contain shrink-0"
+                      crossOrigin="anonymous"
+                    />
+                    <div>
+                      <div className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase leading-none">
+                        Jerukagung Meteorologi • Automatic Weather Station
+                      </div>
+                      <h1 className="text-xl font-black uppercase text-slate-950 tracking-tight mt-1 leading-none">
+                        Laporan Dinamika Gelombang Atmosfer Tropis
+                      </h1>
+                      <p className="text-[11px] font-semibold text-slate-600 mt-1">
+                        Diagram Komposit 4 Gelombang Ekuatorial (MJO, Gelombang Kelvin, Rossby, &amp; MRG)
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right text-xs bg-slate-50 border border-slate-200 p-2 rounded-lg min-w-[170px]">
+                    <div className="text-[9px] text-slate-400 uppercase font-bold">Tanggal Data:</div>
+                    <div className="font-mono font-bold text-sm text-slate-900">{formatIdDateDash(selectedDate)}</div>
+                    <div className="text-[10px] text-indigo-700 font-semibold">{dateCategory.label}</div>
+                  </div>
+                </div>
+
+                <div className="w-full h-1 bg-gradient-to-r from-orange-400 via-sky-400 to-blue-500 rounded-full" />
+
+                {/* Quick Summary Pill */}
+                <div className="grid grid-cols-4 gap-2 bg-slate-50 border border-slate-200 p-2 rounded text-xs">
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Status MJO:</span>
+                    <span className="font-bold text-emerald-700 text-xs">{mjoStatus?.status || "Active (Aktif)"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Fase RMM:</span>
+                    <span className="font-bold text-indigo-700 text-xs">Fase {mjoStatus?.phase ?? 4}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Amplitudo RMM:</span>
+                    <span className="font-bold text-teal-700 text-xs font-mono">{(mjoStatus?.amplitude ?? 1.25).toFixed(2)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Konveksi Indonesia:</span>
+                    <span className="font-bold text-emerald-700 text-xs">{mjoStatus?.convectionOverMC || "Enhanced (Meningkat)"}</span>
+                  </div>
+                </div>
+
+                {/* All 4 Stacked Waves - Clean and Proportional for Single Page A4 */}
+                <div className="space-y-2">
+                  {REPORT_WAVES.map((w) => (
+                    <div key={w.id} className="border border-slate-300 rounded-lg overflow-hidden bg-white">
+                      <div className="px-3 py-1.5 bg-slate-100 border-b border-slate-300 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-5 h-5 rounded-full text-white flex items-center justify-center font-black text-[11px] shrink-0"
+                            style={{ backgroundColor: w.accentColor }}
+                          >
+                            {w.order}
+                          </span>
+                          <span className="font-extrabold text-xs text-slate-900 tracking-tight">
+                            {w.order}. {w.name}
+                          </span>
+                        </div>
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${w.badgeBg}`}>
+                          {w.propagation}
+                        </span>
+                      </div>
+                      <div className="p-1 bg-slate-950 flex justify-center items-center min-h-[190px]">
+                        <img
+                          src={`/api/climate-drivers/tropical-waves?wave=${w.id}&date=${cleanDate}`}
+                          crossOrigin="anonymous"
+                          className="max-h-[190px] w-auto mx-auto object-contain rounded"
+                          alt={w.name}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Single Page Footer & Legend */}
+              <div className="space-y-2 pt-2 border-t border-slate-200">
+                <div className="p-1.5 bg-slate-50 border border-slate-200 rounded text-[9px] text-slate-600 flex items-center justify-between">
+                  <span className="font-bold text-slate-800 uppercase">Legenda Anomali OLR:</span>
+                  <div className="flex items-center gap-4">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <span>Kontur Hijau/Biru: Anomali Negatif (&lt; 0 W/m², Konveksi Aktif &amp; Hujan Meningkat)</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                      <span>Kontur Kuning/Cokelat: Anomali Positif (&gt; 0 W/m², Konveksi Tertekan &amp; Kering)</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center text-[10px] text-slate-500">
+                  <span>
+                    Sumber Data: BoM Australia IDCK000080, NOAA CPC &amp; NCICS • Dihasilkan otomatis oleh sistem <strong>MeteoSense Dashboard</strong> (Stasiun Meteorologi Jerukagung)
+                  </span>
+                  <span className="font-mono">
+                    Waktu Cetak: {formatDateTimeForDisplay(new Date())}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* PAGE 1: Header + Summary + Wave 1 (MJO) + Wave 2 (KW) */}
             <div
               ref={page1Ref}
@@ -775,22 +951,28 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
                 {REPORT_WAVES.slice(0, 1).map((w) => (
                   <div key={w.id} className="border border-slate-300 rounded-lg overflow-hidden bg-white">
                     <div className="px-3 py-2 bg-slate-100 border-b border-slate-300 flex justify-between items-center">
-                      <span className="font-extrabold text-sm text-slate-900">{w.order}. {w.fullName}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${w.badgeBg}`}>{w.propagation} • {w.speed} • {w.period}</span>
+                      <span className="font-extrabold text-sm text-slate-900">
+                        {w.order}. {includeWaveAnalysis ? w.fullName : w.name}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${w.badgeBg}`}>
+                        {w.propagation} • {w.speed} • {w.period}
+                      </span>
                     </div>
                     <div className="p-2 bg-slate-950 flex justify-center">
                       <img src={`/api/climate-drivers/tropical-waves?wave=${w.id}&date=${cleanDate}`} crossOrigin="anonymous" className="max-h-[220px] object-contain rounded" />
                     </div>
-                    <div className="p-3 grid grid-cols-2 gap-3 text-xs bg-slate-50 border-t border-slate-200">
-                      <div>
-                        <strong className="text-slate-900 block text-[11px] mb-0.5">Dinamika Fisis:</strong>
-                        <p className="text-[10px] text-slate-600 leading-tight">{w.physicalDynamics}</p>
+                    {includeWaveAnalysis && (
+                      <div className="p-3 grid grid-cols-2 gap-3 text-xs bg-slate-50 border-t border-slate-200">
+                        <div>
+                          <strong className="text-slate-900 block text-[11px] mb-0.5">Dinamika Fisis:</strong>
+                          <p className="text-[10px] text-slate-600 leading-tight">{w.physicalDynamics}</p>
+                        </div>
+                        <div className="bg-amber-50/70 p-2 rounded border border-amber-200">
+                          <strong className="text-amber-900 block text-[11px] mb-0.5">Dampak Cuaca Indonesia:</strong>
+                          <p className="text-[10px] text-amber-900 leading-tight font-medium">{w.indonesiaImpact}</p>
+                        </div>
                       </div>
-                      <div className="bg-amber-50/70 p-2 rounded border border-amber-200">
-                        <strong className="text-amber-900 block text-[11px] mb-0.5">Dampak Cuaca Indonesia:</strong>
-                        <p className="text-[10px] text-amber-900 leading-tight font-medium">{w.indonesiaImpact}</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 ))}
 
@@ -798,22 +980,28 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
                 {REPORT_WAVES.slice(1, 2).map((w) => (
                   <div key={w.id} className="border border-slate-300 rounded-lg overflow-hidden bg-white">
                     <div className="px-3 py-2 bg-slate-100 border-b border-slate-300 flex justify-between items-center">
-                      <span className="font-extrabold text-sm text-slate-900">{w.order}. {w.fullName}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${w.badgeBg}`}>{w.propagation} • {w.speed} • {w.period}</span>
+                      <span className="font-extrabold text-sm text-slate-900">
+                        {w.order}. {includeWaveAnalysis ? w.fullName : w.name}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${w.badgeBg}`}>
+                        {w.propagation} • {w.speed} • {w.period}
+                      </span>
                     </div>
                     <div className="p-2 bg-slate-950 flex justify-center">
                       <img src={`/api/climate-drivers/tropical-waves?wave=${w.id}&date=${cleanDate}`} crossOrigin="anonymous" className="max-h-[220px] object-contain rounded" />
                     </div>
-                    <div className="p-3 grid grid-cols-2 gap-3 text-xs bg-slate-50 border-t border-slate-200">
-                      <div>
-                        <strong className="text-slate-900 block text-[11px] mb-0.5">Dinamika Fisis:</strong>
-                        <p className="text-[10px] text-slate-600 leading-tight">{w.physicalDynamics}</p>
+                    {includeWaveAnalysis && (
+                      <div className="p-3 grid grid-cols-2 gap-3 text-xs bg-slate-50 border-t border-slate-200">
+                        <div>
+                          <strong className="text-slate-900 block text-[11px] mb-0.5">Dinamika Fisis:</strong>
+                          <p className="text-[10px] text-slate-600 leading-tight">{w.physicalDynamics}</p>
+                        </div>
+                        <div className="bg-amber-50/70 p-2 rounded border border-amber-200">
+                          <strong className="text-amber-900 block text-[11px] mb-0.5">Dampak Cuaca Indonesia:</strong>
+                          <p className="text-[10px] text-amber-900 leading-tight font-medium">{w.indonesiaImpact}</p>
+                        </div>
                       </div>
-                      <div className="bg-amber-50/70 p-2 rounded border border-amber-200">
-                        <strong className="text-amber-900 block text-[11px] mb-0.5">Dampak Cuaca Indonesia:</strong>
-                        <p className="text-[10px] text-amber-900 leading-tight font-medium">{w.indonesiaImpact}</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -865,22 +1053,28 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
                 {REPORT_WAVES.slice(2, 3).map((w) => (
                   <div key={w.id} className="border border-slate-300 rounded-lg overflow-hidden bg-white">
                     <div className="px-3 py-2 bg-slate-100 border-b border-slate-300 flex justify-between items-center">
-                      <span className="font-extrabold text-sm text-slate-900">{w.order}. {w.fullName}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${w.badgeBg}`}>{w.propagation} • {w.speed} • {w.period}</span>
+                      <span className="font-extrabold text-sm text-slate-900">
+                        {w.order}. {includeWaveAnalysis ? w.fullName : w.name}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${w.badgeBg}`}>
+                        {w.propagation} • {w.speed} • {w.period}
+                      </span>
                     </div>
                     <div className="p-2 bg-slate-950 flex justify-center">
                       <img src={`/api/climate-drivers/tropical-waves?wave=${w.id}&date=${cleanDate}`} crossOrigin="anonymous" className="max-h-[220px] object-contain rounded" />
                     </div>
-                    <div className="p-3 grid grid-cols-2 gap-3 text-xs bg-slate-50 border-t border-slate-200">
-                      <div>
-                        <strong className="text-slate-900 block text-[11px] mb-0.5">Dinamika Fisis:</strong>
-                        <p className="text-[10px] text-slate-600 leading-tight">{w.physicalDynamics}</p>
+                    {includeWaveAnalysis && (
+                      <div className="p-3 grid grid-cols-2 gap-3 text-xs bg-slate-50 border-t border-slate-200">
+                        <div>
+                          <strong className="text-slate-900 block text-[11px] mb-0.5">Dinamika Fisis:</strong>
+                          <p className="text-[10px] text-slate-600 leading-tight">{w.physicalDynamics}</p>
+                        </div>
+                        <div className="bg-amber-50/70 p-2 rounded border border-amber-200">
+                          <strong className="text-amber-900 block text-[11px] mb-0.5">Dampak Cuaca Indonesia:</strong>
+                          <p className="text-[10px] text-amber-900 leading-tight font-medium">{w.indonesiaImpact}</p>
+                        </div>
                       </div>
-                      <div className="bg-amber-50/70 p-2 rounded border border-amber-200">
-                        <strong className="text-amber-900 block text-[11px] mb-0.5">Dampak Cuaca Indonesia:</strong>
-                        <p className="text-[10px] text-amber-900 leading-tight font-medium">{w.indonesiaImpact}</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 ))}
 
@@ -888,22 +1082,28 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
                 {REPORT_WAVES.slice(3, 4).map((w) => (
                   <div key={w.id} className="border border-slate-300 rounded-lg overflow-hidden bg-white">
                     <div className="px-3 py-2 bg-slate-100 border-b border-slate-300 flex justify-between items-center">
-                      <span className="font-extrabold text-sm text-slate-900">{w.order}. {w.fullName}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${w.badgeBg}`}>{w.propagation} • {w.speed} • {w.period}</span>
+                      <span className="font-extrabold text-sm text-slate-900">
+                        {w.order}. {includeWaveAnalysis ? w.fullName : w.name}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${w.badgeBg}`}>
+                        {w.propagation} • {w.speed} • {w.period}
+                      </span>
                     </div>
                     <div className="p-2 bg-slate-950 flex justify-center">
                       <img src={`/api/climate-drivers/tropical-waves?wave=${w.id}&date=${cleanDate}`} crossOrigin="anonymous" className="max-h-[220px] object-contain rounded" />
                     </div>
-                    <div className="p-3 grid grid-cols-2 gap-3 text-xs bg-slate-50 border-t border-slate-200">
-                      <div>
-                        <strong className="text-slate-900 block text-[11px] mb-0.5">Dinamika Fisis:</strong>
-                        <p className="text-[10px] text-slate-600 leading-tight">{w.physicalDynamics}</p>
+                    {includeWaveAnalysis && (
+                      <div className="p-3 grid grid-cols-2 gap-3 text-xs bg-slate-50 border-t border-slate-200">
+                        <div>
+                          <strong className="text-slate-900 block text-[11px] mb-0.5">Dinamika Fisis:</strong>
+                          <p className="text-[10px] text-slate-600 leading-tight">{w.physicalDynamics}</p>
+                        </div>
+                        <div className="bg-amber-50/70 p-2 rounded border border-amber-200">
+                          <strong className="text-amber-900 block text-[11px] mb-0.5">Dampak Cuaca Indonesia:</strong>
+                          <p className="text-[10px] text-amber-900 leading-tight font-medium">{w.indonesiaImpact}</p>
+                        </div>
                       </div>
-                      <div className="bg-amber-50/70 p-2 rounded border border-amber-200">
-                        <strong className="text-amber-900 block text-[11px] mb-0.5">Dampak Cuaca Indonesia:</strong>
-                        <p className="text-[10px] text-amber-900 leading-tight font-medium">{w.indonesiaImpact}</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 ))}
 

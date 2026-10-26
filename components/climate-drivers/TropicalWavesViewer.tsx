@@ -319,10 +319,10 @@ export const TropicalWavesViewer: React.FC<TropicalWavesViewerProps> = ({ mjoSta
                 size="sm"
                 onClick={handleOpenExport}
                 className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-700 shadow-sm h-8"
-                title="Buka versi cetak atau simpan dokumen PNG / PDF 4 gelombang bertumpuk dengan keterangan"
+                title="Buka versi cetak atau simpan dokumen PNG / PDF 4 gelombang bertumpuk (ringkas atau dengan analisis)"
               >
                 <Printer className="h-3.5 w-3.5 text-indigo-500" />
-                <span>Cetak / PDF 4 Gelombang</span>
+                <span>Cetak Laporan 4 Gelombang</span>
               </Button>
 
               <a
