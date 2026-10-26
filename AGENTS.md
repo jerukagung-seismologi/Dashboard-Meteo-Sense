@@ -38,5 +38,16 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   - Saat berada dalam mode layar penuh, kontrol utama (Layer Selector, Geo-focus, Stasiun Search, dan Telemetry Badges) harus tetap dapat diakses melalui floating HUD berlatar `backdrop-blur` tanpa menutupi area observasi utama.
   - Sediakan selalu tombol keluar cepat dan shortcut tombol `Escape`.
 
-
-
+### 5. Standard Kop & Format Pelaporan Resmi (Weather & Climate Report Standardization)
+- **Logo Resmi & Atribut Cross-Origin**:
+  - Setiap modal ekspor, cetak, atau halaman dokumen laporan (Laporan Harian, Laporan Bulanan, Laporan Curah Hujan, Buletin/Laporan Dinamika Tropis) WAJIB menyertakan logo resmi instansi `/img/logo.webp` dengan properti `crossOrigin="anonymous"`.
+  - Dilarang keras menggunakan placeholder SVG kotak generik untuk identitas instansi pada dokumen laporan resmi.
+- **Struktur Kop Surat Resmi**:
+  - Sub-judul instansi: `Jerukagung Meteorologi • Automatic Weather Station` atau `Jerukagung Seismologi & Meteorologi • MeteoSense`.
+  - Judul Dokumen Utama: Huruf kapital tebal (misal: `LAPORAN DINAMIKA GELOMBANG ATMOSFER TROPIS`, `LAPORAN CUACA HARIAN`).
+  - Garis batas tegas `border-b-4 border-slate-800` dipadukan dengan aksen batang warna gradien (`bg-gradient-to-r from-orange-400 via-sky-400 to-blue-500 rounded-full`).
+  - Panel metadata sisi kanan: Mencantumkan Tanggal Data/Analisis, Status Observasi/Prediksi, dan Waktu Kompilasi/Cetak.
+- **Standar Footer Dokumen**:
+  - Menyertakan sumber data resmi (BoM, NOAA, NCICS, ECMWF, atau AWS lokal), atribusi otomatis oleh sistem *MeteoSense Dashboard*, serta penegasan bahwa dokumen dihasilkan otomatis dan sah tanpa tanda tangan basah.
+- **Konsistensi Multi-Halaman & Ekspor (PNG / PDF A4 / Print)**:
+  - Tata letak kop, logo, dan penomoran halaman harus konsisten baik pada pratinjau kontinu (PNG), pemecahan multi-halaman A4 (PDF), maupun dialog cetak bawaan browser (`@media print`).

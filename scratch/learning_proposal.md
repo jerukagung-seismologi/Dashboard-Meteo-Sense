@@ -1,37 +1,40 @@
-# Learning Proposal: Separation of Tropical Dynamics & Modular Dashboard Layouts
+# Learning Proposal: Standarisasi Format Pelaporan Resmi & Kop Dokumen MeteoSense
 
-## 1. Context & Motivation
-Dari masukan pengguna:
-> *"aku merasa untuk semua bagian tropis sebaiknya dibuat menu di bagian kiri tersendiri, jangan digabung dengan Indeks iklim global, benar kan? kalau bisa disempurnakan kembali agar dalam satu halaman nantinya tidak terlalu panjang"*
+## 1. Analisis & Konteks
+Berdasarkan masukan pengguna:
+> *"untuk bagian dinamika tropis bisakah agar laporannya mirip sepeti dalam menu laporan cuaca, ada logonya juga? paham?"*
 
-Secara meteorologis dan UX:
-1. **Pemisahan Domain Ilmiah**:
-   - **Indeks Iklim Global (Macro Climate Drivers)**: Meliputi telekoneksi laut-atmosfer antarsamudra skala antar-tahunan / multi-musiman (*interannual/seasonal*), yaitu ENSO (Niño 3.4, ONI, SOI) di Samudra Pasifik, IOD (DMI) di Samudra Hindia, dan sirkulasi Monsun Asia-Australia.
-   - **Dinamika Atmosfer Tropis (Tropical Dynamics & Waves)**: Meliputi fenomena intraseasonal dan gelombang atmosfer ekuatorial konvektif (*Convectively Coupled Equatorial Waves*), yaitu MJO (30–60 hari), Gelombang Kelvin, Gelombang Rossby Ekuatorial (ER), Gelombang Mixed Rossby-Gravity (MRG), diagram fase Wheeler-Hendon RMM, dan peta diagnostik Hovmöller NCICS/NOAA.
-2. **Pola Desain UI/UX Dashboard (Anti-Long-Scroll)**:
-   - Hindari menumpuk semua grafik, peta, model prediksi, dan tabel historis ke dalam satu halaman vertikal yang sangat panjang (*endless scroll overload*).
-   - Gunakan arsitektur berbasis tab tematik (*tabbed modular views*) atau kartu tersegmentasi yang proporsional sehingga setiap tampilan fokus, rapi, dan mudah dibaca pada satu layar tanpa scroll berlebihan.
+Di sistem **MeteoSense Dashboard**, pelaporan dinas dan siap cetak (pada modul Laporan Cuaca Harian, Laporan Bulanan, Curah Hujan, serta Dinamika Tropis) harus memiliki identitas visual dan struktur dokumen resmi yang seragam dan konsisten.
 
 ---
 
-## 2. Classification & Target
-- **Classification**: Workspace Rule (Prinsip Desain & Arsitektur Menu Dashboard Meteo-Sense).
-- **Target File**: `AGENTS.md` (atau aturan arsitektur dashboard di workspace).
+## 2. Klasifikasi Aturan (Classification)
+- **Tipe**: **Workspace Rule** (Aturan Tetap Repositori).
+- **Berkas Target**: [AGENTS.md](file:///d:/Github/Dashboard-Meteo-Sense/AGENTS.md).
+- **Bagian yang Diusulkan**: Menambahkan **Bagian 5** pada `AGENTS.md`.
+
+---
+
+## 3. Usulan Penambahan Aturan pada `AGENTS.md`
 
 ```markdown
-### Tropical Dynamics vs. Global Climate Drivers Navigation Convention
-1. **Domain Boundary**:
-   - Keep `/dashboard/climate-drivers` dedicated to macro-scale climate drivers (ENSO, IOD, Monsoon).
-   - Provide a dedicated sidebar navigation item for Tropical Dynamics (`/dashboard/tropical-dynamics`) covering MJO, Kelvin Waves, Equatorial Rossby Waves, MRG Waves, Wheeler-Hendon RMM Phase Diagrams, and Equatorial Hovmöller Diagnostics.
-2. **Dashboard Layout Ergonomics**:
-   - Never stack multiple heavy visualizers (e.g. 4-wave stacked maps + ECMWF 46-day ensemble + NCICS satellite maps + 5-year historical tables) in one long vertical page.
-   - Organize related sub-modules using high-contrast tabs, segmented view-modes, or collapsible panels so that each view stays compact, performant, and legible without excessive vertical scrolling.
+### 5. Standard Kop & Format Pelaporan Resmi (Weather & Climate Report Standardization)
+- **Logo Resmi & Atribut Cross-Origin**:
+  - Setiap modal ekspor, cetak, atau halaman dokumen laporan (Laporan Harian, Laporan Bulanan, Laporan Curah Hujan, Buletin/Laporan Dinamika Tropis) WAJIB menyertakan logo resmi instansi `/img/logo.webp` dengan properti `crossOrigin="anonymous"`.
+  - Hindari penggunaan placeholder SVG generik untuk identitas instansi pada dokumen laporan resmi.
+- **Struktur Kop Surat Resmi**:
+  - Sub-judul instansi: `Jerukagung Meteorologi • Automatic Weather Station` atau `Jerukagung Seismologi & Meteorologi • MeteoSense`.
+  - Judul Dokumen Utama: Huruf kapital tebal (misal: `LAPORAN DINAMIKA GELOMBANG ATMOSFER TROPIS`, `LAPORAN CUACA HARIAN`).
+  - Garis batas tegas `border-b-4 border-slate-800` dipadukan dengan aksen batang warna gradien (`bg-gradient-to-r from-orange-400 via-sky-400 to-blue-500 rounded-full`).
+  - Panel metadata sisi kanan: Mencantumkan Tanggal Data/Analisis, Status Observasi/Prediksi, dan Waktu Kompilasi/Cetak.
+- **Standar Footer Dokumen**:
+  - Menyertakan sumber data resmi (BoM, NOAA, NCICS, ECMWF, atau AWS lokal), atribusi otomatis oleh sistem *MeteoSense Dashboard*, serta penegasan bahwa dokumen dihasilkan otomatis dan sah tanpa tanda tangan basah.
+- **Konsistensi Multi-Halaman & Ekspor (PNG / PDF A4 / Print)**:
+  - Tata letak kop, logo, dan penomoran halaman harus konsisten baik pada pratinjau kontinu (PNG), pemecahan multi-halaman A4 (PDF), maupun dialog cetak bawaan browser (`@media print`).
 ```
 
 ---
 
-## 3. Implementation Steps
-1. Tambahkan menu navigasi `"Dinamika Atmosfer Tropis"` di `lib/navigation.ts` dengan ikon `Waves`, badge `"Tropis"`, dan rute `/dashboard/tropical-dynamics`.
-2. Buat halaman baru `app/dashboard/tropical-dynamics/page.tsx` dengan tata letak tab modular (5 Tab: *Peta Gelombang Tropis*, *Diagram Fase RMM & ECMWF*, *Diagnostik NCICS & Hovmöller*, *Struktur Teori Gelombang*, *Riwayat Historis*).
-3. Rapikan `app/dashboard/climate-drivers/page.tsx` agar fokus murni pada ENSO, IOD, dan Monsun dengan banner penghubung yang elegan ke Dinamika Tropis.
-4. Buat redirect / integrasi bersih pada `/dashboard/climate-drivers/mjo` ke Dinamika Tropis.
+## 4. Status Implementasi
+- Komponen [TropicalWavesExportModal.tsx](file:///d:/Github/Dashboard-Meteo-Sense/components/climate-drivers/TropicalWavesExportModal.tsx) dan [page.tsx](file:///d:/Github/Dashboard-Meteo-Sense/app/dashboard/tropical-dynamics/page.tsx) telah disesuaikan dan diuji lulus TypeScript (`npx tsc --noEmit`), serta di-push ke GitHub.
+- Aturan di atas siap ditambahkan ke [AGENTS.md](file:///d:/Github/Dashboard-Meteo-Sense/AGENTS.md) setelah mendapatkan konfirmasi persetujuan pengguna.
