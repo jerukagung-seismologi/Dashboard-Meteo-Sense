@@ -246,19 +246,19 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
 
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
-      const filename = `Buletin_Dinamika_Tropis_4Gelombang_${cleanDate}.png`;
+      const filename = `Laporan_Dinamika_Tropis_4Gelombang_${cleanDate}.png`;
       link.href = dataUrl;
       link.download = filename;
       link.click();
 
       toast({
-        title: "✓ Berhasil Menyimpan Gambar!",
+        title: "✓ Berhasil Menyimpan Gambar Laporan!",
         description: `Berkas ${filename} telah diunduh.`,
       });
     } catch (err: any) {
       console.error("Gagal ekspor PNG:", err);
       toast({
-        title: "Gagal Mengunduh PNG",
+        title: "Gagal Mengunduh PNG Laporan",
         description: err?.message || "Terjadi kesalahan saat merender kanvas.",
         variant: "destructive",
       });
@@ -274,8 +274,8 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
 
     try {
       toast({
-        title: "Menyiapkan Dokumen PDF...",
-        description: "Menghasilkan lembar A4 proporsional dengan tata letak rapi...",
+        title: "Menyiapkan Dokumen PDF Laporan...",
+        description: "Menghasilkan lembar A4 proporsional dengan kop resmi dan tata letak rapi...",
       });
 
       await waitForImagesToLoad(page1Ref.current);
@@ -320,11 +320,11 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
       const imgData2 = canvas2.toDataURL("image/jpeg", 0.98);
       doc.addImage(imgData2, "JPEG", 0, 0, a4Width, a4Height);
 
-      const filename = `Buletin_Dinamika_Tropis_4Gelombang_${cleanDate}.pdf`;
+      const filename = `Laporan_Dinamika_Tropis_4Gelombang_${cleanDate}.pdf`;
       doc.save(filename);
 
       toast({
-        title: "✓ Berhasil Menyimpan PDF!",
+        title: "✓ Berhasil Menyimpan Dokumen Laporan PDF!",
         description: `Dokumen ${filename} (2 Halaman A4) telah tersimpan.`,
       });
     } catch (err: any) {
@@ -369,7 +369,7 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
             </div>
             <DialogTitle className="text-lg sm:text-xl font-extrabold flex items-center gap-2 text-slate-900 dark:text-slate-100">
               <FileCheck2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-              <span>Buletin Analisis Dinamika Gelombang Atmosfer Tropis</span>
+              <span>Laporan Dinamika Gelombang Atmosfer Tropis</span>
             </DialogTitle>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Dokumen komprehensif 4 gelombang khatulistiwa ekuatorial (MJO, Kelvin, Rossby, &amp; MRG) dengan peta anomali OLR dan penjelasan fisis meteorologis.
@@ -497,7 +497,7 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
         {/* Live Document Preview Container (Scrollable) */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-200/60 dark:bg-slate-950/60 flex flex-col items-center gap-6">
           <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-3 py-1 rounded-full border border-slate-300/80 dark:border-slate-700/80 shadow-xs">
-            Pratinjau Lembar Buletin Cetak (4 Gelombang Bertumpuk Atas sampai Bawah)
+            Pratinjau Lembar Laporan Cetak (4 Gelombang Bertumpuk Atas sampai Bawah)
           </div>
 
           {/* =================================================================== */}
@@ -509,42 +509,49 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
             className="w-full max-w-[900px] bg-white text-slate-900 shadow-xl rounded-xl border border-slate-300/80 p-8 space-y-6 print:shadow-none print:border-none print:p-0 print:max-w-none print:w-full"
             style={{ fontFamily: "'Inter', sans-serif" }}
           >
-            {/* Header Instansi & Dokumen */}
-            <header className="border-b-2 border-slate-900 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 text-white flex flex-col items-center justify-center p-1.5 shadow-md shrink-0">
-                  <Waves className="h-7 w-7 text-emerald-400" />
-                  <span className="text-[8px] font-black uppercase tracking-tighter text-indigo-200 mt-0.5">METEO</span>
-                </div>
+            {/* Header Instansi & Dokumen (Standar Laporan Cuaca Jerukagung Meteorologi) */}
+            <header className="border-b-4 border-slate-800 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex items-center gap-4">
+                <img
+                  src="/img/logo.webp"
+                  alt="Logo Jerukagung Seismologi & Meteorologi"
+                  className="h-16 w-16 object-contain shrink-0"
+                  crossOrigin="anonymous"
+                />
                 <div>
-                  <div className="text-[11px] font-extrabold uppercase tracking-widest text-indigo-700">
-                    METEO-SENSE • STASIUN GEOFISIKA &amp; METEOROLOGI
+                  <div className="text-[11px] font-black tracking-[0.2em] text-slate-500 uppercase leading-none">
+                    Jerukagung Meteorologi • Automatic Weather Station
                   </div>
-                  <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-slate-950">
-                    Buletin Dinamika Gelombang Atmosfer Tropis
+                  <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-slate-900 mt-1.5 leading-none">
+                    Laporan Dinamika Gelombang Atmosfer Tropis
                   </h1>
-                  <p className="text-xs font-semibold text-slate-600">
-                    Monitoring Operasional Multi-Gelombang Ekuatorial (Stacked 4-Wave Diagnostics)
+                  <p className="text-xs font-semibold text-slate-600 mt-1.5 flex flex-wrap items-center gap-2">
+                    <span className="text-slate-700">Domain: Benua Maritim Indonesia (20° LU – 20° LS)</span>
+                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-500">Analisis Operasional 4 Gelombang Ekuatorial (MJO, Kelvin, ER, MRG)</span>
                   </p>
                 </div>
               </div>
 
               {/* Document Meta Pill */}
-              <div className="text-left sm:text-right text-xs space-y-1 shrink-0 bg-slate-50 border border-slate-200 p-2.5 rounded-lg">
+              <div className="text-left sm:text-right text-xs space-y-1 shrink-0 bg-slate-50 border border-slate-200 p-3 rounded-xl min-w-[210px] shadow-xs">
                 <div>
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Tanggal Analisis:</span>
-                  <span className="font-mono font-bold text-slate-900 text-sm">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Tanggal Data:</span>
+                  <span className="font-mono font-black text-slate-900 text-sm">
                     {formatIdDateDash(selectedDate)}
                   </span>
                 </div>
-                <div className="text-[10px] text-slate-500 font-medium">
+                <div className="text-[10px] text-slate-600 font-medium">
                   Status: <strong className="text-indigo-700">{dateCategory.label}</strong>
                 </div>
                 <div className="text-[10px] text-slate-400">
-                  Domain: <strong>20° LU – 20° LS (Tropis &amp; Indonesia)</strong>
+                  Dicetak: <span className="font-mono text-slate-600">{formatDateTimeForDisplay(new Date())}</span>
                 </div>
               </div>
             </header>
+
+            {/* Decorative Color Bar matching Laporan Harian */}
+            <div className="w-full h-1 bg-gradient-to-r from-orange-400 via-sky-400 to-blue-500 rounded-full" />
 
             {/* Quick Meteorological Drivers Summary (MJO Status) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-slate-50 border border-slate-200 p-3 rounded-lg text-xs">
@@ -686,18 +693,19 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
               </div>
             </div>
 
-            {/* Official Report Footer */}
-            <footer className="border-t border-slate-300 pt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-[10px] text-slate-500 break-inside-avoid print:break-inside-avoid">
-              <div>
-                <p>
-                  <strong>Sumber Data Resmi:</strong> Bureau of Meteorology (BOM) Australia IDCK000080, NOAA CPC &amp; NCICS.
-                </p>
-                <p>Dihasilkan secara otomatis oleh sistem <strong>MeteoSense Dashboard</strong> (Stasiun Geofisika Jerukagung).</p>
+            {/* Official Report Footer (Standar Laporan Cuaca MeteoSense) */}
+            <footer className="mt-8 border-t-2 border-slate-200 pt-5 text-center shrink-0 break-inside-avoid print:break-inside-avoid">
+              <div className="flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500 gap-2">
+                <span>
+                  Sumber Data: BoM Australia IDCK000080, NOAA CPC &amp; NCICS • Dihasilkan otomatis oleh sistem <strong className="text-slate-800">MeteoSense Dashboard</strong> (Stasiun Meteorologi Jerukagung)
+                </span>
+                <span className="font-mono text-slate-400">
+                  Waktu Cetak: {formatDateTimeForDisplay(new Date())}
+                </span>
               </div>
-              <div className="text-left sm:text-right font-mono">
-                <div>Waktu Kompilasi: {formatDateTimeForDisplay(new Date())}</div>
-                <div>ID Dokumen: BUL-TROP-{cleanDate}</div>
-              </div>
+              <p className="text-slate-400 text-[11px] mt-1.5">
+                Dokumen resmi analisis dinamika atmosfer tropis. Tanda tangan digital tidak diperlukan, validitas data dijamin oleh sistem.
+              </p>
             </footer>
           </div>
 
@@ -713,29 +721,35 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
               style={{ boxSizing: "border-box", fontFamily: "'Inter', sans-serif" }}
             >
               <div className="space-y-5">
-                {/* Header */}
-                <div className="border-b-2 border-slate-900 pb-4 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-slate-900 text-white flex items-center justify-center p-1">
-                      <Waves className="h-6 w-6 text-emerald-400" />
-                    </div>
+                {/* Header Page 1 (Formal Official Kop Standar Laporan Cuaca) */}
+                <div className="border-b-4 border-slate-800 pb-4 flex justify-between items-center">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src="/img/logo.webp"
+                      alt="Logo Jerukagung Seismologi & Meteorologi"
+                      className="h-14 w-14 object-contain shrink-0"
+                      crossOrigin="anonymous"
+                    />
                     <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">
-                        METEO-SENSE • STASIUN GEOFISIKA &amp; METEOROLOGI
+                      <div className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase leading-none">
+                        Jerukagung Meteorologi • Automatic Weather Station
                       </div>
-                      <h1 className="text-xl font-black uppercase text-slate-950">
-                        Buletin Dinamika Gelombang Atmosfer Tropis
+                      <h1 className="text-xl font-black uppercase text-slate-950 tracking-tight mt-1 leading-none">
+                        Laporan Dinamika Gelombang Atmosfer Tropis
                       </h1>
-                      <p className="text-[11px] font-semibold text-slate-600">
+                      <p className="text-[11px] font-semibold text-slate-600 mt-1">
                         Halaman 1 dari 2: Gelombang Intramusiman (MJO) &amp; Gelombang Kelvin (KW)
                       </p>
                     </div>
                   </div>
-                  <div className="text-right text-xs">
-                    <div className="font-mono font-bold text-sm">{formatIdDateDash(selectedDate)}</div>
+                  <div className="text-right text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-lg min-w-[180px]">
+                    <div className="text-[9px] text-slate-400 uppercase font-bold">Tanggal Data:</div>
+                    <div className="font-mono font-bold text-sm text-slate-900">{formatIdDateDash(selectedDate)}</div>
                     <div className="text-[10px] text-indigo-700 font-semibold">{dateCategory.label}</div>
                   </div>
                 </div>
+
+                <div className="w-full h-1 bg-gradient-to-r from-orange-400 via-sky-400 to-blue-500 rounded-full" />
 
                 {/* Quick Summary Pill */}
                 <div className="grid grid-cols-4 gap-2 bg-slate-50 border border-slate-200 p-2.5 rounded text-xs">
@@ -805,9 +819,9 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
               </div>
 
               {/* Page 1 Footer */}
-              <div className="border-t border-slate-300 pt-3 flex justify-between text-[10px] text-slate-500">
-                <span>MeteoSense Tropical Dynamics Bulletin • Bersambung ke Halaman 2</span>
-                <span>Halaman 1 / 2</span>
+              <div className="border-t-2 border-slate-200 pt-3 flex justify-between text-[10px] text-slate-500">
+                <span>Dokumen Resmi MeteoSense Dashboard • Stasiun Meteorologi Jerukagung • Bersambung ke Halaman 2</span>
+                <span className="font-bold">Halaman 1 / 2</span>
               </div>
             </div>
 
@@ -820,19 +834,32 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
             >
               <div className="space-y-5">
                 {/* Header Page 2 */}
-                <div className="border-b-2 border-slate-900 pb-3 flex justify-between items-center">
-                  <div>
-                    <h2 className="text-base font-black uppercase text-slate-950">
-                      Buletin Dinamika Gelombang Atmosfer Tropis (Lanjutan)
-                    </h2>
-                    <p className="text-[11px] font-semibold text-slate-600">
-                      Halaman 2 dari 2: Gelombang Rossby Ekuatorial (ER) &amp; Mixed Rossby-Gravity (MRG)
-                    </p>
+                <div className="border-b-4 border-slate-800 pb-3 flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src="/img/logo.webp"
+                      alt="Logo Jerukagung Seismologi & Meteorologi"
+                      className="h-11 w-11 object-contain shrink-0"
+                      crossOrigin="anonymous"
+                    />
+                    <div>
+                      <div className="text-[9px] font-black tracking-widest text-slate-400 uppercase leading-none">
+                        Jerukagung Meteorologi • MeteoSense
+                      </div>
+                      <h2 className="text-base font-black uppercase text-slate-950 mt-1 leading-none">
+                        Laporan Dinamika Gelombang Atmosfer Tropis (Lanjutan)
+                      </h2>
+                      <p className="text-[10px] font-semibold text-slate-600 mt-0.5">
+                        Halaman 2 dari 2: Gelombang Rossby Ekuatorial (ER) &amp; Mixed Rossby-Gravity (MRG)
+                      </p>
+                    </div>
                   </div>
                   <div className="text-right text-xs">
-                    <span className="font-mono font-bold text-sm">{formatIdDateDash(selectedDate)}</span>
+                    <span className="font-mono font-bold text-sm text-slate-900">{formatIdDateDash(selectedDate)}</span>
                   </div>
                 </div>
+
+                <div className="w-full h-0.5 bg-gradient-to-r from-orange-400 via-sky-400 to-blue-500 rounded-full" />
 
                 {/* Wave 3: ER */}
                 {REPORT_WAVES.slice(2, 3).map((w) => (
@@ -901,9 +928,9 @@ export const TropicalWavesExportModal: React.FC<TropicalWavesExportModalProps> =
               </div>
 
               {/* Page 2 Official Footer */}
-              <div className="border-t border-slate-300 pt-3 flex justify-between items-center text-[10px] text-slate-500">
+              <div className="border-t-2 border-slate-200 pt-3 flex justify-between items-center text-[10px] text-slate-500">
                 <div>
-                  Sumber Data: BoM Australia IDCK000080, NOAA CPC &amp; NCICS • Dihasilkan oleh Sistem MeteoSense
+                  Sumber Data: BoM Australia IDCK000080, NOAA CPC &amp; NCICS • Dihasilkan otomatis oleh sistem <strong>MeteoSense Dashboard</strong> (Stasiun Meteorologi Jerukagung)
                 </div>
                 <div className="font-mono">
                   Halaman 2 / 2 • Waktu Cetak: {formatDateTimeForDisplay(new Date())}
