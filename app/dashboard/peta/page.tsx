@@ -18,6 +18,8 @@ import {
   CloudRain,
   Compass,
   CheckCircle2,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +39,7 @@ export default function PetaPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -255,6 +258,20 @@ export default function PetaPage() {
               <RefreshCw className={`h-3.5 w-3.5 text-indigo-400 ${loading ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">Segarkan</span>
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="gap-1.5 text-xs font-semibold text-white bg-indigo-600/90 hover:bg-indigo-600 border-indigo-500 shadow-sm h-8 shrink-0"
+              title="Buka Peta Mode Layar Penuh"
+            >
+              {isFullscreen ? (
+                <Minimize2 className="h-3.5 w-3.5" />
+              ) : (
+                <Maximize2 className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">{isFullscreen ? "Keluar" : "Layar Penuh"}</span>
+            </Button>
           </div>
         }
       />
@@ -339,7 +356,14 @@ export default function PetaPage() {
           </div>
         )}
 
-        <Map devices={filteredDevices} />
+        <Map
+          devices={filteredDevices}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
+          stats={stats}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
       </div>
     </div>
   );

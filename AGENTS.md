@@ -29,4 +29,14 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - **Diurnal Saturation Consistency**:
   - Near dew-point saturation ($RH \ge 90\%$, e.g., dawn/night conditions), humidity uncertainty must contract toward the physical saturation ceiling ($\Delta RH \le 5\%$).
 
+### 4. GIS & Map Visualization Conventions: Fullscreen & Viewport Ergonomics
+- **Dual-Layer Fullscreen Strategy**:
+  - Peta GIS harus mendukung mode layar penuh menggunakan arsitektur dual-layer: CSS viewport expansion (`fixed inset-0 z-[9999] w-screen h-screen`) dikombinasikan dengan Native Browser Fullscreen API (`requestFullscreen` / `exitFullscreen`).
+- **Leaflet Invalidation Handling**:
+  - Setiap perubahan mode viewport atau resize kontainer peta WAJIB memicu `map.invalidateSize({ pan: false })` dengan staggered debouncing (0ms, 150ms, 350ms) guna mencegah distorsi atau *tile gray-out*.
+- **HUD & Interactivity Invariants**:
+  - Saat berada dalam mode layar penuh, kontrol utama (Layer Selector, Geo-focus, Stasiun Search, dan Telemetry Badges) harus tetap dapat diakses melalui floating HUD berlatar `backdrop-blur` tanpa menutupi area observasi utama.
+  - Sediakan selalu tombol keluar cepat dan shortcut tombol `Escape`.
+
+
 

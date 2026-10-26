@@ -17,6 +17,9 @@ import {
   MapPin,
   Layers,
   Maximize2,
+  Minimize2,
+  Crosshair,
+  Search,
   Navigation,
   Compass,
   Sparkles,
@@ -25,6 +28,7 @@ import {
   Wind,
   Thermometer,
   CloudRain,
+  X,
 } from "lucide-react";
 import { StationMarkerPopup, StationData } from "./StationMarkerPopup";
 import { StationDetailDrawer } from "./StationDetailDrawer";
@@ -67,13 +71,15 @@ const MAP_LAYERS: Record<MapLayerType, { name: string; url: string; attribution:
   },
 };
 
-// Custom Controller for camera animations
+// Custom Controller for camera animations & map size invalidation
 function MapCameraController({
   targetPos,
   targetZoom,
+  isFullscreen,
 }: {
   targetPos: [number, number] | null;
   targetZoom?: number;
+  isFullscreen: boolean;
 }) {
   const map = useMap();
 
@@ -85,6 +91,26 @@ function MapCameraController({
       });
     }
   }, [targetPos, targetZoom, map]);
+
+  // Safely trigger Leaflet invalidateSize when switching fullscreen or resizing
+  useEffect(() => {
+    const triggerInvalidate = () => {
+      map.invalidateSize({ pan: false });
+    };
+
+    triggerInvalidate();
+    const t1 = setTimeout(triggerInvalidate, 80);
+    const t2 = setTimeout(triggerInvalidate, 250);
+    const t3 = setTimeout(triggerInvalidate, 500);
+
+    window.addEventListener("resize", triggerInvalidate);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener("resize", triggerInvalidate);
+    };
+  }, [isFullscreen, map]);
 
   return null;
 }
@@ -219,18 +245,101 @@ const createStationDivIcon = (
   });
 };
 
+export interface MapStats {
+  avgTemp: number;
+  avgHum: number;
+  activeCount: number;
+}
+
 interface MapProps {
   devices: StationData[];
   isDarkMode?: boolean;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  stats?: MapStats;
+  searchQuery?: string;
+  onSearchChange?: (q: string) => void;
 }
 
-const Map = ({ devices = [], isDarkMode = false }: MapProps) => {
+const Map = ({
+  devices = [],
+  isDarkMode = false,
+  isFullscreen: externalIsFullscreen,
+  onToggleFullscreen,
+  stats,
+  searchQuery,
+  onSearchChange,
+}: MapProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [internalFullscreen, setInternalFullscreen] = useState(false);
+  const isFullscreen = externalIsFullscreen !== undefined ? externalIsFullscreen : internalFullscreen;
+
   const [activeLayer, setActiveLayer] = useState<MapLayerType>("streets");
   const [displayMetric, setDisplayMetric] = useState<MapDisplayMetric>("wind");
   const [targetPos, setTargetPos] = useState<[number, number] | null>(null);
   const [targetZoom, setTargetZoom] = useState<number>(DEFAULT_ZOOM);
   const [selectedStation, setSelectedStation] = useState<StationData | null>(null);
   const [showLayerMenu, setShowLayerMenu] = useState<boolean>(false);
+
+  const toggleFullscreen = () => {
+    const nextState = !isFullscreen;
+    if (onToggleFullscreen) {
+      onToggleFullscreen();
+    } else {
+      setInternalFullscreen(nextState);
+    }
+
+    if (nextState) {
+      if (containerRef.current?.requestFullscreen) {
+        containerRef.current.requestFullscreen().catch(() => {});
+      } else if ((containerRef.current as any)?.webkitRequestFullscreen) {
+        (containerRef.current as any).webkitRequestFullscreen();
+      }
+    } else {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  // Sync with native browser fullscreen changes
+  useEffect(() => {
+    const handleFsChange = () => {
+      const isNativeFs = !!document.fullscreenElement;
+      if (!isNativeFs && isFullscreen) {
+        if (onToggleFullscreen) {
+          onToggleFullscreen();
+        } else {
+          setInternalFullscreen(false);
+        }
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFsChange);
+    document.addEventListener("webkitfullscreenchange", handleFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFsChange);
+      document.removeEventListener("webkitfullscreenchange", handleFsChange);
+    };
+  }, [isFullscreen, onToggleFullscreen]);
+
+  // Support Escape key to exit fullscreen smoothly
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) {
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+        if (onToggleFullscreen) {
+          onToggleFullscreen();
+        } else {
+          setInternalFullscreen(false);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen, onToggleFullscreen]);
 
   // Focus to Kebumen
   const handleFocusKebumen = () => {
@@ -244,7 +353,6 @@ const Map = ({ devices = [], isDarkMode = false }: MapProps) => {
       handleFocusKebumen();
       return;
     }
-    // Calculate bounding box of all stations
     const lats = devices.map((d) => d.lat);
     const lngs = devices.map((d) => d.lng);
     const avgLat = lats.reduce((a, b) => a + b, 0) / lats.length;
@@ -256,7 +364,14 @@ const Map = ({ devices = [], isDarkMode = false }: MapProps) => {
   const currentLayerConfig = MAP_LAYERS[activeLayer];
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-2xl">
+    <div
+      ref={containerRef}
+      className={
+        isFullscreen
+          ? "fixed inset-0 z-[9999] w-screen h-screen bg-slate-950 overflow-hidden flex flex-col font-sans"
+          : "relative h-full w-full overflow-hidden rounded-2xl"
+      }
+    >
       {/* Global CSS for Leaflet Popup Modernization */}
       <style jsx global>{`
         .custom-station-marker {
@@ -291,6 +406,13 @@ const Map = ({ devices = [], isDarkMode = false }: MapProps) => {
 
       {/* Floating Display Mode Switcher (Top Left) */}
       <div className="absolute top-4 left-4 z-[1000] flex items-center p-1 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-200/80 dark:border-slate-800 gap-1">
+        {isFullscreen && (
+          <div className="hidden lg:flex items-center gap-2 pl-2 pr-3 border-r border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100">
+            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+            <span>Meteo Sense GIS</span>
+          </div>
+        )}
+
         <button
           onClick={() => setDisplayMetric("wind")}
           title="Tampilkan Arah dan Kecepatan Angin"
@@ -333,78 +455,128 @@ const Map = ({ devices = [], isDarkMode = false }: MapProps) => {
 
       {/* Floating Control Toolbar (Top Right) */}
       <div className="absolute top-4 right-4 z-[1000] flex flex-col items-end gap-2">
-        {/* Layer Switcher Button & Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowLayerMenu(!showLayerMenu)}
-            className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg border border-slate-200/80 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
-          >
-            <Layers className="h-4 w-4 text-indigo-500" />
-            <span>Peta: {currentLayerConfig.name}</span>
-          </button>
-
-          {showLayerMenu && (
-            <div className="absolute top-11 right-0 w-44 p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl border border-slate-200/80 dark:border-slate-800 space-y-1 animate-in fade-in zoom-in-95 duration-150">
-              {(Object.keys(MAP_LAYERS) as MapLayerType[]).map((layerKey) => {
-                const l = MAP_LAYERS[layerKey];
-                const isSelected = activeLayer === layerKey;
-                return (
-                  <button
-                    key={layerKey}
-                    onClick={() => {
-                      setActiveLayer(layerKey);
-                      setShowLayerMenu(false);
-                    }}
-                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between ${
-                      isSelected
-                        ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-bold"
-                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <span>{l.name}</span>
-                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>}
-                  </button>
-                );
-              })}
+        <div className="flex items-center gap-2">
+          {/* Quick Search in Fullscreen */}
+          {isFullscreen && onSearchChange && (
+            <div className="relative hidden md:block">
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cari stasiun/wilayah..."
+                value={searchQuery || ""}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="pl-8 pr-3 py-1 text-xs rounded-2xl bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-white border border-slate-200/80 dark:border-slate-800 shadow-xl w-48 focus:outline-hidden focus:ring-1 focus:ring-indigo-400 placeholder:text-slate-400 h-9"
+              />
             </div>
           )}
-        </div>
 
-        {/* Quick Location Action Buttons */}
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg border border-slate-200/80 dark:border-slate-800">
-          {/* Fokus Kebumen */}
-          <button
-            onClick={handleFocusKebumen}
-            title="Fokus ke Wilayah Kebumen"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors"
-          >
-            <MapPin className="h-3.5 w-3.5 text-rose-500" />
-            <span>Kebumen</span>
-          </button>
+          {/* Layer Switcher Button & Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowLayerMenu(!showLayerMenu)}
+              className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-200/80 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer h-9"
+            >
+              <Layers className="h-4 w-4 text-indigo-500" />
+              <span className="hidden sm:inline">Peta: {currentLayerConfig.name}</span>
+            </button>
 
-          {/* Fit Semua Stasiun */}
-          <button
-            onClick={handleFitAll}
-            title="Tampilkan Semua Titik Stasiun"
-            className="p-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-          </button>
+            {showLayerMenu && (
+              <div className="absolute top-11 right-0 w-44 p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl border border-slate-200/80 dark:border-slate-800 space-y-1 animate-in fade-in zoom-in-95 duration-150">
+                {(Object.keys(MAP_LAYERS) as MapLayerType[]).map((layerKey) => {
+                  const l = MAP_LAYERS[layerKey];
+                  const isSelected = activeLayer === layerKey;
+                  return (
+                    <button
+                      key={layerKey}
+                      onClick={() => {
+                        setActiveLayer(layerKey);
+                        setShowLayerMenu(false);
+                      }}
+                      className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between ${
+                        isSelected
+                          ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-bold"
+                          : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      <span>{l.name}</span>
+                      {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Location & Fullscreen Actions Group */}
+          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-200/80 dark:border-slate-800 h-9">
+            {/* Fokus Kebumen */}
+            <button
+              onClick={handleFocusKebumen}
+              title="Fokus ke Wilayah Kebumen"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors cursor-pointer"
+            >
+              <MapPin className="h-3.5 w-3.5 text-rose-500" />
+              <span className="hidden sm:inline">Kebumen</span>
+            </button>
+
+            {/* Fit Semua Stasiun */}
+            <button
+              onClick={handleFitAll}
+              title="Bidikan Semua Titik Stasiun"
+              className="p-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <Crosshair className="h-3.5 w-3.5" />
+            </button>
+
+            {/* Fullscreen Toggle */}
+            <button
+              onClick={toggleFullscreen}
+              title={isFullscreen ? "Keluar Layar Penuh (Esc)" : "Tampilan Layar Penuh"}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                isFullscreen
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30 hover:bg-indigo-700"
+                  : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+            >
+              {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{isFullscreen ? "Keluar" : "Layar Penuh"}</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Floating Network Indicator Pill (Bottom Left) */}
-      <div className="absolute bottom-4 left-4 z-[1000] px-3.5 py-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-lg border border-slate-200/80 dark:border-slate-800 text-xs flex items-center gap-2.5">
+      <div className="absolute bottom-4 left-4 z-[1000] px-3.5 py-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-200/80 dark:border-slate-800 text-xs flex items-center gap-2.5">
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
         <div>
           <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
             Jaringan Stasiun Cuaca
           </span>
           <span className="text-[10px] text-slate-400 block -mt-0.5">
-            {devices.length} Stasiun
+            {devices.length} Stasiun Terpantau
           </span>
         </div>
       </div>
+
+      {/* Fullscreen Telemetry HUD Badges (Bottom Right) */}
+      {isFullscreen && stats && (
+        <div className="absolute bottom-4 right-4 z-[1000] hidden md:flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl border border-slate-200/80 dark:border-slate-800 text-xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 font-bold uppercase text-[10px]">Rerata Suhu:</span>
+            <span className="font-mono font-black text-rose-600 dark:text-rose-400">{stats.avgTemp}°C</span>
+          </div>
+          <span className="text-slate-300 dark:text-slate-700">|</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 font-bold uppercase text-[10px]">Kelembapan:</span>
+            <span className="font-mono font-black text-sky-600 dark:text-sky-400">{stats.avgHum}%</span>
+          </div>
+          <span className="text-slate-300 dark:text-slate-700">|</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 font-bold uppercase text-[10px]">Telemetri:</span>
+            <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">{stats.activeCount} Online</span>
+          </div>
+        </div>
+      )}
 
       {/* Leaflet Map Container */}
       <MapContainer
@@ -413,7 +585,7 @@ const Map = ({ devices = [], isDarkMode = false }: MapProps) => {
         scrollWheelZoom={true}
         style={{ height: "100%", width: "100%" }}
       >
-        <MapCameraController targetPos={targetPos} targetZoom={targetZoom} />
+        <MapCameraController targetPos={targetPos} targetZoom={targetZoom} isFullscreen={isFullscreen} />
 
         {/* Dynamic Tile Layer based on active selection */}
         <TileLayer
