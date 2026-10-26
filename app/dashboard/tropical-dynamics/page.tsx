@@ -117,7 +117,7 @@ export default function TropicalDynamicsPage() {
             title="Buka versi cetak atau simpan dokumen PDF / PNG 4 gelombang bertumpuk dengan keterangan"
           >
             <Printer className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Cetak Laporan 4 Gelombang</span>
+            <span className="hidden sm:inline">Cetak Laporan</span>
           </Button>
         }
       />

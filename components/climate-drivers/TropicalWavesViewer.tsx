@@ -319,10 +319,10 @@ export const TropicalWavesViewer: React.FC<TropicalWavesViewerProps> = ({ mjoSta
                 size="sm"
                 onClick={handleOpenExport}
                 className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-700 shadow-sm h-8"
-                title="Buka versi cetak atau simpan dokumen PNG / PDF 4 gelombang bertumpuk (ringkas atau dengan analisis)"
+                title="Buka versi cetak atau simpan dokumen"
               >
                 <Printer className="h-3.5 w-3.5 text-indigo-500" />
-                <span>Cetak Laporan 4 Gelombang</span>
+                <span>Cetak Laporan</span>
               </Button>
 
               <a
@@ -436,11 +436,10 @@ export const TropicalWavesViewer: React.FC<TropicalWavesViewerProps> = ({ mjoSta
                   <Button
                     variant={isPlaying ? "destructive" : "default"}
                     size="sm"
-                    className={`h-8 px-3 text-xs font-bold gap-1.5 rounded-lg ${
-                      isPlaying
-                        ? "bg-rose-600 hover:bg-rose-700 text-white"
-                        : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                    }`}
+                    className={`h-8 px-3 text-xs font-bold gap-1.5 rounded-lg ${isPlaying
+                      ? "bg-rose-600 hover:bg-rose-700 text-white"
+                      : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      }`}
                     onClick={() => setIsPlaying(!isPlaying)}
                   >
                     {isPlaying ? (
@@ -467,11 +466,10 @@ export const TropicalWavesViewer: React.FC<TropicalWavesViewerProps> = ({ mjoSta
                   <Button
                     variant={selectedDateIndex === defaultDateIndex ? "default" : "outline"}
                     size="sm"
-                    className={`h-8 px-2.5 text-xs font-bold gap-1 rounded-lg ${
-                      selectedDateIndex === defaultDateIndex
-                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                        : "border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950"
-                    }`}
+                    className={`h-8 px-2.5 text-xs font-bold gap-1 rounded-lg ${selectedDateIndex === defaultDateIndex
+                      ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                      : "border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                      }`}
                     title="Kembali ke Tanggal Hari Ini (Analisis Terkini)"
                     onClick={handleStepToday}
                   >
@@ -506,22 +504,20 @@ export const TropicalWavesViewer: React.FC<TropicalWavesViewerProps> = ({ mjoSta
                     <button
                       type="button"
                       onClick={() => setViewMode("stacked")}
-                      className={`px-3 py-1 rounded-md transition-all ${
-                        viewMode === "stacked"
-                          ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
-                          : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
-                      }`}
+                      className={`px-3 py-1 rounded-md transition-all ${viewMode === "stacked"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                        }`}
                     >
                       Bersusun (4 Gelombang)
                     </button>
                     <button
                       type="button"
                       onClick={() => setViewMode("focused")}
-                      className={`px-3 py-1 rounded-md transition-all ${
-                        viewMode === "focused"
-                          ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
-                          : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
-                      }`}
+                      className={`px-3 py-1 rounded-md transition-all ${viewMode === "focused"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                        }`}
                     >
                       Detail Satuan
                     </button>
@@ -605,11 +601,10 @@ export const TropicalWavesViewer: React.FC<TropicalWavesViewerProps> = ({ mjoSta
                       key={w.id}
                       type="button"
                       onClick={() => setSelectedWave(w.id)}
-                      className={`p-3 rounded-xl border text-left transition-all ${
-                        isSelected
-                          ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 dark:border-emerald-500 shadow-sm ring-1 ring-emerald-500"
-                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
-                      }`}
+                      className={`p-3 rounded-xl border text-left transition-all ${isSelected
+                        ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 dark:border-emerald-500 shadow-sm ring-1 ring-emerald-500"
+                        : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+                        }`}
                     >
                       <div className="text-xs font-extrabold text-slate-900 dark:text-slate-100 mb-1">
                         {w.shortName}
@@ -883,22 +878,20 @@ export const TropicalWavesViewer: React.FC<TropicalWavesViewerProps> = ({ mjoSta
                     <button
                       type="button"
                       onClick={() => setPhasePeriod("40")}
-                      className={`px-3 py-1 rounded-md transition-all ${
-                        phasePeriod === "40"
-                          ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
-                          : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
-                      }`}
+                      className={`px-3 py-1 rounded-md transition-all ${phasePeriod === "40"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                        }`}
                     >
                       40 Hari Terakhir
                     </button>
                     <button
                       type="button"
                       onClick={() => setPhasePeriod("90")}
-                      className={`px-3 py-1 rounded-md transition-all ${
-                        phasePeriod === "90"
-                          ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
-                          : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
-                      }`}
+                      className={`px-3 py-1 rounded-md transition-all ${phasePeriod === "90"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                        }`}
                     >
                       90 Hari Terakhir
                     </button>
