@@ -295,10 +295,19 @@ export default function BMKGNowcasting({ className, limit = 6 }: Props) {
                 <span>{degreesToCompass(item.derajatAngin)}</span>
                 <span>{formatNumber(item.kecepatanAngin, { decimals: 1 })} km/j</span>
               </div>
-              <div className="text-xs text-muted-foreground">
-                Curah hujan: {formatNumber(item.curahHujan)} mm
-                Visibilitas: {formatNumber(item.visual)} km
-                Tutupan awan: {formatNumber(item.tutupanAwan)}%
+              <div className="flex flex-col gap-0.5 text-xs text-muted-foreground w-full pt-1.5 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex justify-between">
+                  <span>Curah Hujan:</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">{formatNumber(item.curahHujan)} mm</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Visibilitas:</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">{formatNumber(item.visual)} km</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tutupan Awan:</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">{formatNumber(item.tutupanAwan)}%</span>
+                </div>
               </div>
             </div>
           ))}

@@ -174,40 +174,41 @@ const translateModelToCondition = (
   precip: number = 0,
   rainProb: number | null = null
 ): WeatherCondition => {
-  // Badai Petir
-  if ((code >= 95 && code <= 99) || (code >= 66 && code <= 69)) {
+  // Badai Petir (WMO 95: Thunderstorm, 96/99: Thunderstorm with hail)
+  if (code >= 95 && code <= 99) {
     return "Badai Petir"
   }
-  // Hujan Lebat
-  if (code === 77 || code === 85 || code === 86 || precip >= 5.0) {
+  // Hujan Lebat (WMO 65: Heavy continuous rain, 82: Violent rain showers, atau presipitasi >= 5.0 mm/jam)
+  if (code === 65 || code === 82 || code === 77 || code === 85 || code === 86 || precip >= 5.0) {
     return "Hujan Lebat"
   }
-  // Hujan Sedang
-  if ((code >= 61 && code <= 65) || (precip >= 1.0 && precip < 5.0)) {
+  // Hujan Sedang (WMO 63: Moderate continuous rain, 81: Moderate rain showers, atau presipitasi 1.0 - 5.0 mm/jam)
+  if (code === 63 || code === 81 || (code >= 61 && code <= 64) || (precip >= 1.0 && precip < 5.0)) {
     return "Hujan Sedang"
   }
-  // Hujan Ringan (Drizzle / Showers / Low precip / Rain probability >= 50%)
+  // Hujan Ringan (WMO 51-57: Gerimis/Drizzle, 61: Hujan ringan, 80: Rain showers ringan, presipitasi 0.05 - 1.0 mm/jam, atau POP >= 60% jika ada presipitasi)
   if (
     (code >= 51 && code <= 57) ||
-    (code >= 80 && code <= 82) ||
+    code === 61 ||
+    code === 80 ||
     (precip > 0.05 && precip < 1.0) ||
-    (rainProb !== null && rainProb >= 50)
+    (rainProb !== null && rainProb >= 60 && precip > 0)
   ) {
     return "Hujan Ringan"
   }
-  // Kabut
+  // Kabut (WMO 45, 48)
   if (code === 45 || code === 48) {
     return "Kabut"
   }
-  // Cerah
+  // Cerah (WMO 0)
   if (code === 0) {
     return "Cerah"
   }
-  // Cerah Berawan
+  // Cerah Berawan (WMO 1, 2)
   if (code === 1 || code === 2) {
     return "Cerah Berawan"
   }
-  // Berawan
+  // Berawan (WMO 3)
   if (code === 3) {
     return "Berawan"
   }
@@ -298,7 +299,7 @@ const calculateMultiModelConsensus = (
     probSub = sortedVotes[1].percentage.toString()
   }
 
-  // 2. Mean Suhu & Margin Error Dinamis
+  // 2. Mean Suhu & Margin Error Dinamis (Robust Multi-Model Spread via Standard Deviation)
   const temps = valid
     .map((p) => p.temperature)
     .filter((t): t is number => typeof t === "number" && !isNaN(t))
@@ -309,11 +310,12 @@ const calculateMultiModelConsensus = (
   if (temps.length > 0) {
     const mean = temps.reduce((a, b) => a + b, 0) / temps.length
     avgTemp = Math.round(mean)
-    const maxDiff = Math.max(...temps) - Math.min(...temps)
-    tempError = Math.min(5, Math.max(1, Math.round(maxDiff / 2)))
+    const variance = temps.reduce((sum, t) => sum + Math.pow(t - mean, 2), 0) / temps.length
+    const stdDev = Math.sqrt(variance)
+    tempError = Math.max(1, Math.min(5, Math.round(stdDev || 2)))
   }
 
-  // 3. Mean Kelembapan & Margin Error Dinamis
+  // 3. Mean Kelembapan & Margin Error Dinamis (Physical Clamping 0-100% & Diurnal Saturation)
   const hums = valid
     .map((p) => p.humidity)
     .filter((h): h is number => typeof h === "number" && !isNaN(h))
@@ -326,8 +328,17 @@ const calculateMultiModelConsensus = (
     avgHum = Math.min(100, Math.max(0, Math.round(mean)))
     const variance = hums.reduce((sum, h) => sum + Math.pow(h - mean, 2), 0) / hums.length
     const stdDev = Math.sqrt(variance)
-    const maxPossibleSpread = Math.min(100 - avgHum, avgHum)
-    humError = Math.max(2, Math.min(10, Math.round(stdDev || 3), maxPossibleSpread))
+    let rawError = Math.round(stdDev || 3)
+
+    // Diurnal Saturation Consistency (AGENTS.md): saat mendekati jenuh (RH >= 90%), error menyempit ke <= 5%
+    if (avgHum >= 90) {
+      rawError = Math.min(rawError, 5)
+    }
+
+    // Absolute Physical Boundaries: rentang (RH ± err) mutlak tidak boleh menembus 0% atau 100%
+    const maxAllowedSpread = Math.min(100 - avgHum, avgHum)
+    const minPracticalFloor = Math.min(2, maxAllowedSpread)
+    humError = Math.max(minPracticalFloor, Math.min(10, rawError, maxAllowedSpread))
   }
 
   // 4. Indeks Panas & Error
@@ -630,15 +641,32 @@ export default function ForecastForm() {
     const dominantCond = sortedConds.length > 0 ? sortedConds[0][0] : "Cerah Berawan"
 
     // Check for rain or thunder events
-    const rainRows = rows.filter(r =>
-      (r.conditionMain && (r.conditionMain.includes("Hujan") || r.conditionMain.includes("Petir"))) ||
-      (r.conditionSub && (r.conditionSub.includes("Hujan") || r.conditionSub.includes("Petir")))
-    )
+    const adverseEvents: string[] = []
+    const adverseTimes: string[] = []
 
-    let rainNote = "tidak ada peluang curah hujan"
-    if (rainRows.length > 0) {
-      const rainTimes = Array.from(new Set(rainRows.map(r => r.time))).filter(Boolean).join(", ")
-      const rainTypes = Array.from(new Set(rainRows.map(r => r.conditionMain || r.conditionSub).filter(Boolean))).join("/")
+    rows.forEach((r) => {
+      const isMainAdverse =
+        r.conditionMain &&
+        (r.conditionMain.includes("Hujan") ||
+          r.conditionMain.includes("Petir") ||
+          r.conditionMain.includes("Angin"))
+      const isSubAdverse =
+        r.conditionSub &&
+        (r.conditionSub.includes("Hujan") ||
+          r.conditionSub.includes("Petir") ||
+          r.conditionSub.includes("Angin"))
+
+      if (isMainAdverse || isSubAdverse) {
+        if (r.time) adverseTimes.push(r.time)
+        if (isMainAdverse && r.conditionMain) adverseEvents.push(r.conditionMain)
+        if (isSubAdverse && r.conditionSub) adverseEvents.push(r.conditionSub)
+      }
+    })
+
+    let rainNote = "nihil indikasi cuaca ekstrem atau potensi hujan signifikan"
+    if (adverseEvents.length > 0) {
+      const rainTimes = Array.from(new Set(adverseTimes)).filter(Boolean).join(", ")
+      const rainTypes = Array.from(new Set(adverseEvents)).filter(Boolean).join("/")
       rainNote = `waspadai potensi ${rainTypes.toLowerCase()} di sekitar jam ${rainTimes} WIB`
     }
 
@@ -732,10 +760,14 @@ export default function ForecastForm() {
         
         let adjustedHumError = r.humidityError
         if (typeof nextHum === "number" && typeof adjustedHumError === "number") {
-          const maxPossibleSpread = Math.min(100 - nextHum, nextHum)
-          if (adjustedHumError > maxPossibleSpread) {
-            adjustedHumError = Math.max(2, maxPossibleSpread)
+          // Diurnal saturation consistency (AGENTS.md): RH >= 90% error contracts to <= 5%
+          if (nextHum >= 90 && adjustedHumError > 5) {
+            adjustedHumError = 5
           }
+          // Absolute physical boundaries: ensure (RH ± error) remains strictly within [0%, 100%]
+          const maxPossibleSpread = Math.min(100 - nextHum, nextHum)
+          const minFloor = Math.min(2, maxPossibleSpread)
+          adjustedHumError = Math.max(minFloor, Math.min(adjustedHumError, maxPossibleSpread))
         }
 
         return { ...r, humidity: nextHum, humidityError: adjustedHumError, heatIndex: hi }
@@ -2368,8 +2400,13 @@ const toNumberOrEmpty = (value: string): number | "" => {
   return Number.isFinite(n) ? n : ""
 }
 
-// NOAA heat index (Celsius output)
+// NOAA heat index (Celsius output) with Physical Validity Safeguards
 const calculateHeatIndexCelsius = (tempC: number, rh: number): number => {
+  // Heat Index hanya terdefinisi dan valid secara fisis pada kondisi hangat (T >= 26.7°C / 80°F, RH >= 40%)
+  if (tempC < 26.7 || rh < 40) {
+    return Math.round(tempC)
+  }
+
   const tF = (tempC * 9) / 5 + 32
   const hiF =
     -42.379 +
@@ -2383,7 +2420,8 @@ const calculateHeatIndexCelsius = (tempC: number, rh: number): number => {
     0.00000199 * tF * tF * rh * rh
 
   const hiC = ((hiF - 32) * 5) / 9
-  return Math.round(hiC)
+  // Suhu terasa (apparent temperature) dalam kondisi lembap tidak boleh lebih rendah dari suhu bola kering
+  return Math.round(Math.max(tempC, hiC))
 }
 
 const getHeatIndexDisplay = (row: ForecastRow) => {

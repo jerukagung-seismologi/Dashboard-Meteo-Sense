@@ -37,40 +37,41 @@ function translateModelToCondition(
   precip: number = 0,
   rainProb: number | null = null
 ): WeatherCondition {
-  // Badai Petir
-  if ((code >= 95 && code <= 99) || (code >= 66 && code <= 69)) {
+  // Badai Petir (WMO 95: Thunderstorm, 96/99: Thunderstorm with hail)
+  if (code >= 95 && code <= 99) {
     return "Badai Petir"
   }
-  // Hujan Lebat
-  if (code === 77 || code === 85 || code === 86 || precip >= 5.0) {
+  // Hujan Lebat (WMO 65: Heavy continuous rain, 82: Violent rain showers, atau presipitasi >= 5.0 mm/jam)
+  if (code === 65 || code === 82 || code === 77 || code === 85 || code === 86 || precip >= 5.0) {
     return "Hujan Lebat"
   }
-  // Hujan Sedang
-  if ((code >= 61 && code <= 65) || (precip >= 1.0 && precip < 5.0)) {
+  // Hujan Sedang (WMO 63: Moderate continuous rain, 81: Moderate rain showers, atau presipitasi 1.0 - 5.0 mm/jam)
+  if (code === 63 || code === 81 || (code >= 61 && code <= 64) || (precip >= 1.0 && precip < 5.0)) {
     return "Hujan Sedang"
   }
-  // Hujan Ringan (Drizzle / Showers / Low precip / Rain probability >= 50%)
+  // Hujan Ringan (WMO 51-57: Gerimis/Drizzle, 61: Hujan ringan, 80: Rain showers ringan, presipitasi 0.05 - 1.0 mm/jam, atau POP >= 60% jika ada presipitasi)
   if (
     (code >= 51 && code <= 57) ||
-    (code >= 80 && code <= 82) ||
+    code === 61 ||
+    code === 80 ||
     (precip > 0.05 && precip < 1.0) ||
-    (rainProb !== null && rainProb >= 50)
+    (rainProb !== null && rainProb >= 60 && precip > 0)
   ) {
     return "Hujan Ringan"
   }
-  // Kabut
+  // Kabut (WMO 45, 48)
   if (code === 45 || code === 48) {
     return "Kabut"
   }
-  // Cerah
+  // Cerah (WMO 0)
   if (code === 0) {
     return "Cerah"
   }
-  // Cerah Berawan
+  // Cerah Berawan (WMO 1, 2)
   if (code === 1 || code === 2) {
     return "Cerah Berawan"
   }
-  // Berawan
+  // Berawan (WMO 3)
   if (code === 3) {
     return "Berawan"
   }
@@ -78,8 +79,13 @@ function translateModelToCondition(
   return "Berawan"
 }
 
-// NOAA Heat Index (Celsius output)
+// NOAA Heat Index (Celsius output) with Physical Validity Safeguards
 function calculateHeatIndexCelsius(tempC: number, rh: number): number {
+  // Heat Index hanya terdefinisi dan valid secara fisis pada kondisi hangat (T >= 26.7°C / 80°F, RH >= 40%)
+  if (tempC < 26.7 || rh < 40) {
+    return Math.round(tempC)
+  }
+
   const tF = (tempC * 9) / 5 + 32
   const hiF =
     -42.379 +
@@ -93,7 +99,8 @@ function calculateHeatIndexCelsius(tempC: number, rh: number): number {
     0.00000199 * tF * tF * rh * rh
 
   const hiC = ((hiF - 32) * 5) / 9
-  return Math.round(hiC)
+  // Suhu terasa (apparent temperature) dalam kondisi lembap tidak boleh lebih rendah dari suhu bola kering
+  return Math.round(Math.max(tempC, hiC))
 }
 
 interface SingleModelPrediction {
@@ -167,7 +174,7 @@ function calculateMultiModelConsensus(predictions: SingleModelPrediction[]) {
     probSub = toStandardProb(sortedVotes[1].count, total)
   }
 
-  // 2. Mean Suhu & Margin Error Dinamis
+  // 2. Mean Suhu & Margin Error Dinamis (Robust Multi-Model Spread via Standard Deviation)
   const temps = valid
     .map((p) => p.temperature)
     .filter((t): t is number => typeof t === "number" && !isNaN(t))
@@ -178,11 +185,12 @@ function calculateMultiModelConsensus(predictions: SingleModelPrediction[]) {
   if (temps.length > 0) {
     const mean = temps.reduce((a, b) => a + b, 0) / temps.length
     avgTemp = Math.round(mean)
-    const maxDiff = Math.max(...temps) - Math.min(...temps)
-    tempError = Math.min(5, Math.max(1, Math.round(maxDiff / 2)))
+    const variance = temps.reduce((sum, t) => sum + Math.pow(t - mean, 2), 0) / temps.length
+    const stdDev = Math.sqrt(variance)
+    tempError = Math.max(1, Math.min(5, Math.round(stdDev || 2)))
   }
 
-  // 3. Mean Kelembapan & Margin Error Dinamis
+  // 3. Mean Kelembapan & Margin Error Dinamis (Physical Clamping 0-100% & Diurnal Saturation)
   const hums = valid
     .map((p) => p.humidity)
     .filter((h): h is number => typeof h === "number" && !isNaN(h))
@@ -195,8 +203,17 @@ function calculateMultiModelConsensus(predictions: SingleModelPrediction[]) {
     avgHum = Math.min(100, Math.max(0, Math.round(mean)))
     const variance = hums.reduce((sum, h) => sum + Math.pow(h - mean, 2), 0) / hums.length
     const stdDev = Math.sqrt(variance)
-    const maxPossibleSpread = Math.min(100 - avgHum, avgHum)
-    humError = Math.max(2, Math.min(10, Math.round(stdDev || 3), maxPossibleSpread))
+    let rawError = Math.round(stdDev || 3)
+
+    // Diurnal Saturation Consistency (AGENTS.md): saat mendekati jenuh (RH >= 90%), error menyempit ke <= 5%
+    if (avgHum >= 90) {
+      rawError = Math.min(rawError, 5)
+    }
+
+    // Absolute Physical Boundaries: rentang (RH ± err) mutlak tidak boleh menembus 0% atau 100%
+    const maxAllowedSpread = Math.min(100 - avgHum, avgHum)
+    const minPracticalFloor = Math.min(2, maxAllowedSpread)
+    humError = Math.max(minPracticalFloor, Math.min(10, rawError, maxAllowedSpread))
   }
 
   // 4. Indeks Panas & Error
