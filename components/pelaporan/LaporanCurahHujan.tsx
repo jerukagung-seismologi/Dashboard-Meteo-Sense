@@ -124,6 +124,8 @@ const getHourlyCategoryBadgeClass = (rate: number) => {
 
 export interface HourlyRainItem {
   hourIndex: number;
+  timeUTC: string;
+  timeWIB: string;
   timeLabel: string;
   rainfall: number;
   cumulativeRain: number;
@@ -142,8 +144,8 @@ export default function LaporanCurahHujan({
 }) {
   const { toast } = useToast();
   
-  // Observation Window Mode: 'calendar' (00:00 - 23:59 WIB) vs 'bmkg' (07:00 - 07:00 WIB / 00:00 - 24:00 UTC)
-  const [observationMode, setObservationMode] = useState<"calendar" | "bmkg">("calendar");
+  // Observation Window Mode: 'utc' (00:00 - 24:00 UTC / 07:00 - 07:00 WIB) vs 'calendar' (00:00 - 23:59 WIB)
+  const [observationMode, setObservationMode] = useState<"utc" | "calendar">("utc");
 
   const [reportData, setReportData] = useState<WeatherRecord>({
     date: new Date().toISOString().split('T')[0],
@@ -188,21 +190,23 @@ export default function LaporanCurahHujan({
 
       try {
         const targetDate = selectedDate;
+        const year = targetDate.getFullYear();
+        const month = targetDate.getMonth();
+        const date = targetDate.getDate();
+
         let startMs: number;
         let endMs: number;
 
         if (observationMode === "calendar") {
           // Local day calendar window (00:00:00.000 – 23:59:59.999 WIB)
-          const startLocal = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0, 0);
-          const endLocal = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
+          const startLocal = new Date(year, month, date, 0, 0, 0, 0);
+          const endLocal = new Date(year, month, date, 23, 59, 59, 999);
           startMs = startLocal.getTime();
           endMs = endLocal.getTime();
         } else {
-          // BMKG standard synoptic window (00:00:00.000 UTC – 23:59:59.999 UTC = 07:00 WIB – 07:00 WIB H+1)
-          const startUTC = new Date(Date.UTC(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0, 0));
-          const endUTC = new Date(Date.UTC(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999));
-          startMs = startUTC.getTime();
-          endMs = endUTC.getTime();
+          // BMKG & WMO Standard Synoptic UTC Window (00:00:00.000 – 23:59:59.999 UTC)
+          startMs = Date.UTC(year, month, date, 0, 0, 0, 0);
+          endMs = Date.UTC(year, month, date, 23, 59, 59, 999);
         }
 
         let raw = await fetchSensorDataByDateRange(sensorId, startMs, endMs);
@@ -223,11 +227,22 @@ export default function LaporanCurahHujan({
             if (rRate > maxRate) {
               maxRate = rRate;
               const d = new Date(r.timestamp);
-              peakTime = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")} WIB`;
+              if (observationMode === "utc") {
+                const utcHourStr = String(d.getUTCHours()).padStart(2, "0");
+                const utcMinStr = String(d.getUTCMinutes()).padStart(2, "0");
+                const wibHourStr = String(d.getHours()).padStart(2, "0");
+                const wibMinStr = String(d.getMinutes()).padStart(2, "0");
+                peakTime = `${wibHourStr}:${wibMinStr} WIB (${utcHourStr}:${utcMinStr} UTC)`;
+              } else {
+                peakTime = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")} WIB`;
+              }
             }
             if ((r.rainfall || 0) >= 0.05 || (r.rainrate || 0) >= 0.05) {
               const d = new Date(r.timestamp);
-              rainyHourSet.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`);
+              const hKey = observationMode === "utc"
+                ? `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}-${d.getUTCHours()}`
+                : `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`;
+              rainyHourSet.add(hKey);
             }
           });
 
@@ -249,11 +264,16 @@ export default function LaporanCurahHujan({
           ? aggregateHourly(raw)
           : aggregateHourlyUTC(raw);
 
+        const formattedDateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
+
         if (daily.length > 0) {
-          setReportData(daily[0]);
+          const matchedDaily = observationMode === "utc"
+            ? daily.find(d => d.date === formattedDateKey) || daily[0]
+            : daily[0];
+          setReportData(matchedDaily);
         } else {
           const zeroData: WeatherRecord = {
-            date: formatYMD(targetDate),
+            date: formattedDateKey,
             sampleCount: 0,
             temperatureAvg: 0, temperatureMin: 0, temperatureMax: 0,
             humidityAvg: 0, humidityMin: 0, humidityMax: 0,
@@ -265,11 +285,11 @@ export default function LaporanCurahHujan({
         }
 
         // Build 24-hour distribution breakdown table
-        const targetDayKey = formatYMD(targetDate);
         let runningTotal = 0;
         const distItems: HourlyRainItem[] = [];
 
         if (observationMode === "calendar") {
+          const targetDayKey = formatYMD(targetDate);
           for (let h = 0; h < 24; h++) {
             const hourStr = String(h).padStart(2, "0");
             const nextHourStr = String((h + 1) % 24).padStart(2, "0");
@@ -278,9 +298,17 @@ export default function LaporanCurahHujan({
             const rainAmount = matched ? Math.max(0, matched.rainfallTot) : 0;
             runningTotal += rainAmount;
 
+            const utcHour = (h + 17) % 24;
+            const nextUtcHour = (h + 18) % 24;
+            const isPrevDayUtc = h < 7;
+            const utcLabel = `${String(utcHour).padStart(2, "0")}:00 – ${String(nextUtcHour).padStart(2, "0")}:00 UTC${isPrevDayUtc ? " (H-1)" : ""}`;
+            const wibLabel = `${hourStr}:00 – ${nextHourStr}:00 WIB`;
+
             distItems.push({
               hourIndex: h,
-              timeLabel: `${hourStr}:00 – ${nextHourStr}:00 WIB`,
+              timeUTC: utcLabel,
+              timeWIB: wibLabel,
+              timeLabel: `${wibLabel} (${utcLabel})`,
               rainfall: Number(rainAmount.toFixed(2)),
               cumulativeRain: Number(runningTotal.toFixed(2)),
               category: getHourlyRainfallCategory(rainAmount),
@@ -288,19 +316,28 @@ export default function LaporanCurahHujan({
             });
           }
         } else {
+          // UTC Synoptic Standard (00:00 – 24:00 UTC / 07:00 – 07:00 WIB H+1)
           for (let h = 0; h < 24; h++) {
             const utcHour = h;
+            const nextUtcHour = (h + 1) % 24;
             const wibHour = (h + 7) % 24;
             const nextWibHour = (wibHour + 1) % 24;
             const hourStr = String(utcHour).padStart(2, "0");
-            const hourKey = `${targetDayKey}T${hourStr}`;
+            const nextHourStr = String(nextUtcHour).padStart(2, "0");
+            const hourKey = `${formattedDateKey}T${hourStr}`;
             const matched = hourly.find(item => item.hourKey === hourKey);
             const rainAmount = matched ? Math.max(0, matched.rainfallTot) : 0;
             runningTotal += rainAmount;
 
+            const isNextDayWib = (h + 7) >= 24;
+            const utcLabel = `${hourStr}:00 – ${nextHourStr}:00 UTC`;
+            const wibLabel = `${String(wibHour).padStart(2, "0")}:00 – ${String(nextWibHour).padStart(2, "0")}:00 WIB${isNextDayWib ? " (H+1)" : ""}`;
+
             distItems.push({
               hourIndex: h,
-              timeLabel: `${String(wibHour).padStart(2, "0")}:00 – ${String(nextWibHour).padStart(2, "0")}:00 WIB (${hourStr}:00 UTC)`,
+              timeUTC: utcLabel,
+              timeWIB: wibLabel,
+              timeLabel: `${utcLabel} / ${wibLabel}`,
               rainfall: Number(rainAmount.toFixed(2)),
               cumulativeRain: Number(runningTotal.toFixed(2)),
               category: getHourlyRainfallCategory(rainAmount),
@@ -343,7 +380,7 @@ export default function LaporanCurahHujan({
       }
 
       const dateStr = formatYMD(selectedDate);
-      const modeSuffix = observationMode === "calendar" ? "WIB_Kalender" : "BMKG_07WIB";
+      const modeSuffix = observationMode === "utc" ? "UTC_00_24Z" : "WIB_Kalender";
       const filename = `Laporan_Curah_Hujan_${sensorName.replace(/\s+/g, '_')}_${dateStr}_${modeSuffix}`;
 
       if (type === 'png') {
@@ -372,9 +409,9 @@ export default function LaporanCurahHujan({
   const category = getDailyRainfallCategory(rainfall);
   const isRainCalibrated = calConfig && calConfig.enabled && calConfig.rainfall && calConfig.rainfall.enabled;
 
-  const observationWindowLabel = observationMode === "calendar"
-    ? "00:00 – 23:59 WIB (Hari Kalender)"
-    : "07:00 – 07:00 WIB (+1) / 00:00 – 24:00 UTC (Standar Baku BMKG)";
+  const observationWindowLabel = observationMode === "utc"
+    ? "00:00 – 24:00 UTC / 07:00 – 07:00 WIB (+1) (Standar Baku BMKG)"
+    : "00:00 – 23:59 WIB (Hari Kalender Lokal)";
 
   // Publication text snippet for social media / bulletin
   const publicationCaption = useMemo(() => {
@@ -382,7 +419,9 @@ export default function LaporanCurahHujan({
     const dateFormatted = format(selectedDate, "dd MMMM yyyy", { locale: id }).toUpperCase();
     const rainTot = rainfall.toFixed(1);
     const rainDesc = rainfall === 0 ? "Tidak ada hujan" : category;
-    const modeDesc = observationMode === "calendar" ? "00:00 – 23:59 WIB" : "07:00 – 07:00 WIB (Standar BMKG)";
+    const modeDesc = observationMode === "utc" 
+      ? "00:00 – 24:00 UTC / 07:00 – 07:00 WIB (+1) (Standar BMKG/WMO)" 
+      : "00:00 – 23:59 WIB (Kalender Lokal)";
 
     return `LAPORAN AKUMULASI CURAH HUJAN HARIAN
 Stasiun: ${sensorName}
@@ -418,18 +457,18 @@ Durasi Jam Basah: ${rainStats.rainDurationHours} Jam`;
           <div className="w-full sm:w-auto">
             <Select 
               value={observationMode} 
-              onValueChange={(val: "calendar" | "bmkg") => setObservationMode(val)}
+              onValueChange={(val: "utc" | "calendar") => setObservationMode(val)}
             >
-              <SelectTrigger className="h-9 text-xs font-medium w-full sm:w-[220px] bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700">
+              <SelectTrigger className="h-9 text-xs font-medium w-full sm:w-[270px] bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700">
                 <CalendarClock className="w-3.5 h-3.5 mr-1.5 text-sky-600 shrink-0" />
                 <SelectValue placeholder="Pilih Jendela Waktu" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="calendar" className="text-xs">
-                  Hari Kalender (00:00 – 23:59 WIB)
+                <SelectItem value="utc" className="text-xs">
+                  Standar UTC (00:00 – 24:00 UTC) • Baku
                 </SelectItem>
-                <SelectItem value="bmkg" className="text-xs">
-                  Baku BMKG (07:00 – 07:00 WIB)
+                <SelectItem value="calendar" className="text-xs">
+                  Kalender Lokal (00:00 – 23:59 WIB)
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -470,19 +509,19 @@ Durasi Jam Basah: ${rainStats.rainDurationHours} Jam`;
         <div className="flex items-center gap-2">
           <Info className="w-4 h-4 text-sky-600 shrink-0" />
           <span>
-            {observationMode === "calendar" ? (
+            {observationMode === "utc" ? (
               <>
-                <strong>Jendela Observasi Kalender:</strong> Menghitung akumulasi presipitasi 00:00:00 – 23:59:59 WIB. Tepat sinkron dengan data <em>Laporan Cuaca Harian</em> dan <em>Ringkasan Bulanan</em>.
+                <strong>Standar Baku UTC (00:00 – 24:00 UTC):</strong> Curah hujan harian (RR) dihitung penuh sebagai total akumulasi 24 jam dalam 1 siklus UTC (07:00 WIB s/d 07:00 WIB H+1), sesuai standar resmi WMO dan BMKG.
               </>
             ) : (
               <>
-                <strong>Standar Operasional BMKG:</strong> Menghitung presipitasi harian (RR) dari pukul 07:00 WIB s/d 07:00 WIB keesokan harinya (00:00 – 24:00 UTC). Standar baku stasiun sinoptik & agroklimat.
+                <strong>Kalender Lokal (00:00 – 23:59 WIB):</strong> Menghitung akumulasi presipitasi 00:00:00 – 23:59:59 WIB. Tepat sinkron dengan data <em>Laporan Cuaca Harian</em> dan <em>Ringkasan Bulanan</em>.
               </>
             )}
           </span>
         </div>
         <Badge variant="outline" className="text-[10px] font-mono shrink-0 bg-white dark:bg-slate-800 text-sky-700 dark:text-sky-300 border-sky-300">
-          {observationMode === "calendar" ? "WIB (UTC+7)" : "BMKG (00:00 UTC)"}
+          {observationMode === "utc" ? "UTC (00:00 – 24:00)" : "WIB (UTC+7)"}
         </Badge>
       </div>
 
@@ -678,11 +717,12 @@ Durasi Jam Basah: ${rainStats.rainDurationHours} Jam`;
                   <Table>
                     <TableHeader className="bg-slate-50 dark:bg-slate-800/80">
                       <TableRow>
-                        <TableHead className="w-[60px] text-center font-bold text-xs">No</TableHead>
-                        <TableHead className="font-bold text-xs">Jendela Jam Observasi</TableHead>
+                        <TableHead className="w-[50px] text-center font-bold text-xs">No</TableHead>
+                        <TableHead className="font-bold text-xs">Waktu UTC</TableHead>
+                        <TableHead className="font-bold text-xs">Waktu Lokal (WIB)</TableHead>
                         <TableHead className="text-right font-bold text-xs">Curah Hujan (mm)</TableHead>
                         <TableHead className="text-right font-bold text-xs">Kumulatif 24 Jam (mm)</TableHead>
-                        <TableHead className="text-center font-bold text-xs">Klasifikasi Intensitas</TableHead>
+                        <TableHead className="text-center font-bold text-xs">Klasifikasi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -700,7 +740,10 @@ Durasi Jam Basah: ${rainStats.rainDurationHours} Jam`;
                             {String(item.hourIndex + 1).padStart(2, "0")}
                           </TableCell>
                           <TableCell className="font-mono text-slate-800 dark:text-slate-200">
-                            {item.timeLabel}
+                            {item.timeUTC}
+                          </TableCell>
+                          <TableCell className="font-mono text-slate-600 dark:text-slate-400">
+                            {item.timeWIB}
                           </TableCell>
                           <TableCell className="text-right font-mono font-bold">
                             {item.rainfall > 0 ? (
@@ -801,7 +844,7 @@ Durasi Jam Basah: ${rainStats.rainDurationHours} Jam`;
                   <div className="text-right text-[11px] text-slate-500 font-mono hidden sm:block shrink-0">
                     <div>Tanggal: <strong>{format(selectedDate, "dd/MM/yyyy")}</strong></div>
                     <div>Stasiun: <strong>{sensorName}</strong></div>
-                    <div>Mode: <strong>{observationMode === "calendar" ? "WIB (00-24)" : "BMKG (07-07)"}</strong></div>
+                    <div>Standar: <strong>{observationMode === "utc" ? "UTC (00-24Z)" : "WIB (00-24)"}</strong></div>
                   </div>
                 </div>
 
@@ -818,7 +861,9 @@ Durasi Jam Basah: ${rainStats.rainDurationHours} Jam`;
                 ) : (
                   <>
                     <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Akumulasi Presipitasi 24 Jam
+                      {observationMode === "utc"
+                        ? "Total Akumulasi Presipitasi 24 Jam (Standar UTC 00:00 – 24:00 UTC)"
+                        : "Total Akumulasi Presipitasi 24 Jam (Standar Kalender Lokal 00:00 – 23:59 WIB)"}
                     </div>
                     <div className="text-xs text-slate-400 font-mono mt-0.5">
                       {format(selectedDate, "EEEE, dd MMMM yyyy", { locale: id })} • {observationWindowLabel}

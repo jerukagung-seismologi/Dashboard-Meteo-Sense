@@ -51,3 +51,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   - Menyertakan sumber data resmi (BoM, NOAA, NCICS, ECMWF, atau AWS lokal), atribusi otomatis oleh sistem *MeteoSense Dashboard*, serta penegasan bahwa dokumen dihasilkan otomatis dan sah tanpa tanda tangan basah.
 - **Konsistensi Multi-Halaman & Ekspor (PNG / PDF A4 / Print)**:
   - Tata letak kop, logo, dan penomoran halaman harus konsisten baik pada pratinjau kontinu (PNG), pemecahan multi-halaman A4 (PDF), maupun dialog cetak bawaan browser (`@media print`).
+
+### 6. Meteorological Standards: Daily Rainfall Observation (UTC Synoptic Standard)
+- **Mandatory UTC Standard (00:00 – 24:00 UTC)**:
+  - Total curah hujan harian (RR 24 Jam) WAJIB dihitung sebagai total akumulasi 24 jam penuh menggunakan **standar waktu UTC (00:00:00Z – 23:59:59Z)** sesuai standar baku Organisasi Meteorologi Dunia (WMO) dan BMKG (setara dengan pukul 07:00 WIB hari pengamatan s/d 07:00 WIB hari berikutnya).
+  - Modul pelaporan curah hujan (`LaporanCurahHujan.tsx`) harus menjadikan Standar UTC sebagai standar baku utama (default).
+- **Sensor Aggregation Integrity**:
+  - Fungsi agregasi curah hujan (`aggregateDailyUTC` dan `aggregateHourlyUTC`) wajib mengakumulasi pulsa sensor diskrit (`rainfall`) maupun integrasi laju hujan kontinu (`rainrate * dt`) agar tidak ada presipitasi yang terlewat.
+- **Physical Boundary for Visual Gauges**:
+  - Tabung ukur curah hujan visual (*Rain Measuring Cup*) wajib menampilkan tabung kosong sempurna (tinggi cairan = 0%) saat curah hujan bernilai 0.0 mm.
