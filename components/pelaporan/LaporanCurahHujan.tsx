@@ -483,7 +483,7 @@ Durasi Jam Basah: ${rainStats.rainDurationHours} Jam`;
                 </span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+            <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1.5rem)] shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden" align="end">
               <Calendar 
                 mode="single"
                 selected={selectedDate}

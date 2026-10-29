@@ -439,7 +439,7 @@ export default function AnalisisDashboardPage() {
                       {dailyDate ? format(dailyDate, "dd MMMM yyyy", { locale: id }) : <span>Pilih Tanggal</span>}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1.5rem)] shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden" align="start">
                     <Calendar
                       mode="single"
                       selected={dailyDate}
@@ -506,7 +506,7 @@ export default function AnalisisDashboardPage() {
                       )}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1.5rem)] shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden" align="start">
                     <Calendar
                       mode="single"
                       selected={weeklyStartDate}
