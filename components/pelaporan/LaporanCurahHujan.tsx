@@ -217,13 +217,12 @@ export default function LaporanCurahHujan({
         }
 
         // Advanced Rain Statistics (Peak Intensity, Rain Duration, Peak Time)
-        if (raw && raw.length > 0) {
-          let maxRate = 0;
-          let peakTime = "—";
-          const rainyHourSet = new Set<string>();
+        let maxRate = 0;
+        let peakTime = "—";
 
+        if (raw && raw.length > 0) {
           raw.forEach((r) => {
-            const rRate = r.rainrate || r.rainfall || 0;
+            const rRate = r.rainrate != null && Number.isFinite(Number(r.rainrate)) ? Number(r.rainrate) : 0;
             if (rRate > maxRate) {
               maxRate = rRate;
               const d = new Date(r.timestamp);
@@ -237,22 +236,7 @@ export default function LaporanCurahHujan({
                 peakTime = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")} WIB`;
               }
             }
-            if ((r.rainfall || 0) >= 0.05 || (r.rainrate || 0) >= 0.05) {
-              const d = new Date(r.timestamp);
-              const hKey = observationMode === "utc"
-                ? `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}-${d.getUTCHours()}`
-                : `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`;
-              rainyHourSet.add(hKey);
-            }
           });
-
-          setRainStats({
-            maxRainRate: Number(maxRate.toFixed(1)),
-            peakHour: peakTime,
-            rainDurationHours: rainyHourSet.size,
-          });
-        } else {
-          setRainStats({ maxRainRate: 0, peakHour: "—", rainDurationHours: 0 });
         }
 
         // Daily and Hourly Aggregations
@@ -346,11 +330,19 @@ export default function LaporanCurahHujan({
           }
         }
 
+        const effectiveRainHours = distItems.filter(h => h.rainfall >= 0.1).length;
+        setRainStats({
+          maxRainRate: Number(maxRate.toFixed(1)),
+          peakHour: peakTime,
+          rainDurationHours: effectiveRainHours,
+        });
+
         setHourlyDistribution(distItems);
       } catch (e: any) {
         const msg = e?.message || "Gagal memuat data observasi.";
         setError(msg);
         setReportData(prev => ({ ...prev, rainfallTot: 0 }));
+        setRainStats({ maxRainRate: 0, peakHour: "—", rainDurationHours: 0 });
         setHourlyDistribution([]);
         toast({ variant: "destructive", title: "Error", description: msg });
       } finally {

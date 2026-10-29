@@ -97,16 +97,42 @@ export function aggregateHourly(rows: SensorDate[]): HourlyRecord[] {
   // Sort globally first so delta computation is correct across hour boundaries
   const sorted = [...rows].sort((a, b) => a.timestamp - b.timestamp);
 
-  // Compute rainrate-based contribution for each reading: rr × Δt
+  // Compute delta contribution for each reading:
+  // Hardware sensors report running cumulative rainfall (reset daily at 00:00 UTC / 07:00 WIB).
+  // We compute the positive delta (difference) between consecutive readings to obtain true physical precipitation.
   const withContrib = sorted.map((p, index) => {
-    const rr = Number(p.rainrate);
-    const validRR = Number.isFinite(rr) && rr >= 0 ? Math.min(rr, MAX_RAINRATE_MM_HR) : 0;
-    if (index === 0) return { ...p, _rainContrib: 0 };
-    const deltaSeconds = (p.timestamp - sorted[index - 1].timestamp) / 1000;
-    const contrib = (deltaSeconds > 0 && deltaSeconds <= MAX_INTERVAL_SEC)
-      ? validRR * (deltaSeconds / 3600)
-      : 0;
-    return { ...p, _rainContrib: contrib };
+    let rainDelta = 0;
+
+    if (index > 0) {
+      const prev = sorted[index - 1];
+      const deltaSeconds = (p.timestamp - prev.timestamp) / 1000;
+
+      // 1. Primary: Cumulative rainfall counter delta
+      if (
+        p.rainfall != null && Number.isFinite(Number(p.rainfall)) &&
+        prev.rainfall != null && Number.isFinite(Number(prev.rainfall))
+      ) {
+        const curRf = Number(p.rainfall);
+        const prevRf = Number(prev.rainfall);
+        const diff = curRf - prevRf;
+
+        if (diff >= 0 && diff <= 50) {
+          // Normal accumulation within realistic physical limit per interval (<= 50 mm)
+          rainDelta = diff;
+        } else if (diff < 0 && curRf >= 0 && curRf <= 50) {
+          // Daily counter reset (e.g. at 07:00 WIB / 00:00 UTC) or station reboot
+          rainDelta = curRf;
+        }
+      } 
+      // 2. Secondary fallback: When rainfall counter is unavailable, integrate instantaneous rainrate
+      else if (deltaSeconds > 0 && deltaSeconds <= MAX_INTERVAL_SEC) {
+        const rr = Number(p.rainrate);
+        const validRR = Number.isFinite(rr) && rr >= 0 ? Math.min(rr, MAX_RAINRATE_MM_HR) : 0;
+        rainDelta = validRR * (deltaSeconds / 3600);
+      }
+    }
+
+    return { ...p, _rainContrib: rainDelta };
   });
 
   const byHour = new Map<string, typeof withContrib>();
@@ -123,12 +149,7 @@ export function aggregateHourly(rows: SensorDate[]): HourlyRecord[] {
   for (const [hourKey, items] of byHour) {
     const n = items.length || 1;
     const sum = (ns: number[]) => ns.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
-    const rainfallTot = items.reduce((acc, i) => {
-      if (i.rainfall != null && Number.isFinite(i.rainfall) && i.rainfall > 0) {
-        return acc + i.rainfall;
-      }
-      return acc + (Number.isFinite(i._rainContrib) ? i._rainContrib : 0);
-    }, 0);
+    const rainfallTot = items.reduce((acc, i) => acc + (Number.isFinite(i._rainContrib) ? i._rainContrib : 0), 0);
 
     hours.push({
       hourKey,
@@ -482,16 +503,42 @@ export function aggregateHourlyUTC(rows: SensorDate[]): HourlyRecord[] {
   // Sort globally first so delta computation is correct across hour boundaries
   const sorted = [...rows].sort((a, b) => a.timestamp - b.timestamp);
 
-  // Compute rainrate-based contribution for each reading: rr × Δt
+  // Compute delta contribution for each reading:
+  // Hardware sensors report running cumulative rainfall (reset daily at 00:00 UTC / 07:00 WIB).
+  // We compute the positive delta (difference) between consecutive readings to obtain true physical precipitation.
   const withContrib = sorted.map((p, index) => {
-    const rr = Number(p.rainrate);
-    const validRR = Number.isFinite(rr) && rr >= 0 ? Math.min(rr, MAX_RAINRATE_MM_HR) : 0;
-    if (index === 0) return { ...p, _rainContrib: 0 };
-    const deltaSeconds = (p.timestamp - sorted[index - 1].timestamp) / 1000;
-    const contrib = (deltaSeconds > 0 && deltaSeconds <= MAX_INTERVAL_SEC)
-      ? validRR * (deltaSeconds / 3600)
-      : 0;
-    return { ...p, _rainContrib: contrib };
+    let rainDelta = 0;
+
+    if (index > 0) {
+      const prev = sorted[index - 1];
+      const deltaSeconds = (p.timestamp - prev.timestamp) / 1000;
+
+      // 1. Primary: Cumulative rainfall counter delta
+      if (
+        p.rainfall != null && Number.isFinite(Number(p.rainfall)) &&
+        prev.rainfall != null && Number.isFinite(Number(prev.rainfall))
+      ) {
+        const curRf = Number(p.rainfall);
+        const prevRf = Number(prev.rainfall);
+        const diff = curRf - prevRf;
+
+        if (diff >= 0 && diff <= 50) {
+          // Normal accumulation within realistic physical limit per interval (<= 50 mm)
+          rainDelta = diff;
+        } else if (diff < 0 && curRf >= 0 && curRf <= 50) {
+          // Daily counter reset (e.g. at 07:00 WIB / 00:00 UTC) or station reboot
+          rainDelta = curRf;
+        }
+      } 
+      // 2. Secondary fallback: When rainfall counter is unavailable, integrate instantaneous rainrate
+      else if (deltaSeconds > 0 && deltaSeconds <= MAX_INTERVAL_SEC) {
+        const rr = Number(p.rainrate);
+        const validRR = Number.isFinite(rr) && rr >= 0 ? Math.min(rr, MAX_RAINRATE_MM_HR) : 0;
+        rainDelta = validRR * (deltaSeconds / 3600);
+      }
+    }
+
+    return { ...p, _rainContrib: rainDelta };
   });
 
   const byHour = new Map<string, typeof withContrib>();
@@ -508,12 +555,7 @@ export function aggregateHourlyUTC(rows: SensorDate[]): HourlyRecord[] {
   for (const [hourKey, items] of byHour) {
     const n = items.length || 1;
     const sum = (ns: number[]) => ns.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
-    const rainfallTot = items.reduce((acc, i) => {
-      if (i.rainfall != null && Number.isFinite(i.rainfall) && i.rainfall > 0) {
-        return acc + i.rainfall;
-      }
-      return acc + (Number.isFinite(i._rainContrib) ? i._rainContrib : 0);
-    }, 0);
+    const rainfallTot = items.reduce((acc, i) => acc + (Number.isFinite(i._rainContrib) ? i._rainContrib : 0), 0);
 
     hours.push({
       hourKey,

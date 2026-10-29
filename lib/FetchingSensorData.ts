@@ -202,6 +202,8 @@ export async function fetchSensorDataByDateRange(
         windSinSum: number; windCosSum: number; windDirCount: number;
       }>();
 
+      let prevRainfallVal: number | null = null;
+
       snapshot.forEach((childSnapshot) => {
         const timestampInSeconds = Number(childSnapshot.key);
         const timestampInMillis = timestampInSeconds * 1000;
@@ -267,7 +269,19 @@ export async function fetchSensorDataByDateRange(
           b.voltCount++;
         }
         if (data.rainfall != null && Number.isFinite(Number(data.rainfall))) {
-          b.rainTotal += Number(data.rainfall);
+          const rf = Number(data.rainfall);
+          if (prevRainfallVal !== null) {
+            const diff = rf - prevRainfallVal;
+            if (diff >= 0 && diff <= 50) {
+              b.rainTotal += diff;
+            } else if (diff < 0 && rf >= 0 && rf <= 50) {
+              b.rainTotal += rf;
+            }
+          }
+          prevRainfallVal = rf;
+        } else if (data.rainrate != null && Number.isFinite(Number(data.rainrate))) {
+          const rr = Math.min(Math.max(0, Number(data.rainrate)), 300);
+          b.rainTotal += rr * (60 / 3600);
         }
         if (data.rainrate != null && Number.isFinite(Number(data.rainrate))) {
           if (Number(data.rainrate) > b.rainRateMax) b.rainRateMax = Number(data.rainrate);
