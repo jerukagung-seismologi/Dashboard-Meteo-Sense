@@ -111,7 +111,7 @@ export default function LaporanKlimatologi({ sensorId, sensorName, displayName, 
       "Tekanan Rata-rata (hPa)",
     ];
     const rows = data.points.map((p: any) =>
-      `"${p.timeKey}",${p.temperatureMean},${p.temperatureMax},${p.temperatureMin},${p.rainfallTotal},${p.humidityMean},${p.pressureMean}`
+      `"${p.timeKey}",${p.temperatureMean},${p.temperatureMax},${p.temperatureMin},${p.rainfallAccumulation ?? p.rainfallTotal ?? 0},${p.humidityMean},${p.pressureMean}`
     );
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -131,7 +131,7 @@ export default function LaporanKlimatologi({ sensorId, sensorName, displayName, 
     const temps = data.points.map((p: any) => p.temperatureMean);
     const tempMaxs = data.points.map((p: any) => p.temperatureMax);
     const tempMins = data.points.map((p: any) => p.temperatureMin);
-    const rains = data.points.map((p: any) => p.rainfallTotal);
+    const rains = data.points.map((p: any) => p.rainfallAccumulation ?? p.rainfallTotal ?? 0);
     const hums = data.points.map((p: any) => p.humidityMean);
 
     return {
@@ -413,7 +413,7 @@ Tekanan Udara Rata-Rata: ${minPress} - ${maxPress} hPa`;
                           <td className="px-3 py-2 text-center border-r font-semibold">{p.temperatureMean?.toFixed(1) ?? "-"}</td>
                           <td className="px-3 py-2 text-center border-r text-red-600">{p.temperatureMax?.toFixed(1) ?? "-"}</td>
                           <td className="px-3 py-2 text-center border-r text-blue-600">{p.temperatureMin?.toFixed(1) ?? "-"}</td>
-                          <td className="px-3 py-2 text-center border-r font-semibold text-sky-700">{p.rainfallTotal?.toFixed(1) ?? "0.0"}</td>
+                          <td className="px-3 py-2 text-center border-r font-semibold text-sky-700">{(p.rainfallAccumulation ?? p.rainfallTotal)?.toFixed(1) ?? "0.0"}</td>
                           <td className="px-3 py-2 text-center border-r text-emerald-700">{p.humidityMean?.toFixed(0) ?? "-"}</td>
                           <td className="px-3 py-2 text-center text-violet-700">{p.pressureMean?.toFixed(1) ?? "-"}</td>
                         </tr>
@@ -510,7 +510,7 @@ Tekanan Udara Rata-Rata: ${minPress} - ${maxPress} hPa`;
                                   <td className="px-3 py-2 text-center border-r font-semibold">{p.temperatureMean?.toFixed(1) ?? "-"}</td>
                                   <td className="px-3 py-2 text-center border-r text-red-600">{p.temperatureMax?.toFixed(1) ?? "-"}</td>
                                   <td className="px-3 py-2 text-center border-r text-blue-600">{p.temperatureMin?.toFixed(1) ?? "-"}</td>
-                                  <td className="px-3 py-2 text-center border-r font-semibold text-sky-700">{p.rainfallTotal?.toFixed(1) ?? "0.0"}</td>
+                                  <td className="px-3 py-2 text-center border-r font-semibold text-sky-700">{(p.rainfallAccumulation ?? p.rainfallTotal)?.toFixed(1) ?? "0.0"}</td>
                                   <td className="px-3 py-2 text-center border-r text-emerald-700">{p.humidityMean?.toFixed(0) ?? "-"}</td>
                                   <td className="px-3 py-2 text-center text-violet-700">{p.pressureMean?.toFixed(1) ?? "-"}</td>
                                 </tr>
@@ -586,7 +586,7 @@ Tekanan Udara Rata-Rata: ${minPress} - ${maxPress} hPa`;
                       <td className="px-2 py-2 print:py-1 border-r text-center">{p.temperatureMean?.toFixed(1) ?? "-"}</td>
                       <td className="px-2 py-2 print:py-1 border-r text-center text-red-600 font-medium">{p.temperatureMax?.toFixed(1) ?? "-"}</td>
                       <td className="px-2 py-2 print:py-1 border-r text-center text-blue-600 font-medium">{p.temperatureMin?.toFixed(1) ?? "-"}</td>
-                      <td className="px-2 py-2 print:py-1 border-r text-center font-bold text-blue-700">{p.rainfallTotal?.toFixed(1) ?? "-"}</td>
+                      <td className="px-2 py-2 print:py-1 border-r text-center font-bold text-blue-700">{(p.rainfallAccumulation ?? p.rainfallTotal)?.toFixed(1) ?? "-"}</td>
                       <td className="px-2 py-2 print:py-1 border-r text-center">{p.humidityMean?.toFixed(0) ?? "-"}</td>
                       <td className="px-2 py-2 print:py-1 text-center">{p.pressureMean?.toFixed(1) ?? "-"}</td>
                     </tr>

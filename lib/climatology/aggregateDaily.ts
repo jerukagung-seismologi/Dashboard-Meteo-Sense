@@ -153,6 +153,7 @@ export function aggregateDaily(rawPoints: SensorDate[]): AggregatedPoint[] {
       dewPointMax: Math.round(dewFinalMax * 100) / 100,
       dewPointMin: Math.round(dewFinalMin * 100) / 100,
       rainfallAccumulation: Math.round(rainAccum * 100) / 100,
+      rainfallTotal: Math.round(rainAccum * 100) / 100,
     });
   }
 

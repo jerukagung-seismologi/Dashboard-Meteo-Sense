@@ -3,40 +3,91 @@ import { SensorDate } from "@/lib/FetchingSensorData";
 import { AggregatedPoint } from "@/lib/climatology/climatologyTypes";
 
 /**
- * Computes rainfall contribution per reading using rainrate × Δt integration.
+ * Computes rainfall contribution (rainDelta in mm) for each reading in the time series.
  *
- * WHY rainrate, not rainfall counter:
- *  - `rainfall` is a cumulative counter that resets at unpredictable times (not guaranteed at hour
- *    boundaries), making delta-diff unreliable. A reset mid-hour produces a large spurious spike.
- *  - `rainrate` (mm/hr) is an instantaneous measurement. Multiplying by the time interval since
- *    the previous reading gives the actual rainfall accumulated during that interval.
- *
- * Formula: contribution_i = rainrate_i × (Δt_i / 3600)
- * Guards:
- *  - rainrate capped at 300 mm/hr (physically plausible maximum)
- *  - interval capped at 1800 s (30 min) — long data gaps should not produce artificial rain
+ * SENSOR REALITY & WMO METEOROLOGICAL STANDARDS:
+ *  - Physical AWS stations report running cumulative daily rainfall (`rainfall`), reset at 00:00 UTC (07:00 WIB).
+ *  - Primary accumulation is computed via positive incremental deltas between consecutive readings:
+ *      ΔR = R_t - R_{t-1} (for 0 <= ΔR <= 50 mm/interval)
+ *    When counter reset occurs (ΔR < 0, e.g. at 00:00 UTC or reboot):
+ *      ΔR = R_t (if R_t >= 0 and R_t <= 50 mm)
+ *  - Pre-aggregated hourly inputs (marked by tempMax) already represent hourly totals, so rainDelta = p.rainfall.
+ *  - Secondary fallback: when cumulative `rainfall` is missing or NaN, integrate instantaneous `rainrate` (mm/hr) over Δt.
  */
 export function computeRainDeltas(rawPoints: SensorDate[]): (SensorDate & { rainDelta: number })[] {
+  if (rawPoints.length === 0) return [];
+
   const sorted = [...rawPoints].sort((a, b) => a.timestamp - b.timestamp);
   const MAX_RAINRATE_MM_HR = 300;   // World-record-level cap
   const MAX_INTERVAL_SEC   = 1800;  // 30-minute gap cap — ignore large data gaps
+  const MAX_DELTA_PER_INTERVAL = 50; // Plausible physical rain increment limit per reading (mm)
+
+  let prevValidRainfall: number | null = null;
 
   return sorted.map((p, index) => {
-    const rr = Number(p.rainrate);
-    const validRR = Number.isFinite(rr) && rr >= 0 ? Math.min(rr, MAX_RAINRATE_MM_HR) : 0;
-
-    if (index === 0) {
-      // First reading: no previous point, contribution = 0
-      return { ...p, rainDelta: 0 };
+    // 0. Pre-aggregated hourly record: rainfall is already the accumulated delta for this hour
+    if ((p as any).tempMax != null) {
+      const r = Number(p.rainfall);
+      return { ...p, rainDelta: Number.isFinite(r) && r >= 0 ? r : 0 };
     }
 
-    const deltaSeconds = (p.timestamp - sorted[index - 1].timestamp) / 1000;
-    // Only integrate over a reasonable interval; treat long gaps as dry
-    const contribution = (deltaSeconds > 0 && deltaSeconds <= MAX_INTERVAL_SEC)
-      ? validRR * (deltaSeconds / 3600)
-      : 0;
+    let rainDelta = 0;
 
-    return { ...p, rainDelta: contribution };
+    if (index > 0) {
+      const prev = sorted[index - 1];
+      const deltaSeconds = (p.timestamp - prev.timestamp) / 1000;
+
+      // 1. Primary: Cumulative rainfall counter delta
+      if (
+        p.rainfall != null &&
+        Number.isFinite(Number(p.rainfall)) &&
+        prevValidRainfall !== null
+      ) {
+        const curRf = Number(p.rainfall);
+        const prevRf = prevValidRainfall;
+        const diff = curRf - prevRf;
+
+        if (diff >= 0 && diff <= MAX_DELTA_PER_INTERVAL) {
+          // Normal physical accumulation between readings
+          rainDelta = diff;
+          prevValidRainfall = curRf;
+        } else if (diff < 0 && curRf >= 0 && curRf <= MAX_DELTA_PER_INTERVAL) {
+          // Counter reset (e.g. at 00:00 UTC / 07:00 WIB daily boundary or station reboot)
+          rainDelta = curRf;
+          prevValidRainfall = curRf;
+        } else if (diff > MAX_DELTA_PER_INTERVAL) {
+          // Spurious spike / sensor glitch (> 50 mm in single reading): do not accumulate and keep prevValidRainfall
+          rainDelta = 0;
+        }
+      } else if (p.rainfall != null && Number.isFinite(Number(p.rainfall))) {
+        prevValidRainfall = Number(p.rainfall);
+      }
+
+      // 2. Secondary fallback: When rainfall counter is unavailable/NaN, integrate instantaneous rainrate
+      if (
+        (p.rainfall == null || !Number.isFinite(Number(p.rainfall))) &&
+        deltaSeconds > 0 &&
+        deltaSeconds <= MAX_INTERVAL_SEC
+      ) {
+        const rr = Number(p.rainrate);
+        if (Number.isFinite(rr) && rr > 0) {
+          const validRR = Math.min(rr, MAX_RAINRATE_MM_HR);
+          rainDelta = validRR * (deltaSeconds / 3600);
+        }
+      }
+    } else {
+      // First reading (index === 0):
+      if (p.rainfall != null && Number.isFinite(Number(p.rainfall))) {
+        const r0 = Number(p.rainfall);
+        if (r0 >= 0 && r0 <= MAX_DELTA_PER_INTERVAL) {
+          prevValidRainfall = r0;
+          // If first reading is right around start of day with small value (<= 5 mm), count it; else 0
+          rainDelta = r0 <= 5 ? r0 : 0;
+        }
+      }
+    }
+
+    return { ...p, rainDelta };
   });
 }
 
@@ -182,6 +233,7 @@ export function aggregateHourly(rawPoints: SensorDate[]): AggregatedPoint[] {
       dewPointMax: Math.round(dewFinalMax * 100) / 100,
       dewPointMin: Math.round(dewFinalMin * 100) / 100,
       rainfallAccumulation: Math.round(rainAccum * 100) / 100,
+      rainfallTotal: Math.round(rainAccum * 100) / 100,
     });
   }
 

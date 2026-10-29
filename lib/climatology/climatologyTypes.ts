@@ -23,6 +23,7 @@ export interface AggregatedPoint {
   dewPointMin: number;
 
   rainfallAccumulation: number;
+  rainfallTotal?: number; // Alias for backward compatibility with reporting and export components
 }
 
 export interface ClimatologyStats {

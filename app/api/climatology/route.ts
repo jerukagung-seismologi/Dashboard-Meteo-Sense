@@ -58,17 +58,35 @@ export async function GET(request: Request) {
 
     console.log(`Climatology Server Query: sensorId=${sensorId}, preset=${preset}, startUTC=${start.toISOString()}, endUTC=${end.toISOString()}`);
 
-    const rawPoints = await fetchSensorDataByDateRange(sensorId, start.getTime(), end.getTime(), useCalibration);
+    // Buffer fetch start by 15 minutes to guarantee capturing the previous reading across the 00:00 UTC day boundary
+    const fetchStart = start.getTime() - 15 * 60 * 1000;
+    const resolution = preset === "yearly" ? "hourly" : undefined;
+    const rawPoints = await fetchSensorDataByDateRange(
+      sensorId,
+      fetchStart,
+      end.getTime(),
+      useCalibration,
+      resolution
+    );
 
-    // Aggregate data
-    const dailyPoints = aggregateDaily(rawPoints);
-    const hourlyPoints = aggregateHourly(rawPoints);
+    // Aggregate data and filter strictly to requested time window
+    const dailyPoints = aggregateDaily(rawPoints).filter(
+      (p) => p.timestamp >= start.getTime() && p.timestamp <= end.getTime()
+    );
+    const hourlyPoints = aggregateHourly(rawPoints).filter(
+      (p) => p.timestamp >= start.getTime() && p.timestamp <= end.getTime()
+    );
 
     const isHourly = preset === "daily";
     const points = isHourly ? hourlyPoints : dailyPoints;
 
+    // Filter points to the exact period for statistical evaluation
+    const periodRawPoints = rawPoints.filter(
+      (p) => p.timestamp >= start.getTime() && p.timestamp <= end.getTime()
+    );
+
     // Calculate descriptive statistics on the server side
-    const stats = calculateStats(rawPoints, dailyPoints, hourlyPoints, isHourly);
+    const stats = calculateStats(periodRawPoints, dailyPoints, hourlyPoints, isHourly);
 
     const payload = {
       sensorId,
