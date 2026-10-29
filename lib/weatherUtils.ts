@@ -24,7 +24,7 @@ export type WeatherRecord = {
   imputedSource?: string;
 };
 
-type HourlyRecord = {
+export type HourlyRecord = {
   hourKey: string;
   dateKey: string;
   sampleCount: number;
@@ -90,7 +90,7 @@ export const formatDateTimeForDisplay = (date: Date): string => {
 
 // --- AGGREGATION LOGIC ---
 
-function aggregateHourly(rows: SensorDate[]): HourlyRecord[] {
+export function aggregateHourly(rows: SensorDate[]): HourlyRecord[] {
   const MAX_RAINRATE_MM_HR = 300;  // Physical upper bound
   const MAX_INTERVAL_SEC   = 1800; // 30-min gap — ignore long data gaps
 
@@ -475,7 +475,7 @@ const FMT_HOUR_UTC = new Intl.DateTimeFormat("id-ID", {
   hour12: false,
 });
 
-function aggregateHourlyUTC(rows: SensorDate[]): HourlyRecord[] {
+export function aggregateHourlyUTC(rows: SensorDate[]): HourlyRecord[] {
   const MAX_RAINRATE_MM_HR = 300;  // Physical upper bound
   const MAX_INTERVAL_SEC   = 1800; // 30-min gap — ignore long data gaps
 
@@ -508,7 +508,12 @@ function aggregateHourlyUTC(rows: SensorDate[]): HourlyRecord[] {
   for (const [hourKey, items] of byHour) {
     const n = items.length || 1;
     const sum = (ns: number[]) => ns.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
-    const rainfallTot = items.reduce((acc, i) => acc + (Number.isFinite(i._rainContrib) ? i._rainContrib : 0), 0);
+    const rainfallTot = items.reduce((acc, i) => {
+      if (i.rainfall != null && Number.isFinite(i.rainfall) && i.rainfall > 0) {
+        return acc + i.rainfall;
+      }
+      return acc + (Number.isFinite(i._rainContrib) ? i._rainContrib : 0);
+    }, 0);
 
     hours.push({
       hourKey,
