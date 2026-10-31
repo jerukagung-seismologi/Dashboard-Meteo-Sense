@@ -133,6 +133,8 @@ const DashboardSkeleton = () => (
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
               </div>
             </div>
           ))}
@@ -315,11 +317,20 @@ export default function DashboardPage() {
                       </Badge>
                       <div className="text-right hidden sm:block">
                         <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          {device.latestData?.temperature.toFixed(1) ?? "N/A"}°C
+                          {device.latestData?.temperature != null ? `${device.latestData.temperature.toFixed(1)}°C` : "N/A"}
                         </div>
                         <div className="flex items-center text-gray-600 dark:text-gray-400 justify-end">
                           <ThermometerIcon className="h-3 w-3" />
                           <span className="text-xs ml-1">Suhu</span>
+                        </div>
+                      </div>
+                      <div className="text-right hidden md:block">
+                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200 font-mono">
+                          {device.latestData?.rainfall != null ? `${device.latestData.rainfall.toFixed(1)} mm` : "N/A"}
+                        </div>
+                        <div className="flex items-center text-gray-600 dark:text-gray-400 justify-end">
+                          <CloudRainIcon className="h-3 w-3 text-cyan-500" />
+                          <span className="text-xs ml-1">Hujan Hari Ini</span>
                         </div>
                       </div>
                       <Button size="icon" variant="ghost" className="h-8 w-8 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">
@@ -450,11 +461,24 @@ export default function DashboardPage() {
                       {device.latestData?.pressure?.toFixed(1) ?? "N/A"} hPa
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Curah Hujan:</span>
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
-                      {device.latestData?.rainrate?.toFixed(2) ?? "N/A"} mm/h
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Hujan Hari Ini:</span>
+                    <span className="font-medium text-gray-800 dark:text-gray-200 font-mono">
+                      {device.latestData?.rainfall != null ? `${device.latestData.rainfall.toFixed(1)} mm` : "N/A"}
                     </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Laju Hujan:</span>
+                    <div className="text-right">
+                      <span className="font-medium text-gray-800 dark:text-gray-200 font-mono">
+                        {device.latestData?.rainrate != null ? `${device.latestData.rainrate.toFixed(1)} mm/j` : "N/A"}
+                      </span>
+                      {device.latestData?.rainrate != null && device.latestData.rainrate > 0 && (
+                        <span className="ml-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                          ({device.latestData.rainrate > 20 ? "Lebat" : device.latestData.rainrate > 5 ? "Sedang" : "Ringan"})
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Tegangan:</span>
