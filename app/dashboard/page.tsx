@@ -325,7 +325,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="text-right hidden md:block">
-                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200 font-mono">
+                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
                           {device.latestData?.rainfall != null ? `${device.latestData.rainfall.toFixed(1)} mm` : "N/A"}
                         </div>
                         <div className="flex items-center text-gray-600 dark:text-gray-400 justify-end">
@@ -461,24 +461,17 @@ export default function DashboardPage() {
                       {device.latestData?.pressure?.toFixed(1) ?? "N/A"} hPa
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Hujan Hari Ini:</span>
-                    <span className="font-medium text-gray-800 dark:text-gray-200 font-mono">
+                    <span className="font-medium text-gray-800 dark:text-gray-200">
                       {device.latestData?.rainfall != null ? `${device.latestData.rainfall.toFixed(1)} mm` : "N/A"}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Laju Hujan:</span>
-                    <div className="text-right">
-                      <span className="font-medium text-gray-800 dark:text-gray-200 font-mono">
-                        {device.latestData?.rainrate != null ? `${device.latestData.rainrate.toFixed(1)} mm/j` : "N/A"}
-                      </span>
-                      {device.latestData?.rainrate != null && device.latestData.rainrate > 0 && (
-                        <span className="ml-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium">
-                          ({device.latestData.rainrate > 20 ? "Lebat" : device.latestData.rainrate > 5 ? "Sedang" : "Ringan"})
-                        </span>
-                      )}
-                    </div>
+                    <span className="font-medium text-gray-800 dark:text-gray-200">
+                      {device.latestData?.rainrate != null ? `${device.latestData.rainrate.toFixed(1)} mm/j` : "N/A"}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Tegangan:</span>
