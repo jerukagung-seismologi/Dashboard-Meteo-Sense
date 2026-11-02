@@ -218,6 +218,14 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
     setVisibleModelIds(new Set(["ecmwf_ifs", "gfs_seamless", "icon_seamless"]));
   };
 
+  const selectAiModelsOnly = () => {
+    setVisibleModelIds(new Set(modelsMeta.filter((m) => m.category === "AI Model").map((m) => m.id)));
+  };
+
+  const selectPhysicsModelsOnly = () => {
+    setVisibleModelIds(new Set(modelsMeta.filter((m) => m.category === "Physics NWP").map((m) => m.id)));
+  };
+
   // Compute Verification Metrics (RMSE, MAE, MBE, Pearson r) for each model
   const verificationLeaderboard = useMemo(() => {
     const variableSeries = nwpSeries[selectedVariable]?.models;
@@ -333,6 +341,36 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
   // Best model (excluding ensemble mean)
   const bestIndividualModel = useMemo(() => {
     return verificationLeaderboard.find((m) => m.modelId !== "ensemble_mean" && m.validPairs > 0);
+  }, [verificationLeaderboard]);
+
+  // AI vs Physics Benchmark Comparison
+  const aiVsPhysicsComparison = useMemo(() => {
+    const aiModels = verificationLeaderboard.filter((m) => m.category === "AI Model" && m.validPairs > 0);
+    const physicsModels = verificationLeaderboard.filter((m) => m.category === "Physics NWP" && m.validPairs > 0);
+
+    const avgAiRmse =
+      aiModels.length > 0
+        ? Number((aiModels.reduce((acc, m) => acc + m.rmse, 0) / aiModels.length).toFixed(2))
+        : null;
+    const avgPhysicsRmse =
+      physicsModels.length > 0
+        ? Number((physicsModels.reduce((acc, m) => acc + m.rmse, 0) / physicsModels.length).toFixed(2))
+        : null;
+
+    let winner: "AI" | "Physics" | "Tie" | null = null;
+    if (avgAiRmse !== null && avgPhysicsRmse !== null) {
+      if (avgAiRmse < avgPhysicsRmse) winner = "AI";
+      else if (avgPhysicsRmse < avgAiRmse) winner = "Physics";
+      else winner = "Tie";
+    }
+
+    return {
+      aiModelsCount: aiModels.length,
+      physicsModelsCount: physicsModels.length,
+      avgAiRmse,
+      avgPhysicsRmse,
+      winner,
+    };
   }, [verificationLeaderboard]);
 
   // ECharts Configuration
@@ -633,19 +671,35 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
                 <Layers className="h-3.5 w-3.5 text-sky-500" />
                 Pilihan Model Cuaca Ditampilkan di Grafik:
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={selectAllModels}
                   className="text-[11px] text-sky-600 dark:text-sky-400 hover:underline font-medium"
                 >
-                  Pilih Semua (9 Model)
+                  Pilih Semua (10 Model)
+                </button>
+                <span className="text-slate-300">·</span>
+                <button
+                  type="button"
+                  onClick={selectAiModelsOnly}
+                  className="text-[11px] text-purple-600 dark:text-purple-400 hover:underline font-medium"
+                >
+                  Model AI Saja (AIFS &amp; AIGFS)
+                </button>
+                <span className="text-slate-300">·</span>
+                <button
+                  type="button"
+                  onClick={selectPhysicsModelsOnly}
+                  className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
+                >
+                  Model Fisika (8 NWP)
                 </button>
                 <span className="text-slate-300">·</span>
                 <button
                   type="button"
                   onClick={selectCoreModelsOnly}
-                  className="text-[11px] text-sky-600 dark:text-sky-400 hover:underline font-medium"
+                  className="text-[11px] text-slate-600 dark:text-slate-400 hover:underline font-medium"
                 >
                   Model Utama (ECMWF, GFS, ICON)
                 </button>
@@ -769,6 +823,36 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
         </CardHeader>
 
         <CardContent className="p-0">
+          {/* AI vs Physics Head-to-Head Banner */}
+          {aiVsPhysicsComparison.aiModelsCount > 0 && aiVsPhysicsComparison.physicsModelsCount > 0 && (
+            <div className="p-3.5 mx-4 sm:mx-5 my-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 font-bold text-xs">
+                  AI
+                </div>
+                <div>
+                  <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 flex-wrap">
+                    <span>Head-to-Head: Model AI (Deep Learning) vs Fisika Klasik (NWP)</span>
+                    {aiVsPhysicsComparison.winner === "AI" ? (
+                      <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300 text-[10px] font-bold">
+                        🏆 AI Unggul (RMSE Rata-rata Lebih Rendah)
+                      </Badge>
+                    ) : aiVsPhysicsComparison.winner === "Physics" ? (
+                      <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300 text-[10px] font-bold">
+                        ⚙️ Fisika Unggul (RMSE Lebih Rendah)
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px]">Performa Setara</Badge>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Rata-rata RMSE Model AI: <strong className="text-purple-600 dark:text-purple-400 font-mono">{aiVsPhysicsComparison.avgAiRmse} {activeVariableConfig.unit}</strong> (AIFS &amp; AIGFS) vs Model Fisika: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{aiVsPhysicsComparison.avgPhysicsRmse} {activeVariableConfig.unit}</strong> (IFS, GFS, ICON, GEM, dll.).
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>

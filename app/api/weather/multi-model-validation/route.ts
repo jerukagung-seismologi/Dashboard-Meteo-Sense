@@ -15,6 +15,7 @@ export interface NWPModelMeta {
 export const SUPPORTED_NWP_MODELS: NWPModelMeta[] = [
   { id: "ecmwf_ifs", name: "ECMWF IFS (9 km)", country: "Eropa", category: "Physics NWP", color: "#3B82F6" },
   { id: "ecmwf_aifs025_single", name: "ECMWF AIFS (AI)", country: "Eropa (AI)", category: "AI Model", color: "#8B5CF6" },
+  { id: "ncep_aigfs025", name: "NOAA AIGFS (AI)", country: "Amerika Serikat (AI)", category: "AI Model", color: "#A855F7" },
   { id: "gfs_seamless", name: "NOAA GFS (11 km)", country: "Amerika Serikat", category: "Physics NWP", color: "#EF4444" },
   { id: "icon_seamless", name: "DWD ICON (13 km)", country: "Jerman", category: "Physics NWP", color: "#10B981" },
   { id: "jma_seamless", name: "JMA GSM (0.25°)", country: "Jepang", category: "Physics NWP", color: "#F59E0B" },
