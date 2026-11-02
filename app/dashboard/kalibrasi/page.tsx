@@ -85,6 +85,7 @@ import { ActiveSensorManager } from "@/components/calibration/ActiveSensorManage
 import { ModelParameterInspector } from "@/components/calibration/ModelParameterInspector";
 import { QuickVariableSelector } from "@/components/calibration/QuickVariableSelector";
 import { CalibrationWorkflowGuide } from "@/components/calibration/CalibrationWorkflowGuide";
+import { MultiModelWeatherValidation } from "@/components/calibration/MultiModelWeatherValidation";
 import { fitSensorCalibrationFromERA5 } from "@/lib/calibration/sensorCalibrationFit";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -640,7 +641,7 @@ function UnifiedCalibrationContent() {
 
       {/* Main Guided Stepper Navigation Tabs */}
       <Tabs value={activeMainTab} onValueChange={handleTabChange} className="w-full space-y-5">
-        <TabsList className="h-auto w-full grid grid-cols-1 md:grid-cols-3 bg-slate-100/90 dark:bg-slate-800/80 p-1.5 rounded-2xl gap-2 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        <TabsList className="h-auto w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 bg-slate-100/90 dark:bg-slate-800/80 p-1.5 rounded-2xl gap-2 border border-slate-200/80 dark:border-slate-800 shadow-xs">
           {/* Step 1 */}
           <TabsTrigger
             value="validation"
@@ -652,7 +653,7 @@ function UnifiedCalibrationContent() {
             <div className="min-w-0 flex-1">
               <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                <span>Validasi &amp; Komparasi Bias</span>
+                <span>Validasi Bias ERA5</span>
               </div>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
                 Diagnosis Ground Truth vs ERA5
@@ -660,13 +661,32 @@ function UnifiedCalibrationContent() {
             </div>
           </TabsTrigger>
 
-          {/* Step 2 */}
+          {/* Step 2: Multi-Model NWP Validation */}
+          <TabsTrigger
+            value="nwp-validation"
+            className="h-auto w-full text-left py-2.5 px-3 rounded-xl flex items-center gap-3 whitespace-normal data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm transition-all"
+          >
+            <div className="w-7 h-7 rounded-lg bg-sky-100 dark:bg-sky-950/80 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">
+              2
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                <span>Validasi Model NWP</span>
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                9 Model Cuaca Global vs AWS
+              </p>
+            </div>
+          </TabsTrigger>
+
+          {/* Step 3 */}
           <TabsTrigger
             value="model-calibration"
             className="h-auto w-full text-left py-2.5 px-3 rounded-xl flex items-center gap-3 whitespace-normal data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm transition-all"
           >
             <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
-              2
+              3
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-1.5">
@@ -679,13 +699,13 @@ function UnifiedCalibrationContent() {
             </div>
           </TabsTrigger>
 
-          {/* Step 3 */}
+          {/* Step 4 */}
           <TabsTrigger
             value="sensor-settings"
             className="h-auto w-full text-left py-2.5 px-3 rounded-xl flex items-center gap-3 whitespace-normal data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm transition-all relative"
           >
             <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
-              3
+              4
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-1.5">
@@ -704,8 +724,8 @@ function UnifiedCalibrationContent() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Global Control Filter Bar (Shared across Tab 1 and Tab 2) */}
-        {activeMainTab !== "sensor-settings" && (
+        {/* Global Control Filter Bar (Shared across Tab 1 and Tab 3) */}
+        {activeMainTab !== "sensor-settings" && activeMainTab !== "nwp-validation" && (
           <div className="space-y-4">
             {/* Quick Meteorological Variable Pills */}
             <QuickVariableSelector
@@ -1046,7 +1066,19 @@ function UnifiedCalibrationContent() {
         </TabsContent>
 
         {/* ========================================================================= */}
-        {/* TAB 2: MODEL KALIBRASI & LEADERBOARD ALGORITMA                            */}
+        {/* TAB 2: VALIDASI MULTI-MODEL CUACA OPERASIONAL (NWP VS AWS)                */}
+        {/* ========================================================================= */}
+        <TabsContent value="nwp-validation" className="space-y-6 pt-0">
+          <MultiModelWeatherValidation
+            selectedStationId={selectedStationId}
+            stationName={stationName}
+            stationCoords={stationCoords}
+            isDarkMode={isDarkMode}
+          />
+        </TabsContent>
+
+        {/* ========================================================================= */}
+        {/* TAB 3: MODEL KALIBRASI & LEADERBOARD ALGORITMA                            */}
         {/* ========================================================================= */}
         <TabsContent value="model-calibration" className="space-y-6 pt-0">
           {loading && (
