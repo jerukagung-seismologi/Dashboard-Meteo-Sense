@@ -204,3 +204,4 @@ function processOpenMeteoPayload(
     series: seriesByVariable,
   });
 }
+
