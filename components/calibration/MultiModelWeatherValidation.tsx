@@ -396,11 +396,12 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
         type: selectedVariable === "precipitation" ? "bar" : "line",
         data: awsSeriesData,
         itemStyle: {
-          color: isDarkMode ? "#F8FAFC" : "#0F172A",
+          color: isDarkMode ? "#10B981" : "#059669",
         },
         lineStyle: {
           width: 3.5,
           type: "solid",
+          color: isDarkMode ? "#10B981" : "#059669",
         },
         symbol: "circle",
         symbolSize: 6,
@@ -408,7 +409,7 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
       },
     ];
 
-    // 2. Ensemble Mean Series (Dashed Line)
+    // 2. Ensemble Mean Series (Solid Line)
     if (showEnsembleMean) {
       const ensembleData = nwpSeries[selectedVariable]?.ensembleMean || [];
       seriesList.push({
@@ -418,7 +419,8 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
         itemStyle: { color: "#64748B" },
         lineStyle: {
           width: 2.5,
-          type: "dashed",
+          type: "solid",
+          color: "#64748B",
         },
         symbol: "none",
         z: 15,
@@ -572,7 +574,7 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
                 Validasi Presisi Prediksi Model Cuaca Dunia terhadap Stasiun Lapangan
               </CardTitle>
               <CardDescription className="text-xs text-slate-500 dark:text-slate-400 max-w-4xl leading-relaxed">
-                Menyandingkan titik observasi darat AWS jam-jaman dengan 9 model cuaca terkemuka (ECMWF IFS, AIFS, GFS, ICON, JMA, GEM, BoM, ARPEGE, CMA) hingga 92 hari riwayat operasional untuk mengidentifikasi model dengan galat terendah.
+                Menyandingkan titik observasi darat AWS jam-jaman dengan 12 model cuaca global terkemuka (ECMWF IFS, AIFS, NOAA GFS, AIGFS, DWD ICON, JMA, GEM, Météo-France, UKMO, MET Norway, DMI, CMA) hingga 92 hari riwayat operasional untuk mengidentifikasi model dengan galat terendah.
               </CardDescription>
             </div>
 
@@ -677,7 +679,7 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
                   onClick={selectAllModels}
                   className="text-[11px] text-sky-600 dark:text-sky-400 hover:underline font-medium"
                 >
-                  Pilih Semua (10 Model)
+                  Pilih Semua (12 Model)
                 </button>
                 <span className="text-slate-300">·</span>
                 <button
@@ -693,7 +695,7 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
                   onClick={selectPhysicsModelsOnly}
                   className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
                 >
-                  Model Fisika (8 NWP)
+                  Model Fisika (10 NWP)
                 </button>
                 <span className="text-slate-300">·</span>
                 <button
@@ -708,8 +710,8 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
 
             <div className="flex flex-wrap gap-2 pt-1">
               {/* Observasi AWS Badge (Always On) */}
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 border border-transparent shadow-xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-emerald-600 text-white dark:bg-emerald-500 dark:text-slate-950 border border-transparent shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-white dark:bg-slate-950 animate-pulse"></span>
                 <span>Observasi AWS (Ground Truth)</span>
               </div>
 
@@ -723,7 +725,7 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
                     : "bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-800/40 dark:text-slate-500 dark:border-slate-800 line-through opacity-60"
                 }`}
               >
-                <span className="w-2 h-0.5 border-t border-dashed border-slate-600 dark:border-slate-300"></span>
+                <span className="w-2.5 h-0.5 bg-slate-600 dark:bg-slate-300 rounded-full"></span>
                 <span>Ensemble Mean Konsensus</span>
               </button>
 

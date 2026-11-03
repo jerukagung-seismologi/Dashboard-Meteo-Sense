@@ -675,7 +675,7 @@ function UnifiedCalibrationContent() {
                 <span>Validasi Model NWP</span>
               </div>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                9 Model Cuaca Global vs AWS
+                12 Model Cuaca Global vs AWS
               </p>
             </div>
           </TabsTrigger>
