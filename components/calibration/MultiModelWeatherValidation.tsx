@@ -409,7 +409,7 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
       },
     ];
 
-    // 2. Ensemble Mean Series (Solid Line)
+    // 2. Ensemble Mean Series (Dashed Line)
     if (showEnsembleMean) {
       const ensembleData = nwpSeries[selectedVariable]?.ensembleMean || [];
       seriesList.push({
@@ -419,7 +419,7 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
         itemStyle: { color: "#64748B" },
         lineStyle: {
           width: 2.5,
-          type: "solid",
+          type: "dashed",
           color: "#64748B",
         },
         symbol: "none",
@@ -725,7 +725,7 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
                     : "bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-800/40 dark:text-slate-500 dark:border-slate-800 line-through opacity-60"
                 }`}
               >
-                <span className="w-2.5 h-0.5 bg-slate-600 dark:bg-slate-300 rounded-full"></span>
+                <span className="w-2.5 h-0.5 border-t border-dashed border-slate-600 dark:border-slate-300"></span>
                 <span>Ensemble Mean Konsensus</span>
               </button>
 
