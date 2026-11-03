@@ -235,7 +235,7 @@ export const StationDetailDrawer: React.FC<StationDetailDrawerProps> = ({
         {/* Action Links */}
         <div className="pt-2 flex flex-col gap-2">
           <Link
-            href={`/dashboard/validasi-bias?station=${station.id}`}
+            href={`/dashboard/kalibrasi?tab=validation&station=${station.id}`}
             className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors"
           >
             <span>Buka Analisis Validasi Bias ERA5</span>

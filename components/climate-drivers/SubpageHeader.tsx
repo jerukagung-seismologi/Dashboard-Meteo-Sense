@@ -31,7 +31,7 @@ export const SubpageHeader: React.FC<SubpageHeaderProps> = ({
   const tabs = [
     { id: "overview", label: "Ringkasan Dinamika", href: "/dashboard/climate-drivers", icon: Layers },
     { id: "enso", label: "ENSO (El Niño / La Niña)", href: "/dashboard/climate-drivers/enso", icon: Waves },
-    { id: "mjo", label: "MJO (Madden-Julian Oscillation)", href: "/dashboard/climate-drivers/mjo", icon: CloudRain },
+    { id: "mjo", label: "MJO & Dinamika Tropis", href: "/dashboard/tropical-dynamics", icon: CloudRain },
     { id: "iod", label: "IOD (Indian Ocean Dipole)", href: "/dashboard/climate-drivers/iod", icon: Compass },
   ];
 

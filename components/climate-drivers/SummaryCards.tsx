@@ -136,8 +136,8 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
 
         <CardFooter className="pt-2 border-t dark:border-slate-800/80">
           <Button asChild className="w-full justify-between bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm shadow-sm group-hover:translate-x-0.5 transition-all">
-            <Link href="/dashboard/climate-drivers/mjo">
-              <span>Lihat Detail MJO</span>
+            <Link href="/dashboard/tropical-dynamics">
+              <span>Buka Dinamika Tropis &amp; MJO</span>
               <ArrowRight className="h-4 w-4 ml-1" />
             </Link>
           </Button>

@@ -124,7 +124,7 @@ export function Topbar({ user, profile, setSidebarOpen, handleLogout, navigation
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="dark:hover:bg-gray-800 rounded-lg my-0.5">
-                <Link href="/dashboard/settings">
+                <Link href="/dashboard/kalibrasi?tab=sensor-settings">
                   <Settings className="mr-2 h-4 w-4 dark:text-gray-200" />
                   <span className="dark:text-gray-100">Pengaturan</span>
                 </Link>
