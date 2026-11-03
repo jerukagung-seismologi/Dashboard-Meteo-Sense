@@ -117,7 +117,7 @@ export const TimeSeriesComparisonPlot: React.FC<TimeSeriesComparisonPlotProps> =
           smooth: true,
           sampling: "lttb",
           showSymbol: false,
-          lineStyle: { width: 1.5, type: "dashed", color: "#f43f5e" }, // Rose dashed
+          lineStyle: { width: 2, type: "solid", color: "#f43f5e" }, // Rose solid
           itemStyle: { color: "#f43f5e" },
         },
         {

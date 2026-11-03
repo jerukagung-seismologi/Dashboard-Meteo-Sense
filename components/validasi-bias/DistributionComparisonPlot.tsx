@@ -97,7 +97,7 @@ export const DistributionComparisonPlot: React.FC<DistributionComparisonPlotProp
             data: buildECDF(era5RawVals),
             showSymbol: false,
             step: "end",
-            lineStyle: { width: 1.5, type: "dashed", color: "#f43f5e" },
+            lineStyle: { width: 2, type: "solid", color: "#f43f5e" },
           },
           {
             name: "ERA5 Corrected (Terkoreksi)",
