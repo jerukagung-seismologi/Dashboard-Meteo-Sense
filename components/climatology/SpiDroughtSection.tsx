@@ -183,7 +183,7 @@ export function SpiDroughtSection({ spiData, currentPeriodNormals, isDarkMode = 
 
           {/* Timescale Selector Tabs */}
           <Tabs value={activeTimescale} onValueChange={(v) => setActiveTimescale(v as any)}>
-            <TabsList className="bg-slate-100 dark:bg-slate-800 p-1">
+            <TabsList variant="line">
               <TabsTrigger value="1" className="text-xs px-3 py-1.5 font-bold">
                 SPI-1 (1 Bln)
               </TabsTrigger>

@@ -104,17 +104,17 @@ export default function ClimateDriversPage() {
         </CardHeader>
         <CardContent className="pt-4">
           <Tabs defaultValue="enso" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
-              <TabsTrigger value="enso" className="py-2.5 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
+            <TabsList variant="line" className="mb-6">
+              <TabsTrigger value="enso" className="py-2 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
                 <Waves className="h-4 w-4 text-blue-500" /> ENSO (Pasifik)
               </TabsTrigger>
-              <TabsTrigger value="iod" className="py-2.5 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
+              <TabsTrigger value="iod" className="py-2 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
                 <Compass className="h-4 w-4 text-amber-500" /> IOD (Hindia)
               </TabsTrigger>
-              <TabsTrigger value="monsoon" className="py-2.5 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
+              <TabsTrigger value="monsoon" className="py-2 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
                 <Wind className="h-4 w-4 text-teal-500" /> Monsun (Regional)
               </TabsTrigger>
-              <TabsTrigger value="mjo" className="py-2.5 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
+              <TabsTrigger value="mjo" className="py-2 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
                 <CloudRain className="h-4 w-4 text-emerald-500" /> MJO (Ringkas)
               </TabsTrigger>
             </TabsList>

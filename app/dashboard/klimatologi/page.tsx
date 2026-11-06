@@ -1109,24 +1109,24 @@ function KlimatologiInner() {
 
       {/* ── C. Main Climatology & Meteorology Navigation ──────────────────── */}
       <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 h-auto p-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl gap-1">
-          <TabsTrigger value="profil-iklim" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+        <TabsList variant="line" className="overflow-x-auto w-full justify-start border-b">
+          <TabsTrigger value="profil-iklim" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold">
             <CloudSun className="h-4 w-4 text-blue-500 shrink-0" />
             <span>Profil Iklim WMO</span>
           </TabsTrigger>
-          <TabsTrigger value="klimatologi" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+          <TabsTrigger value="klimatologi" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold">
             <BarChart3 className="h-4 w-4 text-indigo-500 shrink-0" />
             <span>{locationMode === "region" ? "Klimatologi Grid ERA5" : "Observasi Sensor vs Normal"}</span>
           </TabsTrigger>
-          <TabsTrigger value="ekstrem-spi" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+          <TabsTrigger value="ekstrem-spi" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold">
             <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />
             <span>Ekstrem &amp; SPI</span>
           </TabsTrigger>
-          <TabsTrigger value="zom-musim" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+          <TabsTrigger value="zom-musim" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold">
             <CalendarDays className="h-4 w-4 text-teal-500 shrink-0" />
             <span>36 Dasarian &amp; ZOM</span>
           </TabsTrigger>
-          <TabsTrigger value="agromet" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+          <TabsTrigger value="agromet" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold">
             <Sprout className="h-4 w-4 text-emerald-500 shrink-0" />
             <span>Agroklimatologi</span>
           </TabsTrigger>
@@ -1802,7 +1802,7 @@ function KlimatologiInner() {
 
                   {/* Detailed Parameter Analytics Tabs */}
                   <Tabs defaultValue="temperature" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto p-1 bg-slate-100 dark:bg-slate-900 border rounded-lg">
+                    <TabsList variant="line" className="overflow-x-auto w-full justify-start border-b">
                       <TabsTrigger value="temperature" className="py-2.5">Suhu Udara</TabsTrigger>
                       <TabsTrigger value="comparison" className="py-2.5">Titik Embun</TabsTrigger>
                       <TabsTrigger value="humidity" className="py-2.5">Kelembaban Relatif</TabsTrigger>
@@ -2042,7 +2042,7 @@ function KlimatologiInner() {
 
               {/* Full Width ERA5 Analysis Tabs */}
               <Tabs defaultValue="time-series" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 h-auto p-1 bg-slate-100 dark:bg-slate-950 border dark:border-slate-800 rounded-xl text-xs gap-1">
+                <TabsList variant="line" className="overflow-x-auto w-full justify-start border-b">
                   <TabsTrigger value="time-series" className="py-2.5 font-bold">Deret Waktu</TabsTrigger>
                   <TabsTrigger value="hovmoller" className="py-2.5 font-bold">Diagram Hovmöller</TabsTrigger>
                   <TabsTrigger value="diurnal" className="py-2.5 font-bold">Siklus Distribusi</TabsTrigger>

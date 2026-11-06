@@ -1243,7 +1243,7 @@ export default function DataPage() {
 
       {/* Tab Navigation & Content (shadcn Tabs) */}
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'table' | 'grafik')} className="w-full space-y-6">
-        <TabsList className="grid w-full max-w-xs grid-cols-2">
+        <TabsList variant="line">
           <TabsTrigger value="table">
             Data Tabel
           </TabsTrigger>

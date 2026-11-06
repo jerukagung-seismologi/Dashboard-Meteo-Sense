@@ -611,7 +611,7 @@ export default function AnalisisDashboardPage() {
 
       {/* 4. Tab System & Visualizations */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList variant="line">
           <TabsTrigger value="daily">
             Analisis Harian
           </TabsTrigger>

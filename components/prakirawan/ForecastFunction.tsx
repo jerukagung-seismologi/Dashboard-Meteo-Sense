@@ -1527,7 +1527,7 @@ export default function ForecastForm() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="mb-4">
+        <TabsList variant="line" className="mb-4">
           <TabsTrigger value="input">Input Prakiraan</TabsTrigger>
           <TabsTrigger value="history">Riwayat Prakiraan</TabsTrigger>
         </TabsList>

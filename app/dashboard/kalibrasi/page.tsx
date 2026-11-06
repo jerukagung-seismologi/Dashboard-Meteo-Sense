@@ -955,38 +955,38 @@ function UnifiedCalibrationContent() {
 
           {/* Detailed Analytical Visualization Tabs */}
           <Tabs defaultValue="timeseries" className="w-full">
-            <TabsList className="h-auto min-h-10 flex flex-wrap sm:grid sm:grid-cols-5 w-full max-w-3xl bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl gap-1">
+            <TabsList variant="line" className="w-full mb-4">
               <TabsTrigger
                 value="timeseries"
-                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
+                className="text-xs py-2 px-2.5 gap-1.5"
               >
                 <LineChart className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 Deret Waktu
               </TabsTrigger>
               <TabsTrigger
                 value="diurnal"
-                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
+                className="text-xs py-2 px-2.5 gap-1.5"
               >
                 <Clock className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                 Siklus Diurnal
               </TabsTrigger>
               <TabsTrigger
                 value="scatter"
-                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
+                className="text-xs py-2 px-2.5 gap-1.5"
               >
                 <ScatterChart className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                 Scatter 1:1
               </TabsTrigger>
               <TabsTrigger
                 value="distribution"
-                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
+                className="text-xs py-2 px-2.5 gap-1.5"
               >
                 <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                 Distribusi ECDF
               </TabsTrigger>
               <TabsTrigger
                 value="residual"
-                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
+                className="text-xs py-2 px-2.5 gap-1.5"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 Residual Error

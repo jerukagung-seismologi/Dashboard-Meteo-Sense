@@ -39,7 +39,7 @@ export default function Page() {
 
                 <div className="p-3 sm:p-6 lg:p-8 print:p-2 dark:bg-slate-900">
                     <Tabs defaultValue="prakiraan_bmkg" className="w-full">
-                        <TabsList className="mb-4">
+                        <TabsList variant="line" className="mb-4">
                             <TabsTrigger value="prakiraan_bmkg">Prakiraan Cuaca BMKG</TabsTrigger>
                             <TabsTrigger value="outlook">Form Prakiraan Cuaca</TabsTrigger>
                         </TabsList>

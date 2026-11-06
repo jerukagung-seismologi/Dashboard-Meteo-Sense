@@ -503,7 +503,7 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
 
         {/* 9-Variable Unified Responsive Tab Bar */}
         <Tabs defaultValue="temperature" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4 gap-1">
+          <TabsList variant="line" className="overflow-x-auto w-full justify-start border-b mb-4">
             <TabsTrigger value="temperature" className="py-2 text-xs font-bold flex items-center gap-1">
               <Thermometer className="h-3.5 w-3.5 text-red-500" /> Suhu
             </TabsTrigger>

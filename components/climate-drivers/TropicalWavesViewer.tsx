@@ -341,7 +341,7 @@ export const TropicalWavesViewer: React.FC<TropicalWavesViewerProps> = ({ mjoSta
 
       {/* Main Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-4 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+        <TabsList variant="line" className="w-full justify-start border-b">
           <TabsTrigger value="operational" className="text-xs sm:text-sm font-semibold flex items-center gap-1.5">
             <Layers className="h-4 w-4" />
             <span>Peta Operasional Harian</span>
