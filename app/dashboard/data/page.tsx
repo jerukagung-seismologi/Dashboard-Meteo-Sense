@@ -719,6 +719,59 @@ export default function DataPage() {
 
   const isCustomDateActive = Boolean(dateRange?.from);
 
+  // Cek apakah preset rentang luar aktif
+  const isPresetActive = useCallback((days: number) => {
+    if (!dateRange?.from || !dateRange?.to) return false;
+    const now = new Date();
+    const expectedFrom = startOfDay(subDays(now, days - 1));
+    const expectedTo = endOfDay(now);
+    return isSameDay(dateRange.from, expectedFrom) && isSameDay(dateRange.to, expectedTo);
+  }, [dateRange]);
+
+  // Handler memilih preset rentang luar (Mingguan, Dasarian, Bulanan, 24 Jam)
+  const handleApplyExternalPreset = useCallback((type: "24h" | "weekly" | "dasarian" | "monthly") => {
+    if (type === "24h") {
+      handleResetToLive();
+      return;
+    }
+    const now = new Date();
+    let days = 7;
+    if (type === "weekly") days = 7;
+    else if (type === "dasarian") days = 10;
+    else if (type === "monthly") days = 30;
+
+    const start = startOfDay(subDays(now, days - 1));
+    const end = endOfDay(now);
+    setDateRange({ from: start, to: end });
+    if (searchQuery) setSearchQuery("");
+  }, [handleResetToLive, searchQuery]);
+
+  // Label tampilan periode aktif
+  const dateIndicatorLabel = useMemo(() => {
+    if (!dateRange?.from) {
+      return `${selectedPeriod.label} Terakhir`;
+    }
+    const fromStr = format(dateRange.from, "dd MMM yyyy", { locale: id });
+    if (dateRange.to && !isSameDay(dateRange.from, dateRange.to)) {
+      const toStr = format(dateRange.to, "dd MMM yyyy", { locale: id });
+      if (isPresetActive(7)) return `Mingguan: ${fromStr} – ${toStr}`;
+      if (isPresetActive(10)) return `Dasarian: ${fromStr} – ${toStr}`;
+      if (isPresetActive(30)) return `Bulanan: ${fromStr} – ${toStr}`;
+      return `${fromStr} – ${toStr}`;
+    }
+    return format(dateRange.from, "EEEE, dd MMMM yyyy", { locale: id });
+  }, [dateRange, selectedPeriod, isPresetActive]);
+
+  // Badge status periode aktif
+  const dateIndicatorBadge = useMemo(() => {
+    if (!dateRange?.from) return null;
+    if (isPresetActive(7)) return "7 Hari";
+    if (isPresetActive(10)) return "10 Hari";
+    if (isPresetActive(30)) return "30 Hari";
+    if (dateRange.to && !isSameDay(dateRange.from, dateRange.to)) return "Multi-Hari";
+    return "24 Jam";
+  }, [dateRange, isPresetActive]);
+
   // Fungsi untuk mengunduh data
   const handleDownloadData = () => {
     if (weatherData.length === 0) {
@@ -1031,15 +1084,11 @@ export default function DataPage() {
               <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs">
                 <CalendarDays className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
                 <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 font-mono">
-                  {dateRange?.from
-                    ? dateRange.to && !isSameDay(dateRange.from, dateRange.to)
-                      ? `${format(dateRange.from, "dd MMM yyyy", { locale: id })} – ${format(dateRange.to, "dd MMM yyyy", { locale: id })}`
-                      : format(dateRange.from, "EEEE, dd MMMM yyyy", { locale: id })
-                    : `${selectedPeriod.label} Terakhir`}
+                  {dateIndicatorLabel}
                 </span>
-                {isCustomDateActive && (
+                {dateIndicatorBadge && (
                   <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 font-mono font-semibold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40">
-                    {dateRange?.to && !isSameDay(dateRange.from!, dateRange.to) ? "Multi-Hari" : "24 Jam"}
+                    {dateIndicatorBadge}
                   </Badge>
                 )}
               </div>
@@ -1070,28 +1119,93 @@ export default function DataPage() {
               )}
             </div>
 
-            {/* Sisi Kanan: Quick Period Pills (shadcn Button) */}
+            {/* Sisi Kanan: Preset Cepat Meteorologi (Di Luar Kalender) */}
             <div className="flex flex-wrap items-center gap-1.5 justify-start lg:justify-end">
-              {periods.map((period) => {
-                const isSelected = selectedPeriod?.label === period.label && !dateRange;
-                return (
-                  <Button
-                    key={period.label}
-                    type="button"
-                    variant={isSelected ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handlePeriodChange(period)}
-                    className={cn(
-                      "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
-                      isSelected
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                        : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    {period.label}
-                  </Button>
-                );
-              })}
+              <span className="text-[11px] font-semibold text-muted-foreground mr-1 hidden sm:inline">
+                Preset Rentang:
+              </span>
+
+              <Button
+                type="button"
+                variant={!dateRange && selectedPeriod.valueInMinutes === 24 * 60 ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleApplyExternalPreset("24h")}
+                className={cn(
+                  "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
+                  !dateRange && selectedPeriod.valueInMinutes === 24 * 60
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                24 Jam
+              </Button>
+
+              <Button
+                type="button"
+                variant={isPresetActive(7) ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleApplyExternalPreset("weekly")}
+                className={cn(
+                  "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
+                  isPresetActive(7)
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                Mingguan (7 Hari)
+              </Button>
+
+              <Button
+                type="button"
+                variant={isPresetActive(10) ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleApplyExternalPreset("dasarian")}
+                className={cn(
+                  "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
+                  isPresetActive(10)
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                Dasarian (10 Hari)
+              </Button>
+
+              <Button
+                type="button"
+                variant={isPresetActive(30) ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleApplyExternalPreset("monthly")}
+                className={cn(
+                  "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
+                  isPresetActive(30)
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                Bulanan (30 Hari)
+              </Button>
+
+              {/* Sub-Harian Dropdown (Resolusi Jam / Menit) */}
+              <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1 hidden sm:block" />
+              <Select
+                value={!dateRange && selectedPeriod.valueInMinutes < 24 * 60 ? String(selectedPeriod.valueInMinutes) : ""}
+                onValueChange={(val) => {
+                  const match = periods.find((p) => String(p.valueInMinutes) === val);
+                  if (match) handlePeriodChange(match);
+                }}
+              >
+                <SelectTrigger className="h-7 text-xs font-semibold px-2 w-[115px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="Sub-Harian" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15" className="text-xs">15 Menit</SelectItem>
+                  <SelectItem value="30" className="text-xs">30 Menit</SelectItem>
+                  <SelectItem value="60" className="text-xs">1 Jam</SelectItem>
+                  <SelectItem value="180" className="text-xs">3 Jam</SelectItem>
+                  <SelectItem value="360" className="text-xs">6 Jam</SelectItem>
+                  <SelectItem value="720" className="text-xs">12 Jam</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>

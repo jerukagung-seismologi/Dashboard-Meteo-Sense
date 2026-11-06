@@ -91,10 +91,6 @@ export interface DateRangePickerProps {
   triggerClassName?: string
   /** Fungsi penentu apakah suatu tanggal dinonaktifkan (misal masa depan) */
   disabled?: (date: Date) => boolean
-  /** Apakah menampilkan deretan preset cepat */
-  showPresets?: boolean
-  /** Daftar preset kustom */
-  presets?: DateRangePreset[]
   /** Apakah menampilkan tombol reset */
   showReset?: boolean
   /** Callback saat tombol reset diklik */
@@ -117,8 +113,6 @@ export function DateRangePicker({
   className,
   triggerClassName,
   disabled = (date) => date > new Date(),
-  showPresets = true,
-  presets = DEFAULT_DATE_RANGE_PRESETS,
   showReset = true,
   onReset,
   disabledInput = false,
@@ -132,31 +126,8 @@ export function DateRangePicker({
   // Tentukan jumlah bulan (prioritas: prop > responsif mobile)
   const effectiveNumberOfMonths = numberOfMonths ?? (isMobile ? 1 : 2)
 
-  // Cek apakah ada preset yang sedang aktif
-  const activePresetLabel = React.useMemo(() => {
-    if (!value?.from || !value?.to) return null
-    for (const preset of presets) {
-      const p = preset.getValue()
-      if (
-        p.from &&
-        isSameDay(p.from, value.from) &&
-        p.to &&
-        isSameDay(p.to, value.to)
-      ) {
-        return preset.label
-      }
-    }
-    return null
-  }, [value, presets])
-
   // Handler memilih tanggal
   const handleSelect = (range: DateRange | undefined) => {
-    onChange?.(range)
-  }
-
-  // Handler menerapkan preset
-  const handleApplyPreset = (preset: DateRangePreset) => {
-    const range = preset.getValue()
     onChange?.(range)
   }
 
@@ -236,34 +207,8 @@ export function DateRangePicker({
             )}
           </div>
 
-          {/* Quick Presets Bar */}
-          {showPresets && presets.length > 0 && (
-            <div className="px-3 py-2 flex flex-wrap items-center gap-1.5 border-b border-border/60 bg-muted/30">
-              {presets.map((preset) => {
-                const isActive = activePresetLabel === preset.label
-                return (
-                  <Button
-                    key={preset.label}
-                    type="button"
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleApplyPreset(preset)}
-                    className={cn(
-                      "h-6.5 text-[11px] font-semibold px-2.5 rounded-md shadow-2xs transition-all cursor-pointer",
-                      isActive
-                        ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xs border-transparent"
-                        : "hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400"
-                    )}
-                  >
-                    {preset.label}
-                  </Button>
-                )
-              })}
-            </div>
-          )}
-
           {/* 2-Bulan Side-by-Side Shadcn Calendar */}
-          <div className="p-2 sm:p-3 flex justify-center">
+          <div className="p-3 sm:p-4 flex justify-center">
             <Calendar
               autoFocus
               mode="range"
