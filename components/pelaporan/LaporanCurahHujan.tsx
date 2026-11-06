@@ -486,6 +486,9 @@ Durasi Jam Basah: ${rainStats.rainDurationHours} Jam`;
             <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1.5rem)] shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden" align="end">
               <Calendar 
                 mode="single"
+                captionLayout="dropdown"
+                startMonth={new Date(2020, 0)}
+                endMonth={new Date()}
                 selected={selectedDate}
                 onSelect={(date: Date | undefined) => date && setSelectedDate(date)}
                 disabled={(date: Date) => date > new Date() || date < new Date("2000-01-01")}

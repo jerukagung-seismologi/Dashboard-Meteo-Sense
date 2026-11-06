@@ -1009,7 +1009,7 @@ export default function DataPage() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent 
-                className="w-[340px] p-0 max-w-[calc(100vw-1.5rem)] shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden" 
+                className="w-auto p-0 max-w-[calc(100vw-1.5rem)] shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden" 
                 align="end"
               >
                 {/* Header Popover dengan Judul & Reset */}
@@ -1069,11 +1069,14 @@ export default function DataPage() {
                   </button>
                 </div>
 
-                {/* Calendar Component: 1 Bulan Kompak */}
+                {/* Calendar Component: 1 Bulan Kompak dengan Dropdown Bulan & Tahun */}
                 <div className="p-2 sm:p-2.5 flex justify-center">
                   <Calendar
                     autoFocus
                     mode="range"
+                    captionLayout="dropdown"
+                    startMonth={new Date(2021, 0)}
+                    endMonth={new Date()}
                     defaultMonth={dateRange?.from || new Date()}
                     selected={dateRange}
                     onSelect={(range) => {
