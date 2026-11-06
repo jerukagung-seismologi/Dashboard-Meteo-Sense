@@ -1,4 +1,4 @@
-// app/dashboard/dinamika-tropis/page.tsx
+// app/dashboard/tropical-dynamics/page.tsx
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
@@ -218,40 +218,38 @@ export default function TropicalDynamicsPage() {
             </Card>
           </div>
 
-          {/* Modular Tab Navigation (Gaya Underline seperti Menu Meteorologi) */}
-          <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full space-y-6">
-            <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
-              <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                <TabsTrigger
-                  value="waves"
-                  className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                >
-                  <Waves className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <span>Gelombang Tropis (BOM)</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="phase_ecmwf"
-                  className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                >
-                  <Compass className="h-4 w-4 text-indigo-500 shrink-0" />
-                  <span>Fase RMM &amp; ECMWF</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="ncics"
-                  className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                >
-                  <Layers className="h-4 w-4 text-blue-500 shrink-0" />
-                  <span>Satelit NCICS &amp; Hovmöller</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="history"
-                  className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                >
-                  <TrendingUp className="h-4 w-4 text-amber-500 shrink-0" />
-                  <span>Riwayat &amp; Edukasi</span>
-                </TabsTrigger>
-              </TabsList>
-            </div>
+          {/* Modular Tab Navigation (Prevents Long Page Overload) */}
+          <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full space-y-4">
+            <TabsList className="grid grid-cols-2 md:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+              <TabsTrigger
+                value="waves"
+                className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight"
+              >
+                <Waves className="h-4 w-4 text-emerald-500" />
+                <span>Gelombang Tropis (BOM)</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="phase_ecmwf"
+                className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight"
+              >
+                <Compass className="h-4 w-4 text-indigo-500" />
+                <span>Fase RMM &amp; ECMWF</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="ncics"
+                className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight"
+              >
+                <Layers className="h-4 w-4 text-blue-500" />
+                <span>Satelit NCICS &amp; Hovmöller</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="history"
+                className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight"
+              >
+                <TrendingUp className="h-4 w-4 text-amber-500" />
+                <span>Riwayat &amp; Edukasi</span>
+              </TabsTrigger>
+            </TabsList>
 
             {/* TAB 1: PETA GELOMBANG TROPIS OPERASIONAL & SKEMATIK TEORI (BOM) */}
             <TabsContent value="waves" className="mt-0">

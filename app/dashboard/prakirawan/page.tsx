@@ -38,23 +38,11 @@ export default function Page() {
             <main className="mx-auto my-0 mb-6 min-h-[500px] w-full max-w-7xl rounded-2xl overflow-hidden border border-gray-100 bg-white text-gray-900 shadow-md shadow-slate-200/70 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:shadow-black/40 print:border-0 print:bg-white print:text-black">
 
                 <div className="p-3 sm:p-6 lg:p-8 print:p-2 dark:bg-slate-900">
-                    <Tabs defaultValue="prakiraan_bmkg" className="w-full space-y-6">
-                        <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
-                            <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                                <TabsTrigger
-                                    value="prakiraan_bmkg"
-                                    className="px-4 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                                >
-                                    Prakiraan Cuaca BMKG
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value="outlook"
-                                    className="px-4 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                                >
-                                    Form Prakiraan Cuaca
-                                </TabsTrigger>
-                            </TabsList>
-                        </div>
+                    <Tabs defaultValue="prakiraan_bmkg" className="w-full">
+                        <TabsList className="mb-4">
+                            <TabsTrigger value="prakiraan_bmkg">Prakiraan Cuaca BMKG</TabsTrigger>
+                            <TabsTrigger value="outlook">Form Prakiraan Cuaca</TabsTrigger>
+                        </TabsList>
 
                         <TabsContent value="prakiraan_bmkg" className="mt-0">
                             <BMKGNowcasting className="w-full" limit={12} />

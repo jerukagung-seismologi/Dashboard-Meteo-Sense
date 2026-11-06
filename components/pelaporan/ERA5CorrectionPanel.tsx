@@ -654,34 +654,32 @@ export function ERA5CorrectionPanel({
               <Layers className="w-4 h-4 text-indigo-600" />
               Grafik Komparasi Tumpang-Tindih (*Overlay Comparison*)
             </div>
-            <Tabs
-              value={activeParam}
-              onValueChange={(val) => setActiveParam(val as "temp" | "hum" | "press")}
-              className="w-auto"
-            >
-              <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
-                <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                  <TabsTrigger
-                    value="temp"
-                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
-                  >
-                    Suhu
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="hum"
-                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
-                  >
-                    Kelembapan
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="press"
-                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
-                  >
-                    Tekanan
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-            </Tabs>
+            <div className="flex items-center gap-1">
+              <Button
+                variant={activeParam === "temp" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveParam("temp")}
+                className={`h-7 text-xs ${activeParam === "temp" ? "bg-orange-600 text-white" : ""}`}
+              >
+                Suhu
+              </Button>
+              <Button
+                variant={activeParam === "hum" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveParam("hum")}
+                className={`h-7 text-xs ${activeParam === "hum" ? "bg-blue-600 text-white" : ""}`}
+              >
+                Kelembapan
+              </Button>
+              <Button
+                variant={activeParam === "press" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveParam("press")}
+                className={`h-7 text-xs ${activeParam === "press" ? "bg-violet-600 text-white" : ""}`}
+              >
+                Tekanan
+              </Button>
+            </div>
           </div>
 
           <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border">

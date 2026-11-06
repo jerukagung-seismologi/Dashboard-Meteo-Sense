@@ -3,7 +3,6 @@
 
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -317,25 +316,24 @@ export const NcicsMapViewer: React.FC = () => {
             <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-2 uppercase tracking-wider">
               1. Pilih Kategori Variabel Atmosfer:
             </label>
-            <Tabs
-              value={activeCategory}
-              onValueChange={setActiveCategory}
-              className="w-auto"
-            >
-              <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
-                <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex-nowrap justify-start -mb-px">
-                  {NCICS_CATEGORIES.map((cat) => (
-                    <TabsTrigger
-                      key={cat.id}
-                      value={cat.id}
-                      className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer shrink-0"
-                    >
-                      {cat.name}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </div>
-            </Tabs>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              {NCICS_CATEGORIES.map((cat) => (
+                <Button
+                  key={cat.id}
+                  variant={activeCategory === cat.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={cn(
+                    "text-xs font-semibold rounded-lg shrink-0",
+                    activeCategory === cat.id
+                      ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                      : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800"
+                  )}
+                >
+                  {cat.name}
+                </Button>
+              ))}
+            </div>
           </div>
 
           {/* Variable Selector Grid */}
@@ -389,27 +387,32 @@ export const NcicsMapViewer: React.FC = () => {
                 3. Pilih Waktu Prakiraan (Lead Time):
               </label>
 
-              <Tabs
-                value={selectedLeadTime}
-                onValueChange={(val) => {
-                  setSelectedLeadTime(val);
-                  handleRefresh();
-                }}
-                className="w-auto"
-              >
-                <TabsList className="bg-slate-100 dark:bg-slate-800/80 p-0.5 h-8 rounded-lg flex-nowrap overflow-x-auto flex justify-start border border-slate-200/80 dark:border-slate-700/80">
-                  {LEAD_TIMES.map((lt) => (
-                    <TabsTrigger
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {LEAD_TIMES.map((lt) => {
+                  const isSelected = lt.id === selectedLeadTime;
+
+                  return (
+                    <Button
                       key={lt.id}
-                      value={lt.id}
-                      className="text-xs px-3 py-1 font-semibold rounded-md shrink-0 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs border-none cursor-pointer"
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setSelectedLeadTime(lt.id);
+                        handleRefresh();
+                      }}
+                      className={cn(
+                        "text-xs font-semibold rounded-lg shrink-0 gap-1.5",
+                        isSelected
+                          ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                          : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800"
+                      )}
                     >
                       <Calendar className="h-3.5 w-3.5" />
                       {lt.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </CardContent>

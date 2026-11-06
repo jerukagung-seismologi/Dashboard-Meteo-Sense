@@ -339,40 +339,26 @@ export const TropicalWavesViewer: React.FC<TropicalWavesViewerProps> = ({ mjoSta
         </CardHeader>
       </Card>
 
-      {/* Main Navigation Tabs (Gaya Underline seperti Menu Meteorologi) */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
-        <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
-          <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-            <TabsTrigger
-              value="operational"
-              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-            >
-              <Layers className="h-4 w-4 shrink-0" />
-              <span>Peta Operasional Harian</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="schematics"
-              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-            >
-              <BookOpen className="h-4 w-4 shrink-0" />
-              <span>Diagram Teori Gelombang</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="phase"
-              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-            >
-              <Compass className="h-4 w-4 shrink-0" />
-              <span>Diagram Fase RMM (BOM)</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="bmkg_guide"
-              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-            >
-              <ShieldCheck className="h-4 w-4 shrink-0" />
-              <span>Dampak Cuaca Indonesia</span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
+      {/* Main Navigation Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+          <TabsTrigger value="operational" className="text-xs sm:text-sm font-semibold flex items-center gap-1.5">
+            <Layers className="h-4 w-4" />
+            <span>Peta Operasional Harian</span>
+          </TabsTrigger>
+          <TabsTrigger value="schematics" className="text-xs sm:text-sm font-semibold flex items-center gap-1.5">
+            <BookOpen className="h-4 w-4" />
+            <span>Diagram Teori Gelombang</span>
+          </TabsTrigger>
+          <TabsTrigger value="phase" className="text-xs sm:text-sm font-semibold flex items-center gap-1.5">
+            <Compass className="h-4 w-4" />
+            <span>Diagram Fase RMM (BOM)</span>
+          </TabsTrigger>
+          <TabsTrigger value="bmkg_guide" className="text-xs sm:text-sm font-semibold flex items-center gap-1.5">
+            <ShieldCheck className="h-4 w-4" />
+            <span>Dampak Cuaca Indonesia</span>
+          </TabsTrigger>
+        </TabsList>
 
         {/* ========================================================= */}
         {/* TAB 1: PETA OPERASIONAL HARIAN (BOM DAILY WAVE MAPS)       */}
@@ -514,28 +500,28 @@ export const TropicalWavesViewer: React.FC<TropicalWavesViewerProps> = ({ mjoSta
                     <span className="hidden sm:inline">Cetak / Ekspor 4 Gelombang</span>
                   </Button>
 
-                  <Tabs
-                    value={viewMode}
-                    onValueChange={(val) => setViewMode(val as "stacked" | "focused")}
-                    className="w-auto"
-                  >
-                    <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
-                      <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                        <TabsTrigger
-                          value="stacked"
-                          className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
-                        >
-                          Bersusun (4 Gelombang)
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="focused"
-                          className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
-                        >
-                          Detail Satuan
-                        </TabsTrigger>
-                      </TabsList>
-                    </div>
-                  </Tabs>
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("stacked")}
+                      className={`px-3 py-1 rounded-md transition-all ${viewMode === "stacked"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                        }`}
+                    >
+                      Bersusun (4 Gelombang)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("focused")}
+                      className={`px-3 py-1 rounded-md transition-all ${viewMode === "focused"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                        }`}
+                    >
+                      Detail Satuan
+                    </button>
+                  </div>
                 </div>
               </div>
             </CardContent>

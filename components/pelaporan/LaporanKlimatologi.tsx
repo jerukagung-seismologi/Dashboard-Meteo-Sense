@@ -21,7 +21,6 @@ import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PresetSelector } from "@/components/climatology/PresetSelector"
 import { SummaryCards } from "@/components/climatology/SummaryCards"
 import { useToast } from "@/hooks/use-toast"
@@ -287,31 +286,27 @@ Tekanan Udara Rata-Rata: ${minPress} - ${maxPress} hPa`;
                 Parameter Agregasi Klimatologi
               </label>
 
-              {/* View Mode Toggle (Gaya Underline seperti Menu Meteorologi) */}
-              <Tabs
-                value={viewMode}
-                onValueChange={(val) => setViewMode(val as 'web' | 'print')}
-                className="w-auto"
-              >
-                <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
-                  <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                    <TabsTrigger
-                      value="web"
-                      className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      <LayoutDashboard className="w-3.5 h-3.5" />
-                      Dashboard Web
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="print"
-                      className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      Pratinjau Cetak
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-              </Tabs>
+              {/* View Mode Toggle */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border">
+                <Button
+                  variant={viewMode === 'web' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('web')}
+                  className={cn("h-7 text-xs px-3 font-medium", viewMode === 'web' && "bg-white dark:bg-slate-900 text-blue-600 shadow-sm")}
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5 mr-1.5" />
+                  Dashboard Web
+                </Button>
+                <Button
+                  variant={viewMode === 'print' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('print')}
+                  className={cn("h-7 text-xs px-3 font-medium", viewMode === 'print' && "bg-white dark:bg-slate-900 text-indigo-600 shadow-sm")}
+                >
+                  <Eye className="w-3.5 h-3.5 mr-1.5" />
+                  Pratinjau Cetak
+                </Button>
+              </div>
             </div>
 
             <PresetSelector

@@ -198,7 +198,7 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
             )}
           </div>
 
-          <div className="text-xs text-slate-500 font-medium self-start">
+          <div className="text-xs text-slate-500 font-medium self-end sm:self-center">
             Menampilkan <span className="font-bold text-slate-900 dark:text-slate-100">{visibleData.length}</span> dari {filteredData.length} baris
           </div>
         </div>

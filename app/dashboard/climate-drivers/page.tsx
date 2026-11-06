@@ -103,35 +103,21 @@ export default function ClimateDriversPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
-          <Tabs defaultValue="enso" className="w-full space-y-6">
-            <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
-              <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                <TabsTrigger
-                  value="enso"
-                  className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                >
-                  <Waves className="h-4 w-4 text-blue-500 shrink-0" /> ENSO (Pasifik)
-                </TabsTrigger>
-                <TabsTrigger
-                  value="iod"
-                  className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                >
-                  <Compass className="h-4 w-4 text-amber-500 shrink-0" /> IOD (Hindia)
-                </TabsTrigger>
-                <TabsTrigger
-                  value="monsoon"
-                  className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                >
-                  <Wind className="h-4 w-4 text-teal-500 shrink-0" /> Monsun (Regional)
-                </TabsTrigger>
-                <TabsTrigger
-                  value="mjo"
-                  className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                >
-                  <CloudRain className="h-4 w-4 text-emerald-500 shrink-0" /> MJO (Ringkas)
-                </TabsTrigger>
-              </TabsList>
-            </div>
+          <Tabs defaultValue="enso" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
+              <TabsTrigger value="enso" className="py-2.5 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
+                <Waves className="h-4 w-4 text-blue-500" /> ENSO (Pasifik)
+              </TabsTrigger>
+              <TabsTrigger value="iod" className="py-2.5 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
+                <Compass className="h-4 w-4 text-amber-500" /> IOD (Hindia)
+              </TabsTrigger>
+              <TabsTrigger value="monsoon" className="py-2.5 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
+                <Wind className="h-4 w-4 text-teal-500" /> Monsun (Regional)
+              </TabsTrigger>
+              <TabsTrigger value="mjo" className="py-2.5 font-semibold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight">
+                <CloudRain className="h-4 w-4 text-emerald-500" /> MJO (Ringkas)
+              </TabsTrigger>
+            </TabsList>
 
             <TabsContent value="enso" className="mt-0">
               <ENSOCharts data={ensoData} isDarkMode={isDarkMode} />

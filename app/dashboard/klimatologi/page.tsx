@@ -1108,60 +1108,37 @@ function KlimatologiInner() {
       />
 
       {/* ── C. Main Climatology & Meteorology Navigation ──────────────────── */}
-      <Tabs value={mainTab} onValueChange={setMainTab} className="w-full space-y-6">
-        <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
-          <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-            <TabsTrigger
-              value="profil-iklim"
-              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-            >
-              <CloudSun className="h-4 w-4 text-blue-500 shrink-0" />
-              <span>Profil Iklim WMO</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="klimatologi"
-              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-            >
-              <BarChart3 className="h-4 w-4 text-indigo-500 shrink-0" />
-              <span>{locationMode === "region" ? "Klimatologi Grid ERA5" : "Observasi Sensor vs Normal"}</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="ekstrem-spi"
-              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-            >
-              <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />
-              <span>Ekstrem &amp; SPI</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="zom-musim"
-              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-            >
-              <CalendarDays className="h-4 w-4 text-teal-500 shrink-0" />
-              <span>36 Dasarian &amp; ZOM</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="agromet"
-              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-            >
-              <Sprout className="h-4 w-4 text-emerald-500 shrink-0" />
-              <span>Agroklimatologi</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="era5"
-              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-            >
-              <Globe className="h-4 w-4 text-purple-500 shrink-0" />
-              <span>Reanalisis ERA5</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="chc-estimates"
-              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-            >
-              <CloudRain className="h-4 w-4 text-cyan-500 shrink-0" />
-              <span>Satelit CHC CHIRPS</span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
+      <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 h-auto p-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl gap-1">
+          <TabsTrigger value="profil-iklim" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+            <CloudSun className="h-4 w-4 text-blue-500 shrink-0" />
+            <span>Profil Iklim WMO</span>
+          </TabsTrigger>
+          <TabsTrigger value="klimatologi" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+            <BarChart3 className="h-4 w-4 text-indigo-500 shrink-0" />
+            <span>{locationMode === "region" ? "Klimatologi Grid ERA5" : "Observasi Sensor vs Normal"}</span>
+          </TabsTrigger>
+          <TabsTrigger value="ekstrem-spi" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+            <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />
+            <span>Ekstrem &amp; SPI</span>
+          </TabsTrigger>
+          <TabsTrigger value="zom-musim" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+            <CalendarDays className="h-4 w-4 text-teal-500 shrink-0" />
+            <span>36 Dasarian &amp; ZOM</span>
+          </TabsTrigger>
+          <TabsTrigger value="agromet" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+            <Sprout className="h-4 w-4 text-emerald-500 shrink-0" />
+            <span>Agroklimatologi</span>
+          </TabsTrigger>
+          <TabsTrigger value="era5" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+            <Globe className="h-4 w-4 text-purple-500 shrink-0" />
+            <span>Reanalisis ERA5</span>
+          </TabsTrigger>
+          <TabsTrigger value="chc-estimates" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+            <CloudRain className="h-4 w-4 text-cyan-500 shrink-0" />
+            <span>Satelit CHC CHIRPS</span>
+          </TabsTrigger>
+        </TabsList>
 
         {/* ════════════════════════════════════════════════════════════════════
             TAB: PROFIL IKLIM WMO (1991–2020) & KLASIFIKASI BIOKLIMATIK
@@ -1825,47 +1802,17 @@ function KlimatologiInner() {
 
                   {/* Detailed Parameter Analytics Tabs */}
                   <Tabs defaultValue="temperature" className="w-full">
-                    <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
-                      <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                        <TabsTrigger
-                          value="temperature"
-                          className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                        >
-                          Suhu Udara
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="comparison"
-                          className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                        >
-                          Titik Embun
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="humidity"
-                          className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                        >
-                          Kelembaban Relatif
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="rainfall"
-                          className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                        >
-                          Curah Hujan
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="pressure"
-                          className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                        >
-                          Tekanan Udara
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="era5_normal"
-                          className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                        >
-                          <span>Normal ERA5</span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold">Iklim</span>
-                        </TabsTrigger>
-                      </TabsList>
-                    </div>
+                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto p-1 bg-slate-100 dark:bg-slate-900 border rounded-lg">
+                      <TabsTrigger value="temperature" className="py-2.5">Suhu Udara</TabsTrigger>
+                      <TabsTrigger value="comparison" className="py-2.5">Titik Embun</TabsTrigger>
+                      <TabsTrigger value="humidity" className="py-2.5">Kelembaban Relatif</TabsTrigger>
+                      <TabsTrigger value="rainfall" className="py-2.5">Curah Hujan</TabsTrigger>
+                      <TabsTrigger value="pressure" className="py-2.5">Tekanan Udara</TabsTrigger>
+                      <TabsTrigger value="era5_normal" className="py-2.5 font-medium flex items-center justify-center gap-1.5">
+                        <span>Normal ERA5</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold">Iklim</span>
+                      </TabsTrigger>
+                    </TabsList>
 
                     <TabsContent value="temperature" className="mt-6">
                       <TemperatureCharts points={klimData.points} preset={preset} isDarkMode={isDarkMode} stdDev={klimData.stats.temperature.stdDev} observedMean={klimData.stats.temperature.mean} era5NormalTemp={periodNormals?.temperature.mean} monthlyNormals={periodNormals?.temperature.monthly} />
@@ -2095,40 +2042,13 @@ function KlimatologiInner() {
 
               {/* Full Width ERA5 Analysis Tabs */}
               <Tabs defaultValue="time-series" className="w-full">
-                <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
-                  <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                    <TabsTrigger
-                      value="time-series"
-                      className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                    >
-                      Deret Waktu
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="hovmoller"
-                      className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                    >
-                      Diagram Hovmöller
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="diurnal"
-                      className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                    >
-                      Siklus Distribusi
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="climatology"
-                      className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                    >
-                      Tren Klimatologi
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="wind-diagnostics"
-                      className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-                    >
-                      Mawar Angin &amp; Diagnostik
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 h-auto p-1 bg-slate-100 dark:bg-slate-950 border dark:border-slate-800 rounded-xl text-xs gap-1">
+                  <TabsTrigger value="time-series" className="py-2.5 font-bold">Deret Waktu</TabsTrigger>
+                  <TabsTrigger value="hovmoller" className="py-2.5 font-bold">Diagram Hovmöller</TabsTrigger>
+                  <TabsTrigger value="diurnal" className="py-2.5 font-bold">Siklus Distribusi</TabsTrigger>
+                  <TabsTrigger value="climatology" className="py-2.5 font-bold">Tren Klimatologi</TabsTrigger>
+                  <TabsTrigger value="wind-diagnostics" className="py-2.5 font-bold">Mawar Angin &amp; Diagnostik</TabsTrigger>
+                </TabsList>
 
                 <TabsContent value="time-series" className="mt-6 space-y-6">
                   <TimeSeriesCharts times={era5Data.hourly.times} temperature={era5Data.hourly.temperature} humidity={era5Data.hourly.humidity} pressure={era5Data.hourly.pressure} rain={era5Data.hourly.rain} windSpeed={era5Data.hourly.windSpeed} windGust={era5Data.hourly.windGust} radiation={era5Data.hourly.radiation} isDarkMode={isDarkMode} />

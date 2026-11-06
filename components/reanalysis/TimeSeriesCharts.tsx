@@ -3,7 +3,6 @@
 
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Thermometer, Droplets, Gauge, Wind, CloudRain, Sun, Download } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -370,59 +369,57 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({
         </div>
 
         <div className="flex flex-wrap gap-2 items-center">
-          {/* Parameter tab selectors (Gaya Underline seperti Menu Meteorologi) */}
-          <Tabs
-            value={activeTab}
-            onValueChange={(val) => setActiveTab(val as "temperature" | "humidity" | "pressure" | "wind" | "rain" | "radiation")}
-            className="w-auto"
-          >
-            <div className="flex items-center border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
-              <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex-nowrap justify-start -mb-px">
-                <TabsTrigger
-                  value="temperature"
-                  className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer gap-1.5 flex items-center"
-                >
-                  <Thermometer className="w-3.5 h-3.5" />
-                  Suhu
-                </TabsTrigger>
-                <TabsTrigger
-                  value="humidity"
-                  className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer gap-1.5 flex items-center"
-                >
-                  <Droplets className="w-3.5 h-3.5" />
-                  Kelembaban
-                </TabsTrigger>
-                <TabsTrigger
-                  value="pressure"
-                  className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer gap-1.5 flex items-center"
-                >
-                  <Gauge className="w-3.5 h-3.5" />
-                  Tekanan
-                </TabsTrigger>
-                <TabsTrigger
-                  value="wind"
-                  className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer gap-1.5 flex items-center"
-                >
-                  <Wind className="w-3.5 h-3.5" />
-                  Angin
-                </TabsTrigger>
-                <TabsTrigger
-                  value="rain"
-                  className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer gap-1.5 flex items-center"
-                >
-                  <CloudRain className="w-3.5 h-3.5" />
-                  Hujan
-                </TabsTrigger>
-                <TabsTrigger
-                  value="radiation"
-                  className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer gap-1.5 flex items-center"
-                >
-                  <Sun className="w-3.5 h-3.5" />
-                  Radiasi
-                </TabsTrigger>
-              </TabsList>
-            </div>
-          </Tabs>
+          {/* Parameter tab selectors */}
+          <div className="flex border rounded-lg p-1 bg-slate-50 dark:bg-slate-950 dark:border-slate-800 text-xs">
+            <button
+              onClick={() => setActiveTab("temperature")}
+              className={`px-3 py-1.5 font-semibold rounded-md transition-all duration-200 ${
+                activeTab === "temperature" ? "bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Suhu
+            </button>
+            <button
+              onClick={() => setActiveTab("humidity")}
+              className={`px-3 py-1.5 font-semibold rounded-md transition-all duration-200 ${
+                activeTab === "humidity" ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Kelembaban
+            </button>
+            <button
+              onClick={() => setActiveTab("pressure")}
+              className={`px-3 py-1.5 font-semibold rounded-md transition-all duration-200 ${
+                activeTab === "pressure" ? "bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Tekanan
+            </button>
+            <button
+              onClick={() => setActiveTab("wind")}
+              className={`px-3 py-1.5 font-semibold rounded-md transition-all duration-200 ${
+                activeTab === "wind" ? "bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Angin
+            </button>
+            <button
+              onClick={() => setActiveTab("rain")}
+              className={`px-3 py-1.5 font-semibold rounded-md transition-all duration-200 ${
+                activeTab === "rain" ? "bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-400 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Hujan
+            </button>
+            <button
+              onClick={() => setActiveTab("radiation")}
+              className={`px-3 py-1.5 font-semibold rounded-md transition-all duration-200 ${
+                activeTab === "radiation" ? "bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Radiasi
+            </button>
+          </div>
 
           <Button
             variant="outline"

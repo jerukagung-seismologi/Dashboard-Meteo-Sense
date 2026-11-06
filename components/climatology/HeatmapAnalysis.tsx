@@ -420,38 +420,35 @@ export const HeatmapAnalysis: React.FC<HeatmapAnalysisProps> = ({ heatmaps, isDa
           </div>
 
           {/* Action Toolbar */}
-          <div className="flex flex-wrap items-center gap-2 self-start">
+          <div className="flex flex-wrap items-center gap-2 self-start lg:self-center">
             {/* Parameter Selector */}
-            <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 self-start -mb-px">
+            <div className="flex border rounded-lg p-1 bg-slate-50 dark:bg-slate-950 dark:border-slate-800 text-xs">
               <button
-                type="button"
                 onClick={() => setActiveParam("temperature")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-t-lg rounded-b-none border-t border-x border-b-2 transition-all cursor-pointer ${
+                className={`px-3 py-1.5 font-semibold rounded-md transition-all duration-200 ${
                   activeParam === "temperature"
-                    ? "border-t-slate-200 border-x-slate-200 dark:border-t-slate-800 dark:border-x-slate-800 border-b-orange-500 bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 font-bold shadow-xs"
-                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    ? "bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                 }`}
               >
                 Suhu
               </button>
               <button
-                type="button"
                 onClick={() => setActiveParam("humidity")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-t-lg rounded-b-none border-t border-x border-b-2 transition-all cursor-pointer ${
+                className={`px-3 py-1.5 font-semibold rounded-md transition-all duration-200 ${
                   activeParam === "humidity"
-                    ? "border-t-slate-200 border-x-slate-200 dark:border-t-slate-800 dark:border-x-slate-800 border-b-orange-500 bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 font-bold shadow-xs"
-                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                 }`}
               >
                 Kelembaban
               </button>
               <button
-                type="button"
                 onClick={() => setActiveParam("pressure")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-t-lg rounded-b-none border-t border-x border-b-2 transition-all cursor-pointer ${
+                className={`px-3 py-1.5 font-semibold rounded-md transition-all duration-200 ${
                   activeParam === "pressure"
-                    ? "border-t-slate-200 border-x-slate-200 dark:border-t-slate-800 dark:border-x-slate-800 border-b-orange-500 bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 font-bold shadow-xs"
-                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                 }`}
               >
                 Tekanan

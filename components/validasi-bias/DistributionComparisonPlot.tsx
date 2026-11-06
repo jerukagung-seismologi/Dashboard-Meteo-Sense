@@ -5,7 +5,6 @@ import React, { useMemo, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MatchedObservationPair } from "@/lib/bias-correction/types";
 
 interface DistributionComparisonPlotProps {
@@ -183,28 +182,24 @@ export const DistributionComparisonPlot: React.FC<DistributionComparisonPlotProp
               Memvalidasi pergeseran kurva probabilitas kumulatif ERA5 setelah bias correction menuju kurva observasi AWS.
             </p>
           </div>
-          <Tabs
-            value={viewType}
-            onValueChange={(val) => setViewType(val as "histogram" | "ecdf")}
-            className="w-auto"
-          >
-            <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
-              <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                <TabsTrigger
-                  value="ecdf"
-                  className="px-3 py-1.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
-                >
-                  Kurva ECDF
-                </TabsTrigger>
-                <TabsTrigger
-                  value="histogram"
-                  className="px-3 py-1.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
-                >
-                  Histogram
-                </TabsTrigger>
-              </TabsList>
-            </div>
-          </Tabs>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant={viewType === "ecdf" ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs px-2.5"
+              onClick={() => setViewType("ecdf")}
+            >
+              Kurva ECDF
+            </Button>
+            <Button
+              variant={viewType === "histogram" ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs px-2.5"
+              onClick={() => setViewType("histogram")}
+            >
+              Histogram
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-4">

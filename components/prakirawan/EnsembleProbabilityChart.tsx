@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from "react"
 import ReactECharts from "echarts-for-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import {
   BarChart3,
@@ -518,32 +517,40 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start">
+          <div className="flex items-center gap-2 self-end sm:self-center">
             {hasData && (
-              <Tabs
-                value={activeView}
-                onValueChange={(val) => setActiveView(val as "chart" | "matrix")}
-                className="w-auto"
-              >
-                <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
-                  <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                    <TabsTrigger
-                      value="chart"
-                      className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer gap-1.5 flex items-center"
-                    >
-                      <BarChart3 className="w-3.5 h-3.5" />
-                      Grafik
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="matrix"
-                      className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer gap-1.5 flex items-center"
-                    >
-                      <TableIcon className="w-3.5 h-3.5" />
-                      Matriks Model
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-              </Tabs>
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
+                <Button
+                  type="button"
+                  variant={activeView === "chart" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveView("chart")}
+                  className={cn(
+                    "h-7 px-2.5 text-xs font-medium rounded-md",
+                    activeView === "chart"
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                  )}
+                >
+                  <BarChart3 className="w-3.5 h-3.5 mr-1" />
+                  Grafik
+                </Button>
+                <Button
+                  type="button"
+                  variant={activeView === "matrix" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveView("matrix")}
+                  className={cn(
+                    "h-7 px-2.5 text-xs font-medium rounded-md",
+                    activeView === "matrix"
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                  )}
+                >
+                  <TableIcon className="w-3.5 h-3.5 mr-1" />
+                  Matriks Model
+                </Button>
+              </div>
             )}
 
             {onRefresh && (
@@ -740,30 +747,38 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
             <div className="space-y-3">
               {/* SUB-VIEW TOGGLE */}
               <div className="flex items-center justify-between gap-2 pb-1">
-                <Tabs
-                  value={matrixSubView}
-                  onValueChange={(val) => setMatrixSubView(val as "grid" | "summary")}
-                  className="w-auto"
-                >
-                  <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
-                    <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                      <TabsTrigger
-                        value="grid"
-                        className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer gap-1 flex items-center"
-                      >
-                        <LayoutGrid className="w-3 h-3" />
-                        Interkomparasi Per-Model
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="summary"
-                        className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer gap-1 flex items-center"
-                      >
-                        <TableIcon className="w-3 h-3" />
-                        Distribusi Voting Kondisi
-                      </TabsTrigger>
-                    </TabsList>
-                  </div>
-                </Tabs>
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <Button
+                    type="button"
+                    variant={matrixSubView === "grid" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setMatrixSubView("grid")}
+                    className={cn(
+                      "h-6 px-2 text-[11px] font-medium rounded",
+                      matrixSubView === "grid"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs"
+                        : "text-slate-600 dark:text-slate-300"
+                    )}
+                  >
+                    <LayoutGrid className="w-3 h-3 mr-1" />
+                    Interkomparasi Per-Model
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={matrixSubView === "summary" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setMatrixSubView("summary")}
+                    className={cn(
+                      "h-6 px-2 text-[11px] font-medium rounded",
+                      matrixSubView === "summary"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs"
+                        : "text-slate-600 dark:text-slate-300"
+                    )}
+                  >
+                    <TableIcon className="w-3 h-3 mr-1" />
+                    Distribusi Voting Kondisi
+                  </Button>
+                </div>
                 <span className="text-[11px] text-muted-foreground hidden sm:inline">
                   {matrixSubView === "grid"
                     ? "Menampilkan prediksi cuaca & suhu tiap model bersanding"

@@ -843,34 +843,20 @@ export const GasPollutantsViewer: React.FC<GasPollutantsViewerProps> = ({
 
         {/* 2. Interactive Pollutants Multi-Tab Plots */}
         <Tabs defaultValue="co_co2" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto mb-4">
-            <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-              <TabsTrigger
-                value="co_co2"
-                className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-              >
-                <Flame className="h-4 w-4 text-orange-500 shrink-0" /> Karbon: CO &amp; CO2
-              </TabsTrigger>
-              <TabsTrigger
-                value="oxides"
-                className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-              >
-                <Factory className="h-4 w-4 text-red-500 shrink-0" /> Oksida: NO2 &amp; SO2
-              </TabsTrigger>
-              <TabsTrigger
-                value="ozone_aod"
-                className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-              >
-                <Sun className="h-4 w-4 text-purple-500 shrink-0" /> Ozon (O3) &amp; AOD
-              </TabsTrigger>
-              <TabsTrigger
-                value="particulates"
-                className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-              >
-                <Wind className="h-4 w-4 text-rose-500 shrink-0" /> Partikulat: PM2.5 vs PM10
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4">
+            <TabsTrigger value="co_co2" className="py-2 font-bold text-xs sm:text-sm flex items-center gap-1.5">
+              <Flame className="h-4 w-4 text-orange-500" /> Karbon: CO &amp; CO2
+            </TabsTrigger>
+            <TabsTrigger value="oxides" className="py-2 font-bold text-xs sm:text-sm flex items-center gap-1.5">
+              <Factory className="h-4 w-4 text-red-500" /> Oksida: NO2 &amp; SO2
+            </TabsTrigger>
+            <TabsTrigger value="ozone_aod" className="py-2 font-bold text-xs sm:text-sm flex items-center gap-1.5">
+              <Sun className="h-4 w-4 text-purple-500" /> Ozon (O3) &amp; AOD
+            </TabsTrigger>
+            <TabsTrigger value="particulates" className="py-2 font-bold text-xs sm:text-sm flex items-center gap-1.5">
+              <Wind className="h-4 w-4 text-rose-500" /> Partikulat: PM2.5 vs PM10
+            </TabsTrigger>
+          </TabsList>
 
           {isLoading ? (
             <div className="h-[340px] flex flex-col items-center justify-center space-y-2">

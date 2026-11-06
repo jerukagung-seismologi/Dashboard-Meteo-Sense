@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Thermometer,
   Droplets,
@@ -1855,37 +1854,44 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
             </div>
 
             {/* View Mode Switcher: 12-Month Profile vs 24-Hour Diurnal Cycle vs Rekor Ekstrem */}
-            <Tabs
-              value={viewMode}
-              onValueChange={(val) => setViewMode(val as ViewMode)}
-              className="w-auto self-start lg:self-auto"
-            >
-              <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
-                <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                  <TabsTrigger
-                    value="monthly"
-                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Calendar className="h-3.5 w-3.5" />
-                    Profil 12-Bulan
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="diurnal"
-                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Clock className="h-3.5 w-3.5" />
-                    Siklus Diurnal (24 Jam)
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="extremes"
-                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <TrendingUp className="h-3.5 w-3.5 text-indigo-500" />
-                    Persentil &amp; Distribusi WMO
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-            </Tabs>
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg self-start lg:self-auto text-xs font-semibold flex-wrap">
+              <button
+                type="button"
+                onClick={() => setViewMode("monthly")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition duration-150 ${
+                  viewMode === "monthly"
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                }`}
+              >
+                <Calendar className="h-3.5 w-3.5" />
+                Profil 12-Bulan
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("diurnal")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition duration-150 ${
+                  viewMode === "diurnal"
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                }`}
+              >
+                <Clock className="h-3.5 w-3.5" />
+                Siklus Diurnal (24 Jam)
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("extremes")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition duration-150 ${
+                  viewMode === "extremes"
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                }`}
+              >
+                <TrendingUp className="h-3.5 w-3.5 text-indigo-500" />
+                Persentil &amp; Distribusi WMO
+              </button>
+            </div>
           </div>
 
           {/* Parameter Switcher Tabs */}
@@ -1893,40 +1899,58 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1">
               <Layers className="h-3.5 w-3.5" /> Parameter:
             </span>
-            <Tabs
-              value={activeParam}
-              onValueChange={(val) => setActiveParam(val as any)}
-              className="w-auto"
+            <Button
+              type="button"
+              size="sm"
+              variant={activeParam === "temperature" ? "default" : "outline"}
+              onClick={() => setActiveParam("temperature")}
+              className={`h-8 text-xs gap-1.5 ${
+                activeParam === "temperature"
+                  ? "bg-red-500 hover:bg-red-600 text-white"
+                  : "border-slate-200 dark:border-slate-800"
+              }`}
             >
-              <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
-                <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex flex-wrap justify-start -mb-px">
-                  <TabsTrigger
-                    value="temperature"
-                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Thermometer className="h-3.5 w-3.5" /> Suhu Udara
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="humidity"
-                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Droplets className="h-3.5 w-3.5" /> Kelembaban Relatif
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="pressure"
-                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Gauge className="h-3.5 w-3.5" /> Tekanan Udara
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="rainfall"
-                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <CloudRain className="h-3.5 w-3.5" /> {viewMode === "monthly" ? "Curah Hujan Bulanan" : viewMode === "diurnal" ? "Hujan & Angin Diurnal" : "Ekstrem Hujan & Angin"}
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-            </Tabs>
+              <Thermometer className="h-3.5 w-3.5" /> Suhu Udara
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={activeParam === "humidity" ? "default" : "outline"}
+              onClick={() => setActiveParam("humidity")}
+              className={`h-8 text-xs gap-1.5 ${
+                activeParam === "humidity"
+                  ? "bg-blue-500 hover:bg-blue-600 text-white"
+                  : "border-slate-200 dark:border-slate-800"
+              }`}
+            >
+              <Droplets className="h-3.5 w-3.5" /> Kelembaban Relatif
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={activeParam === "pressure" ? "default" : "outline"}
+              onClick={() => setActiveParam("pressure")}
+              className={`h-8 text-xs gap-1.5 ${
+                activeParam === "pressure"
+                  ? "bg-purple-600 hover:bg-purple-700 text-white"
+                  : "border-slate-200 dark:border-slate-800"
+              }`}
+            >
+              <Gauge className="h-3.5 w-3.5" /> Tekanan Udara
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={activeParam === "rainfall" ? "default" : "outline"}
+              onClick={() => setActiveParam("rainfall")}
+              className={`h-8 text-xs gap-1.5 ${
+                activeParam === "rainfall"
+                  ? "bg-teal-600 hover:bg-teal-700 text-white"
+                  : "border-slate-200 dark:border-slate-800"
+              }`}
+            >
+              <CloudRain className="h-3.5 w-3.5" /> {viewMode === "monthly" ? "Curah Hujan Bulanan" : viewMode === "diurnal" ? "Hujan & Angin Diurnal" : "Ekstrem Hujan & Angin"}
+            </Button>
           </div>
 
           {/* Sub-Mode Selector for Percentile Analytics */}
@@ -1936,40 +1960,55 @@ export const Era5ClimatologyCharts: React.FC<Era5ClimatologyChartsProps> = ({
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <BoxSelect className="h-3.5 w-3.5 text-indigo-500" /> Model Plot Persentil:
                 </span>
-                <Tabs
-                  value={percentilePlotType}
-                  onValueChange={(val) => setPercentilePlotType(val as any)}
-                  className="w-auto"
-                >
-                  <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
-                    <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                      <TabsTrigger
-                        value="boxplot"
-                        className="px-3 py-1.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
-                      >
-                        📦 Box Plot WMO
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="ecdf"
-                        className="px-3 py-1.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1"
-                      >
-                        <TrendingUp className="h-3 w-3" /> ECDF
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="ribbon"
-                        className="px-3 py-1.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1"
-                      >
-                        <Waves className="h-3 w-3" /> Fan Chart
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="bar"
-                        className="px-3 py-1.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1"
-                      >
-                        <BarChart2 className="h-3 w-3" /> Batang
-                      </TabsTrigger>
-                    </TabsList>
-                  </div>
-                </Tabs>
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700/80 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setPercentilePlotType("boxplot")}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition ${
+                      percentilePlotType === "boxplot"
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                    }`}
+                  >
+                    <span>📦 Box Plot WMO (12-Bulan)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPercentilePlotType("ecdf")}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition ${
+                      percentilePlotType === "ecdf"
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                    }`}
+                  >
+                    <TrendingUp className="h-3 w-3" />
+                    <span>Kurva Kumulatif (ECDF)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPercentilePlotType("ribbon")}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition ${
+                      percentilePlotType === "ribbon"
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                    }`}
+                  >
+                    <Waves className="h-3 w-3" />
+                    <span>Pita Persentil (Fan Chart)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPercentilePlotType("bar")}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition ${
+                      percentilePlotType === "bar"
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                    }`}
+                  >
+                    <BarChart2 className="h-3 w-3" />
+                    <span>Distribusi Batang</span>
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">

@@ -31,10 +31,6 @@ import {
   Clock,
   RotateCcw,
   CalendarDays,
-  TableProperties,
-  LineChart,
-  LayoutGrid,
-  Search,
 } from "lucide-react";
 import { format, isSameDay, subDays, addDays, startOfDay, endOfDay, isFuture } from "date-fns";
 import { id } from "date-fns/locale";
@@ -212,7 +208,6 @@ export default function DataPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"table" | "grafik">("table");
-  const [activeChartParam, setActiveChartParam] = useState<string>("all");
 
   // State untuk pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -736,10 +731,7 @@ export default function DataPage() {
   // Handler memilih preset rentang luar (Mingguan, Dasarian, Bulanan, 24 Jam)
   const handleApplyExternalPreset = useCallback((type: "24h" | "weekly" | "dasarian" | "monthly") => {
     if (type === "24h") {
-      const p24 = periods.find(p => p.valueInMinutes === 24 * 60) || periods[6];
-      setSelectedPeriod(p24);
-      setDateRange(undefined);
-      if (searchQuery) setSearchQuery("");
+      handleResetToLive();
       return;
     }
     const now = new Date();
@@ -752,7 +744,7 @@ export default function DataPage() {
     const end = endOfDay(now);
     setDateRange({ from: start, to: end });
     if (searchQuery) setSearchQuery("");
-  }, [searchQuery]);
+  }, [handleResetToLive, searchQuery]);
 
   // Label tampilan periode aktif
   const dateIndicatorLabel = useMemo(() => {
@@ -779,15 +771,6 @@ export default function DataPage() {
     if (dateRange.to && !isSameDay(dateRange.from, dateRange.to)) return "Multi-Hari";
     return "24 Jam";
   }, [dateRange, isPresetActive]);
-
-  // Nilai preset aktif untuk Tab Selector
-  const activePreset = useMemo(() => {
-    if (isPresetActive(7)) return "weekly";
-    if (isPresetActive(10)) return "dasarian";
-    if (isPresetActive(30)) return "monthly";
-    if (!dateRange && selectedPeriod.valueInMinutes === 24 * 60) return "24h";
-    return "";
-  }, [isPresetActive, dateRange, selectedPeriod]);
 
   // Fungsi untuk mengunduh data
   const handleDownloadData = () => {
@@ -964,36 +947,6 @@ export default function DataPage() {
   // helper format 2 desimal
   const fmt2 = (n: number) => Number.isFinite(n) ? n.toFixed(2) : "0.00";
 
-  // Konfigurasi parameter grafik terpadu
-  const chartParamsConfig = useMemo(() => [
-    { key: "temperature", title: "Suhu Lingkungan", data: temperatures, color: chartColors.temperature, Icon: ThermometerSun, unit: "°C" },
-    { key: "humidity", title: "Kelembapan Relatif", data: humidity, color: chartColors.humidity, Icon: Droplets, unit: "%" },
-    { key: "pressure", title: "Tekanan Udara", data: pressure, color: chartColors.pressure, Icon: GaugeIcon, unit: "hPa" },
-    { key: "dew", title: "Titik Embun", data: dew, color: chartColors.dew, Icon: Sprout, unit: "°C" },
-    { key: "rainfall", title: "Curah Hujan Kumulatif", data: rainfall, color: chartColors.rainfall, Icon: CloudRainIcon, unit: "mm" },
-    { key: "rainrate", title: "Laju Hujan Per Jam", data: rainrate, color: chartColors.rainrate, Icon: CloudRainWind, unit: "mm/jam" },
-    { key: "lux", title: "Intensitas Cahaya", data: lights, color: chartColors.lux, Icon: Sun, unit: "lux" },
-    { key: "soil_temp", title: "Suhu Tanah", data: soilTemps, color: chartColors.soil_temp, Icon: Thermometer, unit: "°C" },
-    { key: "volt", title: "Tegangan Listrik", data: volts, color: chartColors.volt, Icon: Zap, unit: "V" },
-  ], [temperatures, humidity, pressure, dew, rainfall, rainrate, lights, soilTemps, volts, chartColors]);
-
-  const selectedParamConfig = useMemo(() => {
-    return chartParamsConfig.find((p) => p.key === activeChartParam);
-  }, [chartParamsConfig, activeChartParam]);
-
-  const selectedParamStats = useMemo(() => {
-    if (!selectedParamConfig) return null;
-    const arr = selectedParamConfig.data;
-    if (!arr || arr.length === 0) return { last: 0, min: 0, max: 0, avg: 0 };
-    const valid = arr.filter((v) => Number.isFinite(v));
-    if (valid.length === 0) return { last: 0, min: 0, max: 0, avg: 0 };
-    const last = valid[valid.length - 1];
-    const min = Math.min(...valid);
-    const max = Math.max(...valid);
-    const avg = valid.reduce((a, b) => a + b, 0) / valid.length;
-    return { last, min, max, avg };
-  }, [selectedParamConfig]);
-
   return (
     <div className="space-y-6">
       {/* Unified Single Header Banner */}
@@ -1004,7 +957,7 @@ export default function DataPage() {
         subtitle="Pengelolaan, inspeksi, filtering, koreksi, dan ekspor dataset deret waktu sensor cuaca terhubung"
       />
       
-      {/* Global Controls Card (Sesuai Tata Letak Semula) */}
+      {/* Global Controls Card */}
       <Card className="mb-6">
         <CardHeader className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${isDarkMode ? "bg-slate-800" : "bg-slate-100"} border-b`}>
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
@@ -1075,7 +1028,7 @@ export default function DataPage() {
               )}
             </div>
 
-            {/* Shadcn Date Range Picker */}
+            {/* Shadcn Date Range Picker (2-Bulan Side-by-Side dengan Preset Cepat) */}
             <DateRangePicker
               id="date"
               value={dateRange}
@@ -1113,7 +1066,7 @@ export default function DataPage() {
           </div>
         </CardHeader>
         <CardContent className="p-3 sm:p-4 bg-slate-50/80 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-800">
-          {/* Stepper Hari & Quick Period Pills Terpadu */}
+          {/* Baris 2: Stepper Hari & Quick Period Pills Terpadu */}
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
             {/* Sisi Kiri: Stepper Hari & Indikator Tanggal Aktif */}
             <div className="flex flex-wrap items-center gap-2">
@@ -1166,43 +1119,74 @@ export default function DataPage() {
               )}
             </div>
 
-            {/* Sisi Kiri / Atas: Preset Cepat Meteorologi */}
-            <div className="flex flex-wrap items-center gap-2 justify-start">
-              <Tabs
-                value={activePreset}
-                onValueChange={(val) => handleApplyExternalPreset(val as "24h" | "weekly" | "dasarian" | "monthly")}
-                className="w-auto"
+            {/* Sisi Kanan: Preset Cepat Meteorologi (Di Luar Kalender) */}
+            <div className="flex flex-wrap items-center gap-1.5 justify-start lg:justify-end">
+              <span className="text-[11px] font-semibold text-muted-foreground mr-1 hidden sm:inline">
+                Preset Rentang:
+              </span>
+
+              <Button
+                type="button"
+                variant={!dateRange && selectedPeriod.valueInMinutes === 24 * 60 ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleApplyExternalPreset("24h")}
+                className={cn(
+                  "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
+                  !dateRange && selectedPeriod.valueInMinutes === 24 * 60
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
+                )}
               >
-                <TabsList className="bg-slate-100 dark:bg-slate-800/80 p-0.5 h-8 rounded-lg border border-slate-200/80 dark:border-slate-700/80 flex justify-start">
-                  <TabsTrigger
-                    value="24h"
-                    className="h-7 text-xs font-semibold px-2.5 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs cursor-pointer border-none"
-                  >
-                    24 Jam
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="weekly"
-                    className="h-7 text-xs font-semibold px-2.5 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs cursor-pointer border-none"
-                  >
-                    Mingguan (7 Hari)
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="dasarian"
-                    className="h-7 text-xs font-semibold px-2.5 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs cursor-pointer border-none"
-                  >
-                    Dasarian (10 Hari)
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="monthly"
-                    className="h-7 text-xs font-semibold px-2.5 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs cursor-pointer border-none"
-                  >
-                    Bulanan (30 Hari)
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+                24 Jam
+              </Button>
+
+              <Button
+                type="button"
+                variant={isPresetActive(7) ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleApplyExternalPreset("weekly")}
+                className={cn(
+                  "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
+                  isPresetActive(7)
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                Mingguan (7 Hari)
+              </Button>
+
+              <Button
+                type="button"
+                variant={isPresetActive(10) ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleApplyExternalPreset("dasarian")}
+                className={cn(
+                  "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
+                  isPresetActive(10)
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                Dasarian (10 Hari)
+              </Button>
+
+              <Button
+                type="button"
+                variant={isPresetActive(30) ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleApplyExternalPreset("monthly")}
+                className={cn(
+                  "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
+                  isPresetActive(30)
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                Bulanan (30 Hari)
+              </Button>
 
               {/* Sub-Harian Dropdown (Resolusi Jam / Menit) */}
-              <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-0.5 hidden sm:block" />
+              <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1 hidden sm:block" />
               <Select
                 value={!dateRange && selectedPeriod.valueInMinutes < 24 * 60 ? String(selectedPeriod.valueInMinutes) : ""}
                 onValueChange={(val) => {
@@ -1210,7 +1194,7 @@ export default function DataPage() {
                   if (match) handlePeriodChange(match);
                 }}
               >
-                <SelectTrigger className="h-8 text-xs font-semibold px-2 w-[115px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-2xs">
+                <SelectTrigger className="h-7 text-xs font-semibold px-2 w-[115px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
                   <SelectValue placeholder="Sub-Harian" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1227,168 +1211,158 @@ export default function DataPage() {
         </CardContent>
       </Card>
 
-      {/* Tab Navigation (Gaya Underline Persis Seperti Menu Meteorologi Sesuai Permintaan User) */}
-      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "table" | "grafik")} className="space-y-6">
-        <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
-          <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-            <TabsTrigger
-              value="table"
-              className="px-4 py-2.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-            >
-              <TableProperties className="h-4 w-4" />
-              Data Tabel
-            </TabsTrigger>
-            <TabsTrigger
-              value="grafik"
-              className="px-4 py-2.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
-            >
-              <LineChart className="h-4 w-4" />
-              Grafik
-            </TabsTrigger>
-          </TabsList>
-        </div>
+      {/* Tab Navigation (shadcn Tabs) */}
+      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'table' | 'grafik')} className="mb-6">
+        <TabsList className="grid w-full max-w-xs grid-cols-2">
+          <TabsTrigger value="table">
+            Data Tabel
+          </TabsTrigger>
+          <TabsTrigger value="grafik">
+            Grafik
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-        {/* Tab Content */}
-        {error ? (
-          <div className={`border p-4 rounded-md mb-6 ${isDarkMode ? "bg-red-950 border-red-900 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>{error}</div>
-        ) : (
-          <>
-            {/* Data Table Content (shadcn Table) */}
-            <TabsContent value="table" className="outline-none mt-0">
-              {loading ? (
-                <Card>
-                  <CardContent className="p-0">
-                    <Table className="w-full">
-                      <TableHeader>
-                        <TableRow>
-                          {[...Array(11)].map((_, i) => (
-                            <TableHead key={i}>
-                              <Skeleton className="h-4 w-20" />
-                            </TableHead>
+      {/* Tab Content */}
+      {error ? (
+        <div className={`border p-4 rounded-md mb-6 ${isDarkMode ? "bg-red-950 border-red-900 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>{error}</div>
+      ) : (
+        <>
+          {/* Data Table Content (shadcn Table) */}
+          {activeTab === 'table' && (
+            loading ? (
+              <Card>
+                <CardContent className="p-0">
+                  <Table className="w-full">
+                    <TableHeader>
+                      <TableRow>
+                        {[...Array(11)].map((_, i) => (
+                          <TableHead key={i}>
+                            <Skeleton className="h-4 w-20" />
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {[...Array(itemsPerPage)].map((_, i) => (
+                        <TableRow key={i}>
+                          {[...Array(11)].map((_, j) => (
+                            <TableCell key={j}>
+                              <Skeleton className="h-4 w-full" />
+                            </TableCell>
                           ))}
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {[...Array(itemsPerPage)].map((_, i) => (
-                          <TableRow key={i}>
-                            {[...Array(11)].map((_, j) => (
-                              <TableCell key={j}>
-                                <Skeleton className="h-4 w-full" />
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardContent className="p-0">
-                    <Table className="w-full text-sm">
-                      <TableHeader>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <Table className="w-full text-sm">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="font-bold">Waktu</TableHead>
+                        <TableHead className="font-bold">Suhu (°C)</TableHead>
+                        <TableHead className="font-bold">Kelembapan (%)</TableHead>
+                        <TableHead className="font-bold">Tekanan (hPa)</TableHead>
+                        <TableHead className="font-bold">Titik Embun (°C)</TableHead>
+                        <TableHead className="font-bold">Curah Hujan (mm)</TableHead>
+                        <TableHead className="font-bold">Laju Hujan (mm/j)</TableHead>
+                        <TableHead className="font-bold">Cahaya (lux)</TableHead>
+                        <TableHead className="font-bold">Suhu Tanah (°C)</TableHead>
+                        <TableHead className="font-bold">Tegangan (V)</TableHead>
+                        <TableHead className="font-bold text-center">Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody id="datalogger">
+                      {currentTableData.length === 0 ? (
                         <TableRow>
-                          <TableHead className="font-bold">Waktu</TableHead>
-                          <TableHead className="font-bold">Suhu (°C)</TableHead>
-                          <TableHead className="font-bold">Kelembapan (%)</TableHead>
-                          <TableHead className="font-bold">Tekanan (hPa)</TableHead>
-                          <TableHead className="font-bold">Titik Embun (°C)</TableHead>
-                          <TableHead className="font-bold">Curah Hujan (mm)</TableHead>
-                          <TableHead className="font-bold">Laju Hujan (mm/j)</TableHead>
-                          <TableHead className="font-bold">Cahaya (lux)</TableHead>
-                          <TableHead className="font-bold">Suhu Tanah (°C)</TableHead>
-                          <TableHead className="font-bold">Tegangan (V)</TableHead>
-                          <TableHead className="font-bold text-center">Aksi</TableHead>
+                          <TableCell colSpan={11} className="p-8 text-center text-muted-foreground">
+                            Tidak ada data yang tersedia.
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody id="datalogger">
-                        {currentTableData.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={11} className="p-8 text-center text-muted-foreground">
-                              Tidak ada data yang tersedia.
+                      ) : (
+                        currentTableData.map((entry, index) => (
+                          <TableRow key={index} className="hover:bg-muted/50 transition-colors">
+                            <TableCell className="font-mono text-xs">{entry.date}</TableCell>
+                            <TableCell>{fmt2(entry.temperature)}</TableCell>
+                            <TableCell>{fmt2(entry.humidity)}</TableCell>
+                            <TableCell>{fmt2(entry.pressure)}</TableCell>
+                            <TableCell>{fmt2(entry.dew)}</TableCell>
+                            <TableCell>{fmt2(entry.rainfall)}</TableCell>
+                            <TableCell>{fmt2(entry.rainrate)}</TableCell>
+                            <TableCell>{fmt2(entry.lux)}</TableCell>
+                            <TableCell>{fmt2(entry.soil_temp)}</TableCell>
+                            <TableCell>{fmt2(entry.volt)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10 cursor-pointer"
+                                  title="Edit"
+                                  onClick={() => openEditModal(entry, indexOfFirstItem + index)}
+                                >
+                                  <EditIcon className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                                  title="Hapus"
+                                  onClick={() => openDeleteModal(indexOfFirstItem + index)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
-                        ) : (
-                          currentTableData.map((entry, index) => (
-                            <TableRow key={index} className="hover:bg-muted/50 transition-colors">
-                              <TableCell className="font-mono text-xs">{entry.date}</TableCell>
-                              <TableCell>{fmt2(entry.temperature)}</TableCell>
-                              <TableCell>{fmt2(entry.humidity)}</TableCell>
-                              <TableCell>{fmt2(entry.pressure)}</TableCell>
-                              <TableCell>{fmt2(entry.dew)}</TableCell>
-                              <TableCell>{fmt2(entry.rainfall)}</TableCell>
-                              <TableCell>{fmt2(entry.rainrate)}</TableCell>
-                              <TableCell>{fmt2(entry.lux)}</TableCell>
-                              <TableCell>{fmt2(entry.soil_temp)}</TableCell>
-                              <TableCell>{fmt2(entry.volt)}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center justify-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10 cursor-pointer"
-                                    title="Edit"
-                                    onClick={() => openEditModal(entry, indexOfFirstItem + index)}
-                                  >
-                                    <EditIcon className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                                    title="Hapus"
-                                    onClick={() => openDeleteModal(indexOfFirstItem + index)}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                    {weatherData.length > itemsPerPage && (
-                      <div className="flex items-center justify-between p-4 border-t bg-slate-50 dark:bg-slate-900">
-                        <Button onClick={handlePreviousPage} disabled={currentPage === 1} variant="outline" size="sm">
-                          Sebelumnya
-                        </Button>
-                        <span className="text-sm text-gray-800 dark:text-gray-200">
-                          Halaman {currentPage} dari {totalPages}
-                        </span>
-                        <Button onClick={handleNextPage} disabled={currentPage === totalPages} variant="outline" size="sm">
-                          Berikutnya
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                  {weatherData.length > itemsPerPage && (
+                    <div className="flex items-center justify-between p-4 border-t bg-slate-200 dark:bg-slate-700">
+                      <Button onClick={handlePreviousPage} disabled={currentPage === 1} variant="outline">
+                        Sebelumnya
+                      </Button>
+                      <span className="text-sm text-gray-800 dark:text-gray-200">
+                        Halaman {currentPage} dari {totalPages}
+                      </span>
+                      <Button onClick={handleNextPage} disabled={currentPage === totalPages} variant="outline">
+                        Berikutnya
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          )}
 
-            {/* Grafik Content (Grid 2 Kolom Responsif) */}
-            <TabsContent value="grafik" className="outline-none mt-0">
-              {loading ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                  {[...Array(6)].map((_, i) => <ChartSkeleton key={i} />)}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                  <ChartCard title="Suhu Lingkungan" data={temperatures} color={chartColors.temperature} Icon={ThermometerSun} unit="°C" />
-                  <ChartCard title="Kelembapan Relatif" data={humidity} color={chartColors.humidity} Icon={Droplets} unit="%" />
-                  <ChartCard title="Tekanan Udara" data={pressure} color={chartColors.pressure} Icon={GaugeIcon} unit="hPa" />
-                  <ChartCard title="Titik Embun" data={dew} color={chartColors.dew} Icon={Sprout} unit="°C" />
-                  <ChartCard title="Curah Hujan Kumulatif" data={rainfall} color={chartColors.rainfall} Icon={CloudRainIcon} unit="mm" />
-                  <ChartCard title="Laju Hujan Per Jam" data={rainrate} color={chartColors.rainrate} Icon={CloudRainWind} unit="mm/jam" />
-                  <ChartCard title="Intensitas Cahaya" data={lights} color={chartColors.lux} Icon={Sun} unit="lux" />
-                  <ChartCard title="Suhu Tanah" data={soilTemps} color={chartColors.soil_temp} Icon={Thermometer} unit="°C" />
-                  <ChartCard title="Tegangan Listrik" data={volts} color={chartColors.volt} Icon={Zap} unit="V" />
-                </div>
-              )}
-            </TabsContent>
-          </>
-        )}
-      </Tabs>
+          {/* Grafik Content */}
+          {activeTab === 'grafik' && (
+            loading ? (
+              <div className="space-y-6">
+                {[...Array(9)].map((_, i) => <ChartSkeleton key={i} />)}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <ChartCard title="Suhu Lingkungan" data={temperatures} color={chartColors.temperature} Icon={ThermometerSun} unit="°C" />
+                <ChartCard title="Kelembapan Relatif" data={humidity} color={chartColors.humidity} Icon={Droplets} unit="%" />
+                <ChartCard title="Tekanan Udara" data={pressure} color={chartColors.pressure} Icon={GaugeIcon} unit="hPa" />
+                <ChartCard title="Titik Embun" data={dew} color={chartColors.dew} Icon={Sprout} unit="°C" />
+                <ChartCard title="Curah Hujan Kumulatif" data={rainfall} color={chartColors.rainfall} Icon={CloudRainIcon} unit="mm" />
+                <ChartCard title="Laju Hujan Per Jam" data={rainrate} color={chartColors.rainrate} Icon={CloudRainWind} unit="mm/jam" />
+                <ChartCard title="Intensitas Cahaya" data={lights} color={chartColors.lux} Icon={Sun} unit="lux" />
+                <ChartCard title="Suhu Tanah" data={soilTemps} color={chartColors.soil_temp} Icon={Thermometer} unit="°C" />
+                <ChartCard title="Tegangan Listrik" data={volts} color={chartColors.volt} Icon={Zap} unit="V" />
+              </div>
+            )
+          )}
+        </>
+      )}
 
       {/* Modal Edit Data (shadcn Dialog) */}
       <Dialog open={editModalOpen} onOpenChange={(open) => !open && closeEditModal()}>

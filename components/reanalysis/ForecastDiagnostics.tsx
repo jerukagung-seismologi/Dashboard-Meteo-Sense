@@ -223,39 +223,30 @@ export const ForecastDiagnostics: React.FC<ForecastDiagnosticsProps> = ({
         </div>
 
         {/* Sub-tab Selectors */}
-        <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 self-start -mb-px">
+        <div className="flex border rounded-lg p-1 bg-slate-50 dark:bg-slate-950 dark:border-slate-800 text-xs self-start md:self-center">
           <button
-            type="button"
             onClick={() => setActiveSubTab("scatter")}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-t-lg rounded-b-none border-t border-x border-b-2 transition-all cursor-pointer ${
-              activeSubTab === "scatter"
-                ? "border-t-slate-200 border-x-slate-200 dark:border-t-slate-800 dark:border-x-slate-800 border-b-orange-500 bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 font-bold shadow-xs"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+            className={`px-3 py-1.5 font-semibold rounded-md transition-all duration-200 ${
+              activeSubTab === "scatter" ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm" : "text-slate-500 hover:text-slate-800"
             }`}
           >
             Diagram Pencaran
           </button>
           <button
-            type="button"
             onClick={() => setActiveSubTab("radiation")}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-t-lg rounded-b-none border-t border-x border-b-2 transition-all cursor-pointer ${
-              activeSubTab === "radiation"
-                ? "border-t-slate-200 border-x-slate-200 dark:border-t-slate-800 dark:border-x-slate-800 border-b-orange-500 bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 font-bold shadow-xs"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+            className={`px-3 py-1.5 font-semibold rounded-md transition-all duration-200 ${
+              activeSubTab === "radiation" ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm" : "text-slate-500 hover:text-slate-800"
             }`}
           >
-            Profil Diurnal Radiasi &amp; Saturasi
+            Profil Diurnal Radiasi & Saturasi
           </button>
           <button
-            type="button"
             onClick={() => setActiveSubTab("diagnostics")}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-t-lg rounded-b-none border-t border-x border-b-2 transition-all cursor-pointer ${
-              activeSubTab === "diagnostics"
-                ? "border-t-slate-200 border-x-slate-200 dark:border-t-slate-800 dark:border-x-slate-800 border-b-orange-500 bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 font-bold shadow-xs"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+            className={`px-3 py-1.5 font-semibold rounded-md transition-all duration-200 ${
+              activeSubTab === "diagnostics" ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm" : "text-slate-500 hover:text-slate-800"
             }`}
           >
-            Instabilitas &amp; Tendensi Tekanan
+            Instabilitas & Tendensi Tekanan
           </button>
         </div>
       </CardHeader>

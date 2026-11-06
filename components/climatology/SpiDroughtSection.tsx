@@ -183,34 +183,20 @@ export function SpiDroughtSection({ spiData, currentPeriodNormals, isDarkMode = 
 
           {/* Timescale Selector Tabs */}
           <Tabs value={activeTimescale} onValueChange={(v) => setActiveTimescale(v as any)}>
-            <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
-              <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex justify-start -mb-px">
-                <TabsTrigger
-                  value="1"
-                  className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
-                >
-                  SPI-1 (1 Bln)
-                </TabsTrigger>
-                <TabsTrigger
-                  value="3"
-                  className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
-                >
-                  SPI-3 (Musim)
-                </TabsTrigger>
-                <TabsTrigger
-                  value="6"
-                  className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
-                >
-                  SPI-6 (Hidro)
-                </TabsTrigger>
-                <TabsTrigger
-                  value="12"
-                  className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
-                >
-                  SPI-12 (Tahunan)
-                </TabsTrigger>
-              </TabsList>
-            </div>
+            <TabsList className="bg-slate-100 dark:bg-slate-800 p-1">
+              <TabsTrigger value="1" className="text-xs px-3 py-1.5 font-bold">
+                SPI-1 (1 Bln)
+              </TabsTrigger>
+              <TabsTrigger value="3" className="text-xs px-3 py-1.5 font-bold">
+                SPI-3 (Musim)
+              </TabsTrigger>
+              <TabsTrigger value="6" className="text-xs px-3 py-1.5 font-bold">
+                SPI-6 (Hidro)
+              </TabsTrigger>
+              <TabsTrigger value="12" className="text-xs px-3 py-1.5 font-bold">
+                SPI-12 (Tahunan)
+              </TabsTrigger>
+            </TabsList>
           </Tabs>
         </div>
       </CardHeader>
