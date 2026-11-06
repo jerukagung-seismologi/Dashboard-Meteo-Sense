@@ -1527,7 +1527,7 @@ export default function KoreksiDataPage() {
 
       {/* Main Tabs Navigation (2 Tabs: Workspace Koreksi & Riwayat Audit) */}
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)}>
-        <TabsList variant="line" className="w-full justify-start border-b mb-4">
+        <TabsList className="grid grid-cols-2 max-w-xs bg-slate-100 dark:bg-slate-800 p-1">
           <TabsTrigger value="workspace" className="text-xs flex items-center gap-1.5">
             <Wrench className="h-3.5 w-3.5" /> Area Koreksi
           </TabsTrigger>

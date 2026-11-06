@@ -617,7 +617,7 @@ Durasi Jam Basah: ${rainStats.rainDurationHours} Jam`;
 
       {/* Tabs Navigation: Ergonomics Anti-Long-Scroll convention (AGENTS.md Section 2) */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList variant="line" className="w-full justify-start border-b mb-2">
+        <TabsList className="grid grid-cols-3 max-w-md bg-slate-100 dark:bg-slate-800">
           <TabsTrigger value="overview" className="text-xs">
             Ringkasan & Publikasi
           </TabsTrigger>

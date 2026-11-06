@@ -603,8 +603,8 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
 
       <CardContent className="pt-5">
         <Tabs defaultValue="dipole" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList variant="line" className="w-full justify-start border-b mb-6">
-            <TabsTrigger value="dipole" className="py-2 px-3 font-semibold text-xs sm:text-sm flex items-center gap-1.5">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1.5 bg-slate-100/90 dark:bg-slate-800/80 rounded-xl mb-6 gap-1">
+            <TabsTrigger value="dipole" className="py-2 px-3 font-semibold text-xs sm:text-sm flex items-center gap-1.5 rounded-lg">
               <Wind className="h-4 w-4 text-cyan-500 shrink-0" /> Dual Dipole: AUSMI vs WNPMI
             </TabsTrigger>
             <TabsTrigger value="surge" className="py-2 px-3 font-semibold text-xs sm:text-sm flex items-center gap-1.5 rounded-lg">

@@ -120,7 +120,7 @@ export default function PelaporanPage() {
         {!loading && !error && sensorId && (
           <Tabs defaultValue="harian" className="w-full">
             <div className="overflow-x-auto pb-1">
-              <TabsList variant="line" className="flex w-max min-w-full justify-start border-b">
+              <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-6 max-w-5xl">
                 <TabsTrigger value="harian" className="text-xs">Laporan Harian</TabsTrigger>
                 <TabsTrigger value="bulanan" className="text-xs">Ringkasan Bulanan</TabsTrigger>
                 <TabsTrigger value="hujan" className="text-xs">Curah Hujan Harian</TabsTrigger>

@@ -931,20 +931,20 @@ export default function BackupSqlitePage() {
 
       {/* Main Studio Tabs */}
       <Tabs defaultValue="completeness" className="space-y-4">
-        <TabsList variant="line">
-          <TabsTrigger value="completeness" className="gap-2">
+        <TabsList className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1">
+          <TabsTrigger value="completeness" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800">
             <TableProperties className="h-4 w-4 text-blue-500" />
             1. Kelengkapan Basis Data (Mentah vs Bersih)
           </TabsTrigger>
-          <TabsTrigger value="explorer" className="gap-2">
+          <TabsTrigger value="explorer" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800">
             <Search className="h-4 w-4 text-emerald-500" />
             2. Penjelajah Data SQLite (Data Viewer)
           </TabsTrigger>
-          <TabsTrigger value="era5" className="gap-2">
+          <TabsTrigger value="era5" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800">
             <Layers className="h-4 w-4 text-purple-500" />
             3. Basis Data ERA5-Land
           </TabsTrigger>
-          <TabsTrigger value="snapshots" className="gap-2">
+          <TabsTrigger value="snapshots" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800">
             <FolderArchive className="h-4 w-4 text-amber-500" />
             4. Snapshot & Manajemen Cadangan
           </TabsTrigger>

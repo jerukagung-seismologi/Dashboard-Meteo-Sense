@@ -843,7 +843,7 @@ export const GasPollutantsViewer: React.FC<GasPollutantsViewerProps> = ({
 
         {/* 2. Interactive Pollutants Multi-Tab Plots */}
         <Tabs defaultValue="co_co2" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList variant="line" className="w-full justify-start border-b mb-4">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4">
             <TabsTrigger value="co_co2" className="py-2 font-bold text-xs sm:text-sm flex items-center gap-1.5">
               <Flame className="h-4 w-4 text-orange-500" /> Karbon: CO &amp; CO2
             </TabsTrigger>

@@ -611,14 +611,22 @@ export default function AnalisisDashboardPage() {
 
       {/* 4. Tab System & Visualizations */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList variant="line">
-          <TabsTrigger value="daily">
-            Analisis Harian
-          </TabsTrigger>
-          <TabsTrigger value="weekly">
-            Analisis Berkala & Distribusi
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between border-b pb-1 dark:border-slate-800">
+          <TabsList className="bg-transparent gap-6 h-auto p-0 border-none">
+            <TabsTrigger
+              value="daily"
+              className="px-2 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-orange-500 data-[state=active]:bg-transparent text-sm font-semibold text-slate-500 dark:text-slate-400 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 transition-all"
+            >
+              Analisis Harian
+            </TabsTrigger>
+            <TabsTrigger
+              value="weekly"
+              className="px-2 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent text-sm font-semibold text-slate-500 dark:text-slate-400 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 transition-all"
+            >
+              Analisis Berkala & Distribusi
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Tab Content Display states */}
         {isLoading ? (

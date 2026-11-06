@@ -220,7 +220,7 @@ export default function TropicalDynamicsPage() {
 
           {/* Modular Tab Navigation (Prevents Long Page Overload) */}
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full space-y-4">
-            <TabsList variant="line" className="w-full justify-start border-b">
+            <TabsList className="grid grid-cols-2 md:grid-cols-4 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
               <TabsTrigger
                 value="waves"
                 className="py-2.5 font-bold text-xs sm:text-sm flex items-center gap-1.5 tracking-tight"
