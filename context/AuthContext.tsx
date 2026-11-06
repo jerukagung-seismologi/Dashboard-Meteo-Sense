@@ -34,6 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProfile = async (currentUser: User) => {
     try {
       let fetchedProfile = await getUserProfile(currentUser.uid);
+      const tokenResult = await currentUser.getIdTokenResult();
+      const tokenRole = (tokenResult.claims.role as UserProfile["role"]) || null;
 
       if (!fetchedProfile) {
         // Fallback profile if Firestore document does not exist yet
@@ -43,8 +45,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           displayName: currentUser.displayName || currentUser.email?.split("@")[0] || "User",
           createdAt: new Date(),
           lastLoginAt: new Date(),
-          role: "User",
+          role: tokenRole || "User",
         };
+      } else if (tokenRole && fetchedProfile.role !== tokenRole) {
+        // Synchronize profile role with cryptographic token claim if available
+        fetchedProfile.role = tokenRole;
       }
 
       setProfile(fetchedProfile);
@@ -98,6 +103,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = async () => {
     if (user) {
+      try {
+        await user.getIdToken(true);
+      } catch (e) {
+        console.warn("[AuthContext] Force token refresh error:", e);
+      }
       await loadProfile(user);
     }
   };
