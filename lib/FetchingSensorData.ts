@@ -584,3 +584,91 @@ export async function deleteSensorDataByTimestamp(
     throw error;
   }
 }
+
+export interface BatchSensorFieldUpdate {
+  timestampInSeconds: number;
+  field: string;
+  newValue: number;
+}
+
+export interface SensorCorrectionAuditLog {
+  id?: string;
+  timestamp: number;
+  sensorId: string;
+  field: string;
+  method: 'offset' | 'drift' | 'clamp' | 'scale' | 'interpolate';
+  parameters: Record<string, any>;
+  range: {
+    start: number;
+    end: number;
+    startDateFormatted?: string;
+    endDateFormatted?: string;
+  };
+  pointCount: number;
+  notes?: string;
+  appliedBy: string;
+  appliedAt: string;
+}
+
+/**
+ * Melakukan pembaruan massal (batch update) secara atomik multi-path di Firebase RTDB.
+ */
+export async function batchUpdateSensorFields(
+  sensorId: string,
+  updates: BatchSensorFieldUpdate[],
+  chunkSize: number = 200
+): Promise<number> {
+  if (!updates || updates.length === 0) return 0;
+  let updatedCount = 0;
+  for (let i = 0; i < updates.length; i += chunkSize) {
+    const chunk = updates.slice(i, i + chunkSize);
+    const multiUpdates: Record<string, any> = {};
+    for (const item of chunk) {
+      multiUpdates[`auto_weather_stat/${sensorId}/data/${item.timestampInSeconds}/${item.field}`] = item.newValue;
+    }
+    await update(ref(rtdb), multiUpdates);
+    updatedCount += chunk.length;
+  }
+  return updatedCount;
+}
+
+/**
+ * Menyimpan rekaman log audit tindakan koreksi data ke Firebase RTDB.
+ */
+export async function logSensorCorrection(log: SensorCorrectionAuditLog): Promise<void> {
+  const ts = Date.now();
+  const logRef = ref(rtdb, `sensor_correction_logs/${log.sensorId}/${ts}`);
+  await update(logRef, {
+    ...log,
+    timestamp: ts,
+  });
+}
+
+/**
+ * Mengambil histori log koreksi data sensor untuk audit trail.
+ */
+export async function fetchSensorCorrectionLogs(
+  sensorId: string,
+  limitCount: number = 20
+): Promise<SensorCorrectionAuditLog[]> {
+  try {
+    const logsRef = query(
+      ref(rtdb, `sensor_correction_logs/${sensorId}`),
+      orderByKey(),
+      limitToLast(limitCount)
+    );
+    const snapshot = await get(logsRef);
+    if (!snapshot.exists()) return [];
+    const logs: SensorCorrectionAuditLog[] = [];
+    snapshot.forEach((child) => {
+      logs.push({
+        id: child.key || undefined,
+        ...child.val(),
+      });
+    });
+    return logs.reverse();
+  } catch (error) {
+    console.error("Gagal mengambil histori audit koreksi:", error);
+    return [];
+  }
+}

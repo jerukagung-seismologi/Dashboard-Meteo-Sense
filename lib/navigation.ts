@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   Archive,
   Waves,
+  Wrench,
   LucideIcon
 } from "lucide-react"
 
@@ -46,6 +47,7 @@ export const dashboardNavigation: NavigationItem[] = [
   { name: "Kualitas Udara", href: "/dashboard/air-quality", icon: Wind, badge: "CAMS", roles: ['Admin', 'User'] },
   { name: "Kalibrasi & Validasi", href: "/dashboard/kalibrasi", icon: SlidersHorizontal, roles: ['Admin'] },
   { name: "Basis Data", href: "/dashboard/data", icon: Database, roles: ['Admin'] },
+  { name: "Koreksi Data", href: "/dashboard/koreksi-data", icon: Wrench, badge: "QC", roles: ['Admin'] },
   { name: "Cadangan SQLite", href: "/dashboard/backup-sqlite", icon: Archive, badge: "Offline", roles: ['Admin'] },
   { name: "Laporan Cuaca", href: "/dashboard/laporan", icon: FileText, badge: "Warga", roles: ['Admin'] },
   { name: "Prakirawan Cuaca", href: "/dashboard/prakirawan", icon: CloudRain, roles: ['Admin'] },
