@@ -2,15 +2,12 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { format, subDays } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { useTheme } from "next-themes";
 import {
   Wrench,
   AlertTriangle,
-  CheckCircle2,
-  TrendingDown,
-  TrendingUp,
   Activity,
   Sliders,
   History,
@@ -18,14 +15,9 @@ import {
   Sparkles,
   RefreshCw,
   Calendar,
-  Layers,
-  ArrowRight,
   Database,
-  ExternalLink,
-  BookOpen,
   Info,
   Check,
-  RotateCcw,
   SlidersHorizontal,
   Flame,
   Droplets,
@@ -60,7 +52,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchAllDevices, Device } from "@/lib/FetchingDevice";
 import {
-  getStoredActiveSensorId,
   setStoredActiveSensorId,
   resolveActiveSensorId,
 } from "@/lib/activeSensorStorage";
@@ -73,6 +64,13 @@ import {
   logSensorCorrection,
   fetchSensorCorrectionLogs,
 } from "@/lib/FetchingSensorData";
+import {
+  interpolateTimeLinear,
+  interpolateCubicHermite,
+  interpolateAkima,
+  interpolateModelGuided,
+} from "@/lib/meteorologicalInterpolation";
+import type { ReferenceGuidePoint } from "@/app/api/weather/reference-guide/route";
 
 // Dynamically import ECharts with SSR disabled for optimal Next.js performance
 const ReactECharts = dynamic(() => import("echarts-for-react"), {
@@ -206,13 +204,14 @@ const WEATHER_VARIABLES: WeatherVarMeta[] = [
   },
 ];
 
-type CorrectionMethod = "offset" | "drift" | "clamp" | "scale" | "interpolate";
+export type CorrectionMethod = "offset" | "drift" | "clamp" | "scale" | "interpolate";
+export type InterpolationSubMethod = "model_guided" | "cubic_pchip" | "akima" | "time_linear";
 
 interface AnomalyFlag {
   index: number;
   timestamp: number;
   value: number;
-  type: "wmo_boundary" | "spike_jump" | "flatline";
+  type: "wmo_boundary" | "spike_jump" | "flatline" | "solar_overheating";
   reason: string;
 }
 
@@ -250,6 +249,16 @@ export default function KoreksiDataPage() {
   const [scaleFactor, setScaleFactor] = useState<number>(1.0);
   const [onlyAnomalies, setOnlyAnomalies] = useState<boolean>(false);
 
+  // Meteorological Interpolation Sub-methods
+  const [interpolationSubMethod, setInterpolationSubMethod] = useState<InterpolationSubMethod>("model_guided");
+
+  // Open-Meteo Reference Guide State (ECMWF IFS / ERA5)
+  const [showReferenceGuide, setShowReferenceGuide] = useState<boolean>(true);
+  const [referenceGuidePoints, setReferenceGuidePoints] = useState<ReferenceGuidePoint[]>([]);
+  const [referenceModelName, setReferenceModelName] = useState<string>("ECMWF IFS (9 km Operasional)");
+  const [referenceModelType, setReferenceModelType] = useState<"ecmwf_ifs" | "era5">("ecmwf_ifs");
+  const [loadingReference, setLoadingReference] = useState<boolean>(false);
+
   // Data Loading & Operation State
   const [rawRecords, setRawRecords] = useState<SensorDate[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -259,7 +268,93 @@ export default function KoreksiDataPage() {
   const [auditLogs, setAuditLogs] = useState<SensorCorrectionAuditLog[]>([]);
   const [loadingAudit, setLoadingAudit] = useState<boolean>(false);
   const [showOnlyModifiedRows, setShowOnlyModifiedRows] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<"workspace" | "audit" | "literature">("workspace");
+  const [activeTab, setActiveTab] = useState<"workspace" | "audit">("workspace");
+
+  // Continuous lookup helper for reference model values at timestamp ts
+  const getModelValAtTimestamp = useCallback(
+    (ts: number, varKey: string): number | null => {
+      if (referenceGuidePoints.length === 0) return null;
+
+      if (ts <= referenceGuidePoints[0].timestamp) {
+        const val = (referenceGuidePoints[0] as any)[varKey];
+        return typeof val === "number" && Number.isFinite(val) ? val : null;
+      }
+      if (ts >= referenceGuidePoints[referenceGuidePoints.length - 1].timestamp) {
+        const last = referenceGuidePoints[referenceGuidePoints.length - 1];
+        const val = (last as any)[varKey];
+        return typeof val === "number" && Number.isFinite(val) ? val : null;
+      }
+
+      // Binary search for nearest surrounding hourly points
+      let low = 0;
+      let high = referenceGuidePoints.length - 1;
+      while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        if (referenceGuidePoints[mid].timestamp < ts) {
+          low = mid + 1;
+        } else {
+          high = mid - 1;
+        }
+      }
+      const p0 = referenceGuidePoints[Math.max(0, low - 1)];
+      const p1 = referenceGuidePoints[Math.min(referenceGuidePoints.length - 1, low)];
+      if (!p0 || !p1) return null;
+
+      const v0 = (p0 as any)[varKey];
+      const v1 = (p1 as any)[varKey];
+      if (typeof v0 !== "number" || typeof v1 !== "number") {
+        return typeof v0 === "number" ? v0 : typeof v1 === "number" ? v1 : null;
+      }
+
+      if (p1.timestamp === p0.timestamp) return v0;
+      const ratio = (ts - p0.timestamp) / (p1.timestamp - p0.timestamp);
+      return v0 + ratio * (v1 - v0);
+    },
+    [referenceGuidePoints]
+  );
+
+  // Fetch Open-Meteo Reference Guide
+  const fetchReferenceGuide = useCallback(
+    async (
+      targetDevice?: Device,
+      sDate = startDateStr,
+      eDate = endDateStr,
+      mType = referenceModelType
+    ) => {
+      const dev = targetDevice || devices.find((d) => (d.authToken || d.id) === sensorId);
+      const lat = dev?.coordinates?.lat ?? -7.7121;
+      const lng = dev?.coordinates?.lng ?? 109.6892;
+
+      setLoadingReference(true);
+      try {
+        const params = new URLSearchParams({
+          latitude: lat.toString(),
+          longitude: lng.toString(),
+          start_date: sDate,
+          end_date: eDate,
+          model: mType,
+        });
+
+        const res = await fetch(`/api/weather/reference-guide?${params.toString()}`);
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          console.warn("Peringatan pengambilan model penuntun Open-Meteo:", errJson);
+          return;
+        }
+
+        const data = await res.json();
+        if (Array.isArray(data.points)) {
+          setReferenceGuidePoints(data.points);
+          if (data.modelName) setReferenceModelName(data.modelName);
+        }
+      } catch (err) {
+        console.error("Gagal mengambil data penuntun model cuaca:", err);
+      } finally {
+        setLoadingReference(false);
+      }
+    },
+    [devices, sensorId, startDateStr, endDateStr, referenceModelType]
+  );
 
   // 1. Initial Load of Devices
   useEffect(() => {
@@ -285,7 +380,7 @@ export default function KoreksiDataPage() {
       }
     }
     loadDevices();
-  }, []);
+  }, [user]);
 
   // Update clamp defaults when selected variable changes
   useEffect(() => {
@@ -337,6 +432,9 @@ export default function KoreksiDataPage() {
       const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
       setRawRecords(sorted);
 
+      // Concurrently fetch the weather model reference guide
+      fetchReferenceGuide(undefined, startDateStr, endDateStr, referenceModelType);
+
       if (sorted.length === 0) {
         toast({
           title: "Data Kosong",
@@ -358,7 +456,7 @@ export default function KoreksiDataPage() {
     } finally {
       setLoading(false);
     }
-  }, [sensorId, startDateStr, startTimeStr, endDateStr, endTimeStr, toast]);
+  }, [sensorId, startDateStr, startTimeStr, endDateStr, endTimeStr, toast, fetchReferenceGuide, referenceModelType]);
 
   // Load data automatically when sensorId is resolved
   useEffect(() => {
@@ -409,7 +507,26 @@ export default function KoreksiDataPage() {
     }
   };
 
-  // 4. Automatic Anomaly Detection (Spikes, Boundary Violations, Frozen)
+  // Preset Cepat: Anomali Panas Radiasi Matahari (Solar Radiation Shield Overheating)
+  const handleApplySolarOverheatingPreset = useCallback(() => {
+    setSelectedVarKey("temperature");
+    setCorrectionMethod("interpolate");
+    setInterpolationSubMethod("model_guided");
+    setOnlyAnomalies(true);
+    setShowReferenceGuide(true);
+
+    if (referenceGuidePoints.length === 0) {
+      fetchReferenceGuide();
+    }
+
+    toast({
+      title: "Preset Sengatan Radiasi Matahari Diaktifkan",
+      description:
+        "Suhu udara dialihkan ke mode interpolasi berpenuntun model ECMWF IFS / ERA5 untuk merekonstruksi bias pemanasan shield.",
+    });
+  }, [referenceGuidePoints.length, fetchReferenceGuide, toast]);
+
+  // 4. Automatic Anomaly Detection (Spikes, Boundary Violations, Frozen, and Solar Overheating)
   const anomalies = useMemo<AnomalyFlag[]>(() => {
     if (rawRecords.length === 0) return [];
     const flags: AnomalyFlag[] = [];
@@ -442,6 +559,28 @@ export default function KoreksiDataPage() {
           reason: `Melebihi batas WMO [${selectedVar.wmoMin} s/d ${selectedVar.wmoMax} ${selectedVar.unit}]`,
         });
         continue;
+      }
+
+      // Check Daytime Solar Overheating Bias vs Atmospheric Model (09:00 - 15:30 WIB)
+      if (selectedVar.key === "temperature" && referenceGuidePoints.length > 0) {
+        const refTemp = getModelValAtTimestamp(rec.timestamp, "temperature");
+        if (refTemp !== null) {
+          const dLocal = new Date(rec.timestamp);
+          const hour = dLocal.getHours();
+          if (hour >= 9 && hour <= 16) {
+            const diffModel = numVal - refTemp;
+            if (diffModel >= 3.5) {
+              flags.push({
+                index: i,
+                timestamp: rec.timestamp,
+                value: numVal,
+                type: "solar_overheating",
+                reason: `Paparan panas radiasi matahari: +${diffModel.toFixed(1)}°C di atas model ambient (${refTemp.toFixed(1)}°C)`,
+              });
+              continue;
+            }
+          }
+        }
       }
 
       // Check Abrupt Spike / Step Jump vs previous record
@@ -484,7 +623,7 @@ export default function KoreksiDataPage() {
     }
 
     return flags;
-  }, [rawRecords, selectedVar]);
+  }, [rawRecords, selectedVar, referenceGuidePoints.length, getModelValAtTimestamp]);
 
   const anomalyIndexSet = useMemo(() => new Set(anomalies.map((a) => a.index)), [anomalies]);
 
@@ -497,7 +636,7 @@ export default function KoreksiDataPage() {
     const t1 = rawRecords[n - 1].timestamp;
     const span = Math.max(1, t1 - t0);
 
-    // Prepare boundary anchor points for interpolation
+    // Global boundary valid anchors
     let firstValidVal = 0;
     let lastValidVal = 0;
     for (let i = 0; i < n; i++) {
@@ -561,9 +700,69 @@ export default function KoreksiDataPage() {
           break;
         }
         case "interpolate": {
-          // Linear interpolation between endpoints (Gap-filling & Spike removal)
-          const alpha = (rec.timestamp - t0) / span;
-          targetVal = firstValidVal + alpha * (lastValidVal - firstValidVal);
+          // Determine the nearest clean anchor points surrounding this timestamp
+          let tAnchor0 = t0;
+          let yAnchor0 = firstValidVal;
+          let tAnchor1 = t1;
+          let yAnchor1 = lastValidVal;
+
+          if (onlyAnomalies) {
+            // Find closest preceding valid point
+            for (let k = idx - 1; k >= 0; k--) {
+              const v = Number((rawRecords[k] as any)[varKey]);
+              if (Number.isFinite(v) && !anomalyIndexSet.has(k)) {
+                tAnchor0 = rawRecords[k].timestamp;
+                yAnchor0 = v;
+                break;
+              }
+            }
+            // Find closest succeeding valid point
+            for (let k = idx + 1; k < n; k++) {
+              const v = Number((rawRecords[k] as any)[varKey]);
+              if (Number.isFinite(v) && !anomalyIndexSet.has(k)) {
+                tAnchor1 = rawRecords[k].timestamp;
+                yAnchor1 = v;
+                break;
+              }
+            }
+          }
+
+          // Execute selected meteorological interpolation algorithm
+          if (interpolationSubMethod === "model_guided") {
+            targetVal = interpolateModelGuided(
+              rec.timestamp,
+              tAnchor0,
+              yAnchor0,
+              tAnchor1,
+              yAnchor1,
+              (ts) => getModelValAtTimestamp(ts, varKey)
+            );
+          } else if (interpolationSubMethod === "cubic_pchip") {
+            targetVal = interpolateCubicHermite(
+              rec.timestamp,
+              tAnchor0,
+              yAnchor0,
+              tAnchor1,
+              yAnchor1
+            );
+          } else if (interpolationSubMethod === "akima") {
+            targetVal = interpolateAkima(
+              rec.timestamp,
+              tAnchor0,
+              yAnchor0,
+              tAnchor1,
+              yAnchor1
+            );
+          } else {
+            // time_linear
+            targetVal = interpolateTimeLinear(
+              rec.timestamp,
+              tAnchor0,
+              yAnchor0,
+              tAnchor1,
+              yAnchor1
+            );
+          }
           break;
         }
       }
@@ -573,7 +772,12 @@ export default function KoreksiDataPage() {
         targetVal = Math.min(100, Math.max(0, targetVal));
       }
       // Non-negative precipitation & radiation
-      if (selectedVar.key === "rainfall" || selectedVar.key === "rainrate" || selectedVar.key === "lux" || selectedVar.key === "volt") {
+      if (
+        selectedVar.key === "rainfall" ||
+        selectedVar.key === "rainrate" ||
+        selectedVar.key === "lux" ||
+        selectedVar.key === "volt"
+      ) {
         targetVal = Math.max(0, targetVal);
       }
 
@@ -606,6 +810,8 @@ export default function KoreksiDataPage() {
     scaleFactor,
     onlyAnomalies,
     anomalyIndexSet,
+    interpolationSubMethod,
+    getModelValAtTimestamp,
   ]);
 
   // Modified items count
@@ -613,35 +819,14 @@ export default function KoreksiDataPage() {
     return correctedResults.filter((r) => r.isModified);
   }, [correctedResults]);
 
-  // Statistics Comparison
-  const stats = useMemo(() => {
-    if (correctedResults.length === 0) return null;
-    const rawVals = correctedResults.map((r) => r.rawVal);
-    const corrVals = correctedResults.map((r) => r.correctedVal);
-
-    const mean = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
-    const stdDev = (arr: number[], m: number) =>
-      Math.sqrt(arr.reduce((acc, v) => acc + Math.pow(v - m, 2), 0) / Math.max(1, arr.length - 1));
-
-    const rawMean = mean(rawVals);
-    const corrMean = mean(corrVals);
-    const rawStd = stdDev(rawVals, rawMean);
-    const corrStd = stdDev(corrVals, corrMean);
-
-    return {
-      count: correctedResults.length,
-      modifiedCount: modifiedItems.length,
-      modifiedPercent: ((modifiedItems.length / correctedResults.length) * 100).toFixed(1),
-      rawMin: Math.min(...rawVals),
-      rawMax: Math.max(...rawVals),
-      rawMean: Number(rawMean.toFixed(selectedVar.decimals)),
-      rawStd: Number(rawStd.toFixed(selectedVar.decimals)),
-      corrMin: Math.min(...corrVals),
-      corrMax: Math.max(...corrVals),
-      corrMean: Number(corrMean.toFixed(selectedVar.decimals)),
-      corrStd: Number(corrStd.toFixed(selectedVar.decimals)),
-    };
-  }, [correctedResults, modifiedItems, selectedVar]);
+  // Reference Guide Series for ECharts
+  const refSeries = useMemo(() => {
+    if (!showReferenceGuide || referenceGuidePoints.length === 0) return [];
+    return correctedResults.map((r) => {
+      const v = getModelValAtTimestamp(r.timestamp, selectedVar.key);
+      return v != null ? Number(v.toFixed(selectedVar.decimals)) : null;
+    });
+  }, [showReferenceGuide, referenceGuidePoints, correctedResults, selectedVar, getModelValAtTimestamp]);
 
   // 6. ECharts Configuration for Before vs After Preview
   const chartOptions = useMemo(() => {
@@ -656,9 +841,16 @@ export default function KoreksiDataPage() {
     const corrSeries = correctedResults.map((r) => r.correctedVal);
 
     // Kalkulasi nilai batas sumbu Y berbasis data aktual (BUKAN 0!)
-    const allVals = [...rawSeries, ...corrSeries].filter(
-      (v) => typeof v === "number" && Number.isFinite(v)
-    );
+    const validRefVals = (showReferenceGuide && refSeries.length > 0)
+      ? refSeries.filter((v): v is number => typeof v === "number" && Number.isFinite(v))
+      : [];
+
+    const allVals = [
+      ...rawSeries,
+      ...corrSeries,
+      ...validRefVals,
+    ].filter((v) => typeof v === "number" && Number.isFinite(v));
+
     let yMin: number | undefined = undefined;
     let yMax: number | undefined = undefined;
 
@@ -692,9 +884,70 @@ export default function KoreksiDataPage() {
     const markPointData = anomalies.map((a) => ({
       name: a.reason,
       coord: [a.index, a.value],
-      value: a.type === "wmo_boundary" ? "WMO Limit" : "Spike",
-      itemStyle: { color: "#EF4444" },
+      value: a.type === "wmo_boundary" ? "WMO Limit" : a.type === "solar_overheating" ? "Panas Matahari" : "Spike",
+      itemStyle: { color: a.type === "solar_overheating" ? "#F59E0B" : "#EF4444" },
     }));
+
+    const seriesList: any[] = [
+      {
+        name: "Observasi Mentah (Sebelum)",
+        type: "line",
+        data: rawSeries,
+        showSymbol: correctedResults.length < 50,
+        symbolSize: 4,
+        lineStyle: {
+          color: "#F43F5E",
+          width: 2,
+          type: "dashed",
+        },
+        itemStyle: { color: "#F43F5E" },
+        markPoint: markPointData.length > 0 ? { data: markPointData } : undefined,
+        z: 5,
+      },
+      {
+        name: "Hasil Koreksi (Sesudah)",
+        type: "line",
+        data: corrSeries,
+        showSymbol: correctedResults.length < 50,
+        symbolSize: 5,
+        lineStyle: {
+          color: "#10B981",
+          width: 3,
+          type: "solid",
+        },
+        itemStyle: { color: "#10B981" },
+        areaStyle: {
+          color: {
+            type: "linear",
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: "rgba(16, 185, 129, 0.18)" },
+              { offset: 1, color: "rgba(16, 185, 129, 0.0)" },
+            ],
+          },
+        },
+        z: 10,
+      },
+    ];
+
+    if (showReferenceGuide && refSeries.length > 0) {
+      seriesList.push({
+        name: `Penuntun Model (${referenceModelName})`,
+        type: "line",
+        data: refSeries,
+        showSymbol: false,
+        lineStyle: {
+          color: "#06B6D4",
+          width: 2,
+          type: "dashed",
+        },
+        itemStyle: { color: "#06B6D4" },
+        z: 4,
+      });
+    }
 
     return {
       backgroundColor: "transparent",
@@ -727,6 +980,15 @@ export default function KoreksiDataPage() {
             <span class="font-mono font-semibold">${item.correctedVal} ${selectedVar.unit}</span>
           </div>`;
 
+          if (showReferenceGuide && refSeries[idx] != null) {
+            html += `<div class="flex items-center justify-between gap-4 text-xs py-0.5">
+              <span class="flex items-center gap-1.5 text-cyan-500 font-medium">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-500"></span> Penuntun Model (${referenceModelName.split(" ")[0]})
+              </span>
+              <span class="font-mono font-semibold">${refSeries[idx]} ${selectedVar.unit}</span>
+            </div>`;
+          }
+
           const diffSign = item.diff > 0 ? `+${item.diff}` : `${item.diff}`;
           const diffColor = item.diff === 0 ? "text-slate-400" : item.diff > 0 ? "text-amber-500" : "text-sky-500";
           html += `<div class="flex items-center justify-between gap-4 text-xs pt-1.5 mt-1 border-t border-slate-200 dark:border-slate-800">
@@ -737,7 +999,8 @@ export default function KoreksiDataPage() {
           if (item.isAnomaly) {
             const anom = anomalies.find((a) => a.index === idx);
             if (anom) {
-              html += `<div class="mt-1 text-[11px] text-red-500 font-semibold bg-red-500/10 px-1.5 py-0.5 rounded">
+              const bgClass = anom.type === "solar_overheating" ? "text-amber-500 bg-amber-500/10" : "text-red-500 bg-red-500/10";
+              html += `<div class="mt-1 text-[11px] font-semibold px-1.5 py-0.5 rounded ${bgClass}">
                 ⚠ Anomali: ${anom.reason}
               </div>`;
             }
@@ -794,68 +1057,52 @@ export default function KoreksiDataPage() {
           fontSize: 11,
         },
       },
-      series: [
-        {
-          name: "Observasi Mentah (Sebelum)",
-          type: "line",
-          data: rawSeries,
-          showSymbol: correctedResults.length < 50,
-          symbolSize: 4,
-          lineStyle: {
-            color: "#F43F5E",
-            width: 2,
-            type: "dashed",
-          },
-          itemStyle: { color: "#F43F5E" },
-          markPoint: markPointData.length > 0 ? { data: markPointData } : undefined,
-          z: 5,
-        },
-        {
-          name: "Hasil Koreksi (Sesudah)",
-          type: "line",
-          data: corrSeries,
-          showSymbol: correctedResults.length < 50,
-          symbolSize: 5,
-          lineStyle: {
-            color: "#10B981",
-            width: 3,
-            type: "solid",
-          },
-          itemStyle: { color: "#10B981" },
-          areaStyle: {
-            color: {
-              type: "linear",
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: "rgba(16, 185, 129, 0.18)" },
-                { offset: 1, color: "rgba(16, 185, 129, 0.0)" },
-              ],
-            },
-          },
-          z: 10,
-        },
-      ],
+      series: seriesList,
       toolbox: {
+        show: true,
+        right: 16,
+        bottom: 8,
+        iconStyle: { borderColor: isDarkMode ? "#94A3B8" : "#64748B" },
         feature: {
           dataZoom: { yAxisIndex: "none", title: { zoom: "Zoom Area", back: "Reset Zoom" } },
           restore: { title: "Reset View" },
-          saveAsImage: {
-            title: "Simpan Gambar Grafik",
-            pixelRatio: 2,
-            name: `QC_Koreksi_${selectedVar.key}_${startDateStr}`,
-          },
+          saveAsImage: { title: "Simpan Gambar (PNG)", pixelRatio: 2 },
         },
-        iconStyle: {
-          borderColor: isDarkMode ? "#94A3B8" : "#64748B",
-        },
-        right: 20,
-        top: 8,
       },
     };
-  }, [correctedResults, isDarkMode, selectedVar, anomalies, startDateStr]);
+  }, [correctedResults, anomalies, selectedVar, isDarkMode, showReferenceGuide, refSeries, referenceModelName]);
+
+  // Impact summary statistics
+  const stats = useMemo(() => {
+    if (correctedResults.length === 0) return null;
+    const rawVals = correctedResults.map((r) => r.rawVal);
+    const corrVals = correctedResults.map((r) => r.correctedVal);
+
+    const count = rawVals.length;
+    const modifiedCount = modifiedItems.length;
+
+    const rawMean = rawVals.reduce((a, b) => a + b, 0) / count;
+    const corrMean = corrVals.reduce((a, b) => a + b, 0) / count;
+
+    const rawStd = Math.sqrt(
+      rawVals.map((x) => Math.pow(x - rawMean, 2)).reduce((a, b) => a + b, 0) / count
+    );
+    const corrStd = Math.sqrt(
+      corrVals.map((x) => Math.pow(x - corrMean, 2)).reduce((a, b) => a + b, 0) / count
+    );
+
+    return {
+      count,
+      modifiedCount,
+      modifiedPercent: ((modifiedCount / count) * 100).toFixed(1),
+      rawMean: rawMean.toFixed(selectedVar.decimals),
+      corrMean: corrMean.toFixed(selectedVar.decimals),
+      rawStd: rawStd.toFixed(selectedVar.decimals),
+      corrStd: corrStd.toFixed(selectedVar.decimals),
+      corrMin: Math.min(...corrVals).toFixed(selectedVar.decimals),
+      corrMax: Math.max(...corrVals).toFixed(selectedVar.decimals),
+    };
+  }, [correctedResults, modifiedItems, selectedVar]);
 
   // 7. Apply Batch Correction to RTDB
   const handleApplyBatchCorrection = async () => {
@@ -892,6 +1139,11 @@ export default function KoreksiDataPage() {
           clampMin: correctionMethod === "clamp" ? clampMin : undefined,
           clampMax: correctionMethod === "clamp" ? clampMax : undefined,
           scaleFactor: correctionMethod === "scale" ? scaleFactor : undefined,
+          interpolationSubMethod: correctionMethod === "interpolate" ? interpolationSubMethod : undefined,
+          referenceModel:
+            correctionMethod === "interpolate" && interpolationSubMethod === "model_guided"
+              ? referenceModelName
+              : undefined,
           onlyAnomalies,
         },
         range: {
@@ -938,7 +1190,7 @@ export default function KoreksiDataPage() {
         gradient="indigo"
         icon={Wrench}
         title="Koreksi Data & Kontrol Kualitas (QC)"
-        subtitle="Pembersihan anomali, eliminasi sensor drift, penyesuaian baseline shift, dan standardisasi batas fisik WMO No. 8"
+        subtitle="Pembersihan anomali, eliminasi sensor drift, rekonstruksi radiasi matahari berpenuntun ECMWF IFS / ERA5, dan standar WMO No. 8"
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -1117,17 +1369,14 @@ export default function KoreksiDataPage() {
         </CardContent>
       </Card>
 
-      {/* Main Tabs Navigation */}
+      {/* Main Tabs Navigation (2 Tabs: Workspace Koreksi & Riwayat Audit) */}
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)}>
-        <TabsList className="grid grid-cols-3 max-w-md bg-slate-100 dark:bg-slate-800 p-1">
+        <TabsList className="grid grid-cols-2 max-w-xs bg-slate-100 dark:bg-slate-800 p-1">
           <TabsTrigger value="workspace" className="text-xs flex items-center gap-1.5">
             <Wrench className="h-3.5 w-3.5" /> Area Koreksi
           </TabsTrigger>
           <TabsTrigger value="audit" className="text-xs flex items-center gap-1.5">
             <History className="h-3.5 w-3.5" /> Riwayat Audit ({auditLogs.length})
-          </TabsTrigger>
-          <TabsTrigger value="literature" className="text-xs flex items-center gap-1.5">
-            <BookOpen className="h-3.5 w-3.5" /> Dasar Ilmiah
           </TabsTrigger>
         </TabsList>
 
@@ -1138,77 +1387,111 @@ export default function KoreksiDataPage() {
             <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-200">
               <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <AlertTitle className="text-sm font-semibold flex items-center justify-between">
-                <span>Terdeteksi {anomalies.length} Anomali Data pada Rentang Ini</span>
-                <Badge variant="outline" className="border-amber-400 text-amber-600 dark:text-amber-300 text-[10px]">
-                  QC Alert
+                <span>
+                  Terdeteksi {anomalies.length} Titik Anomali Meteorologi pada Parameter {selectedVar.label}
+                </span>
+                <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 text-[11px]">
+                  QC Flag Aktif
                 </Badge>
               </AlertTitle>
-              <AlertDescription className="text-xs mt-1 text-amber-800 dark:text-amber-300/90 flex flex-wrap items-center justify-between gap-2">
-                <span>
-                  Sistem menemukan lonjakan tiba-tiba (*spike jump*) atau pelanggaran batas fisik WMO. Anda dapat memilih
-                  opsi <strong>"Hanya Koreksi Titik Anomali"</strong> pada panel metode di bawah.
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setCorrectionMethod("clamp");
-                    setClampMin(selectedVar.wmoMin);
-                    setClampMax(selectedVar.wmoMax);
-                    setOnlyAnomalies(true);
-                  }}
-                  className="h-7 text-xs border-amber-400 hover:bg-amber-500/20 text-amber-900 dark:text-amber-100"
-                >
-                  <Sparkles className="h-3 w-3 mr-1" /> Bersihkan Anomali WMO
-                </Button>
+              <AlertDescription className="text-xs mt-1.5 space-y-2">
+                <p>
+                  Sistem otomatis mendeteksi titik yang melanggar batas fisik WMO, mengalami lonjakan ekstrem (spike jump),
+                  sensor macet (flatline), atau lonjakan suhu akibat paparan radiasi panas matahari siang hari.
+                </p>
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-amber-500/40 hover:bg-amber-500/20"
+                    onClick={() => {
+                      setCorrectionMethod("clamp");
+                      setOnlyAnomalies(true);
+                      toast({
+                        title: "Metode Clamping Dipilih",
+                        description: "Koreksi disetel untuk menjepit nilai anomali ke rentang batas WMO.",
+                      });
+                    }}
+                  >
+                    Jepit Nilai ke Batas WMO
+                  </Button>
+                  {selectedVar.key === "temperature" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs border-amber-500/40 bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-200 font-semibold"
+                      onClick={handleApplySolarOverheatingPreset}
+                    >
+                      <Sun className="h-3.5 w-3.5 mr-1 text-amber-500" />
+                      Koreksi Radiasi Panas Matahari (ECMWF IFS Guide)
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-amber-500/40 hover:bg-amber-500/20"
+                    onClick={() => {
+                      setCorrectionMethod("interpolate");
+                      setInterpolationSubMethod("cubic_pchip");
+                      setOnlyAnomalies(true);
+                      toast({
+                        title: "Interpolasi PCHIP Dipilih",
+                        description: "Titik anomali akan direkonstruksi mulus bebas overshoot.",
+                      });
+                    }}
+                  >
+                    Rekonstruksi Kubik PCHIP
+                  </Button>
+                </div>
               </AlertDescription>
             </Alert>
           )}
 
-          {/* Interactive Scientific Correction Methods Card */}
+          {/* Method Selection Panel */}
           <Card className="border shadow-sm">
-            <CardHeader className="py-4 px-5 border-b bg-slate-50 dark:bg-slate-900/60">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <CardHeader className="py-4 px-5 border-b">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <Sliders className="h-4 w-4 text-indigo-500" />
-                    Metode Koreksi Ilmiah (Quality Control Pipeline)
+                    Pilih Formula & Metode Koreksi
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Pilih algoritma pembersihan data berdasarkan tipe deviasi sensor yang terobservasi
+                    Metode matematis untuk menyelaraskan bias sensor ke standar fisik meteorologi
                   </CardDescription>
                 </div>
-                <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                   <Switch
                     id="onlyAnomaliesSwitch"
                     checked={onlyAnomalies}
                     onCheckedChange={setOnlyAnomalies}
                   />
-                  <Label htmlFor="onlyAnomaliesSwitch" className="cursor-pointer text-xs font-medium">
-                    Hanya Koreksi Titik Anomali ({anomalies.length} titik)
+                  <Label htmlFor="onlyAnomaliesSwitch" className="text-xs font-medium cursor-pointer">
+                    Hanya Koreksi Titik Anomali ({anomalies.length} Terdeteksi)
                   </Label>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-5">
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-5">
+            <CardContent className="p-5 space-y-4">
+              {/* Radio-like Methods Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {[
                   {
                     id: "offset",
-                    title: "Offset Tetap (Step)",
-                    desc: "Pergeseran baseline konstan (±Δ)",
-                    icon: ArrowRight,
+                    title: "Offset Tetap (Δ)",
+                    desc: "Penambahan/pengurangan seragam",
+                    icon: SlidersHorizontal,
                   },
                   {
                     id: "drift",
-                    title: "Sensor Drift",
-                    desc: "Pergeseran bertahap seiring waktu",
-                    icon: TrendingUp,
+                    title: "Pergeseran Linier",
+                    desc: "Koreksi drift seiring waktu",
+                    icon: Activity,
                   },
                   {
                     id: "clamp",
-                    title: "Batas WMO (Clamp)",
-                    desc: "Pangkas outlier ke rentang fisik",
+                    title: "Batas Fisik (Clamp)",
+                    desc: "Penjepitan batas WMO",
                     icon: ShieldAlert,
                   },
                   {
@@ -1219,8 +1502,8 @@ export default function KoreksiDataPage() {
                   },
                   {
                     id: "interpolate",
-                    title: "Interpolasi Celah",
-                    desc: "Gap-filling titik rusak/lonjakan",
+                    title: "Interpolasi Celah & Model",
+                    desc: "ECMWF / PCHIP / Akima / Linier",
                     icon: Sparkles,
                   },
                 ].map((m) => {
@@ -1254,208 +1537,309 @@ export default function KoreksiDataPage() {
                 {/* 1. Offset Tetap */}
                 {correctionMethod === "offset" && (
                   <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                          Penyesuaian Offset Baseline (Additive Shift: y′ = y + Δ)
-                        </h4>
-                        <p className="text-[11px] text-slate-500">
-                          Digunakan saat seluruh sensor bergeser seragam (misal: pasca maintenance, shock mekanis, atau kalibrasi ulang).
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {[-5.0, -2.0, -1.0, -0.5, 0.5, 1.0, 2.0, 5.0].map((v) => (
-                          <Button
-                            key={v}
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs px-2"
-                            onClick={() => setOffsetValue(v)}
-                          >
-                            {v > 0 ? `+${v}` : v}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 max-w-sm pt-2">
-                      <Label className="text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                        Nilai Offset (Δ):
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Nilai Offset Penyesuaian (Δ): {offsetValue > 0 ? `+${offsetValue}` : offsetValue} {selectedVar.unit}
                       </Label>
+                      <span className="text-[11px] font-mono text-slate-400">
+                        Formula: y&apos;(t) = y(t) + Δ
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
                       <Input
                         type="number"
                         step={selectedVar.step}
                         value={offsetValue}
                         onChange={(e) => setOffsetValue(parseFloat(e.target.value) || 0)}
-                        className="h-9 font-mono text-sm"
+                        className="w-32 h-9 text-xs"
                       />
-                      <span className="text-xs font-semibold text-slate-500">{selectedVar.unit}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* 2. Sensor Drift */}
-                {correctionMethod === "drift" && (
-                  <div className="space-y-3">
-                    <div>
-                      <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        Koreksi Sensor Drift Bertahap (Time-Drift: Δ(t) Linier dari Awal ke Akhir)
-                      </h4>
-                      <p className="text-[11px] text-slate-500">
-                        Rekomendasi Wang et al. (2017) & Talukder et al. (2022) untuk mengatasi akumulasi debu, penuaan komponen, atau penurunan baterai.
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg pt-1">
-                      <div className="space-y-1">
-                        <Label className="text-xs text-slate-600 dark:text-slate-400">
-                          Offset di Titik Awal Rentang (Δ₀):
-                        </Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            step={selectedVar.step}
-                            value={driftStart}
-                            onChange={(e) => setDriftStart(parseFloat(e.target.value) || 0)}
-                            className="h-9 font-mono text-sm"
-                          />
-                          <span className="text-xs text-slate-500">{selectedVar.unit}</span>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs text-slate-600 dark:text-slate-400">
-                          Offset di Titik Akhir Rentang (Δ₁):
-                        </Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            step={selectedVar.step}
-                            value={driftEnd}
-                            onChange={(e) => setDriftEnd(parseFloat(e.target.value) || 0)}
-                            className="h-9 font-mono text-sm"
-                          />
-                          <span className="text-xs text-slate-500">{selectedVar.unit}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. WMO Clamping */}
-                {correctionMethod === "clamp" && (
-                  <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                          Pemangkasan Batas Fisik & Outlier (WMO-No. 8 Clamping)
-                        </h4>
-                        <p className="text-[11px] text-slate-500">
-                          Nilai di bawah batas bawah dipotong ke Min; nilai di atas batas atas dipotong ke Max.
-                        </p>
-                      </div>
+                      <input
+                        type="range"
+                        min={-10 * selectedVar.step * 10}
+                        max={10 * selectedVar.step * 10}
+                        step={selectedVar.step}
+                        value={offsetValue}
+                        onChange={(e) => setOffsetValue(parseFloat(e.target.value) || 0)}
+                        className="flex-1 accent-indigo-600 cursor-pointer"
+                      />
                       <Button
+                        type="button"
+                        variant="ghost"
                         size="sm"
-                        variant="outline"
-                        className="h-7 text-xs border-indigo-400 text-indigo-700 dark:text-indigo-300"
-                        onClick={() => {
-                          setClampMin(selectedVar.wmoMin);
-                          setClampMax(selectedVar.wmoMax);
-                        }}
+                        className="text-xs h-9"
+                        onClick={() => setOffsetValue(0)}
                       >
-                        <RotateCcw className="h-3 w-3 mr-1" /> Reset Batas Baku WMO
+                        Reset 0
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg pt-1">
-                      <div className="space-y-1">
-                        <Label className="text-xs text-slate-600 dark:text-slate-400">
-                          Batas Bawah Minimum (Min):
+                  </div>
+                )}
+
+                {/* 2. Linear Drift */}
+                {correctionMethod === "drift" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Parameter Sensor Drift Linier Sepanjang Rentang Waktu
+                      </Label>
+                      <span className="text-[11px] font-mono text-slate-400">
+                        Formula: Δ(t) = δ₀ + ((t - t₀)/(t₁ - t₀)) × (δ₁ - δ₀)
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] text-slate-500">
+                          Offset Awal Rentang (δ₀): {driftStart > 0 ? `+${driftStart}` : driftStart} {selectedVar.unit}
                         </Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            step={selectedVar.step}
-                            value={clampMin}
-                            onChange={(e) => setClampMin(parseFloat(e.target.value) || 0)}
-                            className="h-9 font-mono text-sm"
-                          />
-                          <span className="text-xs text-slate-500">{selectedVar.unit}</span>
-                        </div>
+                        <Input
+                          type="number"
+                          step={selectedVar.step}
+                          value={driftStart}
+                          onChange={(e) => setDriftStart(parseFloat(e.target.value) || 0)}
+                          className="h-9 text-xs"
+                        />
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs text-slate-600 dark:text-slate-400">
-                          Batas Atas Maksimum (Max):
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] text-slate-500">
+                          Offset Akhir Rentang (δ₁): {driftEnd > 0 ? `+${driftEnd}` : driftEnd} {selectedVar.unit}
                         </Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            step={selectedVar.step}
-                            value={clampMax}
-                            onChange={(e) => setClampMax(parseFloat(e.target.value) || 0)}
-                            className="h-9 font-mono text-sm"
-                          />
-                          <span className="text-xs text-slate-500">{selectedVar.unit}</span>
-                        </div>
+                        <Input
+                          type="number"
+                          step={selectedVar.step}
+                          value={driftEnd}
+                          onChange={(e) => setDriftEnd(parseFloat(e.target.value) || 0)}
+                          className="h-9 text-xs"
+                        />
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* 4. Multiplicative Scale */}
-                {correctionMethod === "scale" && (
+                {/* 3. Clamp WMO */}
+                {correctionMethod === "clamp" && (
                   <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                          Faktor Kalibrasi Pengali (Multiplicative Gain: y′ = k × y)
-                        </h4>
-                        <p className="text-[11px] text-slate-500">
-                          Cocok untuk penyesuaian gain sensor penakar hujan tipping-bucket atau fotodioda radiasi matahari.
-                        </p>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Batas Penjepitan Fisik (WMO No. 8 Physical Clamping)
+                      </Label>
+                      <span className="text-[11px] font-mono text-slate-400">
+                        Formula: y&apos;(t) = min(Max, max(Min, y(t)))
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] text-slate-500">
+                          Batas Bawah Fisik (Min):
+                        </Label>
+                        <Input
+                          type="number"
+                          step={selectedVar.step}
+                          value={clampMin}
+                          onChange={(e) => setClampMin(parseFloat(e.target.value) || 0)}
+                          className="h-9 text-xs"
+                        />
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        {[0.8, 0.9, 0.95, 1.05, 1.1, 1.2].map((k) => (
-                          <Button
-                            key={k}
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs px-2"
-                            onClick={() => setScaleFactor(k)}
-                          >
-                            ×{k}
-                          </Button>
-                        ))}
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] text-slate-500">
+                          Batas Atas Fisik (Max):
+                        </Label>
+                        <Input
+                          type="number"
+                          step={selectedVar.step}
+                          value={clampMax}
+                          onChange={(e) => setClampMax(parseFloat(e.target.value) || 0)}
+                          className="h-9 text-xs"
+                        />
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 max-w-sm pt-2">
-                      <Label className="text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                        Faktor Pengali (k):
+                  </div>
+                )}
+
+                {/* 4. Multiplicative Scaling Factor */}
+                {correctionMethod === "scale" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Faktor Pengali Sensitivitas Sensor (k): {scaleFactor.toFixed(3)}x
                       </Label>
+                      <span className="text-[11px] font-mono text-slate-400">
+                        Formula: y&apos;(t) = k × y(t)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
                       <Input
                         type="number"
                         step={0.01}
                         value={scaleFactor}
                         onChange={(e) => setScaleFactor(parseFloat(e.target.value) || 1.0)}
-                        className="h-9 font-mono text-sm"
+                        className="w-32 h-9 text-xs"
+                      />
+                      <input
+                        type="range"
+                        min={0.5}
+                        max={1.5}
+                        step={0.005}
+                        value={scaleFactor}
+                        onChange={(e) => setScaleFactor(parseFloat(e.target.value) || 1.0)}
+                        className="flex-1 accent-indigo-600 cursor-pointer"
                       />
                       <Button
-                        size="sm"
+                        type="button"
                         variant="ghost"
-                        className="h-8 text-xs"
+                        size="sm"
+                        className="text-xs h-9"
                         onClick={() => setScaleFactor(1.0)}
                       >
-                        Reset (1.0)
+                        Reset 1.0
                       </Button>
                     </div>
                   </div>
                 )}
 
-                {/* 5. Interpolation */}
+                {/* 5. Meteorological Interpolation & Weather Model Guide */}
                 {correctionMethod === "interpolate" && (
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                      Interpolasi Linier (Gap-Filling & Rekonstruksi Titik Rusak)
-                    </h4>
-                    <p className="text-[11px] text-slate-500">
-                      Mengganti nilai titik-titik yang dipilih dengan garis lurus kontinu antara titik valid sebelum dan sesudah rentang terpilih.
-                    </p>
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                      <div>
+                        <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-indigo-500" />
+                          Metode Rekonstruksi & Interpolasi Meteorologi
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          Pilih algoritma interpolasi fisik untuk rekonstruksi celah data, lonjakan, atau anomali radiasi matahari.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleApplySolarOverheatingPreset}
+                          className="border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold gap-1.5 h-8"
+                        >
+                          <Sun className="h-3.5 w-3.5 text-amber-500" />
+                          Preset: Koreksi Radiasi Panas Matahari
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Radio/Card Grid for 4 Sub-methods */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                      {/* 1. Model Guided */}
+                      <button
+                        type="button"
+                        onClick={() => setInterpolationSubMethod("model_guided")}
+                        className={`p-3 rounded-lg border text-left transition-all ${
+                          interpolationSubMethod === "model_guided"
+                            ? "border-cyan-500 bg-cyan-500/10 dark:bg-cyan-950/30 ring-1 ring-cyan-500"
+                            : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 font-semibold text-xs text-cyan-700 dark:text-cyan-300 mb-1">
+                          <Sun className="h-3.5 w-3.5 text-amber-500" />
+                          Penuntun Model Cuaca
+                        </div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                          ECMWF IFS / ERA5 Open-Meteo. Rekonstruksi kurva diurnal alami saat sensor terpapar sengatan panas matahari.
+                        </div>
+                      </button>
+
+                      {/* 2. Cubic Hermite PCHIP */}
+                      <button
+                        type="button"
+                        onClick={() => setInterpolationSubMethod("cubic_pchip")}
+                        className={`p-3 rounded-lg border text-left transition-all ${
+                          interpolationSubMethod === "cubic_pchip"
+                            ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 ring-1 ring-indigo-500"
+                            : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 font-semibold text-xs text-indigo-700 dark:text-indigo-300 mb-1">
+                          <Sliders className="h-3.5 w-3.5 text-indigo-500" />
+                          Kubik Monoton (PCHIP)
+                        </div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                          Standar WMO No. 8. Kurva kubik mulus yang dijamin bebas osilasi palsu (Runge&apos;s overshoot).
+                        </div>
+                      </button>
+
+                      {/* 3. Akima Sub-Spline */}
+                      <button
+                        type="button"
+                        onClick={() => setInterpolationSubMethod("akima")}
+                        className={`p-3 rounded-lg border text-left transition-all ${
+                          interpolationSubMethod === "akima"
+                            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 ring-1 ring-emerald-500"
+                            : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 font-semibold text-xs text-emerald-700 dark:text-emerald-300 mb-1">
+                          <Activity className="h-3.5 w-3.5 text-emerald-500" />
+                          Akima Sub-Spline
+                        </div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                          Pembobotan gradien 5-titik Hiroshi Akima. Sangat stabil saat terjadi front dingin atau perubahan tajam mendadak.
+                        </div>
+                      </button>
+
+                      {/* 4. Time-Weighted Linear */}
+                      <button
+                        type="button"
+                        onClick={() => setInterpolationSubMethod("time_linear")}
+                        className={`p-3 rounded-lg border text-left transition-all ${
+                          interpolationSubMethod === "time_linear"
+                            ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30 ring-1 ring-purple-500"
+                            : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 font-semibold text-xs text-purple-700 dark:text-purple-300 mb-1">
+                          <SlidersHorizontal className="h-3.5 w-3.5 text-purple-500" />
+                          Linier Berbobot Waktu
+                        </div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                          Interpolasi linier dengan pembobotan delta waktu presisi milidetik untuk interval data tidak seragam.
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Detail Info for Current Sub-method */}
+                    {interpolationSubMethod === "model_guided" && (
+                      <div className="p-3 rounded-lg bg-cyan-50/60 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                        <div className="space-y-1">
+                          <div className="font-semibold text-cyan-900 dark:text-cyan-200 flex items-center gap-1.5">
+                            <Info className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
+                            Penuntun Model Aktif: {referenceModelName}
+                          </div>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                            Nilai anomali dihitung dengan mengadaptasi fluktuasi diurnal model atmosfer terhadap titik valid awal dan akhir.
+                            {referenceGuidePoints.length > 0 ? (
+                              <span className="text-emerald-600 dark:text-emerald-400 font-medium ml-1">
+                                ✓ {referenceGuidePoints.length} titik model penuntun siap digunakan.
+                              </span>
+                            ) : (
+                              <span className="text-amber-600 dark:text-amber-400 font-medium ml-1">
+                                ⚠ Data penuntun belum dimuat. Klik tombol &quot;Muat Penuntun Cuaca&quot;.
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => fetchReferenceGuide()}
+                          disabled={loadingReference}
+                          className="text-xs h-8 border-cyan-300 dark:border-cyan-700 hover:bg-cyan-100/50"
+                        >
+                          {loadingReference ? (
+                            <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+                          ) : (
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                          )}
+                          Muat Ulang Model
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1464,7 +1848,7 @@ export default function KoreksiDataPage() {
 
           {/* 3. Before vs After Interactive Visualizer */}
           <Card className="border shadow-sm">
-            <CardHeader className="py-4 px-5 border-b flex flex-row items-center justify-between">
+            <CardHeader className="py-4 px-5 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <Activity className="h-4 w-4 text-emerald-500" />
@@ -1472,11 +1856,39 @@ export default function KoreksiDataPage() {
                 </CardTitle>
                 <CardDescription className="text-xs">
                   Garis merah dashed = Data Mentah saat ini di database | Garis hijau solid = Hasil proyeksi koreksi
+                  {showReferenceGuide && referenceGuidePoints.length > 0 && " | Garis cyan dashed = Penuntun Model Cuaca"}
                 </CardDescription>
               </div>
-              <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 text-xs">
-                {rawRecords.length} Titik Data Terpasang
-              </Badge>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <Switch
+                    id="toggle-ref-guide"
+                    checked={showReferenceGuide}
+                    onCheckedChange={setShowReferenceGuide}
+                  />
+                  <Label htmlFor="toggle-ref-guide" className="text-xs font-medium cursor-pointer text-cyan-600 dark:text-cyan-400">
+                    Penuntun Model ({referenceModelType === "ecmwf_ifs" ? "ECMWF IFS" : "ERA5"})
+                  </Label>
+                </div>
+                <Select
+                  value={referenceModelType}
+                  onValueChange={(val: "ecmwf_ifs" | "era5") => {
+                    setReferenceModelType(val);
+                    fetchReferenceGuide(undefined, startDateStr, endDateStr, val);
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-xs w-[130px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ecmwf_ifs">ECMWF IFS</SelectItem>
+                    <SelectItem value="era5">ERA5 Reanalysis</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 text-xs">
+                  {rawRecords.length} Titik Observasi
+                </Badge>
+              </div>
             </CardHeader>
             <CardContent className="p-4">
               {rawRecords.length === 0 ? (
@@ -1695,123 +2107,6 @@ export default function KoreksiDataPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* ================= TAB 3: LANDASAN ILMIAH & CITATIONS ================= */}
-        <TabsContent value="literature" className="space-y-4 mt-4">
-          <Card className="border shadow-sm">
-            <CardHeader className="py-4 px-5 border-b">
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-indigo-500" />
-                Landasan Ilmiah, Standar WMO, dan Publikasi Ilmiah arXiv
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Metodologi yang diimplementasikan pada modul ini mengacu pada panduan baku WMO dan literatur riset arXiv
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-5 space-y-4 text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-              <div className="p-4 rounded-xl border border-indigo-200/60 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-indigo-950/20 space-y-2">
-                <div className="flex items-center gap-2 font-semibold text-indigo-900 dark:text-indigo-200 text-sm">
-                  <ExternalLink className="h-4 w-4" />
-                  1. Steckler et al. (2025) – arXiv:2502.05191v1
-                </div>
-                <p className="text-slate-600 dark:text-slate-400">
-                  <em>&quot;Descriptor: Five years of meteorological surface data at Oak Ridge Reserve in Tennessee&quot;</em>
-                </p>
-                <p>
-                  Menjabarkan metodologi kendali mutu komprehensif untuk stasiun meteorologi otomatis (AWS). Menggarisbawahi
-                  pentingnya pengujian batas fisik (plausibility limits), deteksi pergeseran bertahap (drift), pergeseran
-                  step-shift baseline akibat intervensi teknis, serta isolasi lonjakan buatan (*artefactual spikes*).
-                </p>
-                <a
-                  href="https://arxiv.org/abs/2502.05191"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
-                >
-                  Tinjau Paper di arXiv: https://arxiv.org/abs/2502.05191
-                </a>
-              </div>
-
-              <div className="p-4 rounded-xl border border-sky-200/60 dark:border-sky-900/40 bg-sky-50/50 dark:bg-sky-950/20 space-y-2">
-                <div className="flex items-center gap-2 font-semibold text-sky-900 dark:text-sky-200 text-sm">
-                  <ExternalLink className="h-4 w-4" />
-                  2. Kirkwood et al. (2022) – arXiv:2201.10544v1
-                </div>
-                <p className="text-slate-600 dark:text-slate-400">
-                  <em>&quot;A deep mixture density network for outlier-corrected interpolation of crowd-sourced weather data&quot;</em>
-                </p>
-                <p>
-                  Memformulasikan kalibrasi anomali sensor cuaca dengan pemisahan antara galat aditif (bias offset $\Delta$)
-                  dan galat multiplikatif (gain skala $k$), sekaligus mendefinisikan boundary clamping agar tidak mengorbankan
-                  sinyal dinamika atmosfer nyata seperti *cold pool outflow* atau hembusan angin konvektif.
-                </p>
-                <a
-                  href="https://arxiv.org/abs/2201.10544"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 font-semibold hover:underline"
-                >
-                  Tinjau Paper di arXiv: https://arxiv.org/abs/2201.10544
-                </a>
-              </div>
-
-              <div className="p-4 rounded-xl border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20 space-y-2">
-                <div className="flex items-center gap-2 font-semibold text-emerald-900 dark:text-emerald-200 text-sm">
-                  <ExternalLink className="h-4 w-4" />
-                  3. Wang et al. (2017) – arXiv:1707.03682v1 (IEEE Sensors Journal)
-                </div>
-                <p className="text-slate-600 dark:text-slate-400">
-                  <em>&quot;A Deep Learning Approach for Blind Drift Calibration of Sensor Networks&quot;</em>
-                </p>
-                <p>
-                  Membahas kalibrasi pergeseran sensor (<em>sensor drift</em>) linier seiring waktu akibat penuaan fisik sensor
-                  dengan perumusan koreksi deret waktu dinamis: &Delta;(t) = &delta;&#8320; + [(t - t&#8320;)/(t&#8321; - t&#8320;)] &times; (&delta;&#8321; - &delta;&#8320;).
-                </p>
-                <a
-                  href="https://arxiv.org/abs/1707.03682"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
-                >
-                  Tinjau Paper di arXiv: https://arxiv.org/abs/1707.03682
-                </a>
-              </div>
-
-              <div className="p-4 rounded-xl border border-purple-200/60 dark:border-purple-900/40 bg-purple-50/50 dark:bg-purple-950/20 space-y-2">
-                <div className="flex items-center gap-2 font-semibold text-purple-900 dark:text-purple-200 text-sm">
-                  <ExternalLink className="h-4 w-4" />
-                  4. Talukder et al. (2022) – arXiv:2208.13819v1
-                </div>
-                <p className="text-slate-600 dark:text-slate-400">
-                  <em>&quot;Dynamic Calibration of Nonlinear Sensors with Time-Drifts and Delays by Bayesian Inference&quot;</em>
-                </p>
-                <p>
-                  Menekankan prinsip keselamatan data: validasi pratinjau sebelum penulisan permanen (<em>non-destructive preview</em>)
-                  dan pencatatan jejak audit (<em>immutable audit trail</em>) atas seluruh parameter modifikasi.
-                </p>
-                <a
-                  href="https://arxiv.org/abs/2208.13819"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 font-semibold hover:underline"
-                >
-                  Tinjau Paper di arXiv: https://arxiv.org/abs/2208.13819
-                </a>
-              </div>
-
-              <div className="p-4 rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 space-y-2">
-                <div className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
-                  5. Standar WMO-No. 8 (Guide to Instruments and Methods of Observation)
-                </div>
-                <p>
-                  Bagian II Bab 1 mengatur Quality Control Data Meteorologi:
-                  batas fisik kelembapan relatif wajib berada dalam batas 0% &le; RH &le; 100%, presipitasi RR &ge; 0 mm,
-                  serta tekanan atmosfer terestrial normal berkisar 850 s/d 1080 hPa.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {/* 5. Execution Confirmation Modal */}
@@ -1838,7 +2133,11 @@ export default function KoreksiDataPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Metode:</span>
-                <span className="font-semibold">{correctionMethod.toUpperCase()}</span>
+                <span className="font-semibold">
+                  {correctionMethod === "interpolate"
+                    ? `INTERPOLASI (${interpolationSubMethod.toUpperCase()})`
+                    : correctionMethod.toUpperCase()}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Jumlah Titik Terkoreksi:</span>
@@ -1856,7 +2155,7 @@ export default function KoreksiDataPage() {
               </Label>
               <Input
                 id="auditNotes"
-                placeholder="Contoh: Koreksi baseline shift pasca pembersihan tabung sensor"
+                placeholder="Contoh: Koreksi lonjakan radiasi matahari menggunakan penuntun ECMWF IFS"
                 value={auditNotes}
                 onChange={(e) => setAuditNotes(e.target.value)}
                 className="text-xs h-9"
