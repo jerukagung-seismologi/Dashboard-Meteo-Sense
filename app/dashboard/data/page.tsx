@@ -868,6 +868,13 @@ export default function DataPage() {
     unit?: string;
   }) => {
     const yDomain = getYAxisDomain(data, unit);
+    const validData = data.filter((v) => Number.isFinite(v));
+    const hasData = validData.length > 0;
+    const latestVal = hasData ? validData[validData.length - 1] : null;
+    const minVal = hasData ? Math.min(...validData) : null;
+    const maxVal = hasData ? Math.max(...validData) : null;
+    const avgVal = hasData ? validData.reduce((a, b) => a + b, 0) / validData.length : null;
+
     const chartData = [
       {
         x: timestamps,
@@ -903,14 +910,37 @@ export default function DataPage() {
     };
 
     return (
-      <Card>
+      <Card className="w-full shadow-sm">
         <CardHeader
-          className={`flex flex-row items-center gap-3 ${
-            isDarkMode ? "bg-gray-800" : "bg-gray-50"
+          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+            isDarkMode ? "bg-slate-800/80" : "bg-slate-50"
           } border-b py-3 px-6`}
         >
-          <Icon className={`h-5 w-5`} style={{ color }} />
-          <CardTitle className="text-lg">{title}</CardTitle>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-background shadow-xs border">
+              <Icon className="h-5 w-5" style={{ color }} />
+            </div>
+            <div>
+              <CardTitle className="text-base sm:text-lg font-semibold">{title}</CardTitle>
+              <p className="text-xs text-muted-foreground">Deret waktu telemetri sensor ({unit || "satuan baku"})</p>
+            </div>
+          </div>
+          {hasData && (
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="px-2.5 py-1 rounded-md bg-background border shadow-xs text-muted-foreground font-medium">
+                Terakhir: <strong className="text-foreground font-semibold">{fmt2(latestVal!)} {unit}</strong>
+              </span>
+              <span className="px-2.5 py-1 rounded-md bg-background border shadow-xs text-muted-foreground font-medium">
+                Min: <strong className="text-foreground font-semibold">{fmt2(minVal!)} {unit}</strong>
+              </span>
+              <span className="px-2.5 py-1 rounded-md bg-background border shadow-xs text-muted-foreground font-medium">
+                Rata-rata: <strong className="text-foreground font-semibold">{fmt2(avgVal!)} {unit}</strong>
+              </span>
+              <span className="px-2.5 py-1 rounded-md bg-background border shadow-xs text-muted-foreground font-medium">
+                Maks: <strong className="text-foreground font-semibold">{fmt2(maxVal!)} {unit}</strong>
+              </span>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="pt-6">
           <ChartComponent data={chartData} layout={layout} />
@@ -1211,8 +1241,8 @@ export default function DataPage() {
         </CardContent>
       </Card>
 
-      {/* Tab Navigation (shadcn Tabs) */}
-      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'table' | 'grafik')} className="mb-6">
+      {/* Tab Navigation & Content (shadcn Tabs) */}
+      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'table' | 'grafik')} className="w-full space-y-6">
         <TabsList className="grid w-full max-w-xs grid-cols-2">
           <TabsTrigger value="table">
             Data Tabel
@@ -1221,148 +1251,148 @@ export default function DataPage() {
             Grafik
           </TabsTrigger>
         </TabsList>
-      </Tabs>
 
-      {/* Tab Content */}
-      {error ? (
-        <div className={`border p-4 rounded-md mb-6 ${isDarkMode ? "bg-red-950 border-red-900 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>{error}</div>
-      ) : (
-        <>
-          {/* Data Table Content (shadcn Table) */}
-          {activeTab === 'table' && (
-            loading ? (
-              <Card>
-                <CardContent className="p-0">
-                  <Table className="w-full">
-                    <TableHeader>
-                      <TableRow>
-                        {[...Array(11)].map((_, i) => (
-                          <TableHead key={i}>
-                            <Skeleton className="h-4 w-20" />
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {[...Array(itemsPerPage)].map((_, i) => (
-                        <TableRow key={i}>
-                          {[...Array(11)].map((_, j) => (
-                            <TableCell key={j}>
-                              <Skeleton className="h-4 w-full" />
-                            </TableCell>
+        {/* Tab Content */}
+        {error ? (
+          <div className={`border p-4 rounded-md mb-6 ${isDarkMode ? "bg-red-950 border-red-900 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>{error}</div>
+        ) : (
+          <>
+            {/* Data Table Content (shadcn Table) */}
+            <TabsContent value="table" className="mt-0 outline-none space-y-4">
+              {loading ? (
+                <Card>
+                  <CardContent className="p-0">
+                    <Table className="w-full">
+                      <TableHeader>
+                        <TableRow>
+                          {[...Array(11)].map((_, i) => (
+                            <TableHead key={i}>
+                              <Skeleton className="h-4 w-20" />
+                            </TableHead>
                           ))}
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="p-0">
-                  <Table className="w-full text-sm">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="font-bold">Waktu</TableHead>
-                        <TableHead className="font-bold">Suhu (°C)</TableHead>
-                        <TableHead className="font-bold">Kelembapan (%)</TableHead>
-                        <TableHead className="font-bold">Tekanan (hPa)</TableHead>
-                        <TableHead className="font-bold">Titik Embun (°C)</TableHead>
-                        <TableHead className="font-bold">Curah Hujan (mm)</TableHead>
-                        <TableHead className="font-bold">Laju Hujan (mm/j)</TableHead>
-                        <TableHead className="font-bold">Cahaya (lux)</TableHead>
-                        <TableHead className="font-bold">Suhu Tanah (°C)</TableHead>
-                        <TableHead className="font-bold">Tegangan (V)</TableHead>
-                        <TableHead className="font-bold text-center">Aksi</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody id="datalogger">
-                      {currentTableData.length === 0 ? (
+                      </TableHeader>
+                      <TableBody>
+                        {[...Array(itemsPerPage)].map((_, i) => (
+                          <TableRow key={i}>
+                            {[...Array(11)].map((_, j) => (
+                              <TableCell key={j}>
+                                <Skeleton className="h-4 w-full" />
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="p-0">
+                    <Table className="w-full text-sm">
+                      <TableHeader>
                         <TableRow>
-                          <TableCell colSpan={11} className="p-8 text-center text-muted-foreground">
-                            Tidak ada data yang tersedia.
-                          </TableCell>
+                          <TableHead className="font-bold">Waktu</TableHead>
+                          <TableHead className="font-bold">Suhu (°C)</TableHead>
+                          <TableHead className="font-bold">Kelembapan (%)</TableHead>
+                          <TableHead className="font-bold">Tekanan (hPa)</TableHead>
+                          <TableHead className="font-bold">Titik Embun (°C)</TableHead>
+                          <TableHead className="font-bold">Curah Hujan (mm)</TableHead>
+                          <TableHead className="font-bold">Laju Hujan (mm/j)</TableHead>
+                          <TableHead className="font-bold">Cahaya (lux)</TableHead>
+                          <TableHead className="font-bold">Suhu Tanah (°C)</TableHead>
+                          <TableHead className="font-bold">Tegangan (V)</TableHead>
+                          <TableHead className="font-bold text-center">Aksi</TableHead>
                         </TableRow>
-                      ) : (
-                        currentTableData.map((entry, index) => (
-                          <TableRow key={index} className="hover:bg-muted/50 transition-colors">
-                            <TableCell className="font-mono text-xs">{entry.date}</TableCell>
-                            <TableCell>{fmt2(entry.temperature)}</TableCell>
-                            <TableCell>{fmt2(entry.humidity)}</TableCell>
-                            <TableCell>{fmt2(entry.pressure)}</TableCell>
-                            <TableCell>{fmt2(entry.dew)}</TableCell>
-                            <TableCell>{fmt2(entry.rainfall)}</TableCell>
-                            <TableCell>{fmt2(entry.rainrate)}</TableCell>
-                            <TableCell>{fmt2(entry.lux)}</TableCell>
-                            <TableCell>{fmt2(entry.soil_temp)}</TableCell>
-                            <TableCell>{fmt2(entry.volt)}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center justify-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10 cursor-pointer"
-                                  title="Edit"
-                                  onClick={() => openEditModal(entry, indexOfFirstItem + index)}
-                                >
-                                  <EditIcon className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                                  title="Hapus"
-                                  onClick={() => openDeleteModal(indexOfFirstItem + index)}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
+                      </TableHeader>
+                      <TableBody id="datalogger">
+                        {currentTableData.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={11} className="p-8 text-center text-muted-foreground">
+                              Tidak ada data yang tersedia.
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                  {weatherData.length > itemsPerPage && (
-                    <div className="flex items-center justify-between p-4 border-t bg-slate-200 dark:bg-slate-700">
-                      <Button onClick={handlePreviousPage} disabled={currentPage === 1} variant="outline">
-                        Sebelumnya
-                      </Button>
-                      <span className="text-sm text-gray-800 dark:text-gray-200">
-                        Halaman {currentPage} dari {totalPages}
-                      </span>
-                      <Button onClick={handleNextPage} disabled={currentPage === totalPages} variant="outline">
-                        Berikutnya
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          )}
+                        ) : (
+                          currentTableData.map((entry, index) => (
+                            <TableRow key={index} className="hover:bg-muted/50 transition-colors">
+                              <TableCell className="font-mono text-xs">{entry.date}</TableCell>
+                              <TableCell>{fmt2(entry.temperature)}</TableCell>
+                              <TableCell>{fmt2(entry.humidity)}</TableCell>
+                              <TableCell>{fmt2(entry.pressure)}</TableCell>
+                              <TableCell>{fmt2(entry.dew)}</TableCell>
+                              <TableCell>{fmt2(entry.rainfall)}</TableCell>
+                              <TableCell>{fmt2(entry.rainrate)}</TableCell>
+                              <TableCell>{fmt2(entry.lux)}</TableCell>
+                              <TableCell>{fmt2(entry.soil_temp)}</TableCell>
+                              <TableCell>{fmt2(entry.volt)}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10 cursor-pointer"
+                                    title="Edit"
+                                    onClick={() => openEditModal(entry, indexOfFirstItem + index)}
+                                  >
+                                    <EditIcon className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                                    title="Hapus"
+                                    onClick={() => openDeleteModal(indexOfFirstItem + index)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                    {weatherData.length > itemsPerPage && (
+                      <div className="flex items-center justify-between p-4 border-t bg-slate-200 dark:bg-slate-700">
+                        <Button onClick={handlePreviousPage} disabled={currentPage === 1} variant="outline">
+                          Sebelumnya
+                        </Button>
+                        <span className="text-sm text-gray-800 dark:text-gray-200">
+                          Halaman {currentPage} dari {totalPages}
+                        </span>
+                        <Button onClick={handleNextPage} disabled={currentPage === totalPages} variant="outline">
+                          Berikutnya
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
 
-          {/* Grafik Content */}
-          {activeTab === 'grafik' && (
-            loading ? (
-              <div className="space-y-6">
-                {[...Array(9)].map((_, i) => <ChartSkeleton key={i} />)}
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <ChartCard title="Suhu Lingkungan" data={temperatures} color={chartColors.temperature} Icon={ThermometerSun} unit="°C" />
-                <ChartCard title="Kelembapan Relatif" data={humidity} color={chartColors.humidity} Icon={Droplets} unit="%" />
-                <ChartCard title="Tekanan Udara" data={pressure} color={chartColors.pressure} Icon={GaugeIcon} unit="hPa" />
-                <ChartCard title="Titik Embun" data={dew} color={chartColors.dew} Icon={Sprout} unit="°C" />
-                <ChartCard title="Curah Hujan Kumulatif" data={rainfall} color={chartColors.rainfall} Icon={CloudRainIcon} unit="mm" />
-                <ChartCard title="Laju Hujan Per Jam" data={rainrate} color={chartColors.rainrate} Icon={CloudRainWind} unit="mm/jam" />
-                <ChartCard title="Intensitas Cahaya" data={lights} color={chartColors.lux} Icon={Sun} unit="lux" />
-                <ChartCard title="Suhu Tanah" data={soilTemps} color={chartColors.soil_temp} Icon={Thermometer} unit="°C" />
-                <ChartCard title="Tegangan Listrik" data={volts} color={chartColors.volt} Icon={Zap} unit="V" />
-              </div>
-            )
-          )}
-        </>
-      )}
+            {/* Grafik Content (Satu-satu ke Bawah / Full Width Vertical Stack) */}
+            <TabsContent value="grafik" className="mt-0 outline-none">
+              {loading ? (
+                <div className="flex flex-col space-y-6 w-full">
+                  {[...Array(9)].map((_, i) => <ChartSkeleton key={i} />)}
+                </div>
+              ) : (
+                <div className="flex flex-col space-y-6 w-full">
+                  <ChartCard title="Suhu Lingkungan" data={temperatures} color={chartColors.temperature} Icon={ThermometerSun} unit="°C" />
+                  <ChartCard title="Kelembapan Relatif" data={humidity} color={chartColors.humidity} Icon={Droplets} unit="%" />
+                  <ChartCard title="Tekanan Udara" data={pressure} color={chartColors.pressure} Icon={GaugeIcon} unit="hPa" />
+                  <ChartCard title="Titik Embun" data={dew} color={chartColors.dew} Icon={Sprout} unit="°C" />
+                  <ChartCard title="Curah Hujan Kumulatif" data={rainfall} color={chartColors.rainfall} Icon={CloudRainIcon} unit="mm" />
+                  <ChartCard title="Laju Hujan Per Jam" data={rainrate} color={chartColors.rainrate} Icon={CloudRainWind} unit="mm/jam" />
+                  <ChartCard title="Intensitas Cahaya" data={lights} color={chartColors.lux} Icon={Sun} unit="lux" />
+                  <ChartCard title="Suhu Tanah" data={soilTemps} color={chartColors.soil_temp} Icon={Thermometer} unit="°C" />
+                  <ChartCard title="Tegangan Listrik" data={volts} color={chartColors.volt} Icon={Zap} unit="V" />
+                </div>
+              )}
+            </TabsContent>
+          </>
+        )}
+      </Tabs>
 
       {/* Modal Edit Data (shadcn Dialog) */}
       <Dialog open={editModalOpen} onOpenChange={(open) => !open && closeEditModal()}>
