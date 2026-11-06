@@ -974,14 +974,14 @@ export default function DataPage() {
               )}
             </div>
 
-            {/* Popover Kalender yang Disempurnakan */}
+            {/* Popover Kalender Kompak 1-Bulan */}
             <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
                   id="date"
                   variant="outline"
                   className={cn(
-                    "w-full sm:w-auto min-w-[240px] justify-between text-left font-semibold text-xs sm:text-sm h-9 px-3 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                    "w-full sm:w-auto min-w-[210px] justify-between text-left font-semibold text-xs sm:text-sm h-9 px-3 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
                     dateRange?.from ? "text-slate-900 dark:text-slate-100 border-blue-500/60 ring-1 ring-blue-500/20" : "text-slate-500"
                   )}
                 >
@@ -994,10 +994,10 @@ export default function DataPage() {
                             {format(dateRange.from, "dd MMM yyyy", { locale: id })} – {format(dateRange.to, "dd MMM yyyy", { locale: id })}
                           </>
                         ) : (
-                          `${format(dateRange.from, "EEEE, dd MMM yyyy", { locale: id })} (24 Jam)`
+                          `${format(dateRange.from, "EEEE, dd MMM yyyy", { locale: id })}`
                         )
                       ) : (
-                        <span>Pilih Rentang Tanggal</span>
+                        <span>Pilih Tanggal</span>
                       )}
                     </span>
                   </div>
@@ -1009,68 +1009,68 @@ export default function DataPage() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent 
-                className="w-auto p-0 max-w-[calc(100vw-1.5rem)] shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden" 
-                align="start"
+                className="w-[340px] p-0 max-w-[calc(100vw-1.5rem)] shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden" 
+                align="end"
               >
-                {/* Header Popover dengan Judul & Preset Cepat */}
-                <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 space-y-2.5 bg-slate-50/60 dark:bg-slate-950/40">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <CalendarDays className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      Pilih Tanggal / Rentang Observasi
-                    </span>
-                    {dateRange?.from && (
-                      <button
-                        onClick={handleResetToLive}
-                        className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 flex items-center gap-1 transition-colors"
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                        Reset ke Live
-                      </button>
-                    )}
-                  </div>
-                  {/* Preset Buttons */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                {/* Header Popover dengan Judul & Reset */}
+                <div className="px-3.5 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/60 dark:bg-slate-950/40">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <CalendarDays className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    Pilih Tanggal Observasi
+                  </span>
+                  {dateRange?.from && (
                     <button
                       type="button"
-                      onClick={() => handleApplyPreset("today")}
-                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                      onClick={handleResetToLive}
+                      className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 flex items-center gap-1 transition-colors cursor-pointer"
                     >
-                      Hari Ini (24 Jam)
+                      <RotateCcw className="h-3 w-3" />
+                      Reset Pilihan
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyPreset("yesterday")}
-                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
-                    >
-                      Kemarin (24 Jam)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyPreset("last7")}
-                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
-                    >
-                      7 Hari Terakhir
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyPreset("last30")}
-                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
-                    >
-                      30 Hari Terakhir
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyPreset("thisMonth")}
-                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
-                    >
-                      Bulan Ini
-                    </button>
-                  </div>
+                  )}
                 </div>
 
-                {/* Calendar Component */}
-                <div className="p-2 sm:p-3 overflow-x-auto flex justify-center">
+                {/* Preset Cepat: Horizontal Pills */}
+                <div className="px-3 pt-2.5 pb-1 flex flex-wrap items-center gap-1.5 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-950/20">
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPreset("today")}
+                    className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                  >
+                    Hari Ini
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPreset("yesterday")}
+                    className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                  >
+                    Kemarin
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPreset("last7")}
+                    className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                  >
+                    7 Hari
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPreset("last30")}
+                    className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                  >
+                    30 Hari
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPreset("thisMonth")}
+                    className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                  >
+                    Bulan Ini
+                  </button>
+                </div>
+
+                {/* Calendar Component: 1 Bulan Kompak */}
+                <div className="p-2 sm:p-2.5 flex justify-center">
                   <Calendar
                     autoFocus
                     mode="range"
@@ -1079,26 +1079,26 @@ export default function DataPage() {
                     onSelect={(range) => {
                       setDateRange(range);
                     }}
-                    numberOfMonths={isMobile ? 1 : 2}
+                    numberOfMonths={1}
                     disabled={(date) => isFuture(date)}
                   />
                 </div>
 
                 {/* Footer Popover: Status & Close */}
-                <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex items-center justify-between gap-2">
+                <div className="px-3.5 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex items-center justify-between gap-2">
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                     {dateRange?.from ? (
-                      <>Terpilih: <strong>{format(dateRange.from, "dd MMM yyyy", { locale: id })}</strong>{dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? <> s/d <strong>{format(dateRange.to, "dd MMM yyyy", { locale: id })}</strong></> : " (24 Jam Penuh)"}</>
+                      <>Terpilih: <strong>{format(dateRange.from, "dd MMM yyyy", { locale: id })}</strong>{dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? <> s/d <strong>{format(dateRange.to, "dd MMM yyyy", { locale: id })}</strong></> : " (24 Jam)"}</>
                     ) : (
-                      "Mode saat ini: Live Streaming Realtime"
+                      <span>Periode: <strong>{selectedPeriod?.label}</strong></span>
                     )}
                   </span>
                   <Button
                     size="sm"
-                    className="h-7 text-xs font-bold px-3 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                    className="h-7 text-xs font-bold px-3 bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer"
                     onClick={() => setIsCalendarOpen(false)}
                   >
-                    Tutup
+                    Selesai
                   </Button>
                 </div>
               </PopoverContent>
@@ -1109,6 +1109,7 @@ export default function DataPage() {
               size="icon"
               onClick={handleManualRefresh} 
               disabled={loading}
+              title="Segarkan Data"
             >
               <RefreshCwIcon className={`h-4 w-4 ${loading ? "animate-spin" : ""} ${isDarkMode ? "text-gray-200" : ""}`} />
               <span className="sr-only">Refresh data</span>
@@ -1127,96 +1128,72 @@ export default function DataPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="p-4 bg-slate-50/70 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 space-y-3.5">
-          {/* Baris 1: Stepper Tombol Geser 24 Jam (Hari Kemarin & Hari Selanjutnya) */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-white dark:bg-slate-950/80 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-lg shrink-0">
-                <CalendarDays className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                    {isCustomDateActive ? "Observasi Harian 24 Jam" : "Mode Periode Berjalan"}
-                  </span>
-                  {isCustomDateActive && (
-                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 font-mono font-semibold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40">
-                      {dateRange?.to && !isSameDay(dateRange.from!, dateRange.to) ? "Multi-Hari" : "24 Jam Penuh"}
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 font-mono">
-                    {dateRange?.from
-                      ? dateRange.to && !isSameDay(dateRange.from, dateRange.to)
-                        ? `${format(dateRange.from, "dd MMM yyyy", { locale: id })} – ${format(dateRange.to, "dd MMM yyyy", { locale: id })}`
-                        : format(dateRange.from, "EEEE, dd MMMM yyyy", { locale: id })
-                      : `Live Realtime (${selectedPeriod.label} Terakhir)`}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Tombol Geser Hari Kemarin & Hari Selanjutnya */}
-            <div className="flex flex-wrap items-center gap-1.5 self-stretch sm:self-auto justify-end">
+        <CardContent className="p-3 sm:p-4 bg-slate-50/80 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-800">
+          {/* Baris 2: Stepper Hari & Quick Period Pills Terpadu */}
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+            {/* Sisi Kiri: Stepper Hari & Indikator Tanggal Aktif */}
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handlePrevDay}
-                title="Geser Mundur 1 Hari (24 Jam Kemarin)"
+                title="Geser Mundur 1 Hari (Hari Kemarin)"
                 className="h-8 text-xs font-bold text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-800 dark:hover:text-blue-400 gap-1 shadow-2xs"
               >
                 <ChevronLeft className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                 Hari Kemarin
               </Button>
 
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs">
+                <CalendarDays className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 font-mono">
+                  {dateRange?.from
+                    ? dateRange.to && !isSameDay(dateRange.from, dateRange.to)
+                      ? `${format(dateRange.from, "dd MMM yyyy", { locale: id })} – ${format(dateRange.to, "dd MMM yyyy", { locale: id })}`
+                      : format(dateRange.from, "EEEE, dd MMMM yyyy", { locale: id })
+                    : `${selectedPeriod.label} Terakhir`}
+                </span>
+                {isCustomDateActive && (
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 font-mono font-semibold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40">
+                    {dateRange?.to && !isSameDay(dateRange.from!, dateRange.to) ? "Multi-Hari" : "24 Jam"}
+                  </Badge>
+                )}
+              </div>
+
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleNextDay}
                 disabled={isNextDayDisabled}
-                title="Geser Maju 1 Hari (24 Jam Selanjutnya)"
+                title="Geser Maju 1 Hari (Hari Selanjutnya)"
                 className="h-8 text-xs font-bold text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-800 dark:hover:text-blue-400 gap-1 shadow-2xs disabled:opacity-40"
               >
                 Hari Selanjutnya
                 <ChevronRight className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
               </Button>
 
-              {isCustomDateActive ? (
+              {isCustomDateActive && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleResetToLive}
+                  title="Kembali ke tampilan periode berjalan"
                   className="h-8 text-xs font-bold text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 gap-1 shadow-2xs"
                 >
                   <RotateCcw className="h-3 w-3" />
-                  Kembali ke Live
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleGoToYesterday}
-                  className="h-8 text-xs font-bold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 shadow-2xs"
-                >
-                  Lihat Kemarin (24 Jam)
+                  Hari Ini
                 </Button>
               )}
             </div>
-          </div>
 
-          {/* Baris 2: Pilihan Rentang Waktu Live Berjalan */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-0.5">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5 text-slate-400" />
-              Rentang Waktu Live Berjalan:
-            </span>
-            <div className="flex flex-wrap gap-1.5">
+            {/* Sisi Kanan: Quick Period Pills */}
+            <div className="flex flex-wrap items-center gap-1.5 justify-start lg:justify-end">
               {periods.map((period) => (
                 <button
                   key={period.label}
+                  type="button"
                   onClick={() => handlePeriodChange(period)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     selectedPeriod?.label === period.label && !dateRange
                       ? "bg-blue-600 text-white shadow-xs scale-[1.02]"
                       : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"

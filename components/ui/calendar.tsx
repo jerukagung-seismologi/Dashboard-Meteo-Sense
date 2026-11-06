@@ -29,7 +29,7 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn(
-        "bg-background group/calendar p-3 sm:p-4 [--cell-size:2.35rem] sm:[--cell-size:2.55rem] md:[--cell-size:2.75rem] select-none [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
+        "bg-background group/calendar p-3 sm:p-3.5 [--cell-size:2.2rem] sm:[--cell-size:2.35rem] select-none [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className
@@ -207,6 +207,7 @@ function CalendarDayButton({
         // Range start & end
         "data-[range-start=true]:bg-blue-600 data-[range-start=true]:text-white data-[range-start=true]:font-bold data-[range-start=true]:rounded-l-xl data-[range-start=true]:rounded-r-none hover:data-[range-start=true]:bg-blue-700",
         "data-[range-end=true]:bg-blue-600 data-[range-end=true]:text-white data-[range-end=true]:font-bold data-[range-end=true]:rounded-r-xl data-[range-end=true]:rounded-l-none hover:data-[range-end=true]:bg-blue-700",
+        "data-[range-start=true][data-range-end=true]:rounded-xl",
         // Range middle
         "data-[range-middle=true]:bg-blue-100 dark:data-[range-middle=true]:bg-blue-950/60 data-[range-middle=true]:text-blue-900 dark:data-[range-middle=true]:text-blue-200 data-[range-middle=true]:rounded-none",
         // Today indicator (when not selected)
