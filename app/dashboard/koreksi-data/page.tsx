@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { format, subDays } from "date-fns";
+import { format, subDays, addDays, startOfDay } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { useTheme } from "next-themes";
 import {
@@ -15,6 +15,10 @@ import {
   Sparkles,
   RefreshCw,
   Calendar,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
   Database,
   Info,
   Check,
@@ -392,71 +396,83 @@ export default function KoreksiDataPage() {
     setScaleFactor(1.0);
   }, [selectedVar]);
 
-  // 2. Fetch Raw Sensor Data for Target Range
-  const handleFetchData = useCallback(async () => {
-    if (!sensorId) {
-      toast({
-        title: "Pilih Sensor",
-        description: "Harap pilih stasiun sensor terlebih dahulu.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const startMs = new Date(`${startDateStr}T${startTimeStr}:00+07:00`).getTime();
-      const endMs = new Date(`${endDateStr}T${endTimeStr}:59+07:00`).getTime();
-
-      if (startMs >= endMs) {
+  // 2. Fetch Raw Sensor Data for Target Range (Parameterized)
+  const fetchDataForRange = useCallback(
+    async (
+      sDate = startDateStr,
+      sTime = startTimeStr,
+      eDate = endDateStr,
+      eTime = endTimeStr
+    ) => {
+      if (!sensorId) {
         toast({
-          title: "Rentang Waktu Salah",
-          description: "Waktu mulai harus lebih awal daripada waktu selesai.",
+          title: "Pilih Sensor",
+          description: "Harap pilih stasiun sensor terlebih dahulu.",
           variant: "destructive",
         });
-        setLoading(false);
         return;
       }
 
-      // Fetch raw uncalibrated data directly from RTDB to show ground reality
-      const data = await fetchSensorDataByDateRange(
-        sensorId,
-        startMs,
-        endMs,
-        false, // calibration=false (we edit raw database values)
-        true,  // forceRefresh
-        "raw"  // raw temporal points
-      );
+      try {
+        setLoading(true);
+        const startMs = new Date(`${sDate}T${sTime}:00+07:00`).getTime();
+        const endMs = new Date(`${eDate}T${eTime}:59+07:00`).getTime();
 
-      // Sort chronological ascending
-      const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
-      setRawRecords(sorted);
+        if (startMs >= endMs) {
+          toast({
+            title: "Rentang Waktu Salah",
+            description: "Waktu mulai harus lebih awal daripada waktu selesai.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
 
-      // Concurrently fetch the weather model reference guide
-      fetchReferenceGuide(undefined, startDateStr, endDateStr, referenceModelType);
+        // Fetch raw uncalibrated data directly from RTDB to show ground reality
+        const data = await fetchSensorDataByDateRange(
+          sensorId,
+          startMs,
+          endMs,
+          false, // calibration=false (we edit raw database values)
+          true,  // forceRefresh
+          "raw"  // raw temporal points
+        );
 
-      if (sorted.length === 0) {
+        // Sort chronological ascending
+        const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
+        setRawRecords(sorted);
+
+        // Concurrently fetch the weather model reference guide
+        fetchReferenceGuide(undefined, sDate, eDate, referenceModelType);
+
+        if (sorted.length === 0) {
+          toast({
+            title: "Data Kosong",
+            description: `Tidak ditemukan data sensor pada rentang ${sDate} s/d ${eDate}.`,
+          });
+        } else {
+          toast({
+            title: "Data Berhasil Dimuat",
+            description: `Berhasil mengambil ${sorted.length} titik observasi raw (${sDate}).`,
+          });
+        }
+      } catch (err: any) {
+        console.error("Gagal mengambil data observasi:", err);
         toast({
-          title: "Data Kosong",
-          description: "Tidak ditemukan data sensor pada rentang tanggal/waktu yang dipilih.",
+          title: "Gagal Mengambil Data",
+          description: err.message || "Terjadi kesalahan saat menghubungi server.",
+          variant: "destructive",
         });
-      } else {
-        toast({
-          title: "Data Berhasil Dimuat",
-          description: `Berhasil mengambil ${sorted.length} titik observasi raw.`,
-        });
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      console.error("Gagal mengambil data observasi:", err);
-      toast({
-        title: "Gagal Mengambil Data",
-        description: err.message || "Terjadi kesalahan saat menghubungi server.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [sensorId, startDateStr, startTimeStr, endDateStr, endTimeStr, toast, fetchReferenceGuide, referenceModelType]);
+    },
+    [sensorId, startDateStr, startTimeStr, endDateStr, endTimeStr, toast, fetchReferenceGuide, referenceModelType]
+  );
+
+  const handleFetchData = useCallback(() => {
+    return fetchDataForRange(startDateStr, startTimeStr, endDateStr, endTimeStr);
+  }, [fetchDataForRange, startDateStr, startTimeStr, endDateStr, endTimeStr]);
 
   // Load data automatically when sensorId is resolved
   useEffect(() => {
@@ -480,31 +496,103 @@ export default function KoreksiDataPage() {
     }
   };
 
-  // Quick Preset Handlers
+  // Stepper: Geser 1 Hari ke Belakang (Hari Sebelumnya / H-1)
+  const handlePrevDay = useCallback(() => {
+    try {
+      const current = new Date(`${startDateStr}T00:00:00`);
+      const prev = subDays(current, 1);
+      const newDateStr = format(prev, "yyyy-MM-dd");
+
+      setStartDateStr(newDateStr);
+      setEndDateStr(newDateStr);
+      setStartTimeStr("00:00");
+      setEndTimeStr("23:59");
+
+      fetchDataForRange(newDateStr, "00:00", newDateStr, "23:59");
+    } catch (e) {
+      console.error("Gagal geser hari sebelumnya:", e);
+    }
+  }, [startDateStr, fetchDataForRange]);
+
+  // Stepper: Geser 1 Hari ke Depan (Hari Sesudahnya / H+1)
+  const handleNextDay = useCallback(() => {
+    try {
+      const current = new Date(`${endDateStr}T00:00:00`);
+      const next = addDays(current, 1);
+      const now = new Date();
+
+      if (startOfDay(next) > startOfDay(now)) {
+        toast({
+          title: "Batas Waktu Maksimal",
+          description: "Tidak dapat bergeser ke hari yang akan datang (masa depan).",
+        });
+        return;
+      }
+
+      const newDateStr = format(next, "yyyy-MM-dd");
+
+      setStartDateStr(newDateStr);
+      setEndDateStr(newDateStr);
+      setStartTimeStr("00:00");
+      setEndTimeStr("23:59");
+
+      fetchDataForRange(newDateStr, "00:00", newDateStr, "23:59");
+    } catch (e) {
+      console.error("Gagal geser hari sesudahnya:", e);
+    }
+  }, [endDateStr, fetchDataForRange, toast]);
+
+  // Stepper: Lompat ke Hari Ini
+  const handleToday = useCallback(() => {
+    const now = new Date();
+    const newDateStr = format(now, "yyyy-MM-dd");
+
+    setStartDateStr(newDateStr);
+    setEndDateStr(newDateStr);
+    setStartTimeStr("00:00");
+    setEndTimeStr("23:59");
+
+    fetchDataForRange(newDateStr, "00:00", newDateStr, "23:59");
+  }, [fetchDataForRange]);
+
+  // Status apakah tombol Hari Sesudahnya harus di-disable (sudah mencapai hari ini)
+  const isNextDayDisabled = useMemo(() => {
+    try {
+      const currentEnd = new Date(`${endDateStr}T00:00:00`);
+      const now = new Date();
+      return startOfDay(currentEnd) >= startOfDay(now);
+    } catch {
+      return false;
+    }
+  }, [endDateStr]);
+
+  // Quick Preset Handlers with immediate fetch
   const handleApplyPreset = (preset: "today" | "yesterday" | "last3days" | "last7days") => {
     const now = new Date();
+    let sDate = format(now, "yyyy-MM-dd");
+    let eDate = format(now, "yyyy-MM-dd");
+
     if (preset === "today") {
-      setStartDateStr(format(now, "yyyy-MM-dd"));
-      setStartTimeStr("00:00");
-      setEndDateStr(format(now, "yyyy-MM-dd"));
-      setEndTimeStr("23:59");
+      sDate = format(now, "yyyy-MM-dd");
+      eDate = format(now, "yyyy-MM-dd");
     } else if (preset === "yesterday") {
       const yest = subDays(now, 1);
-      setStartDateStr(format(yest, "yyyy-MM-dd"));
-      setStartTimeStr("00:00");
-      setEndDateStr(format(yest, "yyyy-MM-dd"));
-      setEndTimeStr("23:59");
+      sDate = format(yest, "yyyy-MM-dd");
+      eDate = format(yest, "yyyy-MM-dd");
     } else if (preset === "last3days") {
-      setStartDateStr(format(subDays(now, 2), "yyyy-MM-dd"));
-      setStartTimeStr("00:00");
-      setEndDateStr(format(now, "yyyy-MM-dd"));
-      setEndTimeStr("23:59");
+      sDate = format(subDays(now, 2), "yyyy-MM-dd");
+      eDate = format(now, "yyyy-MM-dd");
     } else if (preset === "last7days") {
-      setStartDateStr(format(subDays(now, 6), "yyyy-MM-dd"));
-      setStartTimeStr("00:00");
-      setEndDateStr(format(now, "yyyy-MM-dd"));
-      setEndTimeStr("23:59");
+      sDate = format(subDays(now, 6), "yyyy-MM-dd");
+      eDate = format(now, "yyyy-MM-dd");
     }
+
+    setStartDateStr(sDate);
+    setStartTimeStr("00:00");
+    setEndDateStr(eDate);
+    setEndTimeStr("23:59");
+
+    fetchDataForRange(sDate, "00:00", eDate, "23:59");
   };
 
   // Preset Cepat: Anomali Panas Radiasi Matahari (Solar Radiation Shield Overheating)
@@ -1307,6 +1395,74 @@ export default function KoreksiDataPage() {
                   7 Hari
                 </Button>
               </div>
+            </div>
+          </div>
+
+          {/* Stepper Bar: Tombol Geser Hari Sebelumnya & Hari Sesudahnya */}
+          <div className="mt-4 pt-4 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg shrink-0">
+                <CalendarDays className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Periode Target Observasi Koreksi
+                  </span>
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 font-mono font-semibold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/40">
+                    {startDateStr === endDateStr ? "24 Jam Penuh" : "Rentang Multi-Hari"}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 font-mono">
+                    {startDateStr === endDateStr
+                      ? format(new Date(`${startDateStr}T00:00:00`), "EEEE, dd MMMM yyyy", { locale: localeId })
+                      : `${format(new Date(`${startDateStr}T00:00:00`), "dd MMM yyyy", { locale: localeId })} – ${format(new Date(`${endDateStr}T00:00:00`), "dd MMM yyyy", { locale: localeId })}`}
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    ({startTimeStr} - {endTimeStr} WIB)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tombol Geser Hari Sebelumnya & Hari Sesudahnya */}
+            <div className="flex flex-wrap items-center gap-1.5 self-stretch sm:self-auto justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevDay}
+                disabled={loading}
+                title="Geser Mundur 1 Hari (Hari Sebelumnya)"
+                className="h-8 text-xs font-bold text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-slate-800 dark:hover:text-indigo-400 gap-1 shadow-2xs"
+              >
+                <ChevronLeft className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                Hari Sebelumnya
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextDay}
+                disabled={loading || isNextDayDisabled}
+                title="Geser Maju 1 Hari (Hari Sesudahnya)"
+                className="h-8 text-xs font-bold text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-slate-800 dark:hover:text-indigo-400 gap-1 shadow-2xs disabled:opacity-40"
+              >
+                Hari Sesudahnya
+                <ChevronRight className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToday}
+                disabled={loading}
+                title="Lompat ke Hari Ini"
+                className="h-8 text-xs font-bold text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 gap-1 shadow-2xs"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Hari Ini
+              </Button>
             </div>
           </div>
 
