@@ -136,3 +136,4 @@ Dalam visualisasi meteorologi MeteoSense:
 - Batas bawah sumbu Y ($y_{min}$) untuk variabel berskala kontinu seperti Suhu Udara, Tekanan Udara, Titik Embun, dan Suhu Tanah **WAJIB berbasis nilai minimum data aktual** ($\text{floor}(\min(y))$), **BUKAN 0**!
 - Memulai sumbu Y dari 0 pada variabel seperti Tekanan Udara (misal 1012 hPa) atau Suhu Tropis (misal 28°C) akan meratakan variasi dinamika atmosfer menjadi garis lurus tanpa resolusi visual yang bermakna.
 - Nilai 0 hanya menjadi batas bawah untuk variabel fluks non-negatif: Curah Hujan (*rainfall*), Intensitas Hujan (*rainrate*), dan Kecepatan Angin (*wind speed*).
+

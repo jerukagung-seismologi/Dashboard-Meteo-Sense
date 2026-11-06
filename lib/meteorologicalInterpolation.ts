@@ -146,3 +146,4 @@ export function interpolateModelGuided(
   // Rekonstruksi data = Nilai fisik Model + Bias terkoreksi
   return mt + currentBias;
 }
+
