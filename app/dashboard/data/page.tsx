@@ -75,6 +75,38 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
 import { DateRange } from "react-day-picker";
 import dynamic from "next/dynamic";
 
@@ -864,27 +896,26 @@ export default function DataPage() {
     );
   };
 
-  // Komponen untuk render input field
+  // Komponen untuk render input field (shadcn UI)
   const SensorInput = ({ 
     field, 
     value, 
     onChange, 
-    isDark 
   }: { 
     field: SensorFieldConfig; 
     value: number; 
     onChange: (val: number) => void;
-    isDark: boolean;
+    isDark?: boolean;
   }) => (
-    <div>
-      <label className="block text-sm mb-1">{field.label}</label>
-      <input
+    <div className="space-y-1.5">
+      <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{field.label}</Label>
+      <Input
         type="number"
         step={field.step}
         min={field.min}
         value={value}
         onChange={e => onChange(parseFloat(e.target.value) || 0)}
-        className={`w-full px-3 py-2 rounded border ${isDark ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+        className="h-9"
         required
       />
     </div>
@@ -1019,54 +1050,66 @@ export default function DataPage() {
                     Pilih Tanggal Observasi
                   </span>
                   {dateRange?.from && (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={handleResetToLive}
-                      className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 flex items-center gap-1 transition-colors cursor-pointer"
+                      className="h-6 text-[11px] font-semibold text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2 cursor-pointer"
                     >
-                      <RotateCcw className="h-3 w-3" />
+                      <RotateCcw className="h-3 w-3 mr-1" />
                       Reset Pilihan
-                    </button>
+                    </Button>
                   )}
                 </div>
 
-                {/* Preset Cepat: Horizontal Pills */}
-                <div className="px-3 pt-2.5 pb-1 flex flex-wrap items-center gap-1.5 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-950/20">
-                  <button
+                {/* Preset Cepat: Horizontal Pills (shadcn Button) */}
+                <div className="px-3 py-2 flex flex-wrap items-center gap-1.5 border-b border-border/60 bg-muted/30">
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => handleApplyPreset("today")}
-                    className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                    className="h-6.5 text-[11px] font-semibold px-2.5 rounded-md shadow-2xs hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
                   >
                     Hari Ini
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => handleApplyPreset("yesterday")}
-                    className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                    className="h-6.5 text-[11px] font-semibold px-2.5 rounded-md shadow-2xs hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
                   >
                     Kemarin
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => handleApplyPreset("last7")}
-                    className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                    className="h-6.5 text-[11px] font-semibold px-2.5 rounded-md shadow-2xs hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
                   >
                     7 Hari
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => handleApplyPreset("last30")}
-                    className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                    className="h-6.5 text-[11px] font-semibold px-2.5 rounded-md shadow-2xs hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
                   >
                     30 Hari
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => handleApplyPreset("thisMonth")}
-                    className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                    className="h-6.5 text-[11px] font-semibold px-2.5 rounded-md shadow-2xs hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
                   >
                     Bulan Ini
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Calendar Component: 1 Bulan Kompak dengan Dropdown Bulan & Tahun */}
@@ -1189,154 +1232,151 @@ export default function DataPage() {
               )}
             </div>
 
-            {/* Sisi Kanan: Quick Period Pills */}
+            {/* Sisi Kanan: Quick Period Pills (shadcn Button) */}
             <div className="flex flex-wrap items-center gap-1.5 justify-start lg:justify-end">
-              {periods.map((period) => (
-                <button
-                  key={period.label}
-                  type="button"
-                  onClick={() => handlePeriodChange(period)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    selectedPeriod?.label === period.label && !dateRange
-                      ? "bg-blue-600 text-white shadow-xs scale-[1.02]"
-                      : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  {period.label}
-                </button>
-              ))}
+              {periods.map((period) => {
+                const isSelected = selectedPeriod?.label === period.label && !dateRange;
+                return (
+                  <Button
+                    key={period.label}
+                    type="button"
+                    variant={isSelected ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePeriodChange(period)}
+                    className={cn(
+                      "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
+                      isSelected
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                        : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    {period.label}
+                  </Button>
+                );
+              })}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tab Navigation */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
-        <button
-          className={`py-2 px-4 text-sm font-medium ${
-            activeTab === 'table'
-              ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-          }`}
-          onClick={() => setActiveTab('table')}
-        >
-          Data Tabel
-        </button>
-        <button
-          className={`py-2 px-4 text-sm font-medium ${
-            activeTab === 'grafik'
-              ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-          }`}
-          onClick={() => setActiveTab('grafik')}
-        >
-          Grafik
-        </button>
-      </div>
+      {/* Tab Navigation (shadcn Tabs) */}
+      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'table' | 'grafik')} className="mb-6">
+        <TabsList className="bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+          <TabsTrigger 
+            value="table" 
+            className="text-xs sm:text-sm font-semibold rounded-lg px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs"
+          >
+            Data Tabel
+          </TabsTrigger>
+          <TabsTrigger 
+            value="grafik" 
+            className="text-xs sm:text-sm font-semibold rounded-lg px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs"
+          >
+            Grafik
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Tab Content */}
       {error ? (
         <div className={`border p-4 rounded-md mb-6 ${isDarkMode ? "bg-red-950 border-red-900 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>{error}</div>
       ) : (
         <>
-          {/* Data Table Content */}
+          {/* Data Table Content (shadcn Table) */}
           {activeTab === 'table' && (
             loading ? (
               <Card>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50 dark:bg-gray-800">
-                        <tr>
-                          {[...Array(11)].map((_, i) => (
-                            <th key={i} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
-                              <Skeleton className="h-4 w-20" />
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
-                        {[...Array(itemsPerPage)].map((_, i) => (
-                          <tr key={i}>
-                            {[...Array(11)].map((_, j) => (
-                              <td key={j} className="px-6 py-4 whitespace-nowrap">
-                                <Skeleton className="h-4 w-full" />
-                              </td>
-                            ))}
-                          </tr>
+                  <Table className="w-full">
+                    <TableHeader>
+                      <TableRow>
+                        {[...Array(11)].map((_, i) => (
+                          <TableHead key={i}>
+                            <Skeleton className="h-4 w-20" />
+                          </TableHead>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {[...Array(itemsPerPage)].map((_, i) => (
+                        <TableRow key={i}>
+                          {[...Array(11)].map((_, j) => (
+                            <TableCell key={j}>
+                              <Skeleton className="h-4 w-full" />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             ) : (
               <Card>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className={isDarkMode ? "bg-gray-800 text-left" : "bg-gray-50 dark:bg-gray-800 text-left"}>
-                          <th className={`p-3 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Waktu</th>
-                          <th className={`p-3 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Suhu (°C)</th>
-                          <th className={`p-3 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Kelembapan (%)</th>
-                          <th className={`p-3 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Tekanan (hPa)</th>
-                          <th className={`p-3 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Titik Embun (°C)</th>
-                          <th className={`p-3 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Curah Hujan (mm)</th>
-                          <th className={`p-3 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Laju Hujan (mm/j)</th>
-                          <th className={`p-3 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Cahaya (lux)</th>
-                          <th className={`p-3 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Suhu Tanah (°C)</th>
-                          <th className={`p-3 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Tegangan (V)</th>
-                          <th className={`p-3 font-medium ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"} border-b`}>Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody id="datalogger">
-                        {currentTableData.length === 0 ? (
-                          <tr>
-                            <td colSpan={11} className={`p-8 text-center ${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"}`}>
-                              Tidak ada data yang tersedia.
-                            </td>
-                          </tr>
-                        ) : (
-                          currentTableData.map((entry, index) => (
-                            <tr
-                              key={index}
-                              className={isDarkMode
-                                ? (index % 2 === 0 ? "bg-gray-900" : "bg-gray-800")
-                                : (index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800")}
-                            >
-                              <td className={`p-3 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{entry.date}</td>
-                              <td className={`p-3 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.temperature)}</td>
-                              <td className={`p-3 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.humidity)}</td>
-                              <td className={`p-3 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.pressure)}</td>
-                              <td className={`p-3 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.dew)}</td>
-                              <td className={`p-3 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.rainfall)}</td>
-                              <td className={`p-3 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.rainrate)}</td>
-                              <td className={`p-3 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.lux)}</td>
-                              <td className={`p-3 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.soil_temp)}</td>
-                              <td className={`p-3 border-t ${isDarkMode ? "text-gray-200" : ""}`}>{fmt2(entry.volt)}</td>
-                              <td className={`p-3 border-t flex gap-2`}>
-                                <button
-                                  className={`p-2 rounded hover:bg-primary-100 dark:hover:bg-primary-900`}
+                  <Table className="w-full text-sm">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="font-bold">Waktu</TableHead>
+                        <TableHead className="font-bold">Suhu (°C)</TableHead>
+                        <TableHead className="font-bold">Kelembapan (%)</TableHead>
+                        <TableHead className="font-bold">Tekanan (hPa)</TableHead>
+                        <TableHead className="font-bold">Titik Embun (°C)</TableHead>
+                        <TableHead className="font-bold">Curah Hujan (mm)</TableHead>
+                        <TableHead className="font-bold">Laju Hujan (mm/j)</TableHead>
+                        <TableHead className="font-bold">Cahaya (lux)</TableHead>
+                        <TableHead className="font-bold">Suhu Tanah (°C)</TableHead>
+                        <TableHead className="font-bold">Tegangan (V)</TableHead>
+                        <TableHead className="font-bold text-center">Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody id="datalogger">
+                      {currentTableData.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={11} className="p-8 text-center text-muted-foreground">
+                            Tidak ada data yang tersedia.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        currentTableData.map((entry, index) => (
+                          <TableRow key={index} className="hover:bg-muted/50 transition-colors">
+                            <TableCell className="font-mono text-xs">{entry.date}</TableCell>
+                            <TableCell>{fmt2(entry.temperature)}</TableCell>
+                            <TableCell>{fmt2(entry.humidity)}</TableCell>
+                            <TableCell>{fmt2(entry.pressure)}</TableCell>
+                            <TableCell>{fmt2(entry.dew)}</TableCell>
+                            <TableCell>{fmt2(entry.rainfall)}</TableCell>
+                            <TableCell>{fmt2(entry.rainrate)}</TableCell>
+                            <TableCell>{fmt2(entry.lux)}</TableCell>
+                            <TableCell>{fmt2(entry.soil_temp)}</TableCell>
+                            <TableCell>{fmt2(entry.volt)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10 cursor-pointer"
                                   title="Edit"
                                   onClick={() => openEditModal(entry, indexOfFirstItem + index)}
                                 >
-                                  <EditIcon className={`h-4 w-4 ${isDarkMode ? "text-primary-300" : "text-primary-600"}`} />
-                                </button>
-                                <button
-                                  className={`p-2 rounded hover:bg-red-100 dark:hover:bg-red-900`}
+                                  <EditIcon className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
                                   title="Hapus"
                                   onClick={() => openDeleteModal(indexOfFirstItem + index)}
                                 >
-                                  <Trash2 className={`h-4 w-4 ${isDarkMode ? "text-red-300" : "text-red-600"}`} />
-                                </button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
                   {weatherData.length > itemsPerPage && (
                     <div className="flex items-center justify-between p-4 border-t bg-slate-200 dark:bg-slate-700">
                       <Button onClick={handlePreviousPage} disabled={currentPage === 1} variant="outline">
@@ -1378,66 +1418,65 @@ export default function DataPage() {
         </>
       )}
 
-      {/* Modal Edit Data */}
-      {editModalOpen && editForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-40">
-          <Card className={`w-full max-w-md mx-auto ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
-            <CardHeader>
-              <CardTitle>Edit Data Sensor</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form
-                onSubmit={e => {
-                  e.preventDefault();
-                  handleEditSave();
-                }}
-                className="space-y-4 max-h-[70vh] overflow-y-auto"
-              >
+      {/* Modal Edit Data (shadcn Dialog) */}
+      <Dialog open={editModalOpen} onOpenChange={(open) => !open && closeEditModal()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Data Sensor</DialogTitle>
+          </DialogHeader>
+          {editForm && (
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                handleEditSave();
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
                 {sensorFields.map((field) => (
                   <SensorInput
                     key={field.key}
                     field={field}
                     value={editForm[field.key] as number}
                     onChange={(val) => setEditForm({ ...editForm, [field.key]: val })}
-                    isDark={isDarkMode}
                   />
                 ))}
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" onClick={closeEditModal}>
-                    Batal
-                  </Button>
-                  <Button type="submit" variant="default">
-                    Simpan
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0 pt-2">
+                <Button type="button" variant="outline" onClick={closeEditModal}>
+                  Batal
+                </Button>
+                <Button type="submit" variant="default">
+                  Simpan
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Modal Tambah Data */}
-      {addModalOpen && addForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <Card className={`w-full max-w-md mx-auto ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
-            <CardHeader>
-              <CardTitle>Tambah Data Sensor</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form
-                onSubmit={e => {
-                  e.preventDefault();
-                  handleAddSave();
-                }}
-                className="space-y-4 max-h-[70vh] overflow-y-auto"
-              >
-                <div>
-                  <label className="block text-sm mb-1">Tanggal & Waktu</label>
-                  <input
+      {/* Modal Tambah Data (shadcn Dialog) */}
+      <Dialog open={addModalOpen} onOpenChange={(open) => !open && closeAddModal()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tambah Data Sensor</DialogTitle>
+          </DialogHeader>
+          {addForm && (
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                handleAddSave();
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Tanggal & Waktu</Label>
+                  <Input
                     type="datetime-local"
                     value={addForm.date}
                     onChange={e => setAddForm({ ...addForm, date: e.target.value })}
-                    className={`w-full px-3 py-2 rounded border ${isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 border-gray-300"}`}
+                    className="h-9"
                     required
                   />
                 </div>
@@ -1447,44 +1486,39 @@ export default function DataPage() {
                     field={field}
                     value={addForm[field.key] as number}
                     onChange={(val) => setAddForm({ ...addForm, [field.key]: val })}
-                    isDark={isDarkMode}
                   />
                 ))}
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" onClick={closeAddModal}>
-                    Batal
-                  </Button>
-                  <Button type="submit" variant="default">
-                    Simpan
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Modal Konfirmasi Hapus */}
-      {deleteModalOpen && deleteRowIndex !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <Card className={`w-full max-w-sm mx-auto ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
-            <CardHeader>
-              <CardTitle>Konfirmasi Hapus Data</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="mb-4">Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat diurungkan.</p>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={closeDeleteModal}>
-                  Tidak
-                </Button>
-                <Button variant="destructive" onClick={handleDeleteRowConfirmed}>
-                  Ya, Hapus
-                </Button>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              <DialogFooter className="gap-2 sm:gap-0 pt-2">
+                <Button type="button" variant="outline" onClick={closeAddModal}>
+                  Batal
+                </Button>
+                <Button type="submit" variant="default">
+                  Simpan
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Konfirmasi Hapus (shadcn AlertDialog) */}
+      <AlertDialog open={deleteModalOpen} onOpenChange={(open) => !open && closeDeleteModal()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Hapus Data</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat diurungkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={closeDeleteModal}>Tidak</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteRowConfirmed} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Ya, Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
