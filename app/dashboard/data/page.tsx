@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -26,7 +26,15 @@ import {
   Sun,
   Thermometer,
   Zap,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  RotateCcw,
+  CalendarDays,
 } from "lucide-react";
+import { format, isSameDay, subDays, addDays, startOfDay, endOfDay, isFuture } from "date-fns";
+import { id } from "date-fns/locale";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/empty-state";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -178,6 +186,18 @@ export default function DataPage() {
   const [sensorId, setSensorId] = useState<string>(() => getStoredActiveSensorId() || "");
   const [selectedPeriod, setSelectedPeriod] = useState<Period>(periods[1]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Deteksi ukuran layar responsif untuk popover kalender
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // State untuk mode dark
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -334,9 +354,11 @@ export default function DataPage() {
     setError(null);
     try {
       let data: SensorDate[];
-      if (dateRange?.from && dateRange?.to) {
-        const startTimestamp = dateRange.from.getTime();
-        const endTimestamp = dateRange.to.getTime();
+      if (dateRange?.from) {
+        const fromDate = startOfDay(dateRange.from);
+        const toDate = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+        const startTimestamp = fromDate.getTime();
+        const endTimestamp = toDate.getTime();
         const durationHours = (endTimestamp - startTimestamp) / (1000 * 3600);
         const resolution = durationHours > 72 ? "hourly" : "raw";
         data = await fetchSensorDataByDateRange(
@@ -612,6 +634,89 @@ export default function DataPage() {
     fetchData();
   };
 
+  // Helper mendapatkan tanggal aktif saat ini
+  const getActiveDay = useCallback(() => {
+    if (dateRange?.from) {
+      return new Date(dateRange.from);
+    }
+    return new Date();
+  }, [dateRange]);
+
+  // Geser 1 hari ke belakang (Lihat data 24 Jam Hari Kemarin)
+  const handlePrevDay = useCallback(() => {
+    const current = getActiveDay();
+    const prev = subDays(current, 1);
+    const start = startOfDay(prev);
+    const end = endOfDay(prev);
+    setDateRange({ from: start, to: end });
+    if (searchQuery) setSearchQuery("");
+  }, [getActiveDay, searchQuery]);
+
+  // Geser 1 hari ke depan (Lihat data 24 Jam Hari Selanjutnya)
+  const handleNextDay = useCallback(() => {
+    const current = getActiveDay();
+    const next = addDays(current, 1);
+    const now = new Date();
+    if (startOfDay(next) > startOfDay(now)) return; // Tidak boleh melampaui hari ini
+    const start = startOfDay(next);
+    const end = isSameDay(next, now) ? endOfDay(now) : endOfDay(next);
+    setDateRange({ from: start, to: end });
+    if (searchQuery) setSearchQuery("");
+  }, [getActiveDay, searchQuery]);
+
+  // Langsung ke 24 jam hari kemarin
+  const handleGoToYesterday = useCallback(() => {
+    const now = new Date();
+    const yesterday = subDays(now, 1);
+    const start = startOfDay(yesterday);
+    const end = endOfDay(yesterday);
+    setDateRange({ from: start, to: end });
+    if (searchQuery) setSearchQuery("");
+  }, [searchQuery]);
+
+  // Reset kembali ke mode live streaming
+  const handleResetToLive = useCallback(() => {
+    setDateRange(undefined);
+    if (searchQuery) setSearchQuery("");
+  }, [searchQuery]);
+
+  // Cek apakah tombol hari selanjutnya dinonaktifkan
+  const isNextDayDisabled = useMemo(() => {
+    const current = getActiveDay();
+    return isSameDay(current, new Date()) || isFuture(current);
+  }, [getActiveDay]);
+
+  const isCustomDateActive = Boolean(dateRange?.from);
+
+  // Preset cepat rentang tanggal kalender
+  const handleApplyPreset = (preset: "today" | "yesterday" | "last7" | "last30" | "thisMonth") => {
+    const now = new Date();
+    if (preset === "today") {
+      const start = startOfDay(now);
+      const end = endOfDay(now);
+      setDateRange({ from: start, to: end });
+    } else if (preset === "yesterday") {
+      const yesterday = subDays(now, 1);
+      const start = startOfDay(yesterday);
+      const end = endOfDay(yesterday);
+      setDateRange({ from: start, to: end });
+    } else if (preset === "last7") {
+      const start = startOfDay(subDays(now, 6));
+      const end = endOfDay(now);
+      setDateRange({ from: start, to: end });
+    } else if (preset === "last30") {
+      const start = startOfDay(subDays(now, 29));
+      const end = endOfDay(now);
+      setDateRange({ from: start, to: end });
+    } else if (preset === "thisMonth") {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = endOfDay(now);
+      setDateRange({ from: start, to: end });
+    }
+    setIsCalendarOpen(false);
+    if (searchQuery) setSearchQuery("");
+  };
+
   // Fungsi untuk mengunduh data
   const handleDownloadData = () => {
     if (weatherData.length === 0) {
@@ -855,40 +960,133 @@ export default function DataPage() {
               )}
             </div>
 
-            <Popover>
+            {/* Popover Kalender yang Disempurnakan */}
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
                   id="date"
-                  variant={"outline"}
+                  variant="outline"
                   className={cn(
-                    "w-[260px] justify-start text-left font-normal",
-                    !dateRange && "text-muted-foreground"
+                    "w-full sm:w-auto min-w-[240px] justify-between text-left font-semibold text-xs sm:text-sm h-9 px-3 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                    dateRange?.from ? "text-slate-900 dark:text-slate-100 border-blue-500/60 ring-1 ring-blue-500/20" : "text-slate-500"
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateRange?.from ? (
-                    dateRange.to ? (
-                      <>
-                        {new Date(dateRange.from).toLocaleDateString("id-ID", { month: "short", day: "2-digit", year: "numeric" })} -{" "}
-                        {new Date(dateRange.to).toLocaleDateString("id-ID", { month: "short", day: "2-digit", year: "numeric" })}
-                      </>
-                    ) : (
-                      new Date(dateRange.from).toLocaleDateString("id-ID", { month: "short", day: "2-digit", year: "numeric" })
-                    )
-                  ) : (
-                    <span>Pilih rentang tanggal</span>
+                  <div className="flex items-center gap-2 truncate">
+                    <CalendarIcon className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span className="truncate">
+                      {dateRange?.from ? (
+                        dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? (
+                          <>
+                            {format(dateRange.from, "dd MMM yyyy", { locale: id })} – {format(dateRange.to, "dd MMM yyyy", { locale: id })}
+                          </>
+                        ) : (
+                          `${format(dateRange.from, "EEEE, dd MMM yyyy", { locale: id })} (24 Jam)`
+                        )
+                      ) : (
+                        <span>Pilih Rentang Tanggal</span>
+                      )}
+                    </span>
+                  </div>
+                  {dateRange?.from && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4.5 ml-1.5 shrink-0 bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      {dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? "Rentang" : "24 Jam"}
+                    </Badge>
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1.5rem)] shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 overflow-auto" align="start">
-                <Calendar
-                  autoFocus
-                  mode="range"
-                  defaultMonth={dateRange?.from}
-                  selected={dateRange}
-                  onSelect={setDateRange}
-                  numberOfMonths={2}
-                />
+              <PopoverContent 
+                className="w-auto p-0 max-w-[calc(100vw-1.5rem)] shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden" 
+                align="start"
+              >
+                {/* Header Popover dengan Judul & Preset Cepat */}
+                <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 space-y-2.5 bg-slate-50/60 dark:bg-slate-950/40">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <CalendarDays className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      Pilih Tanggal / Rentang Observasi
+                    </span>
+                    {dateRange?.from && (
+                      <button
+                        onClick={handleResetToLive}
+                        className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 flex items-center gap-1 transition-colors"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Reset ke Live
+                      </button>
+                    )}
+                  </div>
+                  {/* Preset Buttons */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPreset("today")}
+                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                    >
+                      Hari Ini (24 Jam)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPreset("yesterday")}
+                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                    >
+                      Kemarin (24 Jam)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPreset("last7")}
+                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                    >
+                      7 Hari Terakhir
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPreset("last30")}
+                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                    >
+                      30 Hari Terakhir
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPreset("thisMonth")}
+                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-2xs cursor-pointer"
+                    >
+                      Bulan Ini
+                    </button>
+                  </div>
+                </div>
+
+                {/* Calendar Component */}
+                <div className="p-2 sm:p-3 overflow-x-auto flex justify-center">
+                  <Calendar
+                    autoFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from || new Date()}
+                    selected={dateRange}
+                    onSelect={(range) => {
+                      setDateRange(range);
+                    }}
+                    numberOfMonths={isMobile ? 1 : 2}
+                    disabled={(date) => isFuture(date)}
+                  />
+                </div>
+
+                {/* Footer Popover: Status & Close */}
+                <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    {dateRange?.from ? (
+                      <>Terpilih: <strong>{format(dateRange.from, "dd MMM yyyy", { locale: id })}</strong>{dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? <> s/d <strong>{format(dateRange.to, "dd MMM yyyy", { locale: id })}</strong></> : " (24 Jam Penuh)"}</>
+                    ) : (
+                      "Mode saat ini: Live Streaming Realtime"
+                    )}
+                  </span>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs font-bold px-3 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                    onClick={() => setIsCalendarOpen(false)}
+                  >
+                    Tutup
+                  </Button>
+                </div>
               </PopoverContent>
             </Popover>
 
@@ -915,25 +1113,105 @@ export default function DataPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="pt-4 bg-slate-100 dark:bg-slate-800">
-          <div className="flex flex-wrap gap-2">
-            {periods.map((period) => (
-              <button
-                key={period.label}
-                onClick={() => handlePeriodChange(period)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  selectedPeriod?.label === period.label && !dateRange
-                    ? isDarkMode
-                      ? "bg-primary-700 text-white"
-                      : "bg-primary-600 text-white"
-                    : isDarkMode
-                      ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                }`}
+        <CardContent className="p-4 bg-slate-50/70 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 space-y-3.5">
+          {/* Baris 1: Stepper Tombol Geser 24 Jam (Hari Kemarin & Hari Selanjutnya) */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-white dark:bg-slate-950/80 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-lg shrink-0">
+                <CalendarDays className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    {isCustomDateActive ? "Observasi Harian 24 Jam" : "Mode Periode Berjalan"}
+                  </span>
+                  {isCustomDateActive && (
+                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 font-mono font-semibold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40">
+                      {dateRange?.to && !isSameDay(dateRange.from!, dateRange.to) ? "Multi-Hari" : "24 Jam Penuh"}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 font-mono">
+                    {dateRange?.from
+                      ? dateRange.to && !isSameDay(dateRange.from, dateRange.to)
+                        ? `${format(dateRange.from, "dd MMM yyyy", { locale: id })} – ${format(dateRange.to, "dd MMM yyyy", { locale: id })}`
+                        : format(dateRange.from, "EEEE, dd MMMM yyyy", { locale: id })
+                      : `Live Realtime (${selectedPeriod.label} Terakhir)`}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tombol Geser Hari Kemarin & Hari Selanjutnya */}
+            <div className="flex flex-wrap items-center gap-1.5 self-stretch sm:self-auto justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevDay}
+                title="Geser Mundur 1 Hari (24 Jam Kemarin)"
+                className="h-8 text-xs font-bold text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-800 dark:hover:text-blue-400 gap-1 shadow-2xs"
               >
-                {period.label}
-              </button>
-            ))}
+                <ChevronLeft className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                Hari Kemarin
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextDay}
+                disabled={isNextDayDisabled}
+                title="Geser Maju 1 Hari (24 Jam Selanjutnya)"
+                className="h-8 text-xs font-bold text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-800 dark:hover:text-blue-400 gap-1 shadow-2xs disabled:opacity-40"
+              >
+                Hari Selanjutnya
+                <ChevronRight className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+              </Button>
+
+              {isCustomDateActive ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetToLive}
+                  className="h-8 text-xs font-bold text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 gap-1 shadow-2xs"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Kembali ke Live
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGoToYesterday}
+                  className="h-8 text-xs font-bold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 shadow-2xs"
+                >
+                  Lihat Kemarin (24 Jam)
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Baris 2: Pilihan Rentang Waktu Live Berjalan */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-0.5">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 text-slate-400" />
+              Rentang Waktu Live Berjalan:
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {periods.map((period) => (
+                <button
+                  key={period.label}
+                  onClick={() => handlePeriodChange(period)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    selectedPeriod?.label === period.label && !dateRange
+                      ? "bg-blue-600 text-white shadow-xs scale-[1.02]"
+                      : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  {period.label}
+                </button>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
