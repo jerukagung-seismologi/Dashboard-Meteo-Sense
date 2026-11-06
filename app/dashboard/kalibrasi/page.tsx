@@ -816,40 +816,38 @@ function UnifiedCalibrationContent() {
                     <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
                       Preset Periode:
                     </span>
-                    <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                      <Button
-                        variant={timePreset === "1m" ? "default" : "ghost"}
-                        size="sm"
-                        className="h-7 text-xs px-3 rounded-lg"
-                        onClick={() => handlePresetChange("1m")}
-                      >
-                        1 Bulan (Optimal)
-                      </Button>
-                      <Button
-                        variant={timePreset === "3m" ? "default" : "ghost"}
-                        size="sm"
-                        className="h-7 text-xs px-3 rounded-lg"
-                        onClick={() => handlePresetChange("3m")}
-                      >
-                        3 Bulan
-                      </Button>
-                      <Button
-                        variant={timePreset === "6m" ? "default" : "ghost"}
-                        size="sm"
-                        className="h-7 text-xs px-3 rounded-lg"
-                        onClick={() => handlePresetChange("6m")}
-                      >
-                        6 Bulan
-                      </Button>
-                      <Button
-                        variant={timePreset === "1y" ? "default" : "ghost"}
-                        size="sm"
-                        className="h-7 text-xs px-3 rounded-lg"
-                        onClick={() => handlePresetChange("1y")}
-                      >
-                        1 Tahun
-                      </Button>
-                    </div>
+                    <Tabs
+                      value={timePreset}
+                      onValueChange={(v) => handlePresetChange(v as "1m" | "3m" | "6m" | "1y")}
+                      className="w-auto"
+                    >
+                      <TabsList className="bg-slate-100 dark:bg-slate-800/80 p-0.5 h-8 rounded-lg flex justify-start border border-slate-200/80 dark:border-slate-700/80">
+                        <TabsTrigger
+                          value="1m"
+                          className="h-7 text-xs px-2.5 sm:px-3 font-semibold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs cursor-pointer border-none"
+                        >
+                          1 Bulan (Optimal)
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="3m"
+                          className="h-7 text-xs px-2.5 sm:px-3 font-semibold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs cursor-pointer border-none"
+                        >
+                          3 Bulan
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="6m"
+                          className="h-7 text-xs px-2.5 sm:px-3 font-semibold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs cursor-pointer border-none"
+                        >
+                          6 Bulan
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="1y"
+                          className="h-7 text-xs px-2.5 sm:px-3 font-semibold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs cursor-pointer border-none"
+                        >
+                          1 Tahun
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
                   </div>
 
                   {/* Split Data Slider */}
@@ -953,45 +951,47 @@ function UnifiedCalibrationContent() {
             unit={activeVarConfig.unit}
           />
 
-          {/* Detailed Analytical Visualization Tabs */}
-          <Tabs defaultValue="timeseries" className="w-full">
-            <TabsList className="h-auto min-h-10 flex flex-wrap sm:grid sm:grid-cols-5 w-full max-w-3xl bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl gap-1">
-              <TabsTrigger
-                value="timeseries"
-                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
-              >
-                <LineChart className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                Deret Waktu
-              </TabsTrigger>
-              <TabsTrigger
-                value="diurnal"
-                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
-              >
-                <Clock className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                Siklus Diurnal
-              </TabsTrigger>
-              <TabsTrigger
-                value="scatter"
-                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
-              >
-                <ScatterChart className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                Scatter 1:1
-              </TabsTrigger>
-              <TabsTrigger
-                value="distribution"
-                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
-              >
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                Distribusi ECDF
-              </TabsTrigger>
-              <TabsTrigger
-                value="residual"
-                className="text-xs py-2 px-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-xs"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                Residual Error
-              </TabsTrigger>
-            </TabsList>
+          {/* Detailed Analytical Visualization Tabs (Gaya Underline seperti Menu Meteorologi) */}
+          <Tabs defaultValue="timeseries" className="w-full space-y-4">
+            <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
+              <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
+                <TabsTrigger
+                  value="timeseries"
+                  className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <LineChart className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  Deret Waktu
+                </TabsTrigger>
+                <TabsTrigger
+                  value="diurnal"
+                  className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <Clock className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  Siklus Diurnal
+                </TabsTrigger>
+                <TabsTrigger
+                  value="scatter"
+                  className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <ScatterChart className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                  Scatter 1:1
+                </TabsTrigger>
+                <TabsTrigger
+                  value="distribution"
+                  className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  Distribusi ECDF
+                </TabsTrigger>
+                <TabsTrigger
+                  value="residual"
+                  className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  Residual Error
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="timeseries" className="pt-3">
               <TimeSeriesComparisonPlot

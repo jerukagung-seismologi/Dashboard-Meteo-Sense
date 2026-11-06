@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -755,45 +756,41 @@ export const ActiveSensorManager: React.FC<ActiveSensorManagerProps> = ({
             </div>
           </div>
 
-          {/* Category Filter Pills */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+          {/* Category Filter Tabs */}
+          <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
             <span className="text-[11px] font-semibold text-slate-500 mr-1">Kategori:</span>
-            <Button
-              type="button"
-              variant={selectedCategory === "all" ? "default" : "outline"}
-              size="sm"
-              className="h-6 text-[11px] px-2.5 rounded-lg"
-              onClick={() => setSelectedCategory("all")}
+            <Tabs
+              value={selectedCategory}
+              onValueChange={(val) => setSelectedCategory(val as any)}
+              className="w-auto"
             >
-              Semua ({SENSOR_VARIABLES.length})
-            </Button>
-            <Button
-              type="button"
-              variant={selectedCategory === "core" ? "default" : "outline"}
-              size="sm"
-              className="h-6 text-[11px] px-2.5 rounded-lg"
-              onClick={() => setSelectedCategory("core")}
-            >
-              Inti (4)
-            </Button>
-            <Button
-              type="button"
-              variant={selectedCategory === "wind_rain" ? "default" : "outline"}
-              size="sm"
-              className="h-6 text-[11px] px-2.5 rounded-lg"
-              onClick={() => setSelectedCategory("wind_rain")}
-            >
-              Angin &amp; Hujan (4)
-            </Button>
-            <Button
-              type="button"
-              variant={selectedCategory === "agro_power" ? "default" : "outline"}
-              size="sm"
-              className="h-6 text-[11px] px-2.5 rounded-lg"
-              onClick={() => setSelectedCategory("agro_power")}
-            >
-              Agro &amp; Daya (3)
-            </Button>
+              <TabsList className="bg-slate-100 dark:bg-slate-800/80 p-0.5 h-7 rounded-lg border border-slate-200/80 dark:border-slate-700/80 flex justify-start">
+                <TabsTrigger
+                  value="all"
+                  className="h-6 text-[11px] px-2.5 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs cursor-pointer border-none"
+                >
+                  Semua ({SENSOR_VARIABLES.length})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="core"
+                  className="h-6 text-[11px] px-2.5 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs cursor-pointer border-none"
+                >
+                  Inti (4)
+                </TabsTrigger>
+                <TabsTrigger
+                  value="wind_rain"
+                  className="h-6 text-[11px] px-2.5 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs cursor-pointer border-none"
+                >
+                  Angin &amp; Hujan (4)
+                </TabsTrigger>
+                <TabsTrigger
+                  value="agro_power"
+                  className="h-6 text-[11px] px-2.5 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs cursor-pointer border-none"
+                >
+                  Agro &amp; Daya (3)
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </CardHeader>
 

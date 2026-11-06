@@ -615,19 +615,30 @@ Durasi Jam Basah: ${rainStats.rainDurationHours} Jam`;
         </Card>
       </div>
 
-      {/* Tabs Navigation: Ergonomics Anti-Long-Scroll convention (AGENTS.md Section 2) */}
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid grid-cols-3 max-w-md bg-slate-100 dark:bg-slate-800">
-          <TabsTrigger value="overview" className="text-xs">
-            Ringkasan & Publikasi
-          </TabsTrigger>
-          <TabsTrigger value="hourly" className="text-xs">
-            Distribusi Per Jam
-          </TabsTrigger>
-          <TabsTrigger value="document" className="text-xs">
-            Dokumen Cetak / Poster
-          </TabsTrigger>
-        </TabsList>
+      {/* Tabs Navigation (Gaya Underline seperti Menu Meteorologi) */}
+      <Tabs defaultValue="overview" className="w-full space-y-6">
+        <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
+          <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
+            <TabsTrigger
+              value="overview"
+              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+            >
+              Ringkasan &amp; Publikasi
+            </TabsTrigger>
+            <TabsTrigger
+              value="hourly"
+              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+            >
+              Distribusi Per Jam
+            </TabsTrigger>
+            <TabsTrigger
+              value="document"
+              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+            >
+              Dokumen Cetak / Poster
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* TAB 1: OVERVIEW & PUBLICATION */}
         <TabsContent value="overview" className="space-y-6 pt-4">

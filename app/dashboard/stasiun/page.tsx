@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -403,54 +404,67 @@ export default function PerangkatBenchmarkPage() {
             )}
           </div>
 
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl self-end sm:self-auto shrink-0">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`p-1.5 rounded-lg transition-all ${
-                viewMode === "grid" ? "bg-white dark:bg-slate-700 shadow-xs text-indigo-600" : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-              }`}
-              title="Tampilan Grid"
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={`p-1.5 rounded-lg transition-all ${
-                viewMode === "list" ? "bg-white dark:bg-slate-700 shadow-xs text-indigo-600" : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-              }`}
-              title="Tampilan Daftar"
-            >
-              <List className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          {/* View Mode Toggle as Tabs */}
+          <Tabs
+            value={viewMode}
+            onValueChange={(val) => setViewMode(val as ViewMode)}
+            className="w-auto self-end sm:self-auto shrink-0"
+          >
+            <TabsList className="bg-slate-100 dark:bg-slate-800 p-0.5 h-8 rounded-lg border border-slate-200/80 dark:border-slate-700/80">
+              <TabsTrigger
+                value="grid"
+                className="h-7 w-7 p-0 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-xs cursor-pointer"
+                title="Tampilan Grid"
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+              </TabsTrigger>
+              <TabsTrigger
+                value="list"
+                className="h-7 w-7 p-0 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-xs cursor-pointer"
+                title="Tampilan Daftar"
+              >
+                <List className="h-3.5 w-3.5" />
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Row 2: Filter chips + Sort + Count */}
         <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
-          {/* Status filter */}
+          {/* Status filter as Tabs */}
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
               <SlidersHorizontal className="h-3 w-3" />
               Filter:
             </span>
-            <div className="flex gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl">
-              {(["all", "online", "offline"] as const).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setStatusFilter(s)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                    statusFilter === s
-                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs"
-                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                  }`}
+            <Tabs
+              value={statusFilter}
+              onValueChange={(val) => setStatusFilter(val as any)}
+              className="w-auto"
+            >
+              <TabsList className="bg-slate-100 dark:bg-slate-800 p-0.5 h-7 rounded-lg border border-slate-200/80 dark:border-slate-700/80">
+                <TabsTrigger
+                  value="all"
+                  className="h-6 text-[11px] font-bold px-2.5 rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs cursor-pointer"
                 >
-                  {s === "online" && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                  {s === "offline" && <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />}
-                  {s === "all" ? `Semua (${devices.length})` : s === "online" ? `Online (${totalOnline})` : `Offline (${totalOffline})`}
-                </button>
-              ))}
-            </div>
+                  Semua ({devices.length})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="online"
+                  className="h-6 text-[11px] font-bold px-2.5 rounded-md flex items-center gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs cursor-pointer"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Online ({totalOnline})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="offline"
+                  className="h-6 text-[11px] font-bold px-2.5 rounded-md flex items-center gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs cursor-pointer"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                  Offline ({totalOffline})
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
           <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block" />

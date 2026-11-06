@@ -25,6 +25,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { fetchSensorDataByDateRange } from "@/lib/apiClient"
 import { useToast } from "@/hooks/use-toast"
@@ -441,58 +442,64 @@ Tekanan Udara Rata-Rata: ${minPress} - ${maxPress} hPa`;
                 Periode Analisis Laporan
               </label>
 
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border">
-                <Button
-                  variant={viewMode === 'web' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('web')}
-                  className={cn("h-7 text-xs px-2 sm:px-3 font-medium", viewMode === 'web' && "bg-white dark:bg-slate-900 text-blue-600 shadow-sm")}
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5 mr-1 sm:mr-1.5" />
-                  <span className="hidden min-[400px]:inline">Dashboard Web</span>
-                  <span className="min-[400px]:hidden">Web</span>
-                </Button>
-                <Button
-                  variant={viewMode === 'print' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('print')}
-                  className={cn("h-7 text-xs px-2 sm:px-3 font-medium", viewMode === 'print' && "bg-white dark:bg-slate-900 text-indigo-600 shadow-sm")}
-                >
-                  <Eye className="w-3.5 h-3.5 mr-1 sm:mr-1.5" />
-                  <span className="hidden min-[400px]:inline">Pratinjau Cetak (A4)</span>
-                  <span className="min-[400px]:hidden">Cetak</span>
-                </Button>
-              </div>
+              {/* View Mode Toggle (Gaya Underline seperti Menu Meteorologi) */}
+              <Tabs
+                value={viewMode}
+                onValueChange={(val) => setViewMode(val as ViewMode)}
+                className="w-auto"
+              >
+                <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
+                  <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex justify-start -mb-px">
+                    <TabsTrigger
+                      value="web"
+                      className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <LayoutDashboard className="w-3.5 h-3.5" />
+                      <span className="hidden min-[400px]:inline">Dashboard Web</span>
+                      <span className="min-[400px]:hidden">Web</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="print"
+                      className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span className="hidden min-[400px]:inline">Pratinjau Cetak (A4)</span>
+                      <span className="min-[400px]:hidden">Cetak</span>
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+              </Tabs>
             </div>
 
-            {/* Mode selector chips */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={mode === 'mingguan' ? 'default' : 'outline'}
-                size="sm"
-                className={cn(mode === 'mingguan' && 'bg-blue-600 hover:bg-blue-700 text-white')}
-                onClick={() => handleSelectMode('mingguan')}
-              >
-                Mingguan (Sen–Min)
-              </Button>
-              <Button
-                variant={mode === 'dasarian' ? 'default' : 'outline'}
-                size="sm"
-                className={cn(mode === 'dasarian' && 'bg-indigo-600 hover:bg-indigo-700 text-white')}
-                onClick={() => handleSelectMode('dasarian')}
-              >
-                {dasarianRangeData.label}
-              </Button>
-              <Button
-                variant={mode === 'custom' ? 'default' : 'outline'}
-                size="sm"
-                className={cn(mode === 'custom' && 'bg-slate-700 hover:bg-slate-800 text-white')}
-                onClick={() => handleSelectMode('custom')}
-              >
-                Custom Tanggal
-              </Button>
-            </div>
+            {/* Mode selector Tabs */}
+            <Tabs
+              value={mode}
+              onValueChange={(val) => handleSelectMode(val as PeriodMode)}
+              className="w-auto"
+            >
+              <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
+                <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex flex-wrap sm:flex-nowrap justify-start -mb-px">
+                  <TabsTrigger
+                    value="mingguan"
+                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
+                  >
+                    Mingguan (Sen–Min)
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="dasarian"
+                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
+                  >
+                    {dasarianRangeData.label}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="custom"
+                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
+                  >
+                    Custom Tanggal
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </Tabs>
 
             {/* Mingguan Navigator */}
             {mode === 'mingguan' && (

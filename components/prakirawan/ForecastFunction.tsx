@@ -1526,11 +1526,23 @@ export default function ForecastForm() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="input">Input Prakiraan</TabsTrigger>
-          <TabsTrigger value="history">Riwayat Prakiraan</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+        <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
+          <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex justify-start -mb-px">
+            <TabsTrigger
+              value="input"
+              className="px-4 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+            >
+              Input Prakiraan
+            </TabsTrigger>
+            <TabsTrigger
+              value="history"
+              className="px-4 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+            >
+              Riwayat Prakiraan
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="input">
           <div className="flex flex-col lg:flex-row gap-6">
@@ -1745,34 +1757,37 @@ export default function ForecastForm() {
                       {forecastDisplayDateStr}
                     </span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={targetDateMode === "today" ? "default" : "outline"}
-                      onClick={() => setTargetDateMode("today")}
-                      className={cn("h-8 text-xs font-medium", targetDateMode === "today" ? "bg-blue-600 text-white" : "")}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Tabs
+                      value={targetDateMode === "custom" ? "" : targetDateMode}
+                      onValueChange={(val) => {
+                        if (val) setTargetDateMode(val as "today" | "tomorrow" | "dayAfter")
+                      }}
+                      className="w-auto"
                     >
-                      Hari Ini
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={targetDateMode === "tomorrow" ? "default" : "outline"}
-                      onClick={() => setTargetDateMode("tomorrow")}
-                      className={cn("h-8 text-xs font-medium", targetDateMode === "tomorrow" ? "bg-blue-600 text-white" : "")}
-                    >
-                      Besok
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={targetDateMode === "dayAfter" ? "default" : "outline"}
-                      onClick={() => setTargetDateMode("dayAfter")}
-                      className={cn("h-8 text-xs font-medium", targetDateMode === "dayAfter" ? "bg-blue-600 text-white" : "")}
-                    >
-                      Lusa
-                    </Button>
+                      <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
+                        <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
+                          <TabsTrigger
+                            value="today"
+                            className="px-3 py-1.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
+                          >
+                            Hari Ini
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="tomorrow"
+                            className="px-3 py-1.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
+                          >
+                            Besok
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="dayAfter"
+                            className="px-3 py-1.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer"
+                          >
+                            Lusa
+                          </TabsTrigger>
+                        </TabsList>
+                      </div>
+                    </Tabs>
                     <div className="flex items-center gap-1 flex-1 min-w-[140px]">
                       <Input
                         type="date"

@@ -126,7 +126,7 @@ export const EcmwfMjoViewer: React.FC<EcmwfMjoViewerProps> = ({ initialBaseTime 
           </div>
 
           {/* Action Toolbar & Base Time Selector */}
-          <div className="flex flex-wrap items-center gap-2 self-start lg:self-center">
+          <div className="flex flex-wrap items-center gap-2 self-start">
             {/* Run Time Selector */}
             {data?.availableTimes && data.availableTimes.length > 0 && (
               <div className="flex items-center gap-1.5">

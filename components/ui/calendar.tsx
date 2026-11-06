@@ -90,13 +90,13 @@ function Calendar({
             : "[&>svg]:text-muted-foreground flex h-8 items-center gap-1 rounded-md pl-2 pr-1 text-sm [&>svg]:size-3.5",
           defaultClassNames.caption_label
         ),
-        month_grid: cn("w-full border-collapse", defaultClassNames.month_grid),
-        weekdays: cn("grid grid-cols-7 w-full", defaultClassNames.weekdays),
+        month_grid: cn("w-full border-collapse space-y-1", defaultClassNames.month_grid),
+        weekdays: cn("flex w-full justify-between items-center mb-1", defaultClassNames.weekdays),
         weekday: cn(
-          "h-9 flex items-center justify-center text-center text-muted-foreground select-none rounded-md text-[0.8rem] font-medium",
+          "size-9 flex items-center justify-center text-center text-muted-foreground select-none rounded-md text-[0.8rem] font-medium shrink-0",
           defaultClassNames.weekday
         ),
-        week: cn("mt-1 grid grid-cols-7 w-full", defaultClassNames.week),
+        week: cn("mt-1 flex w-full justify-between items-center", defaultClassNames.week),
         week_number_header: cn(
           "w-9 select-none",
           defaultClassNames.week_number_header
@@ -106,7 +106,7 @@ function Calendar({
           defaultClassNames.week_number
         ),
         day: cn(
-          "group/day relative size-9 select-none p-0 text-center flex items-center justify-center mx-auto [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md",
+          "group/day relative size-9 select-none p-0 text-center flex items-center justify-center shrink-0 [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md",
           defaultClassNames.day
         ),
         range_start: cn(

@@ -501,37 +501,78 @@ export const EnsembleAgrometSection: React.FC<EnsembleAgrometSectionProps> = ({
           </div>
         </div>
 
-        {/* 9-Variable Unified Responsive Tab Bar */}
-        <Tabs defaultValue="temperature" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 h-auto p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4 gap-1">
-            <TabsTrigger value="temperature" className="py-2 text-xs font-bold flex items-center gap-1">
-              <Thermometer className="h-3.5 w-3.5 text-red-500" /> Suhu
-            </TabsTrigger>
-            <TabsTrigger value="dewpoint" className={cn("py-2 text-xs font-bold flex items-center gap-1", isAiModel && "opacity-60")}>
-              <Droplets className="h-3.5 w-3.5 text-teal-500" /> T. Embun {isAiModel && <span className="text-[9px] font-normal text-slate-400">(N/A)</span>}
-            </TabsTrigger>
-            <TabsTrigger value="pressure" className="py-2 text-xs font-bold flex items-center gap-1">
-              <Gauge className="h-3.5 w-3.5 text-indigo-500" /> Tekanan
-            </TabsTrigger>
-            <TabsTrigger value="precipitation" className="py-2 text-xs font-bold flex items-center gap-1">
-              <CloudRain className="h-3.5 w-3.5 text-sky-500" /> Hujan
-            </TabsTrigger>
-            <TabsTrigger value="humidity" className={cn("py-2 text-xs font-bold flex items-center gap-1", isAiModel && "opacity-60")}>
-              <Waves className="h-3.5 w-3.5 text-blue-500" /> Kel. (RH) {isAiModel && <span className="text-[9px] font-normal text-slate-400">(N/A)</span>}
-            </TabsTrigger>
-            <TabsTrigger value="wind" className="py-2 text-xs font-bold flex items-center gap-1">
-              <Wind className="h-3.5 w-3.5 text-purple-500" /> Angin
-            </TabsTrigger>
-            <TabsTrigger value="cloud" className="py-2 text-xs font-bold flex items-center gap-1">
-              <Cloud className="h-3.5 w-3.5 text-slate-500" /> Awan
-            </TabsTrigger>
-            <TabsTrigger value="solar" className={cn("py-2 text-xs font-bold flex items-center gap-1", isAiModel && "opacity-60")}>
-              <Sun className="h-3.5 w-3.5 text-amber-500" /> Radiasi {isAiModel && <span className="text-[9px] font-normal text-slate-400">(N/A)</span>}
-            </TabsTrigger>
-            <TabsTrigger value="et0" className={cn("py-2 text-xs font-bold flex items-center gap-1", isAiModel && "opacity-60")}>
-              <Sprout className="h-3.5 w-3.5 text-emerald-500" /> ET0 {isAiModel && <span className="text-[9px] font-normal text-slate-400">(N/A)</span>}
-            </TabsTrigger>
-          </TabsList>
+        {/* 9-Variable Unified Responsive Tab Bar (Gaya Underline seperti Menu Meteorologi) */}
+        <Tabs defaultValue="temperature" value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
+          <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
+            <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
+              <TabsTrigger
+                value="temperature"
+                className="px-3.5 py-2 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Thermometer className="h-3.5 w-3.5 text-red-500 shrink-0" /> Suhu
+              </TabsTrigger>
+              <TabsTrigger
+                value="dewpoint"
+                className={cn(
+                  "px-3.5 py-2 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5",
+                  isAiModel && "opacity-60"
+                )}
+              >
+                <Droplets className="h-3.5 w-3.5 text-teal-500 shrink-0" /> T. Embun {isAiModel && <span className="text-[9px] font-normal text-slate-400">(N/A)</span>}
+              </TabsTrigger>
+              <TabsTrigger
+                value="pressure"
+                className="px-3.5 py-2 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Gauge className="h-3.5 w-3.5 text-indigo-500 shrink-0" /> Tekanan
+              </TabsTrigger>
+              <TabsTrigger
+                value="precipitation"
+                className="px-3.5 py-2 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <CloudRain className="h-3.5 w-3.5 text-sky-500 shrink-0" /> Hujan
+              </TabsTrigger>
+              <TabsTrigger
+                value="humidity"
+                className={cn(
+                  "px-3.5 py-2 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5",
+                  isAiModel && "opacity-60"
+                )}
+              >
+                <Waves className="h-3.5 w-3.5 text-blue-500 shrink-0" /> Kel. (RH) {isAiModel && <span className="text-[9px] font-normal text-slate-400">(N/A)</span>}
+              </TabsTrigger>
+              <TabsTrigger
+                value="wind"
+                className="px-3.5 py-2 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Wind className="h-3.5 w-3.5 text-purple-500 shrink-0" /> Angin
+              </TabsTrigger>
+              <TabsTrigger
+                value="cloud"
+                className="px-3.5 py-2 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Cloud className="h-3.5 w-3.5 text-slate-500 shrink-0" /> Awan
+              </TabsTrigger>
+              <TabsTrigger
+                value="solar"
+                className={cn(
+                  "px-2 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-orange-500 data-[state=active]:bg-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 transition-all cursor-pointer flex items-center gap-1.5",
+                  isAiModel && "opacity-60"
+                )}
+              >
+                <Sun className="h-3.5 w-3.5 text-amber-500" /> Radiasi {isAiModel && <span className="text-[9px] font-normal text-slate-400">(N/A)</span>}
+              </TabsTrigger>
+              <TabsTrigger
+                value="et0"
+                className={cn(
+                  "px-2 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-orange-500 data-[state=active]:bg-transparent text-xs font-semibold text-slate-500 dark:text-slate-400 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 transition-all cursor-pointer flex items-center gap-1.5",
+                  isAiModel && "opacity-60"
+                )}
+              >
+                <Sprout className="h-3.5 w-3.5 text-emerald-500" /> ET0 {isAiModel && <span className="text-[9px] font-normal text-slate-400">(N/A)</span>}
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {isLoading ? (
             <div className="h-[360px] flex flex-col items-center justify-center space-y-2">

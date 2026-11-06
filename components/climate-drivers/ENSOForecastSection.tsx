@@ -6,6 +6,7 @@ import useSWR from "swr";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   TrendingUp,
   Sparkles,
@@ -312,38 +313,34 @@ export const ENSOForecastSection: React.FC<ENSOForecastSectionProps> = ({
 
           {/* Action & View Switcher */}
           <div className="flex items-center gap-2 self-start lg:self-auto flex-wrap">
-            <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
-              <button
-                onClick={() => setViewMode("plume")}
-                className={`px-3 py-1.5 rounded-md font-semibold transition flex items-center gap-1.5 ${
-                  viewMode === "plume"
-                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                }`}
-              >
-                <Activity className="h-3.5 w-3.5" /> Ensemble Plume
-              </button>
-              <button
-                onClick={() => setViewMode("prob")}
-                className={`px-3 py-1.5 rounded-md font-semibold transition flex items-center gap-1.5 ${
-                  viewMode === "prob"
-                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                }`}
-              >
-                <BarChart3 className="h-3.5 w-3.5" /> Probabilitas Fase
-              </button>
-              <button
-                onClick={() => setViewMode("table")}
-                className={`px-3 py-1.5 rounded-md font-semibold transition flex items-center gap-1.5 ${
-                  viewMode === "table"
-                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                }`}
-              >
-                <TableIcon className="h-3.5 w-3.5" /> Tabel Rekap
-              </button>
-            </div>
+            <Tabs
+              value={viewMode}
+              onValueChange={(val) => setViewMode(val as "plume" | "prob" | "table")}
+              className="w-auto"
+            >
+              <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
+                <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex justify-start -mb-px">
+                  <TabsTrigger
+                    value="plume"
+                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Activity className="h-3.5 w-3.5" /> Ensemble Plume
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="prob"
+                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <BarChart3 className="h-3.5 w-3.5" /> Probabilitas Fase
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="table"
+                    className="px-3 py-1.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <TableIcon className="h-3.5 w-3.5" /> Tabel Rekap
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </Tabs>
 
             <Button
               variant="outline"

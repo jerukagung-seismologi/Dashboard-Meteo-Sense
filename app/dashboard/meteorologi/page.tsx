@@ -611,19 +611,19 @@ export default function AnalisisDashboardPage() {
 
       {/* 4. Tab System & Visualizations */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <div className="flex items-center justify-between border-b pb-1 dark:border-slate-800">
-          <TabsList className="bg-transparent gap-6 h-auto p-0 border-none">
+        <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
+          <TabsList className="bg-transparent gap-2 h-auto p-0 border-none flex justify-start -mb-px">
             <TabsTrigger
               value="daily"
-              className="px-2 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-orange-500 data-[state=active]:bg-transparent text-sm font-semibold text-slate-500 dark:text-slate-400 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 transition-all"
+              className="px-4 py-2.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
             >
               Analisis Harian
             </TabsTrigger>
             <TabsTrigger
               value="weekly"
-              className="px-2 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent text-sm font-semibold text-slate-500 dark:text-slate-400 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 transition-all"
+              className="px-4 py-2.5 rounded-t-lg rounded-b-none border-t border-x border-b-2 border-transparent text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-t-slate-200 data-[state=active]:border-x-slate-200 dark:data-[state=active]:border-t-slate-800 dark:data-[state=active]:border-x-slate-800 data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
             >
-              Analisis Berkala & Distribusi
+              Analisis Berkala &amp; Distribusi
             </TabsTrigger>
           </TabsList>
         </div>

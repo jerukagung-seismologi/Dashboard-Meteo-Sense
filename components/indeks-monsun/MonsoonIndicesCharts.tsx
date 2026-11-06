@@ -603,20 +603,34 @@ export const MonsoonIndicesCharts: React.FC<MonsoonIndicesChartsProps> = ({
 
       <CardContent className="pt-5">
         <Tabs defaultValue="dipole" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1.5 bg-slate-100/90 dark:bg-slate-800/80 rounded-xl mb-6 gap-1">
-            <TabsTrigger value="dipole" className="py-2 px-3 font-semibold text-xs sm:text-sm flex items-center gap-1.5 rounded-lg">
-              <Wind className="h-4 w-4 text-cyan-500 shrink-0" /> Dual Dipole: AUSMI vs WNPMI
-            </TabsTrigger>
-            <TabsTrigger value="surge" className="py-2 px-3 font-semibold text-xs sm:text-sm flex items-center gap-1.5 rounded-lg">
-              <ShieldAlert className="h-4 w-4 text-rose-500 shrink-0" /> SCSMI &amp; Cold Surge
-            </TabsTrigger>
-            <TabsTrigger value="broadscale" className="py-2 px-3 font-semibold text-xs sm:text-sm flex items-center gap-1.5 rounded-lg">
-              <Globe className="h-4 w-4 text-indigo-500 shrink-0" /> Sirkulasi Asia (WYI/SASMI/EASMI)
-            </TabsTrigger>
-            <TabsTrigger value="bsiso" className="py-2 px-3 font-semibold text-xs sm:text-sm flex items-center gap-1.5 rounded-lg">
-              <Sparkles className="h-4 w-4 text-indigo-500 shrink-0" /> Osilasi BSISO (Grafik &amp; 2D)
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto mb-6">
+            <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
+              <TabsTrigger
+                value="dipole"
+                className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+              >
+                <Wind className="h-4 w-4 text-cyan-500 shrink-0" /> Dual Dipole: AUSMI vs WNPMI
+              </TabsTrigger>
+              <TabsTrigger
+                value="surge"
+                className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+              >
+                <ShieldAlert className="h-4 w-4 text-rose-500 shrink-0" /> SCSMI &amp; Cold Surge
+              </TabsTrigger>
+              <TabsTrigger
+                value="broadscale"
+                className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+              >
+                <Globe className="h-4 w-4 text-indigo-500 shrink-0" /> Sirkulasi Asia (WYI/SASMI/EASMI)
+              </TabsTrigger>
+              <TabsTrigger
+                value="bsiso"
+                className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+              >
+                <Sparkles className="h-4 w-4 text-indigo-500 shrink-0" /> Osilasi BSISO (Grafik &amp; 2D)
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Tab 1: Dual Dipole AUSMI vs WNPMI */}
           <TabsContent value="dipole" className="mt-0 space-y-3">

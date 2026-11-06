@@ -929,26 +929,40 @@ export default function BackupSqlitePage() {
         </Card>
       </div>
 
-      {/* Main Studio Tabs */}
-      <Tabs defaultValue="completeness" className="space-y-4">
-        <TabsList className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1">
-          <TabsTrigger value="completeness" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800">
-            <TableProperties className="h-4 w-4 text-blue-500" />
-            1. Kelengkapan Basis Data (Mentah vs Bersih)
-          </TabsTrigger>
-          <TabsTrigger value="explorer" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800">
-            <Search className="h-4 w-4 text-emerald-500" />
-            2. Penjelajah Data SQLite (Data Viewer)
-          </TabsTrigger>
-          <TabsTrigger value="era5" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800">
-            <Layers className="h-4 w-4 text-purple-500" />
-            3. Basis Data ERA5-Land
-          </TabsTrigger>
-          <TabsTrigger value="snapshots" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800">
-            <FolderArchive className="h-4 w-4 text-amber-500" />
-            4. Snapshot & Manajemen Cadangan
-          </TabsTrigger>
-        </TabsList>
+      {/* Main Studio Tabs (Gaya Underline seperti Menu Meteorologi) */}
+      <Tabs defaultValue="completeness" className="space-y-6">
+        <div className="flex items-center justify-start border-b border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
+          <TabsList className="bg-transparent gap-1.5 sm:gap-2 h-auto p-0 border-none flex justify-start -mb-px">
+            <TabsTrigger
+              value="completeness"
+              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+            >
+              <TableProperties className="h-4 w-4 text-blue-500 shrink-0" />
+              1. Kelengkapan Basis Data (Mentah vs Bersih)
+            </TabsTrigger>
+            <TabsTrigger
+              value="explorer"
+              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+            >
+              <Search className="h-4 w-4 text-emerald-500 shrink-0" />
+              2. Penjelajah Data SQLite (Data Viewer)
+            </TabsTrigger>
+            <TabsTrigger
+              value="era5"
+              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+            >
+              <Layers className="h-4 w-4 text-purple-500 shrink-0" />
+              3. Basis Data ERA5-Land
+            </TabsTrigger>
+            <TabsTrigger
+              value="snapshots"
+              className="px-3.5 py-2.5 rounded-t-lg rounded-b-none border border-transparent border-b-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 data-[state=active]:border-slate-200 dark:data-[state=active]:border-slate-800 data-[state=active]:border-b-orange-500 dark:data-[state=active]:border-b-orange-500 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 data-[state=active]:font-bold data-[state=active]:shadow-xs transition-all cursor-pointer flex items-center gap-2"
+            >
+              <FolderArchive className="h-4 w-4 text-amber-500 shrink-0" />
+              4. Snapshot &amp; Manajemen Cadangan
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ========================================================================= */}
         {/* TAB 1: KELENGKAPAN BASIS DATA (DUAL COLUMN: MENTAH VS BERSIH)            */}
