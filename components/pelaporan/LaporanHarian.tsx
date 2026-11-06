@@ -302,6 +302,7 @@ Tekanan Udara Rata-Rata: ${pressMin} - ${pressMax} hPa`
                       }
                     }}
                     disabled={d => d > new Date()}
+                    locale={id}
                   />
                 </PopoverContent>
               </Popover>

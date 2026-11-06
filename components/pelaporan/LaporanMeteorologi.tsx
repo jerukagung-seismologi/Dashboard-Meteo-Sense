@@ -20,7 +20,7 @@ import {
 } from "lucide-react"
 import { type DateRange } from "react-day-picker"
 import dynamic from "next/dynamic"
-import { Calendar } from "@/components/ui/calendar"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
@@ -583,33 +583,13 @@ Tekanan Udara Rata-Rata: ${minPress} - ${maxPress} hPa`;
             {/* Custom date picker */}
             {mode === 'custom' && (
               <div className="flex flex-wrap items-center gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn("w-full sm:w-[300px] justify-start text-left font-normal text-xs sm:text-sm", !dateRange && "text-muted-foreground")}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                      <span className="truncate">
-                        {dateRange?.from ? (
-                          dateRange.to ? (
-                            <>{format(dateRange.from, 'dd LLL y', { locale: id })} – {format(dateRange.to, 'dd LLL y', { locale: id })}</>
-                          ) : format(dateRange.from, 'dd LLL y', { locale: id })
-                        ) : "Pilih Rentang Tanggal"}
-                      </span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1.5rem)] shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 overflow-auto" align="start">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={dateRange?.from}
-                      selected={dateRange}
-                      onSelect={setDateRange}
-                      numberOfMonths={2}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DateRangePicker
+                  value={dateRange}
+                  onChange={setDateRange}
+                  align="start"
+                  triggerClassName="w-full sm:w-[300px]"
+                  disabled={(date) => date > new Date()}
+                />
                 <Button onClick={generateReport} disabled={loading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 text-xs sm:text-sm">
                   {loading ? (
                     <>

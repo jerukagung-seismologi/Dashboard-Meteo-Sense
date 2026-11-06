@@ -445,6 +445,7 @@ export default function AnalisisDashboardPage() {
                       selected={dailyDate}
                       onSelect={(date) => date && setDailyDate(date)}
                       disabled={(date) => date > new Date()}
+                      locale={id}
                       initialFocus
                     />
                   </PopoverContent>
@@ -515,6 +516,7 @@ export default function AnalisisDashboardPage() {
                           setWeeklyStartDate(date);
                         }
                       }}
+                      locale={id}
                       initialFocus
                     />
                   </PopoverContent>

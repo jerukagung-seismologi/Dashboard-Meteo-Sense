@@ -74,7 +74,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import {
   Table,
   TableBody,
@@ -218,7 +218,6 @@ export default function DataPage() {
   const [sensorId, setSensorId] = useState<string>(() => getStoredActiveSensorId() || "");
   const [selectedPeriod, setSelectedPeriod] = useState<Period>(periods[1]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // Deteksi ukuran layar responsif untuk popover kalender
@@ -720,35 +719,6 @@ export default function DataPage() {
 
   const isCustomDateActive = Boolean(dateRange?.from);
 
-  // Preset cepat rentang tanggal kalender
-  const handleApplyPreset = (preset: "today" | "yesterday" | "last7" | "last30" | "thisMonth") => {
-    const now = new Date();
-    if (preset === "today") {
-      const start = startOfDay(now);
-      const end = endOfDay(now);
-      setDateRange({ from: start, to: end });
-    } else if (preset === "yesterday") {
-      const yesterday = subDays(now, 1);
-      const start = startOfDay(yesterday);
-      const end = endOfDay(yesterday);
-      setDateRange({ from: start, to: end });
-    } else if (preset === "last7") {
-      const start = startOfDay(subDays(now, 6));
-      const end = endOfDay(now);
-      setDateRange({ from: start, to: end });
-    } else if (preset === "last30") {
-      const start = startOfDay(subDays(now, 29));
-      const end = endOfDay(now);
-      setDateRange({ from: start, to: end });
-    } else if (preset === "thisMonth") {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      const end = endOfDay(now);
-      setDateRange({ from: start, to: end });
-    }
-    setIsCalendarOpen(false);
-    if (searchQuery) setSearchQuery("");
-  };
-
   // Fungsi untuk mengunduh data
   const handleDownloadData = () => {
     if (weatherData.length === 0) {
@@ -1005,150 +975,18 @@ export default function DataPage() {
               )}
             </div>
 
-            {/* Popover Kalender Kompak 1-Bulan */}
-            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  id="date"
-                  variant="outline"
-                  className={cn(
-                    "w-full sm:w-auto min-w-[210px] justify-between text-left font-semibold text-xs sm:text-sm h-9 px-3 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
-                    dateRange?.from ? "text-slate-900 dark:text-slate-100 border-blue-500/60 ring-1 ring-blue-500/20" : "text-slate-500"
-                  )}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <CalendarIcon className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                    <span className="truncate">
-                      {dateRange?.from ? (
-                        dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? (
-                          <>
-                            {format(dateRange.from, "dd MMM yyyy", { locale: id })} – {format(dateRange.to, "dd MMM yyyy", { locale: id })}
-                          </>
-                        ) : (
-                          `${format(dateRange.from, "EEEE, dd MMM yyyy", { locale: id })}`
-                        )
-                      ) : (
-                        <span>Pilih Tanggal</span>
-                      )}
-                    </span>
-                  </div>
-                  {dateRange?.from && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4.5 ml-1.5 shrink-0 bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                      {dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? "Rentang" : "24 Jam"}
-                    </Badge>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent 
-                className="w-auto p-0 max-w-[calc(100vw-1.5rem)] shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden" 
-                align="end"
-              >
-                {/* Header Popover dengan Judul & Reset */}
-                <div className="px-3.5 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/60 dark:bg-slate-950/40">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <CalendarDays className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    Pilih Tanggal Observasi
-                  </span>
-                  {dateRange?.from && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleResetToLive}
-                      className="h-6 text-[11px] font-semibold text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2 cursor-pointer"
-                    >
-                      <RotateCcw className="h-3 w-3 mr-1" />
-                      Reset Pilihan
-                    </Button>
-                  )}
-                </div>
-
-                {/* Preset Cepat: Horizontal Pills (shadcn Button) */}
-                <div className="px-3 py-2 flex flex-wrap items-center gap-1.5 border-b border-border/60 bg-muted/30">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleApplyPreset("today")}
-                    className="h-6.5 text-[11px] font-semibold px-2.5 rounded-md shadow-2xs hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-                  >
-                    Hari Ini
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleApplyPreset("yesterday")}
-                    className="h-6.5 text-[11px] font-semibold px-2.5 rounded-md shadow-2xs hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-                  >
-                    Kemarin
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleApplyPreset("last7")}
-                    className="h-6.5 text-[11px] font-semibold px-2.5 rounded-md shadow-2xs hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-                  >
-                    7 Hari
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleApplyPreset("last30")}
-                    className="h-6.5 text-[11px] font-semibold px-2.5 rounded-md shadow-2xs hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-                  >
-                    30 Hari
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleApplyPreset("thisMonth")}
-                    className="h-6.5 text-[11px] font-semibold px-2.5 rounded-md shadow-2xs hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-                  >
-                    Bulan Ini
-                  </Button>
-                </div>
-
-                {/* Calendar Component: 1 Bulan Kompak dengan Dropdown Bulan & Tahun */}
-                <div className="p-2 sm:p-2.5 flex justify-center">
-                  <Calendar
-                    autoFocus
-                    mode="range"
-                    captionLayout="dropdown"
-                    startMonth={new Date(2021, 0)}
-                    endMonth={new Date()}
-                    defaultMonth={dateRange?.from || new Date()}
-                    selected={dateRange}
-                    onSelect={(range) => {
-                      setDateRange(range);
-                    }}
-                    numberOfMonths={1}
-                    disabled={(date) => isFuture(date)}
-                  />
-                </div>
-
-                {/* Footer Popover: Status & Close */}
-                <div className="px-3.5 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                    {dateRange?.from ? (
-                      <>Terpilih: <strong>{format(dateRange.from, "dd MMM yyyy", { locale: id })}</strong>{dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? <> s/d <strong>{format(dateRange.to, "dd MMM yyyy", { locale: id })}</strong></> : " (24 Jam)"}</>
-                    ) : (
-                      <span>Periode: <strong>{selectedPeriod?.label}</strong></span>
-                    )}
-                  </span>
-                  <Button
-                    size="sm"
-                    className="h-7 text-xs font-bold px-3 bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer"
-                    onClick={() => setIsCalendarOpen(false)}
-                  >
-                    Selesai
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
+            {/* Shadcn Date Range Picker (2-Bulan Side-by-Side dengan Preset Cepat) */}
+            <DateRangePicker
+              id="date"
+              value={dateRange}
+              onChange={(range) => {
+                setDateRange(range);
+                if (searchQuery) setSearchQuery("");
+              }}
+              onReset={handleResetToLive}
+              align="end"
+              disabled={(date) => isFuture(date)}
+            />
 
             <Button
               variant="outline"

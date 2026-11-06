@@ -492,6 +492,7 @@ Durasi Jam Basah: ${rainStats.rainDurationHours} Jam`;
                 selected={selectedDate}
                 onSelect={(date: Date | undefined) => date && setSelectedDate(date)}
                 disabled={(date: Date) => date > new Date() || date < new Date("2000-01-01")}
+                locale={id}
                 autoFocus
               />
             </PopoverContent>
