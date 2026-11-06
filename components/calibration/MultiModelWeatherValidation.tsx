@@ -448,6 +448,47 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
       }
     });
 
+    // 4. Kalkulasi Nilai Batas Sumbu Y Berbasis Data Aktual (BUKAN 0!)
+    const allNumericVals: number[] = [];
+    seriesList.forEach((s) => {
+      if (Array.isArray(s.data)) {
+        s.data.forEach((v: any) => {
+          if (v != null && Number.isFinite(Number(v))) {
+            allNumericVals.push(Number(v));
+          }
+        });
+      }
+    });
+
+    let yMin: number | undefined = undefined;
+    let yMax: number | undefined = undefined;
+
+    if (allNumericVals.length > 0) {
+      const minVal = Math.min(...allNumericVals);
+      const maxVal = Math.max(...allNumericVals);
+
+      if (selectedVariable === "precipitation") {
+        yMin = 0;
+        yMax = maxVal > 0 ? Math.ceil(maxVal * 1.1) : 10;
+      } else if (selectedVariable === "relative_humidity_2m") {
+        yMin = Math.max(0, Math.floor(minVal));
+        yMax = Math.min(100, Math.ceil(maxVal));
+      } else if (selectedVariable === "wind_speed_10m") {
+        yMin = Math.max(0, Math.floor(minVal));
+        yMax = Math.ceil(maxVal);
+      } else {
+        // Suhu, Tekanan, Titik Embun:
+        // WAJIB data-driven: nilai minimum adalah nilai minimum data aktual, BUKAN 0!
+        yMin = Math.floor(minVal);
+        yMax = Math.ceil(maxVal);
+      }
+
+      if (yMin === yMax) {
+        yMin = yMin - 1;
+        yMax = yMax + 1;
+      }
+    }
+
     return {
       backgroundColor: "transparent",
       tooltip: {
@@ -512,7 +553,9 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
       },
       yAxis: {
         type: "value",
-        scale: selectedVariable !== "precipitation" && selectedVariable !== "wind_speed_10m",
+        scale: true,
+        min: yMin,
+        max: yMax,
         name: `${activeVariableConfig.label} (${activeVariableConfig.unit})`,
         nameTextStyle: {
           color: isDarkMode ? "#94a3b8" : "#64748b",

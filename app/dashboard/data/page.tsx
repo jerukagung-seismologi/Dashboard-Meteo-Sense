@@ -737,20 +737,34 @@ export default function DataPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Fungsi untuk mendapatkan domain sumbu Y
-  function getYAxisDomain(data: number[]) {
-    if (data.length === 0) return [-1, 1];
-    let min = Math.min(...data);
-    let max = Math.max(...data);
+  // Fungsi untuk mendapatkan domain sumbu Y berbasis data aktual (BUKAN 0!)
+  function getYAxisDomain(data: number[], unit: string = "") {
+    const valid = data.filter((v) => typeof v === "number" && Number.isFinite(v) && !Number.isNaN(v));
+    if (valid.length === 0) return [-1, 1];
+
+    if (unit === "mm" || unit === "mm/jam") {
+      const max = Math.max(...valid);
+      return [0, max > 0 ? Number((max * 1.1).toFixed(2)) : 10];
+    }
+
+    let min = Math.min(...valid);
+    let max = Math.max(...valid);
+
     if (min === max) {
       min -= 1;
       max += 1;
     } else {
-      const padding = (max - min) * 0.1;
+      const padding = (max - min) * 0.05;
       min -= padding;
       max += padding;
     }
-    return [min, max];
+
+    if (unit === "%") {
+      min = Math.max(0, min);
+      max = Math.min(100, max);
+    }
+
+    return [Number(min.toFixed(2)), Number(max.toFixed(2))];
   }
 
   // Pengaturan tata letak umum untuk grafik Plotly
@@ -798,7 +812,7 @@ export default function DataPage() {
     Icon: React.FC<any>;
     unit?: string;
   }) => {
-    const yDomain = getYAxisDomain(data);
+    const yDomain = getYAxisDomain(data, unit);
     const chartData = [
       {
         x: timestamps,

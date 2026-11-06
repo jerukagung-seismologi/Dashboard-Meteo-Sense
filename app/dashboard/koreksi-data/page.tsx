@@ -655,6 +655,39 @@ export default function KoreksiDataPage() {
     const rawSeries = correctedResults.map((r) => r.rawVal);
     const corrSeries = correctedResults.map((r) => r.correctedVal);
 
+    // Kalkulasi nilai batas sumbu Y berbasis data aktual (BUKAN 0!)
+    const allVals = [...rawSeries, ...corrSeries].filter(
+      (v) => typeof v === "number" && Number.isFinite(v)
+    );
+    let yMin: number | undefined = undefined;
+    let yMax: number | undefined = undefined;
+
+    if (allVals.length > 0) {
+      const minVal = Math.min(...allVals);
+      const maxVal = Math.max(...allVals);
+
+      if (selectedVar.key === "rainfall" || selectedVar.key === "rainrate") {
+        yMin = 0;
+        yMax = maxVal > 0 ? Math.ceil(maxVal * 1.1) : 10;
+      } else if (selectedVar.key === "humidity") {
+        yMin = Math.max(0, Math.floor(minVal));
+        yMax = Math.min(100, Math.ceil(maxVal));
+      } else if (selectedVar.key === "windSpeed") {
+        yMin = Math.max(0, Math.floor(minVal));
+        yMax = Math.ceil(maxVal);
+      } else {
+        // Suhu, Tekanan, Titik Embun, Suhu Tanah, Tegangan, Lux:
+        // WAJIB data-driven: nilai minimum adalah nilai minimum data aktual, BUKAN 0!
+        yMin = Math.floor(minVal);
+        yMax = Math.ceil(maxVal);
+      }
+
+      if (yMin === yMax) {
+        yMin = yMin - 1;
+        yMax = yMax + 1;
+      }
+    }
+
     // Visual mark points for anomalies
     const markPointData = anomalies.map((a) => ({
       name: a.reason,
@@ -741,6 +774,9 @@ export default function KoreksiDataPage() {
       },
       yAxis: {
         type: "value",
+        scale: true,
+        min: yMin,
+        max: yMax,
         name: `${selectedVar.label} (${selectedVar.unit})`,
         nameTextStyle: {
           color: isDarkMode ? "#94A3B8" : "#64748B",
