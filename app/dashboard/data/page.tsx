@@ -31,6 +31,7 @@ import {
   Clock,
   RotateCcw,
   CalendarDays,
+  Search,
 } from "lucide-react";
 import { format, isSameDay, subDays, addDays, startOfDay, endOfDay, isFuture } from "date-fns";
 import { id } from "date-fns/locale";
@@ -153,6 +154,15 @@ const periods: Period[] = [
   { label: "6 Jam", valueInMinutes: 6 * 60 },
   { label: "12 Jam", valueInMinutes: 12 * 60 },
   { label: "24 Jam", valueInMinutes: 24 * 60 },
+];
+
+// Preset skala waktu lebih pendek (Button Select)
+const shortPeriods: { label: string; shortLabel: string; valueInMinutes: number }[] = [
+  { label: "1 Jam", shortLabel: "1J", valueInMinutes: 60 },
+  { label: "3 Jam", shortLabel: "3J", valueInMinutes: 3 * 60 },
+  { label: "6 Jam", shortLabel: "6J", valueInMinutes: 6 * 60 },
+  { label: "12 Jam", shortLabel: "12J", valueInMinutes: 12 * 60 },
+  { label: "24 Jam", shortLabel: "24J", valueInMinutes: 24 * 60 },
 ];
 
 // Konfigurasi field sensor untuk input fields
@@ -731,7 +741,10 @@ export default function DataPage() {
   // Handler memilih preset rentang luar (Mingguan, Dasarian, Bulanan, 24 Jam)
   const handleApplyExternalPreset = useCallback((type: "24h" | "weekly" | "dasarian" | "monthly") => {
     if (type === "24h") {
-      handleResetToLive();
+      const p24 = periods.find(p => p.valueInMinutes === 24 * 60) || periods[6];
+      setSelectedPeriod(p24);
+      setDateRange(undefined);
+      if (searchQuery) setSearchQuery("");
       return;
     }
     const now = new Date();
@@ -744,7 +757,26 @@ export default function DataPage() {
     const end = endOfDay(now);
     setDateRange({ from: start, to: end });
     if (searchQuery) setSearchQuery("");
-  }, [handleResetToLive, searchQuery]);
+  }, [searchQuery]);
+
+  // Handler memilih preset skala waktu pendek (Button Select)
+  const handleSelectShortPeriod = useCallback((periodMinutes: number) => {
+    const match = periods.find((p) => p.valueInMinutes === periodMinutes) || {
+      label: `${periodMinutes / 60} Jam`,
+      valueInMinutes: periodMinutes,
+    };
+    setSelectedPeriod(match);
+    setDateRange(undefined);
+    if (searchQuery) setSearchQuery("");
+  }, [searchQuery]);
+
+  // Nilai preset rentang panjang aktif (untuk Dropdown)
+  const activeLongPreset = useMemo(() => {
+    if (isPresetActive(7)) return "weekly";
+    if (isPresetActive(10)) return "dasarian";
+    if (isPresetActive(30)) return "monthly";
+    return "";
+  }, [isPresetActive]);
 
   // Label tampilan periode aktif
   const dateIndicatorLabel = useMemo(() => {
@@ -764,13 +796,13 @@ export default function DataPage() {
 
   // Badge status periode aktif
   const dateIndicatorBadge = useMemo(() => {
-    if (!dateRange?.from) return null;
+    if (!dateRange?.from) return selectedPeriod.label;
     if (isPresetActive(7)) return "7 Hari";
     if (isPresetActive(10)) return "10 Hari";
     if (isPresetActive(30)) return "30 Hari";
     if (dateRange.to && !isSameDay(dateRange.from, dateRange.to)) return "Multi-Hari";
-    return "24 Jam";
-  }, [dateRange, isPresetActive]);
+    return "1 Hari";
+  }, [dateRange, selectedPeriod, isPresetActive]);
 
   // Fungsi untuk mengunduh data
   const handleDownloadData = () => {
@@ -959,115 +991,139 @@ export default function DataPage() {
       
       {/* Global Controls Card */}
       <Card className="mb-6">
-        <CardHeader className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${isDarkMode ? "bg-slate-800" : "bg-slate-100"} border-b`}>
-          <div className="flex flex-wrap items-center gap-2 md:gap-4">
-            <Select
-              value={sensorId}
-              onValueChange={(val) => {
-                setSensorId(val);
-                const matched = sensorOptions.find((o) => o.value === val);
-                setStoredActiveSensorId(val, { label: matched?.label });
-              }}
-              disabled={!sensorId}
-            >
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Pilih Sensor" />
-              </SelectTrigger>
-              <SelectContent>
-                {sensorOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={String(itemsPerPage)}
-              onValueChange={(value) => setItemsPerPage(Number(value))}
-            >
-              <SelectTrigger className="w-full sm:w-[140px]">
-                <SelectValue placeholder="Item per Halaman" />
-              </SelectTrigger>
-              <SelectContent>
-                {[15, 20, 50, 70, 100].map((size) => (
-                  <SelectItem key={size} value={String(size)}>
-                    {size} / Halaman
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <div className="flex items-center gap-2">
-              <Select value={searchField} onValueChange={setSearchField}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Cari berdasarkan..." />
+        <CardHeader className={`p-3 sm:p-4 ${isDarkMode ? "bg-slate-800/80" : "bg-slate-50"} border-b`}>
+          <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
+            {/* Sisi Kiri: Filter Dataset (Sensor, Items per Halaman, Search Parameter + Nilai + Cari) */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={sensorId}
+                onValueChange={(val) => {
+                  setSensorId(val);
+                  const matched = sensorOptions.find((o) => o.value === val);
+                  setStoredActiveSensorId(val, { label: matched?.label });
+                }}
+                disabled={!sensorId}
+              >
+                <SelectTrigger className="h-8 text-xs font-medium w-full sm:w-[170px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="Pilih Sensor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {sensorFields.map((field) => (
-                    <SelectItem key={field.key} value={field.key}>
-                      {field.label}
+                  {sensorOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                type="number"
-                placeholder="Masukkan nilai..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-[150px]"
-              />
-              <Button onClick={handleSearch} disabled={loading || !searchQuery}>
-                Cari
-              </Button>
-              {searchQuery && (
-                <Button variant="ghost" onClick={handleResetSearch} disabled={loading}>
-                  Reset
+
+              <Select
+                value={String(itemsPerPage)}
+                onValueChange={(value) => setItemsPerPage(Number(value))}
+              >
+                <SelectTrigger className="h-8 text-xs font-medium w-full sm:w-[130px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="Item per Halaman" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[15, 20, 50, 70, 100].map((size) => (
+                    <SelectItem key={size} value={String(size)} className="text-xs">
+                      {size} / Halaman
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+                <Select value={searchField} onValueChange={setSearchField}>
+                  <SelectTrigger className="h-8 text-xs font-medium w-[130px] sm:w-[140px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                    <SelectValue placeholder="Cari berdasarkan..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sensorFields.map((field) => (
+                      <SelectItem key={field.key} value={field.key} className="text-xs">
+                        {field.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  placeholder="Nilai angka..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8 text-xs w-[110px] sm:w-[130px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+                />
+                <Button 
+                  size="sm" 
+                  onClick={handleSearch} 
+                  disabled={loading || !searchQuery}
+                  className="h-8 text-xs font-semibold px-2.5 shadow-2xs cursor-pointer"
+                >
+                  <Search className="h-3.5 w-3.5 sm:mr-1" />
+                  <span className="hidden sm:inline">Cari</span>
                 </Button>
-              )}
+                {searchQuery && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={handleResetSearch} 
+                    disabled={loading}
+                    title="Reset Pencarian"
+                    className="h-8 w-8 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
             </div>
 
-            {/* Shadcn Date Range Picker (2-Bulan Side-by-Side dengan Preset Cepat) */}
-            <DateRangePicker
-              id="date"
-              value={dateRange}
-              onChange={(range) => {
-                setDateRange(range);
-                if (searchQuery) setSearchQuery("");
-              }}
-              onReset={handleResetToLive}
-              align="end"
-              disabled={(date) => isFuture(date)}
-            />
+            {/* Sisi Kanan: Aksi Terjustifikasi (Unduh Data, Tambah Data, Hapus Data, Refresh) */}
+            <div className="flex flex-wrap items-center justify-start xl:justify-end gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className={`h-8 text-xs font-semibold px-2.5 shadow-2xs cursor-pointer ${isDarkMode ? "text-gray-200 border-slate-700 bg-slate-900/60 hover:bg-slate-800" : "text-gray-700 border-slate-200 bg-white hover:bg-slate-100"}`} 
+                onClick={handleDownloadData}
+              >
+                <Download className="h-3.5 w-3.5 mr-1 text-slate-500" /> Unduh Data
+              </Button>
 
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleManualRefresh} 
-              disabled={loading}
-              title="Segarkan Data"
-            >
-              <RefreshCwIcon className={`h-4 w-4 ${loading ? "animate-spin" : ""} ${isDarkMode ? "text-gray-200" : ""}`} />
-              <span className="sr-only">Refresh data</span>
-            </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className={`h-8 text-xs font-semibold px-2.5 shadow-2xs cursor-pointer ${isDarkMode ? "text-gray-200 border-slate-700 bg-slate-900/60 hover:bg-slate-800" : "text-gray-700 border-slate-200 bg-white hover:bg-slate-100"}`} 
+                onClick={openAddModal}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1 text-slate-500" /> Tambah Data
+              </Button>
 
-            <Button variant="outline" size="sm" className={`${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"}`} onClick={handleDownloadData}>
-              <Download className="h-4 w-4 mr-1" /> Unduh Data
-            </Button>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                className="h-8 text-xs font-semibold px-2.5 shadow-2xs cursor-pointer"
+                onClick={handleDeleteSensorData} 
+                disabled={isDeleting || loading}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> {isDeleting ? "Menghapus..." : "Hapus Data"}
+              </Button>
 
-            <Button variant="outline" size="sm" className={`${isDarkMode ? "text-gray-200" : "text-gray-600 dark:text-gray-300"}`} onClick={openAddModal}>
-              <Plus className="h-4 w-4 mr-1" /> Tambah Data
-            </Button>
+              <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-0.5 hidden sm:block" />
 
-            <Button variant="destructive" size="sm" onClick={handleDeleteSensorData} disabled={isDeleting || loading}>
-              <Trash2 className={`h-4 w-4 mr-1 ${isDarkMode ? "text-gray-200" : ""}`} /> {isDeleting ? "Menghapus..." : "Hapus Data"}
-            </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleManualRefresh} 
+                disabled={loading}
+                title="Segarkan Data"
+                className="h-8 w-8 shadow-2xs cursor-pointer bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+              >
+                <RefreshCwIcon className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""} ${isDarkMode ? "text-gray-200" : "text-gray-700"}`} />
+                <span className="sr-only">Refresh data</span>
+              </Button>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="p-3 sm:p-4 bg-slate-50/80 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-800">
-          {/* Baris 2: Stepper Hari & Quick Period Pills Terpadu */}
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+        <CardContent className="p-3 sm:px-4 sm:py-2.5 bg-slate-50/70 dark:bg-slate-900/50">
+          <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
             {/* Sisi Kiri: Stepper Hari & Indikator Tanggal Aktif */}
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -1075,15 +1131,15 @@ export default function DataPage() {
                 size="sm"
                 onClick={handlePrevDay}
                 title="Geser Mundur 1 Hari (Hari Kemarin)"
-                className="h-8 text-xs font-bold text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-800 dark:hover:text-blue-400 gap-1 shadow-2xs"
+                className="h-8 text-xs font-bold text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-800 dark:hover:text-blue-400 gap-1 shadow-2xs cursor-pointer"
               >
                 <ChevronLeft className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                 Hari Kemarin
               </Button>
 
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs">
+              <div className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs h-8">
                 <CalendarDays className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 font-mono">
+                <span className="text-xs font-extrabold text-slate-900 dark:text-slate-100 font-mono">
                   {dateIndicatorLabel}
                 </span>
                 {dateIndicatorBadge && (
@@ -1099,7 +1155,7 @@ export default function DataPage() {
                 onClick={handleNextDay}
                 disabled={isNextDayDisabled}
                 title="Geser Maju 1 Hari (Hari Selanjutnya)"
-                className="h-8 text-xs font-bold text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-800 dark:hover:text-blue-400 gap-1 shadow-2xs disabled:opacity-40"
+                className="h-8 text-xs font-bold text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-800 dark:hover:text-blue-400 gap-1 shadow-2xs disabled:opacity-40 cursor-pointer"
               >
                 Hari Selanjutnya
                 <ChevronRight className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
@@ -1111,7 +1167,7 @@ export default function DataPage() {
                   size="sm"
                   onClick={handleResetToLive}
                   title="Kembali ke tampilan periode berjalan"
-                  className="h-8 text-xs font-bold text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 gap-1 shadow-2xs"
+                  className="h-8 text-xs font-bold text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 gap-1 shadow-2xs cursor-pointer"
                 >
                   <RotateCcw className="h-3 w-3" />
                   Hari Ini
@@ -1119,93 +1175,74 @@ export default function DataPage() {
               )}
             </div>
 
-            {/* Sisi Kanan: Preset Cepat Meteorologi (Di Luar Kalender) */}
-            <div className="flex flex-wrap items-center gap-1.5 justify-start lg:justify-end">
-              <span className="text-[11px] font-semibold text-muted-foreground mr-1 hidden sm:inline">
-                Preset Rentang:
-              </span>
+            {/* Sisi Kanan: Preset Skala Pendek (Button Select) + Preset Rentang Panjang (Dropdown) + DateRangePicker */}
+            <div className="flex flex-wrap items-center gap-2 justify-start xl:justify-end">
+              {/* Segmented Button Select untuk Skala Waktu Pendek */}
+              <div className="flex items-center gap-0.5 bg-slate-200/70 dark:bg-slate-800/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                {shortPeriods.map((p) => {
+                  const isActive = !dateRange && selectedPeriod.valueInMinutes === p.valueInMinutes;
+                  return (
+                    <Button
+                      key={p.valueInMinutes}
+                      type="button"
+                      variant={isActive ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => handleSelectShortPeriod(p.valueInMinutes)}
+                      className={cn(
+                        "h-7 text-xs font-bold px-2 sm:px-2.5 rounded-md transition-all cursor-pointer",
+                        isActive
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs hover:bg-white dark:hover:bg-slate-900"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/60 dark:hover:bg-slate-800/60"
+                      )}
+                    >
+                      <span className="hidden sm:inline">{p.label}</span>
+                      <span className="sm:hidden">{p.shortLabel}</span>
+                    </Button>
+                  );
+                })}
+              </div>
 
-              <Button
-                type="button"
-                variant={!dateRange && selectedPeriod.valueInMinutes === 24 * 60 ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleApplyExternalPreset("24h")}
-                className={cn(
-                  "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
-                  !dateRange && selectedPeriod.valueInMinutes === 24 * 60
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                24 Jam
-              </Button>
+              <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-0.5 hidden sm:block" />
 
-              <Button
-                type="button"
-                variant={isPresetActive(7) ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleApplyExternalPreset("weekly")}
-                className={cn(
-                  "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
-                  isPresetActive(7)
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                Mingguan (7 Hari)
-              </Button>
-
-              <Button
-                type="button"
-                variant={isPresetActive(10) ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleApplyExternalPreset("dasarian")}
-                className={cn(
-                  "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
-                  isPresetActive(10)
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                Dasarian (10 Hari)
-              </Button>
-
-              <Button
-                type="button"
-                variant={isPresetActive(30) ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleApplyExternalPreset("monthly")}
-                className={cn(
-                  "h-7 text-xs font-bold rounded-lg px-2.5 transition-all cursor-pointer shadow-2xs",
-                  isPresetActive(30)
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                Bulanan (30 Hari)
-              </Button>
-
-              {/* Sub-Harian Dropdown (Resolusi Jam / Menit) */}
-              <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1 hidden sm:block" />
+              {/* Dropdown Preset Rentang Panjang */}
               <Select
-                value={!dateRange && selectedPeriod.valueInMinutes < 24 * 60 ? String(selectedPeriod.valueInMinutes) : ""}
+                value={activeLongPreset}
                 onValueChange={(val) => {
-                  const match = periods.find((p) => String(p.valueInMinutes) === val);
-                  if (match) handlePeriodChange(match);
+                  if (val === "weekly" || val === "dasarian" || val === "monthly") {
+                    handleApplyExternalPreset(val);
+                  }
                 }}
               >
-                <SelectTrigger className="h-7 text-xs font-semibold px-2 w-[115px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-                  <SelectValue placeholder="Sub-Harian" />
+                <SelectTrigger className="h-8 text-xs font-semibold px-2.5 w-[145px] sm:w-[160px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-2xs">
+                  <Clock className="h-3.5 w-3.5 mr-1 text-slate-500 shrink-0" />
+                  <SelectValue placeholder="Rentang Panjang" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="15" className="text-xs">15 Menit</SelectItem>
-                  <SelectItem value="30" className="text-xs">30 Menit</SelectItem>
-                  <SelectItem value="60" className="text-xs">1 Jam</SelectItem>
-                  <SelectItem value="180" className="text-xs">3 Jam</SelectItem>
-                  <SelectItem value="360" className="text-xs">6 Jam</SelectItem>
-                  <SelectItem value="720" className="text-xs">12 Jam</SelectItem>
+                  <SelectItem value="weekly" className="text-xs">
+                    Mingguan (7 Hari)
+                  </SelectItem>
+                  <SelectItem value="dasarian" className="text-xs">
+                    Dasarian (10 Hari)
+                  </SelectItem>
+                  <SelectItem value="monthly" className="text-xs">
+                    Bulanan (30 Hari)
+                  </SelectItem>
                 </SelectContent>
               </Select>
+
+              {/* Shadcn Date Range Picker (2-Bulan Side-by-Side dengan Preset Cepat) */}
+              <DateRangePicker
+                id="date"
+                value={dateRange}
+                onChange={(range) => {
+                  setDateRange(range);
+                  if (searchQuery) setSearchQuery("");
+                }}
+                onReset={handleResetToLive}
+                align="end"
+                disabled={(date) => isFuture(date)}
+                triggerClassName="h-8 text-xs font-semibold px-2.5"
+              />
             </div>
           </div>
         </CardContent>
