@@ -588,7 +588,7 @@ export async function deleteSensorDataByTimestamp(
 export interface BatchSensorFieldUpdate {
   timestampInSeconds: number;
   field: string;
-  newValue: number;
+  newValue: number | string;
 }
 
 export interface SensorCorrectionAuditLog {
@@ -596,7 +596,7 @@ export interface SensorCorrectionAuditLog {
   timestamp: number;
   sensorId: string;
   field: string;
-  method: 'offset' | 'drift' | 'clamp' | 'scale' | 'interpolate';
+  method: 'offset' | 'drift' | 'clamp' | 'scale' | 'interpolate' | string;
   parameters: Record<string, any>;
   range: {
     start: number;

@@ -73,8 +73,16 @@ import {
   interpolateCubicHermite,
   interpolateAkima,
   interpolateModelGuided,
+  recalculateRHMagnus,
+  interpolateSolarCosineHermite,
 } from "@/lib/meteorologicalInterpolation";
 import type { ReferenceGuidePoint } from "@/app/api/weather/reference-guide/route";
+import {
+  runUniversalGapImputation,
+  ImputedGridPoint,
+  ImputationSummary,
+  GapSegment,
+} from "@/lib/meteorologicalImputationEngine";
 
 // Dynamically import ECharts with SSR disabled for optimal Next.js performance
 const ReactECharts = dynamic(() => import("echarts-for-react"), {
@@ -209,7 +217,7 @@ const WEATHER_VARIABLES: WeatherVarMeta[] = [
 ];
 
 export type CorrectionMethod = "offset" | "drift" | "clamp" | "scale" | "interpolate";
-export type InterpolationSubMethod = "model_guided" | "cubic_pchip" | "akima" | "time_linear";
+export type InterpolationSubMethod = "solar_cosine_hermite" | "model_guided" | "cubic_pchip" | "akima" | "time_linear";
 
 interface AnomalyFlag {
   index: number;
@@ -254,7 +262,15 @@ export default function KoreksiDataPage() {
   const [onlyAnomalies, setOnlyAnomalies] = useState<boolean>(false);
 
   // Meteorological Interpolation Sub-methods
-  const [interpolationSubMethod, setInterpolationSubMethod] = useState<InterpolationSubMethod>("model_guided");
+  const [interpolationSubMethod, setInterpolationSubMethod] = useState<InterpolationSubMethod>("solar_cosine_hermite");
+
+  // Dual-Reference State (AWS Co-located Station vs Open-Meteo ECMWF Model)
+  const [solarRefSource, setSolarRefSource] = useState<"station_aws" | "model_ecmwf">("station_aws");
+  const [solarRefStationId, setSolarRefStationId] = useState<string>("");
+  const [solarThreshold, setSolarThreshold] = useState<number>(0.7);
+  const [syncRhRecovery, setSyncRhRecovery] = useState<boolean>(true);
+  const [refStationRecords, setRefStationRecords] = useState<SensorDate[]>([]);
+  const [loadingRefStation, setLoadingRefStation] = useState<boolean>(false);
 
   // Open-Meteo Reference Guide State (ECMWF IFS / ERA5)
   const [showReferenceGuide, setShowReferenceGuide] = useState<boolean>(true);
@@ -273,6 +289,15 @@ export default function KoreksiDataPage() {
   const [loadingAudit, setLoadingAudit] = useState<boolean>(false);
   const [showOnlyModifiedRows, setShowOnlyModifiedRows] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<"workspace" | "audit">("workspace");
+
+  // Mode Operasi: "point_correction" (Koreksi Nilai & Anomali) vs "gap_imputation" (Imputasi Celah 1440/Hari)
+  const [operationMode, setOperationMode] = useState<"point_correction" | "gap_imputation">("point_correction");
+  const [gapMicroLimitMinutes, setGapMicroLimitMinutes] = useState<number>(15);
+  const [gapImputeMethod, setGapImputeMethod] = useState<"auto_hybrid" | "companion_ridge" | "model_guided" | "pchip_spline">("auto_hybrid");
+  const [enableGapBridging, setEnableGapBridging] = useState<boolean>(true);
+  const [enableGapPhysics, setEnableGapPhysics] = useState<boolean>(true);
+  const [isApplyingImputation, setIsApplyingImputation] = useState<boolean>(false);
+  const [showImputationConfirmModal, setShowImputationConfirmModal] = useState<boolean>(false);
 
   // Continuous lookup helper for reference model values at timestamp ts
   const getModelValAtTimestamp = useCallback(
@@ -360,6 +385,117 @@ export default function KoreksiDataPage() {
     [devices, sensorId, startDateStr, endDateStr, referenceModelType]
   );
 
+  // Fetch Co-located AWS Reference Station Data from RTDB
+  const fetchRefStationData = useCallback(
+    async (
+      targetRefId = solarRefStationId,
+      sDate = startDateStr,
+      sTime = startTimeStr,
+      eDate = endDateStr,
+      eTime = endTimeStr
+    ) => {
+      if (!targetRefId || targetRefId === sensorId) return;
+      setLoadingRefStation(true);
+      try {
+        const startMs = new Date(`${sDate}T${sTime}:00+07:00`).getTime();
+        const endMs = new Date(`${eDate}T${eTime}:59+07:00`).getTime();
+        const data = await fetchSensorDataByDateRange(
+          targetRefId,
+          startMs,
+          endMs,
+          false,
+          true,
+          "raw"
+        );
+        const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
+        setRefStationRecords(sorted);
+      } catch (err) {
+        console.warn("Gagal mengambil data stasiun acuan RTDB:", err);
+      } finally {
+        setLoadingRefStation(false);
+      }
+    },
+    [solarRefStationId, sensorId, startDateStr, startTimeStr, endDateStr, endTimeStr]
+  );
+
+  // Continuous lookup helper for reference AWS station values at timestamp ts
+  const getRefStationValAtTimestamp = useCallback(
+    (ts: number, varKey: string): number | null => {
+      if (refStationRecords.length === 0) return null;
+
+      if (ts <= refStationRecords[0].timestamp) {
+        const val = (refStationRecords[0] as any)[varKey];
+        return typeof val === "number" && Number.isFinite(val) ? val : null;
+      }
+      if (ts >= refStationRecords[refStationRecords.length - 1].timestamp) {
+        const last = refStationRecords[refStationRecords.length - 1];
+        const val = (last as any)[varKey];
+        return typeof val === "number" && Number.isFinite(val) ? val : null;
+      }
+
+      // Binary search for nearest surrounding points
+      let low = 0;
+      let high = refStationRecords.length - 1;
+      while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        if (refStationRecords[mid].timestamp < ts) {
+          low = mid + 1;
+        } else {
+          high = mid - 1;
+        }
+      }
+      const p0 = refStationRecords[Math.max(0, low - 1)];
+      const p1 = refStationRecords[Math.min(refStationRecords.length - 1, low)];
+      if (!p0 || !p1) return null;
+
+      const v0 = (p0 as any)[varKey];
+      const v1 = (p1 as any)[varKey];
+      if (typeof v0 !== "number" || typeof v1 !== "number") {
+        return typeof v0 === "number" ? v0 : typeof v1 === "number" ? v1 : null;
+      }
+
+      if (p1.timestamp === p0.timestamp) return v0;
+      const ratio = (ts - p0.timestamp) / (p1.timestamp - p0.timestamp);
+      return v0 + ratio * (v1 - v0);
+    },
+    [refStationRecords]
+  );
+
+  // Unified Reference Value Lookup (either AWS station or ECMWF model)
+  const getUnifiedRefValAtTimestamp = useCallback(
+    (ts: number, varKey: string): number | null => {
+      if (solarRefSource === "station_aws" && refStationRecords.length > 0) {
+        const awsVal = getRefStationValAtTimestamp(ts, varKey);
+        if (awsVal !== null) return awsVal;
+      }
+      return getModelValAtTimestamp(ts, varKey);
+    },
+    [solarRefSource, refStationRecords.length, getRefStationValAtTimestamp, getModelValAtTimestamp]
+  );
+
+  // Baseline Night Offset between target sensor and reference series (00:00 - 05:00 & 20:00 - 23:00 WIB)
+  const baselineNightOffset = useMemo(() => {
+    if (rawRecords.length === 0) return 0;
+    const nightDiffs: number[] = [];
+
+    for (const rec of rawRecords) {
+      const dLocal = new Date(rec.timestamp);
+      const hour = dLocal.getHours();
+      if (hour <= 5 || hour >= 20) {
+        const tVal = Number((rec as any)["temperature"]);
+        const rVal = getUnifiedRefValAtTimestamp(rec.timestamp, "temperature");
+        if (Number.isFinite(tVal) && rVal !== null && Number.isFinite(rVal)) {
+          nightDiffs.push(tVal - rVal);
+        }
+      }
+    }
+
+    if (nightDiffs.length === 0) return 0;
+    nightDiffs.sort((a, b) => a - b);
+    const mid = Math.floor(nightDiffs.length / 2);
+    return nightDiffs.length % 2 !== 0 ? nightDiffs[mid] : (nightDiffs[mid - 1] + nightDiffs[mid]) / 2;
+  }, [rawRecords, getUnifiedRefValAtTimestamp]);
+
   // 1. Initial Load of Devices
   useEffect(() => {
     async function loadDevices() {
@@ -378,6 +514,18 @@ export default function KoreksiDataPage() {
           setSensorId(resolved);
           const matched = fetched.find((d) => (d.authToken || d.id) === resolved);
           if (matched) setSelectedStationName(`${matched.name} (${matched.location})`);
+
+          // Auto-select sensible reference station (e.g. id-03 for id-05)
+          let autoRef = "";
+          if (resolved === "id-05") {
+            const has03 = fetched.some((d) => (d.authToken || d.id) === "id-03");
+            if (has03) autoRef = "id-03";
+          }
+          if (!autoRef) {
+            const other = fetched.find((d) => (d.authToken || d.id) !== resolved);
+            if (other) autoRef = (other.authToken || other.id) as string;
+          }
+          if (autoRef) setSolarRefStationId(autoRef);
         }
       } catch (err) {
         console.error("Gagal memuat perangkat:", err);
@@ -442,8 +590,11 @@ export default function KoreksiDataPage() {
         const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
         setRawRecords(sorted);
 
-        // Concurrently fetch the weather model reference guide
+        // Concurrently fetch the weather model reference guide and reference AWS station
         fetchReferenceGuide(undefined, sDate, eDate, referenceModelType);
+        if (solarRefStationId && solarRefStationId !== sensorId) {
+          fetchRefStationData(solarRefStationId, sDate, sTime, eDate, eTime);
+        }
 
         if (sorted.length === 0) {
           toast({
@@ -467,7 +618,7 @@ export default function KoreksiDataPage() {
         setLoading(false);
       }
     },
-    [sensorId, startDateStr, startTimeStr, endDateStr, endTimeStr, toast, fetchReferenceGuide, referenceModelType]
+    [sensorId, startDateStr, startTimeStr, endDateStr, endTimeStr, toast, fetchReferenceGuide, referenceModelType, solarRefStationId, fetchRefStationData]
   );
 
   const handleFetchData = useCallback(() => {
@@ -595,24 +746,51 @@ export default function KoreksiDataPage() {
     fetchDataForRange(sDate, "00:00", eDate, "23:59");
   };
 
-  // Preset Cepat: Anomali Panas Radiasi Matahari (Solar Radiation Shield Overheating)
+  // Preset Cepat: Anomali Radiasi Surya (Cosine-Hermite S-Curve + Pemulihan RH Magnus)
   const handleApplySolarOverheatingPreset = useCallback(() => {
     setSelectedVarKey("temperature");
     setCorrectionMethod("interpolate");
-    setInterpolationSubMethod("model_guided");
+    setInterpolationSubMethod("solar_cosine_hermite");
     setOnlyAnomalies(true);
     setShowReferenceGuide(true);
+    setSyncRhRecovery(true);
+    setSolarThreshold(0.7);
 
+    // Auto-select co-located reference station (e.g. id-03 for id-05) if available
+    let refId = solarRefStationId;
+    if (!refId || refId === sensorId) {
+      if (sensorId === "id-05") {
+        const has03 = devices.some((d) => (d.authToken || d.id) === "id-03");
+        if (has03) refId = "id-03";
+      }
+      if (!refId) {
+        const alt = devices.find((d) => (d.authToken || d.id) !== sensorId);
+        if (alt) refId = (alt.authToken || alt.id) as string;
+      }
+      if (refId) setSolarRefStationId(refId);
+    }
+
+    if (refId && refId !== sensorId) {
+      fetchRefStationData(refId);
+    }
     if (referenceGuidePoints.length === 0) {
       fetchReferenceGuide();
     }
 
     toast({
-      title: "Preset Sengatan Radiasi Matahari Diaktifkan",
+      title: "☀️ Preset Koreksi Radiasi Surya Diaktifkan",
       description:
-        "Suhu udara dialihkan ke mode interpolasi berpenuntun model ECMWF IFS / ERA5 untuk merekonstruksi bias pemanasan shield.",
+        "Mode Cosine-Hermite S-Curve aktif dengan pemulihan termodinamika Kelembapan Relatif (RH via Magnus-Tetens).",
     });
-  }, [referenceGuidePoints.length, fetchReferenceGuide, toast]);
+  }, [
+    solarRefStationId,
+    sensorId,
+    devices,
+    fetchRefStationData,
+    referenceGuidePoints.length,
+    fetchReferenceGuide,
+    toast,
+  ]);
 
   // 4. Automatic Anomaly Detection (Spikes, Boundary Violations, Frozen, and Solar Overheating)
   const anomalies = useMemo<AnomalyFlag[]>(() => {
@@ -649,21 +827,26 @@ export default function KoreksiDataPage() {
         continue;
       }
 
-      // Check Daytime Solar Overheating Bias vs Atmospheric Model (09:00 - 15:30 WIB)
-      if (selectedVar.key === "temperature" && referenceGuidePoints.length > 0) {
-        const refTemp = getModelValAtTimestamp(rec.timestamp, "temperature");
+      // Check Solar Radiation Overheating Bias vs Baseline Reference (09:00 - 17:30 WIB)
+      if (selectedVar.key === "temperature") {
+        const refTemp = getUnifiedRefValAtTimestamp(rec.timestamp, "temperature");
         if (refTemp !== null) {
           const dLocal = new Date(rec.timestamp);
           const hour = dLocal.getHours();
-          if (hour >= 9 && hour <= 16) {
-            const diffModel = numVal - refTemp;
-            if (diffModel >= 3.5) {
+          const minute = dLocal.getMinutes();
+          const timeFrac = hour + minute / 60;
+          if (timeFrac >= 9.0 && timeFrac <= 17.5) {
+            const excessT = (numVal - refTemp) - baselineNightOffset;
+            const activeThreshold = (correctionMethod === "interpolate" && interpolationSubMethod === "solar_cosine_hermite")
+              ? solarThreshold
+              : 0.7;
+            if (excessT >= activeThreshold) {
               flags.push({
                 index: i,
                 timestamp: rec.timestamp,
                 value: numVal,
                 type: "solar_overheating",
-                reason: `Paparan panas radiasi matahari: +${diffModel.toFixed(1)}°C di atas model ambient (${refTemp.toFixed(1)}°C)`,
+                reason: `Paparan radiasi surya sore: +${excessT.toFixed(2)}°C di atas acuan (${refTemp.toFixed(2)}°C, offset malam: ${baselineNightOffset >= 0 ? "+" : ""}${baselineNightOffset.toFixed(2)}°C)`,
               });
               continue;
             }
@@ -711,7 +894,15 @@ export default function KoreksiDataPage() {
     }
 
     return flags;
-  }, [rawRecords, selectedVar, referenceGuidePoints.length, getModelValAtTimestamp]);
+  }, [
+    rawRecords,
+    selectedVar,
+    getUnifiedRefValAtTimestamp,
+    baselineNightOffset,
+    correctionMethod,
+    interpolationSubMethod,
+    solarThreshold,
+  ]);
 
   const anomalyIndexSet = useMemo(() => new Set(anomalies.map((a) => a.index)), [anomalies]);
 
@@ -748,6 +939,7 @@ export default function KoreksiDataPage() {
 
       // If user selected "Hanya Koreksi Anomali" and this point is clean, keep raw
       if (onlyAnomalies && !isAnomaly) {
+        const rawRh = Number((rec as any)["humidity"]);
         return {
           timestamp: rec.timestamp,
           timestampInSeconds: Math.floor(rec.timestamp / 1000),
@@ -758,6 +950,10 @@ export default function KoreksiDataPage() {
           diff: 0,
           isModified: false,
           isAnomaly: false,
+          recoveredRhVal: Number.isFinite(rawRh) ? rawRh : undefined,
+          rawRhVal: Number.isFinite(rawRh) ? rawRh : undefined,
+          diffRh: 0,
+          isRhModified: false,
         };
       }
 
@@ -816,14 +1012,34 @@ export default function KoreksiDataPage() {
           }
 
           // Execute selected meteorological interpolation algorithm
-          if (interpolationSubMethod === "model_guided") {
+          if (interpolationSubMethod === "solar_cosine_hermite") {
+            const refT = getUnifiedRefValAtTimestamp(rec.timestamp, varKey);
+            const refA = getUnifiedRefValAtTimestamp(tAnchor0, varKey);
+            const refB = getUnifiedRefValAtTimestamp(tAnchor1, varKey);
+
+            if (refT !== null && refA !== null && refB !== null) {
+              targetVal = interpolateSolarCosineHermite(
+                rec.timestamp,
+                tAnchor0,
+                tAnchor1,
+                yAnchor0,
+                yAnchor1,
+                refT,
+                refA,
+                refB,
+                baselineNightOffset
+              );
+            } else {
+              targetVal = interpolateCubicHermite(rec.timestamp, tAnchor0, yAnchor0, tAnchor1, yAnchor1);
+            }
+          } else if (interpolationSubMethod === "model_guided") {
             targetVal = interpolateModelGuided(
               rec.timestamp,
               tAnchor0,
               yAnchor0,
               tAnchor1,
               yAnchor1,
-              (ts) => getModelValAtTimestamp(ts, varKey)
+              (ts) => getUnifiedRefValAtTimestamp(ts, varKey)
             );
           } else if (interpolationSubMethod === "cubic_pchip") {
             targetVal = interpolateCubicHermite(
@@ -874,6 +1090,29 @@ export default function KoreksiDataPage() {
       const diff = Number.isFinite(rawVal) ? roundedVal - rawVal : roundedVal;
       const isModified = Math.abs(diff) > 0.0001;
 
+      // Thermodynamic Relative Humidity (RH) Recovery via Magnus-Tetens
+      let recoveredRhVal: number | undefined = undefined;
+      let rawRhVal: number | undefined = undefined;
+      let diffRh: number = 0;
+      let isRhModified: boolean = false;
+
+      if (selectedVar.key === "temperature") {
+        const rawRh = Number((rec as any)["humidity"]);
+        const rawDew = Number((rec as any)["dew"] ?? (rec as any)["dew_point"]);
+        if (Number.isFinite(rawRh)) rawRhVal = rawRh;
+
+        if (Number.isFinite(rawDew)) {
+          const calcRh = recalculateRHMagnus(targetVal, rawDew);
+          if (Number.isFinite(calcRh)) {
+            recoveredRhVal = Number(calcRh.toFixed(1));
+            if (Number.isFinite(rawRh)) {
+              diffRh = Number((recoveredRhVal - rawRh).toFixed(1));
+              isRhModified = Math.abs(diffRh) > 0.1;
+            }
+          }
+        }
+      }
+
       return {
         timestamp: rec.timestamp,
         timestampInSeconds: Math.floor(rec.timestamp / 1000),
@@ -884,6 +1123,10 @@ export default function KoreksiDataPage() {
         diff: Number(diff.toFixed(selectedVar.decimals)),
         isModified,
         isAnomaly,
+        recoveredRhVal,
+        rawRhVal,
+        diffRh,
+        isRhModified,
       };
     });
   }, [
@@ -899,7 +1142,8 @@ export default function KoreksiDataPage() {
     onlyAnomalies,
     anomalyIndexSet,
     interpolationSubMethod,
-    getModelValAtTimestamp,
+    getUnifiedRefValAtTimestamp,
+    baselineNightOffset,
   ]);
 
   // Modified items count
@@ -907,14 +1151,23 @@ export default function KoreksiDataPage() {
     return correctedResults.filter((r) => r.isModified);
   }, [correctedResults]);
 
+  // Active Reference Label for Charts & Legends
+  const activeRefLabel = useMemo(() => {
+    if (solarRefSource === "station_aws" && solarRefStationId) {
+      const match = devices.find((d) => (d.authToken || d.id) === solarRefStationId);
+      return match ? `${match.name} (${match.location || solarRefStationId})` : `AWS ${solarRefStationId}`;
+    }
+    return referenceModelName;
+  }, [solarRefSource, solarRefStationId, devices, referenceModelName]);
+
   // Reference Guide Series for ECharts
   const refSeries = useMemo(() => {
-    if (!showReferenceGuide || referenceGuidePoints.length === 0) return [];
+    if (!showReferenceGuide) return [];
     return correctedResults.map((r) => {
-      const v = getModelValAtTimestamp(r.timestamp, selectedVar.key);
+      const v = getUnifiedRefValAtTimestamp(r.timestamp, selectedVar.key);
       return v != null ? Number(v.toFixed(selectedVar.decimals)) : null;
     });
-  }, [showReferenceGuide, referenceGuidePoints, correctedResults, selectedVar, getModelValAtTimestamp]);
+  }, [showReferenceGuide, correctedResults, selectedVar, getUnifiedRefValAtTimestamp]);
 
   // 6. ECharts Configuration for Before vs After Preview
   const chartOptions = useMemo(() => {
@@ -1023,7 +1276,7 @@ export default function KoreksiDataPage() {
 
     if (showReferenceGuide && refSeries.length > 0) {
       seriesList.push({
-        name: `Penuntun Model (${referenceModelName})`,
+        name: `Acuan Baseline (${activeRefLabel.split(" ")[0]})`,
         type: "line",
         data: refSeries,
         showSymbol: false,
@@ -1071,7 +1324,7 @@ export default function KoreksiDataPage() {
           if (showReferenceGuide && refSeries[idx] != null) {
             html += `<div class="flex items-center justify-between gap-4 text-xs py-0.5">
               <span class="flex items-center gap-1.5 text-cyan-500 font-medium">
-                <span class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-500"></span> Penuntun Model (${referenceModelName.split(" ")[0]})
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-500"></span> Acuan (${activeRefLabel.split(" ")[0]})
               </span>
               <span class="font-mono font-semibold">${refSeries[idx]} ${selectedVar.unit}</span>
             </div>`;
@@ -1083,6 +1336,16 @@ export default function KoreksiDataPage() {
             <span class="text-slate-500 dark:text-slate-400">Selisih Penyesuaian (Δ)</span>
             <span class="font-mono font-bold ${diffColor}">${diffSign} ${selectedVar.unit}</span>
           </div>`;
+
+          if (syncRhRecovery && item.recoveredRhVal != null && item.rawRhVal != null && selectedVar.key === "temperature") {
+            const rhDiffSign = item.diffRh > 0 ? `+${item.diffRh}%` : `${item.diffRh}%`;
+            html += `<div class="flex items-center justify-between gap-4 text-xs py-0.5 border-t border-slate-100 dark:border-slate-800/60 mt-1 pt-1">
+              <span class="flex items-center gap-1.5 text-blue-500 font-medium">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-500"></span> Pemulihan RH (Magnus)
+              </span>
+              <span class="font-mono font-semibold">${item.rawRhVal}% ➔ ${item.recoveredRhVal}% (${rhDiffSign})</span>
+            </div>`;
+          }
 
           if (item.isAnomaly) {
             const anom = anomalies.find((a) => a.index === idx);
@@ -1158,7 +1421,7 @@ export default function KoreksiDataPage() {
         },
       },
     };
-  }, [correctedResults, anomalies, selectedVar, isDarkMode, showReferenceGuide, refSeries, referenceModelName]);
+  }, [correctedResults, anomalies, selectedVar, isDarkMode, showReferenceGuide, refSeries, activeRefLabel, syncRhRecovery]);
 
   // Impact summary statistics
   const stats = useMemo(() => {
@@ -1179,6 +1442,13 @@ export default function KoreksiDataPage() {
       corrVals.map((x) => Math.pow(x - corrMean, 2)).reduce((a, b) => a + b, 0) / count
     );
 
+    const rhModifiedItems = modifiedItems.filter(
+      (m) => m.isRhModified && m.recoveredRhVal != null && m.rawRhVal != null
+    );
+    const meanRhRecovery = rhModifiedItems.length > 0
+      ? rhModifiedItems.reduce((acc, m) => acc + (m.diffRh || 0), 0) / rhModifiedItems.length
+      : 0;
+
     return {
       count,
       modifiedCount,
@@ -1189,8 +1459,277 @@ export default function KoreksiDataPage() {
       corrStd: corrStd.toFixed(selectedVar.decimals),
       corrMin: Math.min(...corrVals).toFixed(selectedVar.decimals),
       corrMax: Math.max(...corrVals).toFixed(selectedVar.decimals),
+      rhModifiedCount: rhModifiedItems.length,
+      meanRhRecovery: meanRhRecovery.toFixed(1),
     };
   }, [correctedResults, modifiedItems, selectedVar]);
+
+  // 6.5. Universal Gap Imputation Engine Execution (Projek_Rainfall / Model_Imputasi)
+  const imputationResult = useMemo(() => {
+    if (rawRecords.length === 0) {
+      return {
+        grid: [] as ImputedGridPoint[],
+        summary: {
+          totalExpectedMinutes: 0,
+          originalAvailableCount: 0,
+          originalMissingCount: 0,
+          microGapsCount: 0,
+          microGapsMinutes: 0,
+          macroGapsCount: 0,
+          macroGapsMinutes: 0,
+          filledMicroCount: 0,
+          filledMacroCount: 0,
+          completenessPercent: 0,
+          segments: [] as GapSegment[],
+        },
+      };
+    }
+
+    const startTs = new Date(`${startDateStr}T${startTimeStr}:00`).getTime();
+    const endTs = new Date(`${endDateStr}T${endTimeStr}:59`).getTime();
+
+    return runUniversalGapImputation(
+      rawRecords,
+      startTs,
+      endTs,
+      selectedVar.key,
+      {
+        microGapLimitMinutes: gapMicroLimitMinutes,
+        enableSpatialTransfer: gapImputeMethod === "auto_hybrid" || gapImputeMethod === "companion_ridge",
+        enableModelGuided: gapImputeMethod === "auto_hybrid" || gapImputeMethod === "model_guided",
+        enableBoundaryBridging: enableGapBridging,
+        enablePhysicsPostProcessing: enableGapPhysics,
+      },
+      refStationRecords,
+      referenceGuidePoints
+    );
+  }, [
+    rawRecords,
+    startDateStr,
+    startTimeStr,
+    endDateStr,
+    endTimeStr,
+    selectedVar.key,
+    gapMicroLimitMinutes,
+    gapImputeMethod,
+    enableGapBridging,
+    enableGapPhysics,
+    refStationRecords,
+    referenceGuidePoints,
+  ]);
+
+  // ECharts Option for Gap Imputation Preview
+  const gapChartOptions = useMemo(() => {
+    if (imputationResult.grid.length === 0) return {};
+
+    const timeLabels = imputationResult.grid.map((r) => r.timeFormatted.slice(0, 5));
+    const rawData = imputationResult.grid.map((r) => r.isOriginal ? r.rawVal : null);
+    const imputedData = imputationResult.grid.map((r) => r.imputedVal);
+
+    // Calculate Y-axis bounds
+    const allVals = imputationResult.grid.map((r) => r.imputedVal).filter((v) => Number.isFinite(v));
+    const vMin = allVals.length > 0 ? Math.min(...allVals) : 20;
+    const vMax = allVals.length > 0 ? Math.max(...allVals) : 35;
+    const padding = Math.max(0.5, (vMax - vMin) * 0.1);
+    const yMin = Number((vMin - padding).toFixed(1));
+    const yMax = Number((vMax + padding).toFixed(1));
+
+    // Build MarkArea for gaps
+    const markAreaPieces: any[] = imputationResult.summary.segments.map((seg) => {
+      const startLabel = timeLabels[seg.startIndex];
+      const endLabel = timeLabels[seg.endIndex];
+      const isMicro = seg.type === "micro";
+      return [
+        {
+          name: isMicro ? `Gap Mikro (${seg.durationMinutes}m)` : `Gap Makro (${seg.durationMinutes}m)`,
+          xAxis: startLabel,
+          itemStyle: {
+            color: isMicro
+              ? (isDarkMode ? "rgba(251, 191, 36, 0.08)" : "rgba(251, 191, 36, 0.15)")
+              : (isDarkMode ? "rgba(168, 85, 247, 0.10)" : "rgba(168, 85, 247, 0.18)"),
+          },
+        },
+        {
+          xAxis: endLabel,
+        },
+      ];
+    });
+
+    return {
+      backgroundColor: "transparent",
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "cross", snap: true },
+        formatter: (params: any[]) => {
+          if (!params || params.length === 0) return "";
+          const idx = params[0].dataIndex;
+          const pt = imputationResult.grid[idx];
+          if (!pt) return "";
+
+          let html = `<div class="font-sans text-xs">
+            <div class="font-bold border-b border-slate-200 dark:border-slate-700 pb-1 mb-1.5 flex items-center justify-between gap-4">
+              <span>Waktu: ${pt.dateFormatted} WIB</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded ${pt.isOriginal ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"}">
+                ${pt.isOriginal ? "DATA ASLI" : `IMPUTASI (${pt.imputationPhase.toUpperCase()})`}
+              </span>
+            </div>`;
+
+          if (pt.isOriginal) {
+            html += `<div class="flex items-center justify-between gap-4 text-xs py-0.5">
+              <span class="text-emerald-600 font-medium">Observasi Sensor:</span>
+              <span class="font-mono font-bold">${pt.rawVal} ${selectedVar.unit}</span>
+            </div>`;
+          } else {
+            html += `<div class="flex items-center justify-between gap-4 text-xs py-0.5">
+              <span class="text-purple-600 font-medium">Nilai Terimputasi:</span>
+              <span class="font-mono font-bold text-purple-600 dark:text-purple-400">${pt.imputedVal} ${selectedVar.unit}</span>
+            </div>
+            <div class="text-[11px] text-slate-500 mt-1">
+              Status Celah: <strong class="text-amber-600">${pt.gapType === "micro" ? "Gap Mikro (≤15m)" : "Gap Makro (>15m)"}</strong>
+            </div>`;
+          }
+
+          html += `</div>`;
+          return html;
+        },
+      },
+      legend: {
+        top: 8,
+        right: 16,
+        textStyle: { color: isDarkMode ? "#94A3B8" : "#475569", fontSize: 12 },
+      },
+      grid: { left: "3%", right: "3%", bottom: "8%", top: "14%", containLabel: true },
+      xAxis: {
+        type: "category",
+        boundaryGap: false,
+        data: timeLabels,
+        axisLine: { lineStyle: { color: isDarkMode ? "#334155" : "#CBD5E1" } },
+        axisLabel: {
+          color: isDarkMode ? "#94A3B8" : "#64748B",
+          fontSize: 11,
+          interval: Math.max(1, Math.floor(timeLabels.length / 8)),
+        },
+      },
+      yAxis: {
+        type: "value",
+        scale: true,
+        min: yMin,
+        max: yMax,
+        name: `${selectedVar.label} (${selectedVar.unit})`,
+        nameTextStyle: { color: isDarkMode ? "#94A3B8" : "#64748B", fontSize: 12 },
+        splitLine: { lineStyle: { color: isDarkMode ? "#1E293B" : "#F1F5F9", type: "dashed" } },
+      },
+      series: [
+        {
+          name: "Data Asli Sensor",
+          type: "line",
+          data: rawData,
+          symbol: "circle",
+          symbolSize: 4,
+          connectNulls: false,
+          itemStyle: { color: "#10B981" },
+          lineStyle: { width: 2, color: "#10B981" },
+        },
+        {
+          name: "Kurva Hasil Imputasi Celah (Model Hibrida)",
+          type: "line",
+          data: imputedData,
+          symbol: "none",
+          itemStyle: { color: "#8B5CF6" },
+          lineStyle: { width: 2.5, color: "#8B5CF6", type: "solid" },
+          markArea: {
+            silent: true,
+            data: markAreaPieces,
+          },
+        },
+      ],
+    };
+  }, [imputationResult, isDarkMode, selectedVar]);
+
+  // Handle Apply Gap Imputation to Firebase RTDB
+  const handleApplyGapImputation = async () => {
+    const imputedPoints = imputationResult.grid.filter((pt) => pt.isImputed);
+    if (imputedPoints.length === 0) {
+      toast({
+        title: "Tidak Ada Celah Data",
+        description: "Seluruh menit observasi telah terisi secara penuh (100%).",
+      });
+      setShowImputationConfirmModal(false);
+      return;
+    }
+
+    try {
+      setIsApplyingImputation(true);
+      const updates: BatchSensorFieldUpdate[] = [];
+
+      for (let i = 0; i < imputedPoints.length; i++) {
+        const pt = imputedPoints[i];
+        updates.push({
+          timestampInSeconds: pt.timestampInSeconds,
+          field: selectedVar.key,
+          newValue: pt.imputedVal,
+        });
+        updates.push({
+          timestampInSeconds: pt.timestampInSeconds,
+          field: "status",
+          newValue: "IMPUTED",
+        });
+        updates.push({
+          timestampInSeconds: pt.timestampInSeconds,
+          field: "timestamp",
+          newValue: pt.timestampInSeconds,
+        });
+      }
+
+      const totalUpdated = await batchUpdateSensorFields(sensorId, updates);
+
+      const startEpoch = Math.floor(new Date(`${startDateStr}T${startTimeStr}:00`).getTime() / 1000);
+      const endEpoch = Math.floor(new Date(`${endDateStr}T${endTimeStr}:59`).getTime() / 1000);
+
+      await logSensorCorrection({
+        sensorId,
+        timestamp: Date.now(),
+        field: selectedVar.key,
+        method: `GAP_IMPUTATION_${gapImputeMethod.toUpperCase()}`,
+        pointCount: imputedPoints.length,
+        range: {
+          start: startEpoch,
+          end: endEpoch,
+          startDateFormatted: `${startDateStr} ${startTimeStr}`,
+          endDateFormatted: `${endDateStr} ${endTimeStr}`,
+        },
+        parameters: {
+          microGapLimit: gapMicroLimitMinutes,
+          gapMethod: gapImputeMethod,
+          boundaryBridging: enableGapBridging,
+          physicsPostProcess: enableGapPhysics,
+          totalGapsFilled: imputedPoints.length,
+          companionStation: solarRefStationId,
+        },
+        appliedAt: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
+        appliedBy: user?.displayName || user?.email || "Admin Operator",
+        notes: auditNotes || `Imputasi celah data ${imputedPoints.length} menit menggunakan algoritma 2-Fase Hibrida (Model Imputasi)`,
+      });
+
+      toast({
+        title: "Imputasi Celah Berhasil Disimpan",
+        description: `Berhasil menulis ${imputedPoints.length} menit data baru (${totalUpdated} entri) ke Firebase RTDB dengan status IMPUTED.`,
+      });
+
+      setShowImputationConfirmModal(false);
+      handleFetchData();
+      loadAuditTrail(sensorId);
+    } catch (err: any) {
+      console.error("Gagal menyimpan imputasi celah:", err);
+      toast({
+        title: "Gagal Menerapkan Imputasi",
+        description: err.message || "Terjadi kesalahan saat menulis ke database.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsApplyingImputation(false);
+    }
+  };
 
   // 7. Apply Batch Correction to RTDB
   const handleApplyBatchCorrection = async () => {
@@ -1205,11 +1744,31 @@ export default function KoreksiDataPage() {
 
     try {
       setIsApplying(true);
-      const updates: BatchSensorFieldUpdate[] = modifiedItems.map((item) => ({
-        timestampInSeconds: item.timestampInSeconds,
-        field: selectedVar.key,
-        newValue: item.correctedVal,
-      }));
+      const updates: BatchSensorFieldUpdate[] = [];
+      let rhUpdateCount = 0;
+
+      for (const item of modifiedItems) {
+        updates.push({
+          timestampInSeconds: item.timestampInSeconds,
+          field: selectedVar.key,
+          newValue: item.correctedVal,
+        });
+
+        if (
+          syncRhRecovery &&
+          selectedVar.key === "temperature" &&
+          item.recoveredRhVal != null &&
+          Number.isFinite(item.recoveredRhVal) &&
+          item.isRhModified
+        ) {
+          updates.push({
+            timestampInSeconds: item.timestampInSeconds,
+            field: "humidity",
+            newValue: item.recoveredRhVal,
+          });
+          rhUpdateCount++;
+        }
+      }
 
       // 1. Eksekusi batch updates ke RTDB
       const updatedCount = await batchUpdateSensorFields(sensorId, updates);
@@ -1229,9 +1788,22 @@ export default function KoreksiDataPage() {
           scaleFactor: correctionMethod === "scale" ? scaleFactor : undefined,
           interpolationSubMethod: correctionMethod === "interpolate" ? interpolationSubMethod : undefined,
           referenceModel:
-            correctionMethod === "interpolate" && interpolationSubMethod === "model_guided"
-              ? referenceModelName
+            correctionMethod === "interpolate"
+              ? activeRefLabel
               : undefined,
+          solarRefSource:
+            correctionMethod === "interpolate" && interpolationSubMethod === "solar_cosine_hermite"
+              ? solarRefSource
+              : undefined,
+          solarThreshold:
+            correctionMethod === "interpolate" && interpolationSubMethod === "solar_cosine_hermite"
+              ? solarThreshold
+              : undefined,
+          syncRhRecovery:
+            correctionMethod === "interpolate" && interpolationSubMethod === "solar_cosine_hermite"
+              ? syncRhRecovery
+              : undefined,
+          rhPointsRecovered: rhUpdateCount > 0 ? rhUpdateCount : undefined,
           onlyAnomalies,
         },
         range: {
@@ -1250,7 +1822,9 @@ export default function KoreksiDataPage() {
 
       toast({
         title: "Koreksi Berhasil Diterapkan!",
-        description: `${updatedCount} titik data untuk ${selectedVar.label} berhasil diperbarui di database.`,
+        description: rhUpdateCount > 0
+          ? `${modifiedItems.length} titik ${selectedVar.label} diperbarui dan ${rhUpdateCount} titik Kelembapan (RH via Magnus) dipulihkan secara simultan di database.`
+          : `${updatedCount} titik data untuk ${selectedVar.label} berhasil diperbarui di database.`,
       });
 
       setShowConfirmModal(false);
@@ -1538,7 +2112,52 @@ export default function KoreksiDataPage() {
 
         {/* ================= TAB 1: WORKSPACE KOREKSI ================= */}
         <TabsContent value="workspace" className="space-y-6 mt-4">
-          {/* Anomaly Detection Banner if detected */}
+          {/* Workspace Operation Mode Toggle Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Mode Operasi:</span>
+              <div className="inline-flex rounded-lg bg-slate-200/70 dark:bg-slate-800 p-1 border border-slate-300 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setOperationMode("point_correction")}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                    operationMode === "point_correction"
+                      ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  }`}
+                >
+                  <Wrench className="h-3.5 w-3.5" /> Koreksi Nilai &amp; Anomali
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOperationMode("gap_imputation")}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                    operationMode === "gap_imputation"
+                      ? "bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  }`}
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-purple-500" /> Imputasi Celah Data (1440/Hari)
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {operationMode === "gap_imputation" ? (
+                <Badge variant="outline" className="text-xs border-purple-400 text-purple-600 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40">
+                  {imputationResult.summary.originalMissingCount} Menit Celah Terdeteksi ({imputationResult.summary.segments.length} Segmen)
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs border-indigo-400 text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40">
+                  {rawRecords.length} Titik Observasi Terpilih
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {operationMode === "point_correction" ? (
+            <div className="space-y-6">
+              {/* Anomaly Detection Banner if detected */}
           {anomalies.length > 0 && (
             <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-200">
               <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -1579,7 +2198,7 @@ export default function KoreksiDataPage() {
                       onClick={handleApplySolarOverheatingPreset}
                     >
                       <Sun className="h-3.5 w-3.5 mr-1 text-amber-500" />
-                      Koreksi Radiasi Panas Matahari (ECMWF IFS Guide)
+                      Koreksi Radiasi Surya (Cosine-Hermite + Magnus RH)
                     </Button>
                   )}
                   <Button
@@ -1874,13 +2493,13 @@ export default function KoreksiDataPage() {
                           className="border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold gap-1.5 h-8"
                         >
                           <Sun className="h-3.5 w-3.5 text-amber-500" />
-                          Preset: Koreksi Radiasi Panas Matahari
+                          Preset: Koreksi Radiasi Surya (S-Curve + Magnus RH)
                         </Button>
                       </div>
                     </div>
 
-                    {/* Radio/Card Grid for 4 Sub-methods */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                    {/* Radio/Card Grid for 5 Sub-methods */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
                       {/* 1. Model Guided */}
                       <button
                         type="button"
@@ -1956,6 +2575,32 @@ export default function KoreksiDataPage() {
                           Interpolasi linier dengan pembobotan delta waktu presisi milidetik untuk interval data tidak seragam.
                         </div>
                       </button>
+
+                      {/* 5. Cosine-Hermite Solar Radiation + Magnus RH */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInterpolationSubMethod("solar_cosine_hermite");
+                          if (solarRefSource === "station_aws" && refStationRecords.length === 0) {
+                            fetchRefStationData(solarRefStationId);
+                          } else if (solarRefSource === "model_ecmwf" && referenceGuidePoints.length === 0) {
+                            fetchReferenceGuide();
+                          }
+                        }}
+                        className={`p-3 rounded-lg border text-left transition-all ${
+                          interpolationSubMethod === "solar_cosine_hermite"
+                            ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30 ring-1 ring-amber-500"
+                            : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 font-semibold text-xs text-amber-700 dark:text-amber-300 mb-1">
+                          <Sun className="h-3.5 w-3.5 text-amber-500" />
+                          Kosinus-Hermite + RH
+                        </div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                          Koreksi radiasi matahari kurva S bebas step-jump &amp; rekonstruksi RH sinkron via Magnus-Tetens.
+                        </div>
+                      </button>
                     </div>
 
                     {/* Detail Info for Current Sub-method */}
@@ -1994,6 +2639,217 @@ export default function KoreksiDataPage() {
                           )}
                           Muat Ulang Model
                         </Button>
+                      </div>
+                    )}
+
+                    {interpolationSubMethod === "solar_cosine_hermite" && (
+                      <div className="p-4 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 space-y-3.5 text-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 dark:border-amber-800/40 pb-2.5">
+                          <div className="space-y-0.5">
+                            <div className="font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                              <Sun className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                              Konfigurasi Koreksi Radiasi Panas Matahari (Cosine-Hermite S-Curve + Magnus RH)
+                            </div>
+                            <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                              Algoritma C0 &amp; C1 smooth transition mengeliminasi lonjakan akibat pemanasan radiasi surya langsung pada sensor, memulihkan RH termodinamika secara simultan.
+                            </p>
+                          </div>
+                          {baselineNightOffset !== 0 && (
+                            <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300 bg-amber-100/50 dark:bg-amber-900/30 font-mono text-[11px] py-1">
+                              Baseline Malam: {baselineNightOffset > 0 ? `+${baselineNightOffset.toFixed(2)}` : baselineNightOffset.toFixed(2)} °C
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Dual Reference Configuration */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                              Sumber Data Referensi Cuaca:
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={solarRefSource === "station_aws" ? "default" : "outline"}
+                                className={`h-8 text-xs flex-1 ${solarRefSource === "station_aws" ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}`}
+                                onClick={() => {
+                                  setSolarRefSource("station_aws");
+                                  if (refStationRecords.length === 0) {
+                                    fetchRefStationData(solarRefStationId);
+                                  }
+                                }}
+                              >
+                                <Database className="h-3.5 w-3.5 mr-1" /> Stasiun AWS Tetangga
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={solarRefSource === "model_ecmwf" ? "default" : "outline"}
+                                className={`h-8 text-xs flex-1 ${solarRefSource === "model_ecmwf" ? "bg-cyan-600 hover:bg-cyan-700 text-white" : ""}`}
+                                onClick={() => {
+                                  setSolarRefSource("model_ecmwf");
+                                  if (referenceGuidePoints.length === 0) {
+                                    fetchReferenceGuide();
+                                  }
+                                }}
+                              >
+                                <Sparkles className="h-3.5 w-3.5 mr-1" /> Model Atmosfer ECMWF
+                              </Button>
+                            </div>
+
+                            {/* Source specific controls */}
+                            {solarRefSource === "station_aws" ? (
+                              <div className="flex items-center gap-2 pt-1">
+                                <Select
+                                  value={solarRefStationId}
+                                  onValueChange={(val) => {
+                                    setSolarRefStationId(val);
+                                    fetchRefStationData(val);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs flex-1">
+                                    <SelectValue placeholder="Pilih Stasiun Referensi" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {devices
+                                      .filter((d) => (d.authToken || d.id) !== sensorId)
+                                      .map((device) => {
+                                        const devVal = (device.authToken || device.id) as string;
+                                        return (
+                                          <SelectItem key={device.id} value={devVal}>
+                                            {device.name} ({devVal})
+                                          </SelectItem>
+                                        );
+                                      })}
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => fetchRefStationData(solarRefStationId)}
+                                  disabled={loadingRefStation}
+                                  className="h-8 text-xs px-2.5"
+                                  title="Segarkan data stasiun referensi"
+                                >
+                                  <RefreshCw className={`h-3 w-3 ${loadingRefStation ? "animate-spin" : ""}`} />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 pt-1">
+                                <Select
+                                  value={referenceModelType}
+                                  onValueChange={(val: "ecmwf_ifs" | "era5") => {
+                                    setReferenceModelType(val);
+                                    fetchReferenceGuide(undefined, startDateStr, endDateStr, val);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs flex-1">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="ecmwf_ifs">ECMWF IFS (9 km)</SelectItem>
+                                    <SelectItem value="era5">ERA5 Reanalysis (31 km)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => fetchReferenceGuide()}
+                                  disabled={loadingReference}
+                                  className="h-8 text-xs px-2.5"
+                                  title="Segarkan data model ECMWF"
+                                >
+                                  <RefreshCw className={`h-3 w-3 ${loadingReference ? "animate-spin" : ""}`} />
+                                </Button>
+                              </div>
+                            )}
+
+                            <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                              {solarRefSource === "station_aws" ? (
+                                loadingRefStation ? (
+                                  <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                    <RefreshCw className="h-3 w-3 animate-spin" /> Mengunduh data stasiun {solarRefStationId}...
+                                  </span>
+                                ) : refStationRecords.length > 0 ? (
+                                  <span className="text-emerald-600 dark:text-emerald-400">
+                                    ✓ {refStationRecords.length} titik observasi stasiun {solarRefStationId} termuat.
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-600 dark:text-amber-400">
+                                    ⚠ Belum ada titik data. Klik tombol segarkan untuk memuat stasiun {solarRefStationId}.
+                                  </span>
+                                )
+                              ) : loadingReference ? (
+                                <span className="text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
+                                  <RefreshCw className="h-3 w-3 animate-spin" /> Mengunduh model {referenceModelName}...
+                                </span>
+                              ) : referenceGuidePoints.length > 0 ? (
+                                <span className="text-emerald-600 dark:text-emerald-400">
+                                  ✓ {referenceGuidePoints.length} titik model {referenceModelName} siap digunakan.
+                                </span>
+                              ) : (
+                                <span className="text-amber-600 dark:text-amber-400">
+                                  ⚠ Model belum termuat. Klik tombol segarkan.
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Parameter Threshold & Sync RH */}
+                          <div className="space-y-3">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                                  Ambang Batas Radiasi Surya (ΔT Excess): +{solarThreshold.toFixed(1)} °C
+                                </Label>
+                                <span className="text-[10px] text-slate-400 font-mono">09:00 - 17:30 WIB</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <Input
+                                  type="number"
+                                  step={0.5}
+                                  min={0.5}
+                                  max={10.0}
+                                  value={solarThreshold}
+                                  onChange={(e) => setSolarThreshold(parseFloat(e.target.value) || 2.0)}
+                                  className="w-24 h-8 text-xs font-mono"
+                                />
+                                <input
+                                  type="range"
+                                  min={0.5}
+                                  max={8.0}
+                                  step={0.1}
+                                  value={solarThreshold}
+                                  onChange={(e) => setSolarThreshold(parseFloat(e.target.value) || 2.0)}
+                                  className="flex-1 accent-amber-600 cursor-pointer"
+                                />
+                              </div>
+                              <p className="text-[10px] text-slate-500">
+                                Kelebihan suhu &Delta;T &gt; {solarThreshold}°C di atas baseline malam pada siang hari akan dikoreksi melengkung halus mengikuti referensi.
+                              </p>
+                            </div>
+
+                            <div className="flex items-start space-x-2.5 p-2 rounded-lg bg-amber-100/40 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/40">
+                              <Switch
+                                id="syncRhRecoverySwitch"
+                                checked={syncRhRecovery}
+                                onCheckedChange={setSyncRhRecovery}
+                                className="mt-0.5"
+                              />
+                              <div className="space-y-0.5">
+                                <Label htmlFor="syncRhRecoverySwitch" className="text-xs font-semibold cursor-pointer text-amber-900 dark:text-amber-200">
+                                  Sinkronkan Pemulihan RH Termodinamika (Magnus-Tetens)
+                                </Label>
+                                <p className="text-[10px] text-slate-600 dark:text-slate-400">
+                                  Menghitung ulang kelembapan relatif fisis dari titik embun ($T_d$) dan suhu terkoreksi, serta mengunggah field <code className="font-mono text-indigo-600 dark:text-indigo-400">humidity</code> ke Firebase RTDB secara atomik.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2064,7 +2920,7 @@ export default function KoreksiDataPage() {
             {/* Statistical Impact Metrics */}
             {stats && (
               <CardFooter className="py-3 px-5 border-t bg-slate-50/70 dark:bg-slate-900/40 flex flex-wrap items-center justify-between gap-4 text-xs">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full md:w-auto">
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 w-full md:w-auto">
                   <div>
                     <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Titik Terkoreksi:</span>
                     <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
@@ -2089,6 +2945,14 @@ export default function KoreksiDataPage() {
                       {stats.rawStd} → {stats.corrStd}
                     </span>
                   </div>
+                  {syncRhRecovery && selectedVar.key === "temperature" && (stats.rhModifiedCount ?? 0) > 0 && (
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Pemulihan RH (Magnus):</span>
+                      <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400">
+                        +{stats.meanRhRecovery}% ({stats.rhModifiedCount} titik)
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 ml-auto">
@@ -2156,7 +3020,12 @@ export default function KoreksiDataPage() {
                           </td>
                           <td className="p-2.5 font-mono">{row.rawVal} {selectedVar.unit}</td>
                           <td className="p-2.5 font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                            {row.correctedVal} {selectedVar.unit}
+                            <div>{row.correctedVal} {selectedVar.unit}</div>
+                            {row.isRhModified && row.recoveredRhVal !== undefined && (
+                              <div className="text-[10px] text-cyan-600 dark:text-cyan-400 font-normal">
+                                RH: {row.rawRhVal}% → {row.recoveredRhVal}% (+{row.diffRh}%)
+                              </div>
+                            )}
                           </td>
                           <td className="p-2.5 font-mono">
                             {row.diff > 0 ? `+${row.diff}` : row.diff} {selectedVar.unit}
@@ -2189,7 +3058,369 @@ export default function KoreksiDataPage() {
               </ScrollArea>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* ================= GAP IMPUTATION WORKSPACE (PROJEK_RAINFALL / MODEL_IMPUTASI) ================= */}
+          {/* 1. Summary KPI Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+            <Card className="border shadow-2xs bg-white dark:bg-slate-900">
+              <CardContent className="p-4">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                  Grid Waktu Target
+                </span>
+                <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1">
+                  {imputationResult.summary.totalExpectedMinutes.toLocaleString("id-ID")} Menit
+                </div>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  Resolusi Kontinu 1-Menit (1440/hari)
+                </span>
+              </CardContent>
+            </Card>
+
+            <Card className="border shadow-2xs bg-white dark:bg-slate-900">
+              <CardContent className="p-4">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                  Observasi Riil
+                </span>
+                <div className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
+                  {imputationResult.summary.originalAvailableCount.toLocaleString("id-ID")} Menit
+                </div>
+                <span className="text-[10px] text-emerald-600/80 mt-0.5 block">
+                  {((imputationResult.summary.originalAvailableCount / Math.max(1, imputationResult.summary.totalExpectedMinutes)) * 100).toFixed(1)}% Terisi Aktual
+                </span>
+              </CardContent>
+            </Card>
+
+            <Card className="border shadow-2xs bg-white dark:bg-slate-900">
+              <CardContent className="p-4">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                  Celah Kosong (Gaps)
+                </span>
+                <div className="text-xl font-bold font-mono text-purple-600 dark:text-purple-400 mt-1">
+                  {imputationResult.summary.originalMissingCount.toLocaleString("id-ID")} Menit
+                </div>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  {imputationResult.summary.microGapsCount} Mikro (≤15m) • {imputationResult.summary.macroGapsCount} Makro (&gt;15m)
+                </span>
+              </CardContent>
+            </Card>
+
+            <Card className="border shadow-2xs bg-white dark:bg-slate-900">
+              <CardContent className="p-4">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                  Kelengkapan Imputasi
+                </span>
+                <div className="text-xl font-bold font-mono text-indigo-600 dark:text-indigo-400 mt-1">
+                  {imputationResult.summary.completenessPercent}%
+                </div>
+                <span className="text-[10px] text-indigo-600/80 mt-0.5 block">
+                  100% Kontinu Tanpa Celah
+                </span>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* 2. Method Configuration Panel for Imputation */}
+          <Card className="border shadow-sm">
+            <CardHeader className="py-4 px-5 border-b">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-purple-500" />
+                    Pilih Algoritma Imputasi Celah (Framework Model Imputasi)
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Arsitektur Two-Phase Hybrid: Rekonstruksi mulus celah mikro dan transfer spasial makro bebas patahan vertikal
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-5 space-y-4">
+              {/* Grid 4 Methods */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                {[
+                  {
+                    id: "auto_hybrid",
+                    title: "2-Fase Hibrida Otomatis",
+                    desc: "Micro Spline (≤15m) + Companion Ridge Transfer (>15m). Rekomendasi WMO & ML.",
+                    icon: Sparkles,
+                    color: "purple",
+                  },
+                  {
+                    id: "companion_ridge",
+                    title: "Companion Spatial Ridge",
+                    desc: "Regresi harmonik diurnal antar stasiun AWS tetangga (id-03 / id-05 / id-01).",
+                    icon: Database,
+                    color: "indigo",
+                  },
+                  {
+                    id: "model_guided",
+                    title: "Panduan Model Cuaca",
+                    desc: "ECMWF IFS (9 km) / ERA5 Reanalysis Open-Meteo via Boundary Residual Bridging.",
+                    icon: Sun,
+                    color: "cyan",
+                  },
+                  {
+                    id: "pchip_spline",
+                    title: "Harmonic PCHIP Spline",
+                    desc: "Interpolasi polinomial kubik monoton bebas osilasi palsu (Runge overshoot).",
+                    icon: Activity,
+                    color: "emerald",
+                  },
+                ].map((m) => {
+                  const IconComp = m.icon;
+                  const isActive = gapImputeMethod === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setGapImputeMethod(m.id as any)}
+                      className={`p-3 rounded-lg border text-left transition-all ${
+                        isActive
+                          ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30 ring-1 ring-purple-500"
+                          : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-semibold text-xs text-purple-700 dark:text-purple-300 mb-1">
+                        <IconComp className="h-3.5 w-3.5 text-purple-500" />
+                        {m.title}
+                      </div>
+                      <div className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                        {m.desc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Imputation Settings Bar */}
+              <div className="p-4 rounded-xl bg-slate-50/80 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                {/* Companion station selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                    Stasiun Pendamping Acuan (Companion Node):
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={solarRefStationId}
+                      onValueChange={(val) => {
+                        setSolarRefStationId(val);
+                        fetchRefStationData(val);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs flex-1">
+                        <SelectValue placeholder="Pilih Stasiun" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {devices
+                          .filter((d) => (d.authToken || d.id) !== sensorId)
+                          .map((device) => {
+                            const devVal = (device.authToken || device.id) as string;
+                            return (
+                              <SelectItem key={device.id} value={devVal}>
+                                {device.name} ({devVal})
+                              </SelectItem>
+                            );
+                          })}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => fetchRefStationData(solarRefStationId)}
+                      disabled={loadingRefStation}
+                      className="h-8 text-xs px-2.5"
+                      title="Segarkan data stasiun pendamping"
+                    >
+                      <RefreshCw className={`h-3 w-3 ${loadingRefStation ? "animate-spin" : ""}`} />
+                    </Button>
+                  </div>
+                  <span className="text-[10px] text-slate-500">
+                    {refStationRecords.length > 0 ? `✓ ${refStationRecords.length} titik observasi stasiun pendamping siap.` : "Memerlukan data stasiun tetangga untuk transfer Ridge."}
+                  </span>
+                </div>
+
+                {/* Micro-gap threshold slider */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                      Batas Celah Mikro: {gapMicroLimitMinutes} Menit
+                    </Label>
+                    <span className="text-[10px] text-slate-400 font-mono">≤15m Spline</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="range"
+                      min={5}
+                      max={60}
+                      step={5}
+                      value={gapMicroLimitMinutes}
+                      onChange={(e) => setGapMicroLimitMinutes(parseInt(e.target.value) || 15)}
+                      className="flex-1 accent-purple-600 cursor-pointer"
+                    />
+                    <span className="font-mono text-xs w-8 text-right">{gapMicroLimitMinutes}m</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500">
+                    Celah di atas {gapMicroLimitMinutes} menit diisi via Macro Ridge Transfer / Model.
+                  </span>
+                </div>
+
+                {/* Toggles */}
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="enableBridgingSwitch"
+                      checked={enableGapBridging}
+                      onCheckedChange={setEnableGapBridging}
+                    />
+                    <Label htmlFor="enableBridgingSwitch" className="cursor-pointer text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                      Boundary Residual Bridging (Δ=0.00 di Titik Batas)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="enablePhysicsSwitch"
+                      checked={enableGapPhysics}
+                      onCheckedChange={setEnableGapPhysics}
+                    />
+                    <Label htmlFor="enablePhysicsSwitch" className="cursor-pointer text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                      Physics Post-Processing (Savitzky-Golay &amp; Magnus)
+                    </Label>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 3. ECharts Gap Imputation Visualizer */}
+          <Card className="border shadow-sm">
+            <CardHeader className="py-4 px-5 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-purple-500" />
+                  Pratinjau Rekonstruksi Grid 1-Menit (Data Asli vs Celah Terimputasi)
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Titik hijau = Observasi Riil | Garis ungu = Hasil Imputasi Mulus | Area berbayang = Segmen Celah Tertutup
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="border-purple-500/40 text-purple-600 dark:text-purple-400 text-xs">
+                {imputationResult.grid.length} Menit Kontinu
+              </Badge>
+            </CardHeader>
+            <CardContent className="p-4">
+              {imputationResult.grid.length === 0 ? (
+                <div className="h-[360px] flex flex-col items-center justify-center text-slate-400 space-y-2">
+                  <Database className="h-10 w-10 text-slate-300 dark:text-slate-700" />
+                  <p className="text-sm">Silakan pilih stasiun dan rentang waktu lalu klik &quot;Ambil Data Target&quot;</p>
+                </div>
+              ) : (
+                <ReactECharts
+                  option={gapChartOptions}
+                  style={{ height: "380px", width: "100%" }}
+                  opts={{ renderer: "canvas" }}
+                />
+              )}
+            </CardContent>
+
+            <CardFooter className="py-3 px-5 border-t bg-slate-50/70 dark:bg-slate-900/40 flex flex-wrap items-center justify-between gap-4 text-xs">
+              <div className="flex flex-wrap items-center gap-4 text-slate-600 dark:text-slate-400">
+                <div>
+                  <span>Total Celah Diisi: </span>
+                  <strong className="text-purple-600 dark:text-purple-400 font-mono">
+                    {imputationResult.summary.originalMissingCount} Menit
+                  </strong>
+                </div>
+                <div>
+                  <span>Fase 1 (Mikro): </span>
+                  <strong className="font-mono text-amber-600">{imputationResult.summary.filledMicroCount} m</strong>
+                </div>
+                <div>
+                  <span>Fase 2 (Makro): </span>
+                  <strong className="font-mono text-purple-600">{imputationResult.summary.filledMacroCount} m</strong>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => setShowImputationConfirmModal(true)}
+                disabled={imputationResult.summary.originalMissingCount === 0 || isApplyingImputation}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs shadow-sm h-9 px-4 ml-auto"
+              >
+                <Check className="h-4 w-4 mr-1.5" />
+                Tuliskan Data Imputasi ke Firebase ({imputationResult.summary.originalMissingCount} Menit)
+              </Button>
+            </CardFooter>
+          </Card>
+
+          {/* 4. Table of Gap Segments */}
+          <Card className="border shadow-sm">
+            <CardHeader className="py-3 px-5 border-b">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <History className="h-4 w-4 text-slate-500" />
+                Daftar Segmen Celah Data yang Terdeteksi &amp; Terisi ({imputationResult.summary.segments.length} Segmen)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ScrollArea className="h-60">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 sticky top-0 z-10">
+                    <tr>
+                      <th className="p-2.5 pl-5 font-semibold">Segmen ID</th>
+                      <th className="p-2.5 font-semibold">Waktu Mulai</th>
+                      <th className="p-2.5 font-semibold">Waktu Selesai</th>
+                      <th className="p-2.5 font-semibold">Durasi</th>
+                      <th className="p-2.5 font-semibold">Kategori</th>
+                      <th className="p-2.5 font-semibold">Nilai Batas (Start → End)</th>
+                      <th className="p-2.5 pr-5 font-semibold">Metode Rekonstruksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    {imputationResult.summary.segments.map((seg, idx) => (
+                      <tr key={seg.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-900/40">
+                        <td className="p-2.5 pl-5 font-mono text-slate-500">#{idx + 1}</td>
+                        <td className="p-2.5 font-mono">{format(new Date(seg.startTs), "dd/MM/yyyy HH:mm")}</td>
+                        <td className="p-2.5 font-mono">{format(new Date(seg.endTs), "dd/MM/yyyy HH:mm")}</td>
+                        <td className="p-2.5 font-mono font-bold text-slate-700 dark:text-slate-200">{seg.durationMinutes} Menit</td>
+                        <td className="p-2.5">
+                          {seg.type === "micro" ? (
+                            <Badge variant="outline" className="border-amber-400 text-amber-600 dark:text-amber-400 text-[10px] py-0 px-1.5">
+                              Mikro (≤{gapMicroLimitMinutes}m)
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-purple-400 text-purple-600 dark:text-purple-400 text-[10px] py-0 px-1.5">
+                              Makro (&gt;{gapMicroLimitMinutes}m)
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="p-2.5 font-mono text-slate-500">
+                          {seg.valBefore !== null ? `${seg.valBefore} ${selectedVar.unit}` : "Awal Rentang"} ➔{" "}
+                          {seg.valAfter !== null ? `${seg.valAfter} ${selectedVar.unit}` : "Akhir Rentang"}
+                        </td>
+                        <td className="p-2.5 pr-5">
+                          <span className="font-semibold text-purple-600 dark:text-purple-400">
+                            {seg.type === "micro" ? "Fase 1 (Spline Hermite)" : `Fase 2 (${gapImputeMethod.toUpperCase()})`}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {imputationResult.summary.segments.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="text-center p-6 text-slate-400">
+                          Tidak ditemukan celah data kosong pada rentang waktu ini. Observasi 100% lengkap!
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </TabsContent>
 
         {/* ================= TAB 2: AUDIT TRAIL HISTORI ================= */}
         <TabsContent value="audit" className="space-y-4 mt-4">
@@ -2305,6 +3536,18 @@ export default function KoreksiDataPage() {
               </div>
             </div>
 
+            {syncRhRecovery && selectedVar.key === "temperature" && (
+              <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2">
+                <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                <div>
+                  <span className="font-bold">⚡ Pembaruan Simultan Atomik Aktif:</span>
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                    Menulis nilai Suhu Udara ({modifiedItems.length} titik) dan Kelembapan Relatif ({stats?.rhModifiedCount || 0} titik via formula Magnus-Tetens) secara bersamaan ke node Firebase RTDB.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1">
               <Label htmlFor="auditNotes" className="text-xs font-medium">
                 Catatan Alasan Koreksi (Opsional):
@@ -2342,6 +3585,96 @@ export default function KoreksiDataPage() {
               ) : (
                 <>
                   <Check className="h-3.5 w-3.5 mr-1.5" /> Ya, Terapkan Sekarang
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 6. Gap Imputation Execution Confirmation Modal */}
+      <Dialog open={showImputationConfirmModal} onOpenChange={setShowImputationConfirmModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <Sparkles className="h-5 w-5 text-purple-500" /> Konfirmasi Penulisan Imputasi Celah ke Database
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Tindakan ini akan mensintesis dan menuliskan titik-titik data baru yang sebelumnya kosong ke Firebase Realtime Database dengan status IMPUTED.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 text-xs">
+            <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-900 space-y-1.5 font-mono text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Stasiun Target:</span>
+                <span className="font-semibold">{selectedStationName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Parameter:</span>
+                <span className="font-semibold text-purple-600 dark:text-purple-400">{selectedVar.label} ({selectedVar.key})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Metode Imputasi:</span>
+                <span className="font-semibold">{gapImputeMethod.toUpperCase()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Total Menit Kosong Diisi:</span>
+                <span className="font-bold text-purple-600 dark:text-purple-400">{imputationResult.summary.originalMissingCount} Menit ({imputationResult.summary.segments.length} Segmen)</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Rentang Waktu:</span>
+                <span>{startDateStr} {startTimeStr} s/d {endDateStr} {endTimeStr} WIB</span>
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300 text-xs flex items-center gap-2">
+              <Check className="h-4 w-4 text-purple-600 shrink-0" />
+              <div>
+                <span className="font-bold">⚡ Grid Kontinu 1-Menit (1440/Hari):</span>
+                <p className="text-[11px] text-purple-700 dark:text-purple-400">
+                  Data yang ditulis dijamin mulus (C0/C1 continuous), bebas patahan vertikal, dan tervalidasi batasan fisik meteorologi WMO.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="imputeAuditNotes" className="text-xs font-medium">
+                Catatan Alasan Imputasi (Opsional):
+              </Label>
+              <Input
+                id="imputeAuditNotes"
+                placeholder="Contoh: Imputasi celah data pasca pemadaman listrik menggunakan model spatial transfer"
+                value={auditNotes}
+                onChange={(e) => setAuditNotes(e.target.value)}
+                className="text-xs h-9"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowImputationConfirmModal(false)}
+              disabled={isApplyingImputation}
+              className="text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleApplyGapImputation}
+              disabled={isApplyingImputation}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs"
+            >
+              {isApplyingImputation ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Menerapkan...
+                </>
+              ) : (
+                <>
+                  <Check className="h-3.5 w-3.5 mr-1.5" /> Ya, Tuliskan Sekarang
                 </>
               )}
             </Button>

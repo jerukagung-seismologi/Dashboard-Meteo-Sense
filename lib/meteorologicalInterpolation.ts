@@ -147,3 +147,75 @@ export function interpolateModelGuided(
   return mt + currentBias;
 }
 
+/**
+ * 5. Perhitungan Tekanan Uap Air Jenuh (Saturation Vapor Pressure)
+ * Menggunakan Formula August-Roche-Magnus (WMO-No. 8, CIMO Guide).
+ *
+ * @param tempC Suhu udara (°C)
+ * @returns Tekanan uap jenuh (hPa / mbar)
+ */
+export function calculateSaturationVaporPressure(tempC: number): number {
+  if (!Number.isFinite(tempC)) return NaN;
+  return 6.112 * Math.exp((17.67 * tempC) / (tempC + 243.5));
+}
+
+/**
+ * 6. Rekalkulasi Termodinamika Kelembapan Relatif (RH) via Magnus-Tetens
+ * Menghitung ulang RH fisik berdasarkan Titik Embun (Tdew) dan Suhu Terkoreksi (Tclean).
+ * Menjamin invarian termodinamika massa uap air di udara tetap terjaga.
+ *
+ * @param tempC Suhu udara terkoreksi (°C)
+ * @param dewPointC Titik embun observasi (°C)
+ * @returns Kelembapan relatif terkoreksi (%) [0.0 s/d 100.0%]
+ */
+export function recalculateRHMagnus(tempC: number, dewPointC: number): number {
+  if (!Number.isFinite(tempC) || !Number.isFinite(dewPointC)) return NaN;
+  const esT = calculateSaturationVaporPressure(tempC);
+  const esTd = calculateSaturationVaporPressure(dewPointC);
+  if (esT <= 0) return 100.0;
+  const rh = (esTd / esT) * 100.0;
+  return Math.min(100.0, Math.max(0.0, rh));
+}
+
+/**
+ * 7. Rekonstruksi Suhu Radiasi Surya dengan Cosine-Hermite Residual Blending
+ * Menerapkan transisi kurva-S berbobot cosinus (C0, C1 continuity, zero step-jump)
+ * terhadap kurva acuan nominal (Stasiun AWS terdekat atau Model ECMWF IFS/ERA5).
+ *
+ * @param t Timestamp target observasi (ms)
+ * @param tA Timestamp batas awal jendela anomali (ms)
+ * @param tB Timestamp batas akhir jendela anomali (ms)
+ * @param yStart Nilai sensor target tepat sebelum batas masuk jendela (tA - 1 step)
+ * @param yEnd Nilai sensor target tepat sesudah batas keluar jendela (tB + 1 step)
+ * @param refValAtT Nilai acuan baseline pada waktu t
+ * @param refValAtA Nilai acuan baseline pada waktu tA
+ * @param refValAtB Nilai acuan baseline pada waktu tB
+ * @param baselineNightOffset Offset sensor terhadap acuan saat malam hari (delta T night)
+ * @returns Suhu udara yang direkonstruksi mulus (°C)
+ */
+export function interpolateSolarCosineHermite(
+  t: number,
+  tA: number,
+  tB: number,
+  yStart: number,
+  yEnd: number,
+  refValAtT: number,
+  refValAtA: number,
+  refValAtB: number,
+  baselineNightOffset: number = 0
+): number {
+  if (tB <= tA) return yStart;
+  const tau = Math.min(1, Math.max(0, (t - tA) / (tB - tA)));
+  // Bobot Cosine-Hermite S-Curve: w(0)=0, w(1)=1, w'(0)=0, w'(1)=0
+  const w = (1.0 - Math.cos(Math.PI * tau)) / 2.0;
+
+  const tNominalT = refValAtT + baselineNightOffset;
+  const tNominalA = refValAtA + baselineNightOffset;
+  const tNominalB = refValAtB + baselineNightOffset;
+
+  const deltaA = yStart - tNominalA;
+  const deltaB = yEnd - tNominalB;
+
+  return tNominalT + ((1.0 - w) * deltaA + w * deltaB);
+}
+
