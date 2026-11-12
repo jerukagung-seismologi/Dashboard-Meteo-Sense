@@ -47,6 +47,33 @@ export interface SensorDate extends SensorValue {
   timeFormatted: string;
 }
 
+/**
+ * Memetakan snapshot mentah RTDB menjadi objek SensorDate yang konsisten di semua jalur fetch.
+ */
+function mapRawSensorSnapshot(timestampInMillis: number, data: SensorValue): SensorDate {
+  const { timeFormatted, dateFormatted } = fastFormatJakarta(timestampInMillis);
+  const rawRecord = data as unknown as Record<string, unknown>;
+  const rawWs = data.windSpeed ?? rawRecord.wind_speed;
+  const rawWd = data.windDirection ?? rawRecord.wind_dir;
+
+  return {
+    timestamp: timestampInMillis,
+    temperature: data.temperature,
+    humidity: data.humidity,
+    pressure: data.pressure,
+    dew: data.dew,
+    volt: data.volt,
+    rainfall: Number.isFinite(Number(data.rainfall)) ? Number(data.rainfall) : 0,
+    rainrate: Number.isFinite(Number(data.rainrate)) ? Number(data.rainrate) : 0,
+    lux: data.lux ?? 0,
+    soil_temp: data.soil_temp ?? 0,
+    ...(rawWs != null && Number.isFinite(Number(rawWs)) ? { windSpeed: Number(rawWs) } : {}),
+    ...(rawWd != null && Number.isFinite(Number(rawWd)) ? { windDirection: Number(rawWd) } : {}),
+    dateFormatted,
+    timeFormatted,
+  };
+}
+
 export interface SensorMetaData {
   sensorId: string;
   TelemetryStatus: "online" | "offline";
@@ -112,22 +139,7 @@ export async function fetchSensorDataByValue(
       const timestampInSeconds = Number(childSnapshot.key);
       const timestampInMillis = timestampInSeconds * 1000;
       const data: SensorValue = childSnapshot.val();
-      const { timeFormatted, dateFormatted } = fastFormatJakarta(timestampInMillis);
-
-      results.push({
-        timestamp: timestampInMillis,
-        temperature: data.temperature,
-        humidity: data.humidity,
-        pressure: data.pressure,
-        dew: data.dew,
-        volt: data.volt,
-        rainfall: Number.isFinite(Number(data.rainfall)) ? Number(data.rainfall) : 0,
-        rainrate: Number.isFinite(Number(data.rainrate)) ? Number(data.rainrate) : 0,
-        lux: data.lux ?? 0,
-        soil_temp: data.soil_temp ?? 0,
-        dateFormatted,
-        timeFormatted,
-      });
+      results.push(mapRawSensorSnapshot(timestampInMillis, data));
     });
 
     return await withCalibration(sensorId, results, applyCalibration);
@@ -365,22 +377,7 @@ export async function fetchSensorDataByDateRange(
       const timestampInSeconds = Number(childSnapshot.key);
       const timestampInMillis = timestampInSeconds * 1000;
       const data: SensorValue = childSnapshot.val();
-      const { timeFormatted, dateFormatted } = fastFormatJakarta(timestampInMillis);
-
-      results.push({
-        timestamp: timestampInMillis,
-        temperature: data.temperature,
-        humidity: data.humidity,
-        pressure: data.pressure,
-        dew: data.dew,
-        volt: data.volt,
-        rainfall: Number.isFinite(Number(data.rainfall)) ? Number(data.rainfall) : 0,
-        rainrate: Number.isFinite(Number(data.rainrate)) ? Number(data.rainrate) : 0,
-        lux: data.lux ?? 0,
-        soil_temp: data.soil_temp ?? 0,
-        dateFormatted,
-        timeFormatted,
-      });
+      results.push(mapRawSensorSnapshot(timestampInMillis, data));
     });
 
     return await withCalibration(sensorId, results, applyCalibration);
@@ -491,25 +488,7 @@ export async function fetchSensorData(
       const timestampInSeconds = Number(child.key);
       const timestampInMillis = timestampInSeconds * 1000;
       const data: SensorValue = child.val();
-
-      const { timeFormatted, dateFormatted } = fastFormatJakarta(timestampInMillis);
-
-      // 3. Gabungkan semua data sesuai interface SensorData
-      const resultItem = {
-        timestamp: timestampInMillis, // Simpan dalam milidetik
-        temperature: data.temperature,
-        humidity: data.humidity,
-        pressure: data.pressure,
-        dew: data.dew,
-        volt: data.volt,
-        rainfall: Number.isFinite(Number(data.rainfall)) ? Number(data.rainfall) : 0,
-        rainrate: Number.isFinite(Number(data.rainrate)) ? Number(data.rainrate) : 0,
-        lux: data.lux ?? 0,
-        soil_temp: data.soil_temp ?? 0,
-        dateFormatted: dateFormatted,
-        timeFormatted: timeFormatted,
-      };
-      results.push(resultItem);
+      results.push(mapRawSensorSnapshot(timestampInMillis, data));
     });
 
     // 4. Balik urutan array agar data terbaru berada di indeks pertama
@@ -610,6 +589,38 @@ export interface SensorCorrectionAuditLog {
   appliedAt: string;
 }
 
+export interface GapImputedNodePayload {
+  timestampInSeconds: number;
+  fields: Record<string, number | string | boolean | undefined>;
+}
+
+/**
+ * Menghapus nilai undefined dan angka non-finit (NaN/Infinity) secara rekursif sebelum menulis ke Firebase RTDB.
+ */
+function stripUndefinedForRtdb<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => stripUndefinedForRtdb(item))
+      .filter((item) => item !== undefined) as unknown as T;
+  }
+  if (value !== null && typeof value === "object") {
+    const cleaned: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (v === undefined) continue;
+      if (typeof v === "number" && !Number.isFinite(v)) continue;
+      const sanitized = stripUndefinedForRtdb(v);
+      if (sanitized !== undefined) {
+        cleaned[k] = sanitized;
+      }
+    }
+    return cleaned as T;
+  }
+  if (typeof value === "number" && !Number.isFinite(value)) {
+    return undefined as unknown as T;
+  }
+  return value;
+}
+
 /**
  * Melakukan pembaruan massal (batch update) secara atomik multi-path di Firebase RTDB.
  */
@@ -619,12 +630,21 @@ export async function batchUpdateSensorFields(
   chunkSize: number = 200
 ): Promise<number> {
   if (!updates || updates.length === 0) return 0;
+  const sanitizedUpdates = updates.filter(
+    (item) =>
+      Number.isFinite(item.timestampInSeconds) &&
+      item.newValue !== undefined &&
+      (typeof item.newValue !== "number" || Number.isFinite(item.newValue))
+  );
+  if (sanitizedUpdates.length === 0) return 0;
+
   let updatedCount = 0;
-  for (let i = 0; i < updates.length; i += chunkSize) {
-    const chunk = updates.slice(i, i + chunkSize);
-    const multiUpdates: Record<string, any> = {};
+  for (let i = 0; i < sanitizedUpdates.length; i += chunkSize) {
+    const chunk = sanitizedUpdates.slice(i, i + chunkSize);
+    const multiUpdates: Record<string, number | string> = {};
     for (const item of chunk) {
-      multiUpdates[`auto_weather_stat/${sensorId}/data/${item.timestampInSeconds}/${item.field}`] = item.newValue;
+      multiUpdates[`auto_weather_stat/${sensorId}/data/${Math.floor(item.timestampInSeconds)}/${item.field}`] =
+        item.newValue;
     }
     await update(ref(rtdb), multiUpdates);
     updatedCount += chunk.length;
@@ -633,15 +653,66 @@ export async function batchUpdateSensorFields(
 }
 
 /**
+ * Menulis sekumpulan node hasil Gap Imputation ke Firebase RTDB secara multi-path atomik per field
+ * sehingga aman membuat node baru lengkap maupun mengisi field pada timestamp eksisting.
+ */
+export async function batchWriteGapImputedNodes(
+  sensorId: string,
+  nodes: GapImputedNodePayload[],
+  maxPathsPerChunk: number = 400
+): Promise<number> {
+  if (!nodes || nodes.length === 0) return 0;
+
+  let writtenNodeCount = 0;
+  let currentUpdates: Record<string, number | string | boolean> = {};
+  let currentPathCount = 0;
+  let currentChunkNodes = 0;
+
+  for (const node of nodes) {
+    if (!Number.isFinite(node.timestampInSeconds)) continue;
+    const secKey = Math.floor(node.timestampInSeconds);
+    const cleanFields = stripUndefinedForRtdb(node.fields);
+    const entries = Object.entries(cleanFields).filter(
+      ([, v]) => v !== undefined && (typeof v !== "number" || Number.isFinite(v))
+    );
+    if (entries.length === 0) continue;
+
+    if (currentPathCount > 0 && currentPathCount + entries.length > maxPathsPerChunk) {
+      await update(ref(rtdb), currentUpdates);
+      writtenNodeCount += currentChunkNodes;
+      currentUpdates = {};
+      currentPathCount = 0;
+      currentChunkNodes = 0;
+    }
+
+    for (const [field, val] of entries) {
+      if (val !== undefined) {
+        currentUpdates[`auto_weather_stat/${sensorId}/data/${secKey}/${field}`] = val as number | string | boolean;
+        currentPathCount++;
+      }
+    }
+    currentChunkNodes++;
+  }
+
+  if (currentPathCount > 0) {
+    await update(ref(rtdb), currentUpdates);
+    writtenNodeCount += currentChunkNodes;
+  }
+
+  return writtenNodeCount;
+}
+
+/**
  * Menyimpan rekaman log audit tindakan koreksi data ke Firebase RTDB.
  */
 export async function logSensorCorrection(log: SensorCorrectionAuditLog): Promise<void> {
   const ts = Date.now();
   const logRef = ref(rtdb, `sensor_correction_logs/${log.sensorId}/${ts}`);
-  await update(logRef, {
+  const cleanPayload = stripUndefinedForRtdb({
     ...log,
     timestamp: ts,
   });
+  await update(logRef, cleanPayload);
 }
 
 /**

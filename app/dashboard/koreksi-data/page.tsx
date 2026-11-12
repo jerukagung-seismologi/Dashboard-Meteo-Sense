@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { format, subDays, addDays, startOfDay } from "date-fns";
+import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { useTheme } from "next-themes";
 import {
@@ -30,6 +30,7 @@ import {
   Sun,
   Zap,
   Wind,
+  Download,
 } from "lucide-react";
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -65,13 +66,16 @@ import {
   BatchSensorFieldUpdate,
   SensorCorrectionAuditLog,
   batchUpdateSensorFields,
+  batchWriteGapImputedNodes,
   logSensorCorrection,
   fetchSensorCorrectionLogs,
 } from "@/lib/FetchingSensorData";
 import {
   interpolateTimeLinear,
   interpolateCubicHermite,
-  interpolateAkima,
+  interpolateHermiteWithSlopes,
+  computePchipSlopes,
+  computeAkimaSlopes,
   interpolateModelGuided,
   recalculateRHMagnus,
   interpolateSolarCosineHermite,
@@ -79,10 +83,13 @@ import {
 import type { ReferenceGuidePoint } from "@/app/api/weather/reference-guide/route";
 import {
   runUniversalGapImputation,
+  buildCompleteGapNodePayloads,
+  getWibTimeComponents,
   ImputedGridPoint,
   ImputationSummary,
   GapSegment,
 } from "@/lib/meteorologicalImputationEngine";
+import { getCalibrationDocument } from "@/lib/calibration/calibrationCrud";
 
 // Dynamically import ECharts with SSR disabled for optimal Next.js performance
 const ReactECharts = dynamic(() => import("echarts-for-react"), {
@@ -227,6 +234,118 @@ interface AnomalyFlag {
   reason: string;
 }
 
+interface LoadedDataContext {
+  sensorId: string;
+  startDateStr: string;
+  startTimeStr: string;
+  endDateStr: string;
+  endTimeStr: string;
+  startMs: number;
+  endMs: number;
+}
+
+const WIB_TZ_OFFSET_MS = 7 * 3600 * 1000;
+const MONTH_SHORT_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+
+function parseWibEpochMs(dateStr: string, timeStr: string, secondsStr: string = "00"): number {
+  return new Date(`${dateStr}T${timeStr}:${secondsStr}+07:00`).getTime();
+}
+
+function formatWibYmd(ms: number): string {
+  const wib = new Date(ms + WIB_TZ_OFFSET_MS);
+  const yyyy = wib.getUTCFullYear();
+  const mm = String(wib.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(wib.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function getTodayWibDateStr(): string {
+  return formatWibYmd(Date.now());
+}
+
+function shiftWibDateStr(dateStr: string, deltaDays: number): string {
+  const baseMs = new Date(`${dateStr}T00:00:00+07:00`).getTime();
+  return formatWibYmd(baseMs + deltaDays * 86400000);
+}
+
+function formatWibShortDateTime(ms: number): string {
+  const wib = new Date(ms + WIB_TZ_OFFSET_MS);
+  const dd = String(wib.getUTCDate()).padStart(2, "0");
+  const mon = MONTH_SHORT_ID[wib.getUTCMonth()] || "";
+  const hh = String(wib.getUTCHours()).padStart(2, "0");
+  const mi = String(wib.getUTCMinutes()).padStart(2, "0");
+  return `${dd} ${mon} ${hh}:${mi}`;
+}
+
+function formatWibFullDisplayDate(dateStr: string): string {
+  return format(new Date(`${dateStr}T12:00:00+07:00`), "EEEE, dd MMMM yyyy", { locale: localeId });
+}
+
+function formatWibMediumDisplayDate(dateStr: string): string {
+  return format(new Date(`${dateStr}T12:00:00+07:00`), "dd MMM yyyy", { locale: localeId });
+}
+
+function NumericInputField({
+  value,
+  onCommit,
+  min,
+  max,
+  step,
+  className,
+}: {
+  value: number;
+  onCommit: (nextVal: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  className?: string;
+}) {
+  const [draft, setDraft] = useState<string>(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commitDraft = (raw: string) => {
+    const trimmed = raw.trim();
+    const parsed = Number(trimmed);
+    if (trimmed === "" || !Number.isFinite(parsed)) {
+      setDraft(String(value));
+      return;
+    }
+    let clamped = parsed;
+    if (min !== undefined && clamped < min) clamped = min;
+    if (max !== undefined && clamped > max) clamped = max;
+    onCommit(clamped);
+    setDraft(String(clamped));
+  };
+
+  return (
+    <Input
+      type="number"
+      step={step}
+      min={min}
+      max={max}
+      value={draft}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setDraft(raw);
+        if (raw.trim() !== "" && raw.trim() !== "-") {
+          const parsed = Number(raw);
+          if (Number.isFinite(parsed)) {
+            let clamped = parsed;
+            if (min !== undefined && clamped < min) clamped = min;
+            if (max !== undefined && clamped > max) clamped = max;
+            onCommit(clamped);
+          }
+        }
+      }}
+      onBlur={() => commitDraft(draft)}
+      className={className}
+    />
+  );
+}
+
 export default function KoreksiDataPage() {
   const { user } = useAuth();
   const { theme, resolvedTheme } = useTheme();
@@ -237,6 +356,7 @@ export default function KoreksiDataPage() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [sensorId, setSensorId] = useState<string>("");
   const [selectedStationName, setSelectedStationName] = useState<string>("Stasiun AWS");
+  const [activeCalibrationVars, setActiveCalibrationVars] = useState<string[]>([]);
 
   // Parameter State
   const [selectedVarKey, setSelectedVarKey] = useState<string>("temperature");
@@ -244,12 +364,13 @@ export default function KoreksiDataPage() {
     return WEATHER_VARIABLES.find((v) => v.key === selectedVarKey) || WEATHER_VARIABLES[0];
   }, [selectedVarKey]);
 
-  // Date Range State (Jakarta UTC+7)
-  const todayStr = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
+  // Date Range State (Jakarta UTC+7 deterministik)
+  const todayStr = useMemo(() => getTodayWibDateStr(), []);
   const [startDateStr, setStartDateStr] = useState<string>(todayStr);
   const [startTimeStr, setStartTimeStr] = useState<string>("00:00");
   const [endDateStr, setEndDateStr] = useState<string>(todayStr);
   const [endTimeStr, setEndTimeStr] = useState<string>("23:59");
+  const [loadedContext, setLoadedContext] = useState<LoadedDataContext | null>(null);
 
   // Correction Method Configuration
   const [correctionMethod, setCorrectionMethod] = useState<CorrectionMethod>("offset");
@@ -260,6 +381,7 @@ export default function KoreksiDataPage() {
   const [clampMax, setClampMax] = useState<number>(selectedVar.wmoMax);
   const [scaleFactor, setScaleFactor] = useState<number>(1.0);
   const [onlyAnomalies, setOnlyAnomalies] = useState<boolean>(false);
+  const [enableSolarAnomalyCheck, setEnableSolarAnomalyCheck] = useState<boolean>(false);
 
   // Meteorological Interpolation Sub-methods
   const [interpolationSubMethod, setInterpolationSubMethod] = useState<InterpolationSubMethod>("solar_cosine_hermite");
@@ -268,7 +390,7 @@ export default function KoreksiDataPage() {
   const [solarRefSource, setSolarRefSource] = useState<"station_aws" | "model_ecmwf">("station_aws");
   const [solarRefStationId, setSolarRefStationId] = useState<string>("");
   const [solarThreshold, setSolarThreshold] = useState<number>(0.7);
-  const [syncRhRecovery, setSyncRhRecovery] = useState<boolean>(true);
+  const [syncRhRecovery, setSyncRhRecovery] = useState<boolean>(false);
   const [refStationRecords, setRefStationRecords] = useState<SensorDate[]>([]);
   const [loadingRefStation, setLoadingRefStation] = useState<boolean>(false);
 
@@ -288,6 +410,8 @@ export default function KoreksiDataPage() {
   const [auditLogs, setAuditLogs] = useState<SensorCorrectionAuditLog[]>([]);
   const [loadingAudit, setLoadingAudit] = useState<boolean>(false);
   const [showOnlyModifiedRows, setShowOnlyModifiedRows] = useState<boolean>(true);
+  const [previewPage, setPreviewPage] = useState<number>(1);
+  const [previewPageSize, setPreviewPageSize] = useState<number>(100);
   const [activeTab, setActiveTab] = useState<"workspace" | "audit">("workspace");
 
   // Mode Operasi: "point_correction" (Koreksi Nilai & Anomali) vs "gap_imputation" (Imputasi Celah 1440/Hari)
@@ -298,6 +422,17 @@ export default function KoreksiDataPage() {
   const [enableGapPhysics, setEnableGapPhysics] = useState<boolean>(true);
   const [isApplyingImputation, setIsApplyingImputation] = useState<boolean>(false);
   const [showImputationConfirmModal, setShowImputationConfirmModal] = useState<boolean>(false);
+
+  const isFilterDirty = useMemo(() => {
+    if (!loadedContext) return false;
+    return (
+      loadedContext.sensorId !== sensorId ||
+      loadedContext.startDateStr !== startDateStr ||
+      loadedContext.startTimeStr !== startTimeStr ||
+      loadedContext.endDateStr !== endDateStr ||
+      loadedContext.endTimeStr !== endTimeStr
+    );
+  }, [loadedContext, sensorId, startDateStr, startTimeStr, endDateStr, endTimeStr]);
 
   // Continuous lookup helper for reference model values at timestamp ts
   const getModelValAtTimestamp = useCallback(
@@ -329,10 +464,10 @@ export default function KoreksiDataPage() {
       const p1 = referenceGuidePoints[Math.min(referenceGuidePoints.length - 1, low)];
       if (!p0 || !p1) return null;
 
-      const v0 = (p0 as any)[varKey];
-      const v1 = (p1 as any)[varKey];
-      if (typeof v0 !== "number" || typeof v1 !== "number") {
-        return typeof v0 === "number" ? v0 : typeof v1 === "number" ? v1 : null;
+      const v0 = Number((p0 as any)[varKey]);
+      const v1 = Number((p1 as any)[varKey]);
+      if (!Number.isFinite(v0) || !Number.isFinite(v1)) {
+        return Number.isFinite(v0) ? v0 : Number.isFinite(v1) ? v1 : null;
       }
 
       if (p1.timestamp === p0.timestamp) return v0;
@@ -351,8 +486,13 @@ export default function KoreksiDataPage() {
       mType = referenceModelType
     ) => {
       const dev = targetDevice || devices.find((d) => (d.authToken || d.id) === sensorId);
-      const lat = dev?.coordinates?.lat ?? -7.7121;
-      const lng = dev?.coordinates?.lng ?? 109.6892;
+      const hasValidCoords =
+        dev?.coordinates &&
+        Number.isFinite(dev.coordinates.lat) &&
+        Number.isFinite(dev.coordinates.lng) &&
+        (dev.coordinates.lat !== 0 || dev.coordinates.lng !== 0);
+      const lat = hasValidCoords ? dev!.coordinates!.lat : -7.7121;
+      const lng = hasValidCoords ? dev!.coordinates!.lng : 109.6892;
 
       setLoadingReference(true);
       try {
@@ -397,8 +537,8 @@ export default function KoreksiDataPage() {
       if (!targetRefId || targetRefId === sensorId) return;
       setLoadingRefStation(true);
       try {
-        const startMs = new Date(`${sDate}T${sTime}:00+07:00`).getTime();
-        const endMs = new Date(`${eDate}T${eTime}:59+07:00`).getTime();
+        const startMs = parseWibEpochMs(sDate, sTime, "00");
+        const endMs = parseWibEpochMs(eDate, eTime, "59");
         const data = await fetchSensorDataByDateRange(
           targetRefId,
           startMs,
@@ -424,13 +564,13 @@ export default function KoreksiDataPage() {
       if (refStationRecords.length === 0) return null;
 
       if (ts <= refStationRecords[0].timestamp) {
-        const val = (refStationRecords[0] as any)[varKey];
-        return typeof val === "number" && Number.isFinite(val) ? val : null;
+        const val = Number((refStationRecords[0] as any)[varKey]);
+        return Number.isFinite(val) ? val : null;
       }
       if (ts >= refStationRecords[refStationRecords.length - 1].timestamp) {
         const last = refStationRecords[refStationRecords.length - 1];
-        const val = (last as any)[varKey];
-        return typeof val === "number" && Number.isFinite(val) ? val : null;
+        const val = Number((last as any)[varKey]);
+        return Number.isFinite(val) ? val : null;
       }
 
       // Binary search for nearest surrounding points
@@ -448,10 +588,10 @@ export default function KoreksiDataPage() {
       const p1 = refStationRecords[Math.min(refStationRecords.length - 1, low)];
       if (!p0 || !p1) return null;
 
-      const v0 = (p0 as any)[varKey];
-      const v1 = (p1 as any)[varKey];
-      if (typeof v0 !== "number" || typeof v1 !== "number") {
-        return typeof v0 === "number" ? v0 : typeof v1 === "number" ? v1 : null;
+      const v0 = Number((p0 as any)[varKey]);
+      const v1 = Number((p1 as any)[varKey]);
+      if (!Number.isFinite(v0) || !Number.isFinite(v1)) {
+        return Number.isFinite(v0) ? v0 : Number.isFinite(v1) ? v1 : null;
       }
 
       if (p1.timestamp === p0.timestamp) return v0;
@@ -473,14 +613,13 @@ export default function KoreksiDataPage() {
     [solarRefSource, refStationRecords.length, getRefStationValAtTimestamp, getModelValAtTimestamp]
   );
 
-  // Baseline Night Offset between target sensor and reference series (00:00 - 05:00 & 20:00 - 23:00 WIB)
+  // Baseline Night Offset between target sensor and reference series (00:00 - 05:59 & 20:00 - 23:59 WIB)
   const baselineNightOffset = useMemo(() => {
     if (rawRecords.length === 0) return 0;
     const nightDiffs: number[] = [];
 
     for (const rec of rawRecords) {
-      const dLocal = new Date(rec.timestamp);
-      const hour = dLocal.getHours();
+      const hour = Math.floor(getWibTimeComponents(rec.timestamp).hourFrac);
       if (hour <= 5 || hour >= 20) {
         const tVal = Number((rec as any)["temperature"]);
         const rVal = getUnifiedRefValAtTimestamp(rec.timestamp, "temperature");
@@ -563,8 +702,8 @@ export default function KoreksiDataPage() {
 
       try {
         setLoading(true);
-        const startMs = new Date(`${sDate}T${sTime}:00+07:00`).getTime();
-        const endMs = new Date(`${eDate}T${eTime}:59+07:00`).getTime();
+        const startMs = parseWibEpochMs(sDate, sTime, "00");
+        const endMs = parseWibEpochMs(eDate, eTime, "59");
 
         if (startMs >= endMs) {
           toast({
@@ -589,11 +728,25 @@ export default function KoreksiDataPage() {
         // Sort chronological ascending
         const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
         setRawRecords(sorted);
+        setLoadedContext({
+          sensorId,
+          startDateStr: sDate,
+          startTimeStr: sTime,
+          endDateStr: eDate,
+          endTimeStr: eTime,
+          startMs,
+          endMs,
+        });
+        setPreviewPage(1);
 
         // Concurrently fetch the weather model reference guide and reference AWS station
         fetchReferenceGuide(undefined, sDate, eDate, referenceModelType);
-        if (solarRefStationId && solarRefStationId !== sensorId) {
-          fetchRefStationData(solarRefStationId, sDate, sTime, eDate, eTime);
+        const effectiveRefId =
+          solarRefStationId && solarRefStationId !== sensorId ? solarRefStationId : "";
+        if (effectiveRefId) {
+          fetchRefStationData(effectiveRefId, sDate, sTime, eDate, eTime);
+        } else {
+          setRefStationRecords([]);
         }
 
         if (sorted.length === 0) {
@@ -625,11 +778,33 @@ export default function KoreksiDataPage() {
     return fetchDataForRange(startDateStr, startTimeStr, endDateStr, endTimeStr);
   }, [fetchDataForRange, startDateStr, startTimeStr, endDateStr, endTimeStr]);
 
+  // Cek status kalibrasi aktif di Firestore untuk memperingatkan operator bahwa Koreksi Data menyunting nilai RAW
+  const loadCalibrationStatus = useCallback(async (sid: string) => {
+    if (!sid) {
+      setActiveCalibrationVars([]);
+      return;
+    }
+    try {
+      const calDoc = await getCalibrationDocument(sid);
+      if (!calDoc || !calDoc.variables) {
+        setActiveCalibrationVars([]);
+        return;
+      }
+      const activeKeys = Object.entries(calDoc.variables)
+        .filter(([, cfg]) => cfg && cfg.enabled && cfg.method !== "none")
+        .map(([varKey]) => varKey);
+      setActiveCalibrationVars(activeKeys);
+    } catch {
+      setActiveCalibrationVars([]);
+    }
+  }, []);
+
   // Load data automatically when sensorId is resolved
   useEffect(() => {
     if (sensorId) {
       handleFetchData();
       loadAuditTrail(sensorId);
+      loadCalibrationStatus(sensorId);
     }
   }, [sensorId]);
 
@@ -647,12 +822,10 @@ export default function KoreksiDataPage() {
     }
   };
 
-  // Stepper: Geser 1 Hari ke Belakang (Hari Sebelumnya / H-1)
+  // Stepper: Geser 1 Hari ke Belakang (Hari Sebelumnya / H-1 dalam WIB +07:00)
   const handlePrevDay = useCallback(() => {
     try {
-      const current = new Date(`${startDateStr}T00:00:00`);
-      const prev = subDays(current, 1);
-      const newDateStr = format(prev, "yyyy-MM-dd");
+      const newDateStr = shiftWibDateStr(startDateStr, -1);
 
       setStartDateStr(newDateStr);
       setEndDateStr(newDateStr);
@@ -665,14 +838,13 @@ export default function KoreksiDataPage() {
     }
   }, [startDateStr, fetchDataForRange]);
 
-  // Stepper: Geser 1 Hari ke Depan (Hari Sesudahnya / H+1)
+  // Stepper: Geser 1 Hari ke Depan (Hari Sesudahnya / H+1 dalam WIB +07:00)
   const handleNextDay = useCallback(() => {
     try {
-      const current = new Date(`${endDateStr}T00:00:00`);
-      const next = addDays(current, 1);
-      const now = new Date();
+      const nextDateStr = shiftWibDateStr(endDateStr, 1);
+      const todayWib = getTodayWibDateStr();
 
-      if (startOfDay(next) > startOfDay(now)) {
+      if (nextDateStr > todayWib) {
         toast({
           title: "Batas Waktu Maksimal",
           description: "Tidak dapat bergeser ke hari yang akan datang (masa depan).",
@@ -680,23 +852,20 @@ export default function KoreksiDataPage() {
         return;
       }
 
-      const newDateStr = format(next, "yyyy-MM-dd");
-
-      setStartDateStr(newDateStr);
-      setEndDateStr(newDateStr);
+      setStartDateStr(nextDateStr);
+      setEndDateStr(nextDateStr);
       setStartTimeStr("00:00");
       setEndTimeStr("23:59");
 
-      fetchDataForRange(newDateStr, "00:00", newDateStr, "23:59");
+      fetchDataForRange(nextDateStr, "00:00", nextDateStr, "23:59");
     } catch (e) {
       console.error("Gagal geser hari sesudahnya:", e);
     }
   }, [endDateStr, fetchDataForRange, toast]);
 
-  // Stepper: Lompat ke Hari Ini
+  // Stepper: Lompat ke Hari Ini (WIB +07:00)
   const handleToday = useCallback(() => {
-    const now = new Date();
-    const newDateStr = format(now, "yyyy-MM-dd");
+    const newDateStr = getTodayWibDateStr();
 
     setStartDateStr(newDateStr);
     setEndDateStr(newDateStr);
@@ -706,36 +875,34 @@ export default function KoreksiDataPage() {
     fetchDataForRange(newDateStr, "00:00", newDateStr, "23:59");
   }, [fetchDataForRange]);
 
-  // Status apakah tombol Hari Sesudahnya harus di-disable (sudah mencapai hari ini)
+  // Status apakah tombol Hari Sesudahnya harus di-disable (sudah mencapai hari ini WIB)
   const isNextDayDisabled = useMemo(() => {
     try {
-      const currentEnd = new Date(`${endDateStr}T00:00:00`);
-      const now = new Date();
-      return startOfDay(currentEnd) >= startOfDay(now);
+      return endDateStr >= getTodayWibDateStr();
     } catch {
       return false;
     }
   }, [endDateStr]);
 
-  // Quick Preset Handlers with immediate fetch
+  // Quick Preset Handlers with immediate fetch (WIB +07:00)
   const handleApplyPreset = (preset: "today" | "yesterday" | "last3days" | "last7days") => {
-    const now = new Date();
-    let sDate = format(now, "yyyy-MM-dd");
-    let eDate = format(now, "yyyy-MM-dd");
+    const todayWib = getTodayWibDateStr();
+    let sDate = todayWib;
+    let eDate = todayWib;
 
     if (preset === "today") {
-      sDate = format(now, "yyyy-MM-dd");
-      eDate = format(now, "yyyy-MM-dd");
+      sDate = todayWib;
+      eDate = todayWib;
     } else if (preset === "yesterday") {
-      const yest = subDays(now, 1);
-      sDate = format(yest, "yyyy-MM-dd");
-      eDate = format(yest, "yyyy-MM-dd");
+      const yest = shiftWibDateStr(todayWib, -1);
+      sDate = yest;
+      eDate = yest;
     } else if (preset === "last3days") {
-      sDate = format(subDays(now, 2), "yyyy-MM-dd");
-      eDate = format(now, "yyyy-MM-dd");
+      sDate = shiftWibDateStr(todayWib, -2);
+      eDate = todayWib;
     } else if (preset === "last7days") {
-      sDate = format(subDays(now, 6), "yyyy-MM-dd");
-      eDate = format(now, "yyyy-MM-dd");
+      sDate = shiftWibDateStr(todayWib, -6);
+      eDate = todayWib;
     }
 
     setStartDateStr(sDate);
@@ -752,6 +919,7 @@ export default function KoreksiDataPage() {
     setCorrectionMethod("interpolate");
     setInterpolationSubMethod("solar_cosine_hermite");
     setOnlyAnomalies(true);
+    setEnableSolarAnomalyCheck(true);
     setShowReferenceGuide(true);
     setSyncRhRecovery(true);
     setSolarThreshold(0.7);
@@ -797,12 +965,21 @@ export default function KoreksiDataPage() {
     if (rawRecords.length === 0) return [];
     const flags: AnomalyFlag[] = [];
     const varKey = selectedVar.key;
+    const isSolarActive =
+      selectedVar.key === "temperature" &&
+      (enableSolarAnomalyCheck ||
+        (correctionMethod === "interpolate" && interpolationSubMethod === "solar_cosine_hermite"));
+
+    let lastCleanVal: number | null = null;
+    let lastCleanTs: number | null = null;
+    let lastWasSpike = false;
+    let prevSpikeVal = NaN;
 
     for (let i = 0; i < rawRecords.length; i++) {
       const rec = rawRecords[i];
-      const val = (rec as any)[varKey];
+      const rawField = (rec as any)[varKey];
 
-      if (val === null || val === undefined || !Number.isFinite(Number(val))) {
+      if (rawField === null || rawField === undefined || rawField === "" || !Number.isFinite(Number(rawField))) {
         flags.push({
           index: i,
           timestamp: rec.timestamp,
@@ -813,9 +990,9 @@ export default function KoreksiDataPage() {
         continue;
       }
 
-      const numVal = Number(val);
+      const numVal = Number(rawField);
 
-      // Check WMO Physical boundaries
+      // 1. Cek Batas Fisik WMO
       if (numVal < selectedVar.wmoMin || numVal > selectedVar.wmoMax) {
         flags.push({
           index: i,
@@ -827,61 +1004,89 @@ export default function KoreksiDataPage() {
         continue;
       }
 
-      // Check Solar Radiation Overheating Bias vs Baseline Reference (09:00 - 17:30 WIB)
-      if (selectedVar.key === "temperature") {
+      // 2. Deteksi Anomali Radiasi Surya (hanya saat mode solar / toggle eksplisit aktif)
+      if (isSolarActive) {
         const refTemp = getUnifiedRefValAtTimestamp(rec.timestamp, "temperature");
-        if (refTemp !== null) {
-          const dLocal = new Date(rec.timestamp);
-          const hour = dLocal.getHours();
-          const minute = dLocal.getMinutes();
-          const timeFrac = hour + minute / 60;
-          if (timeFrac >= 9.0 && timeFrac <= 17.5) {
-            const excessT = (numVal - refTemp) - baselineNightOffset;
-            const activeThreshold = (correctionMethod === "interpolate" && interpolationSubMethod === "solar_cosine_hermite")
-              ? solarThreshold
-              : 0.7;
-            if (excessT >= activeThreshold) {
+        if (refTemp !== null && Number.isFinite(refTemp)) {
+          const { hourFrac } = getWibTimeComponents(rec.timestamp);
+          if (hourFrac >= 9.0 && hourFrac <= 17.5) {
+            const excessT = numVal - refTemp - baselineNightOffset;
+            if (excessT >= solarThreshold) {
               flags.push({
                 index: i,
                 timestamp: rec.timestamp,
                 value: numVal,
                 type: "solar_overheating",
-                reason: `Paparan radiasi surya sore: +${excessT.toFixed(2)}°C di atas acuan (${refTemp.toFixed(2)}°C, offset malam: ${baselineNightOffset >= 0 ? "+" : ""}${baselineNightOffset.toFixed(2)}°C)`,
+                reason: `Paparan radiasi surya siang: +${excessT.toFixed(2)}°C di atas acuan (${refTemp.toFixed(2)}°C, offset malam: ${baselineNightOffset >= 0 ? "+" : ""}${baselineNightOffset.toFixed(2)}°C)`,
               });
+              lastWasSpike = false;
               continue;
             }
           }
         }
       }
 
-      // Check Abrupt Spike / Step Jump vs previous record
-      if (i > 0) {
-        const prevVal = Number((rawRecords[i - 1] as any)[varKey]);
-        if (Number.isFinite(prevVal)) {
-          const delta = Math.abs(numVal - prevVal);
-          if (delta > selectedVar.spikeThreshold) {
-            flags.push({
-              index: i,
-              timestamp: rec.timestamp,
-              value: numVal,
-              type: "spike_jump",
-              reason: `Lonjakan drastis Δ=${delta.toFixed(2)} ${selectedVar.unit} (ambang: ${selectedVar.spikeThreshold})`,
-            });
-            continue;
+      // 3. Deteksi Spike / Lonjakan Mendadak (ternormalisasi Δt & kebal terhadap poin pemulihan i+1)
+      if (lastCleanVal !== null && lastCleanTs !== null) {
+        const dtMinutes = Math.max(1, (rec.timestamp - lastCleanTs) / 60000);
+        const scaledThreshold =
+          selectedVar.spikeThreshold * Math.min(6, Math.max(1, Math.sqrt(dtMinutes / 5)));
+
+        // Pengecualian reset counter kumulatif harian Curah Hujan pada 00:00 UTC (07:00 WIB)
+        const utcResetBoundary =
+          varKey === "rainfall" &&
+          numVal < lastCleanVal &&
+          numVal >= 0 &&
+          (Math.floor(rec.timestamp / 86400000) > Math.floor(lastCleanTs / 86400000) ||
+            (new Date(rec.timestamp).getUTCHours() === 0 && numVal <= 5.0));
+
+        if (utcResetBoundary) {
+          lastCleanVal = numVal;
+          lastCleanTs = rec.timestamp;
+          lastWasSpike = false;
+        } else {
+          const deltaFromClean = Math.abs(numVal - lastCleanVal);
+          if (deltaFromClean > scaledThreshold) {
+            // Jika sebelumnya adalah spike tunggal lalu stabil di level baru, perlakukan sebagai transisi level baru
+            if (lastWasSpike && Math.abs(numVal - prevSpikeVal) <= scaledThreshold * 0.5) {
+              lastCleanVal = numVal;
+              lastCleanTs = rec.timestamp;
+              lastWasSpike = false;
+            } else {
+              flags.push({
+                index: i,
+                timestamp: rec.timestamp,
+                value: numVal,
+                type: "spike_jump",
+                reason: `Lonjakan Δ=${deltaFromClean.toFixed(2)} ${selectedVar.unit} dalam ${dtMinutes.toFixed(0)} mnt (ambang: ${scaledThreshold.toFixed(1)})`,
+              });
+              lastWasSpike = true;
+              prevSpikeVal = numVal;
+              continue;
+            }
+          } else {
+            lastWasSpike = false;
           }
         }
       }
 
-      // Check Flatline / Frozen sensor (same value for 12+ steps)
-      if (i >= 12) {
+      // Titik dianggap non-spike, perbarui jangkar bersih
+      lastCleanVal = numVal;
+      lastCleanTs = rec.timestamp;
+
+      // 4. Deteksi Flatline (kecualikan lux=0 malam, windSpeed=0 tenang, dan curah hujan)
+      const isNaturalZero =
+        (varKey === "lux" && numVal === 0) || (varKey === "windSpeed" && numVal === 0);
+      if (i >= 12 && varKey !== "rainfall" && varKey !== "rainrate" && !isNaturalZero) {
         let isFlat = true;
         for (let k = 1; k <= 12; k++) {
-          if (Number((rawRecords[i - k] as any)[varKey]) !== numVal) {
+          const pastRaw = (rawRecords[i - k] as any)[varKey];
+          if (pastRaw === null || pastRaw === undefined || Number(pastRaw) !== numVal) {
             isFlat = false;
             break;
           }
         }
-        if (isFlat && selectedVar.key !== "rainfall" && selectedVar.key !== "rainrate") {
+        if (isFlat) {
           flags.push({
             index: i,
             timestamp: rec.timestamp,
@@ -902,6 +1107,7 @@ export default function KoreksiDataPage() {
     correctionMethod,
     interpolationSubMethod,
     solarThreshold,
+    enableSolarAnomalyCheck,
   ]);
 
   const anomalyIndexSet = useMemo(() => new Set(anomalies.map((a) => a.index)), [anomalies]);
@@ -915,27 +1121,56 @@ export default function KoreksiDataPage() {
     const t1 = rawRecords[n - 1].timestamp;
     const span = Math.max(1, t1 - t0);
 
-    // Global boundary valid anchors
-    let firstValidVal = 0;
-    let lastValidVal = 0;
+    // Kumpulkan jangkar valid dan pra-hitung kemiringan sejati untuk PCHIP & Akima
+    const validAnchors: Array<{ idx: number; timestamp: number; value: number }> = [];
     for (let i = 0; i < n; i++) {
-      const v = Number((rawRecords[i] as any)[varKey]);
-      if (Number.isFinite(v) && !anomalyIndexSet.has(i)) {
-        firstValidVal = v;
-        break;
+      const raw = (rawRecords[i] as any)[varKey];
+      if (raw !== null && raw !== undefined && raw !== "") {
+        const v = Number(raw);
+        if (Number.isFinite(v) && !anomalyIndexSet.has(i)) {
+          validAnchors.push({ idx: i, timestamp: rawRecords[i].timestamp, value: v });
+        }
       }
     }
-    for (let i = n - 1; i >= 0; i--) {
-      const v = Number((rawRecords[i] as any)[varKey]);
-      if (Number.isFinite(v) && !anomalyIndexSet.has(i)) {
-        lastValidVal = v;
-        break;
+
+    const firstValidVal = validAnchors.length > 0 ? validAnchors[0].value : 0;
+    const pchipSlopes = computePchipSlopes(validAnchors);
+    const akimaSlopes = computeAkimaSlopes(validAnchors);
+
+    // Pembantu pencarian biner jangkar valid terdekat di kiri & kanan indeks i
+    const findSurroundingAnchors = (targetIdx: number): { leftPos: number; rightPos: number } => {
+      if (validAnchors.length === 0) return { leftPos: -1, rightPos: -1 };
+      let lo = 0;
+      let hi = validAnchors.length - 1;
+      let leftPos = -1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (validAnchors[mid].idx < targetIdx) {
+          leftPos = mid;
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
       }
-    }
+      lo = 0;
+      hi = validAnchors.length - 1;
+      let rightPos = -1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (validAnchors[mid].idx > targetIdx) {
+          rightPos = mid;
+          hi = mid - 1;
+        } else {
+          lo = mid + 1;
+        }
+      }
+      return { leftPos, rightPos };
+    };
 
     return rawRecords.map((rec, idx) => {
       const rawVal = Number((rec as any)[varKey]);
       const isAnomaly = anomalyIndexSet.has(idx);
+      const wibTime = getWibTimeComponents(rec.timestamp);
 
       // If user selected "Hanya Koreksi Anomali" and this point is clean, keep raw
       if (onlyAnomalies && !isAnomaly) {
@@ -943,8 +1178,8 @@ export default function KoreksiDataPage() {
         return {
           timestamp: rec.timestamp,
           timestampInSeconds: Math.floor(rec.timestamp / 1000),
-          timeFormatted: rec.timeFormatted || format(new Date(rec.timestamp), "HH:mm:ss"),
-          dateFormatted: rec.dateFormatted || format(new Date(rec.timestamp), "dd/MM/yyyy HH:mm"),
+          timeFormatted: rec.timeFormatted || wibTime.timeFormatted,
+          dateFormatted: rec.dateFormatted || wibTime.dateFormatted,
           rawVal: Number.isFinite(rawVal) ? rawVal : 0,
           correctedVal: Number.isFinite(rawVal) ? rawVal : 0,
           diff: 0,
@@ -961,110 +1196,125 @@ export default function KoreksiDataPage() {
 
       switch (correctionMethod) {
         case "offset": {
-          // y'(t) = y(t) + delta (Steckler et al., 2025; Kirkwood et al., 2022)
           targetVal = targetVal + offsetValue;
           break;
         }
         case "drift": {
-          // Time-dependent linear drift: delta(t) = delta0 + ((t - t0)/(t1 - t0))*(delta1 - delta0)
-          // (Wang et al., 2017 IEEE Sensors J.; Talukder et al., 2022)
           const alpha = Math.min(1, Math.max(0, (rec.timestamp - t0) / span));
           const currentDrift = driftStart + alpha * (driftEnd - driftStart);
           targetVal = targetVal + currentDrift;
           break;
         }
         case "clamp": {
-          // Physical Clamping: [wmoMin, wmoMax] (WMO-No. 8)
           targetVal = Math.min(clampMax, Math.max(clampMin, targetVal));
           break;
         }
         case "scale": {
-          // Multiplicative sensitivity scaling: y'(t) = k * y(t)
           targetVal = targetVal * scaleFactor;
           break;
         }
         case "interpolate": {
-          // Determine the nearest clean anchor points surrounding this timestamp
-          let tAnchor0 = t0;
-          let yAnchor0 = firstValidVal;
-          let tAnchor1 = t1;
-          let yAnchor1 = lastValidVal;
-
-          if (onlyAnomalies) {
-            // Find closest preceding valid point
-            for (let k = idx - 1; k >= 0; k--) {
-              const v = Number((rawRecords[k] as any)[varKey]);
-              if (Number.isFinite(v) && !anomalyIndexSet.has(k)) {
-                tAnchor0 = rawRecords[k].timestamp;
-                yAnchor0 = v;
-                break;
-              }
-            }
-            // Find closest succeeding valid point
-            for (let k = idx + 1; k < n; k++) {
-              const v = Number((rawRecords[k] as any)[varKey]);
-              if (Number.isFinite(v) && !anomalyIndexSet.has(k)) {
-                tAnchor1 = rawRecords[k].timestamp;
-                yAnchor1 = v;
-                break;
-              }
-            }
+          if (validAnchors.length === 0) {
+            break;
           }
 
-          // Execute selected meteorological interpolation algorithm
+          let leftPos = 0;
+          let rightPos = validAnchors.length - 1;
+
+          if (onlyAnomalies) {
+            const pair = findSurroundingAnchors(idx);
+            leftPos = pair.leftPos;
+            rightPos = pair.rightPos;
+          }
+
+          // Kasus celah di awal/akhir seri (hanya satu jangkar tersedia)
+          if (leftPos === -1 || rightPos === -1) {
+            const edgePos = leftPos !== -1 ? leftPos : rightPos;
+            const edgeAnchor = validAnchors[edgePos];
+            if (interpolationSubMethod === "solar_cosine_hermite" || interpolationSubMethod === "model_guided") {
+              const refT = getUnifiedRefValAtTimestamp(rec.timestamp, varKey);
+              const refEdge = getUnifiedRefValAtTimestamp(edgeAnchor.timestamp, varKey);
+              targetVal =
+                refT !== null && refEdge !== null && Number.isFinite(refT) && Number.isFinite(refEdge)
+                  ? refT + (edgeAnchor.value - refEdge)
+                  : edgeAnchor.value;
+            } else {
+              targetVal = edgeAnchor.value;
+            }
+            break;
+          }
+
+          const anchorA = validAnchors[leftPos];
+          const anchorB = validAnchors[rightPos];
+          const slopeA = pchipSlopes[leftPos];
+          const slopeB = pchipSlopes[rightPos];
+
           if (interpolationSubMethod === "solar_cosine_hermite") {
             const refT = getUnifiedRefValAtTimestamp(rec.timestamp, varKey);
-            const refA = getUnifiedRefValAtTimestamp(tAnchor0, varKey);
-            const refB = getUnifiedRefValAtTimestamp(tAnchor1, varKey);
+            const refA = getUnifiedRefValAtTimestamp(anchorA.timestamp, varKey);
+            const refB = getUnifiedRefValAtTimestamp(anchorB.timestamp, varKey);
 
             if (refT !== null && refA !== null && refB !== null) {
               targetVal = interpolateSolarCosineHermite(
                 rec.timestamp,
-                tAnchor0,
-                tAnchor1,
-                yAnchor0,
-                yAnchor1,
+                anchorA.timestamp,
+                anchorB.timestamp,
+                anchorA.value,
+                anchorB.value,
                 refT,
                 refA,
                 refB,
                 baselineNightOffset
               );
             } else {
-              targetVal = interpolateCubicHermite(rec.timestamp, tAnchor0, yAnchor0, tAnchor1, yAnchor1);
+              targetVal = interpolateCubicHermite(
+                rec.timestamp,
+                anchorA.timestamp,
+                anchorA.value,
+                anchorB.timestamp,
+                anchorB.value,
+                slopeA,
+                slopeB
+              );
             }
           } else if (interpolationSubMethod === "model_guided") {
             targetVal = interpolateModelGuided(
               rec.timestamp,
-              tAnchor0,
-              yAnchor0,
-              tAnchor1,
-              yAnchor1,
-              (ts) => getUnifiedRefValAtTimestamp(ts, varKey)
+              anchorA.timestamp,
+              anchorA.value,
+              anchorB.timestamp,
+              anchorB.value,
+              (ts) => getUnifiedRefValAtTimestamp(ts, varKey),
+              slopeA,
+              slopeB
             );
           } else if (interpolationSubMethod === "cubic_pchip") {
             targetVal = interpolateCubicHermite(
               rec.timestamp,
-              tAnchor0,
-              yAnchor0,
-              tAnchor1,
-              yAnchor1
+              anchorA.timestamp,
+              anchorA.value,
+              anchorB.timestamp,
+              anchorB.value,
+              slopeA,
+              slopeB
             );
           } else if (interpolationSubMethod === "akima") {
-            targetVal = interpolateAkima(
+            targetVal = interpolateHermiteWithSlopes(
               rec.timestamp,
-              tAnchor0,
-              yAnchor0,
-              tAnchor1,
-              yAnchor1
+              anchorA.timestamp,
+              anchorA.value,
+              anchorB.timestamp,
+              anchorB.value,
+              akimaSlopes[leftPos],
+              akimaSlopes[rightPos]
             );
           } else {
-            // time_linear
             targetVal = interpolateTimeLinear(
               rec.timestamp,
-              tAnchor0,
-              yAnchor0,
-              tAnchor1,
-              yAnchor1
+              anchorA.timestamp,
+              anchorA.value,
+              anchorB.timestamp,
+              anchorB.value
             );
           }
           break;
@@ -1075,11 +1325,12 @@ export default function KoreksiDataPage() {
       if (selectedVar.key === "humidity") {
         targetVal = Math.min(100, Math.max(0, targetVal));
       }
-      // Non-negative precipitation & radiation
+      // Non-negative precipitation, radiation, wind & voltage
       if (
         selectedVar.key === "rainfall" ||
         selectedVar.key === "rainrate" ||
         selectedVar.key === "lux" ||
+        selectedVar.key === "windSpeed" ||
         selectedVar.key === "volt"
       ) {
         targetVal = Math.max(0, targetVal);
@@ -1090,21 +1341,21 @@ export default function KoreksiDataPage() {
       const diff = Number.isFinite(rawVal) ? roundedVal - rawVal : roundedVal;
       const isModified = Math.abs(diff) > 0.0001;
 
-      // Thermodynamic Relative Humidity (RH) Recovery via Magnus-Tetens
+      // Thermodynamic Relative Humidity (RH) Recovery via Magnus-Tetens (opt-in eksplisit)
       let recoveredRhVal: number | undefined = undefined;
       let rawRhVal: number | undefined = undefined;
       let diffRh: number = 0;
       let isRhModified: boolean = false;
 
-      if (selectedVar.key === "temperature") {
+      if (selectedVar.key === "temperature" && syncRhRecovery) {
         const rawRh = Number((rec as any)["humidity"]);
         const rawDew = Number((rec as any)["dew"] ?? (rec as any)["dew_point"]);
         if (Number.isFinite(rawRh)) rawRhVal = rawRh;
 
         if (Number.isFinite(rawDew)) {
-          const calcRh = recalculateRHMagnus(targetVal, rawDew);
+          const calcRh = recalculateRHMagnus(roundedVal, Math.min(rawDew, roundedVal));
           if (Number.isFinite(calcRh)) {
-            recoveredRhVal = Number(calcRh.toFixed(1));
+            recoveredRhVal = Number(Math.min(100, Math.max(0, calcRh)).toFixed(1));
             if (Number.isFinite(rawRh)) {
               diffRh = Number((recoveredRhVal - rawRh).toFixed(1));
               isRhModified = Math.abs(diffRh) > 0.1;
@@ -1116,8 +1367,8 @@ export default function KoreksiDataPage() {
       return {
         timestamp: rec.timestamp,
         timestampInSeconds: Math.floor(rec.timestamp / 1000),
-        timeFormatted: rec.timeFormatted || format(new Date(rec.timestamp), "HH:mm:ss"),
-        dateFormatted: rec.dateFormatted || format(new Date(rec.timestamp), "dd/MM/yyyy HH:mm"),
+        timeFormatted: rec.timeFormatted || wibTime.timeFormatted,
+        dateFormatted: rec.dateFormatted || wibTime.dateFormatted,
         rawVal: Number.isFinite(rawVal) ? rawVal : 0,
         correctedVal: roundedVal,
         diff: Number(diff.toFixed(selectedVar.decimals)),
@@ -1144,6 +1395,7 @@ export default function KoreksiDataPage() {
     interpolationSubMethod,
     getUnifiedRefValAtTimestamp,
     baselineNightOffset,
+    syncRhRecovery,
   ]);
 
   // Modified items count
@@ -1173,10 +1425,7 @@ export default function KoreksiDataPage() {
   const chartOptions = useMemo(() => {
     if (correctedResults.length === 0) return {};
 
-    const timeLabels = correctedResults.map((r) => {
-      const d = new Date(r.timestamp);
-      return `${format(d, "dd MMM HH:mm", { locale: localeId })}`;
-    });
+    const timeLabels = correctedResults.map((r) => formatWibShortDateTime(r.timestamp));
 
     const rawSeries = correctedResults.map((r) => r.rawVal);
     const corrSeries = correctedResults.map((r) => r.correctedVal);
@@ -1221,13 +1470,25 @@ export default function KoreksiDataPage() {
       }
     }
 
-    // Visual mark points for anomalies
-    const markPointData = anomalies.map((a) => ({
-      name: a.reason,
-      coord: [a.index, a.value],
-      value: a.type === "wmo_boundary" ? "WMO Limit" : a.type === "solar_overheating" ? "Panas Matahari" : "Spike",
-      itemStyle: { color: a.type === "solar_overheating" ? "#F59E0B" : "#EF4444" },
-    }));
+    // Visual mark points for anomalies (filter NaN & downsample dense overlays cleanly)
+    const finiteAnomalies = anomalies.filter((a) => Number.isFinite(a.value));
+    const maxPins = 25;
+    const step = finiteAnomalies.length > maxPins ? Math.ceil(finiteAnomalies.length / maxPins) : 1;
+    const markPointData = finiteAnomalies
+      .filter((_, idx) => idx % step === 0)
+      .map((a) => ({
+        name: a.reason,
+        coord: [a.index, a.value],
+        value:
+          a.type === "wmo_boundary"
+            ? "WMO"
+            : a.type === "solar_overheating"
+            ? "Surya"
+            : a.type === "flatline"
+            ? "Flat"
+            : "Spike",
+        itemStyle: { color: a.type === "solar_overheating" ? "#F59E0B" : "#EF4444" },
+      }));
 
     const seriesList: any[] = [
       {
@@ -1466,7 +1727,7 @@ export default function KoreksiDataPage() {
 
   // 6.5. Universal Gap Imputation Engine Execution (Projek_Rainfall / Model_Imputasi)
   const imputationResult = useMemo(() => {
-    if (rawRecords.length === 0) {
+    if (rawRecords.length === 0 || !loadedContext || loadedContext.sensorId !== sensorId) {
       return {
         grid: [] as ImputedGridPoint[],
         summary: {
@@ -1485,8 +1746,9 @@ export default function KoreksiDataPage() {
       };
     }
 
-    const startTs = new Date(`${startDateStr}T${startTimeStr}:00`).getTime();
-    const endTs = new Date(`${endDateStr}T${endTimeStr}:59`).getTime();
+    // Gunakan rentang timestamp data yang benar-benar dimuat (WIB +07:00) agar perubahan draft tanggal tidak memicu celah palsu
+    const startTs = loadedContext.startMs;
+    const endTs = loadedContext.endMs;
 
     return runUniversalGapImputation(
       rawRecords,
@@ -1505,10 +1767,8 @@ export default function KoreksiDataPage() {
     );
   }, [
     rawRecords,
-    startDateStr,
-    startTimeStr,
-    endDateStr,
-    endTimeStr,
+    loadedContext,
+    sensorId,
     selectedVar.key,
     gapMicroLimitMinutes,
     gapImputeMethod,
@@ -1522,35 +1782,46 @@ export default function KoreksiDataPage() {
   const gapChartOptions = useMemo(() => {
     if (imputationResult.grid.length === 0) return {};
 
-    const timeLabels = imputationResult.grid.map((r) => r.timeFormatted.slice(0, 5));
-    const rawData = imputationResult.grid.map((r) => r.isOriginal ? r.rawVal : null);
+    const isMultiDay = imputationResult.grid.length > 1500;
+    const timeLabels = imputationResult.grid.map((r) =>
+      isMultiDay ? formatWibShortDateTime(r.timestamp) : r.timeFormatted.slice(0, 5)
+    );
+    const rawData = imputationResult.grid.map((r) => (r.isOriginal ? r.rawVal : null));
     const imputedData = imputationResult.grid.map((r) => r.imputedVal);
 
-    // Calculate Y-axis bounds
+    // Calculate Y-axis bounds with meteorological invariants
     const allVals = imputationResult.grid.map((r) => r.imputedVal).filter((v) => Number.isFinite(v));
     const vMin = allVals.length > 0 ? Math.min(...allVals) : 20;
     const vMax = allVals.length > 0 ? Math.max(...allVals) : 35;
     const padding = Math.max(0.5, (vMax - vMin) * 0.1);
-    const yMin = Number((vMin - padding).toFixed(1));
-    const yMax = Number((vMax + padding).toFixed(1));
+    let yMin = Number((vMin - padding).toFixed(1));
+    let yMax = Number((vMax + padding).toFixed(1));
+    if (selectedVar.key === "humidity") {
+      yMin = Math.max(0, yMin);
+      yMax = Math.min(100, yMax);
+    } else if (["rainfall", "rainrate", "windSpeed", "lux", "volt"].includes(selectedVar.key)) {
+      yMin = Math.max(0, yMin);
+    }
 
-    // Build MarkArea for gaps
+    // Build MarkArea for gaps using category indices (aman pada multi-hari)
     const markAreaPieces: any[] = imputationResult.summary.segments.map((seg) => {
-      const startLabel = timeLabels[seg.startIndex];
-      const endLabel = timeLabels[seg.endIndex];
       const isMicro = seg.type === "micro";
       return [
         {
           name: isMicro ? `Gap Mikro (${seg.durationMinutes}m)` : `Gap Makro (${seg.durationMinutes}m)`,
-          xAxis: startLabel,
+          xAxis: seg.startIndex,
           itemStyle: {
             color: isMicro
-              ? (isDarkMode ? "rgba(251, 191, 36, 0.08)" : "rgba(251, 191, 36, 0.15)")
-              : (isDarkMode ? "rgba(168, 85, 247, 0.10)" : "rgba(168, 85, 247, 0.18)"),
+              ? isDarkMode
+                ? "rgba(251, 191, 36, 0.08)"
+                : "rgba(251, 191, 36, 0.15)"
+              : isDarkMode
+              ? "rgba(168, 85, 247, 0.10)"
+              : "rgba(168, 85, 247, 0.18)",
           },
         },
         {
-          xAxis: endLabel,
+          xAxis: seg.endIndex,
         },
       ];
     });
@@ -1646,8 +1917,31 @@ export default function KoreksiDataPage() {
     };
   }, [imputationResult, isDarkMode, selectedVar]);
 
-  // Handle Apply Gap Imputation to Firebase RTDB
+  // Cache invalidation helper for server /api/sensors range cache
+  const invalidateServerSensorCache = useCallback(async (sid: string) => {
+    try {
+      await fetch("/api/sensors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "invalidate", sensorId: sid }),
+      });
+    } catch {
+      // Non-critical if offline or dev cache miss
+    }
+  }, []);
+
+  // Handle Apply Gap Imputation to Firebase RTDB (full multi-variable telemetry nodes)
   const handleApplyGapImputation = async () => {
+    if (!loadedContext || isFilterDirty) {
+      toast({
+        title: "Periode Belum Dimuat",
+        description: "Klik tombol \"Ambil Data Target\" terlebih dahulu sebelum menyimpan imputasi.",
+        variant: "destructive",
+      });
+      setShowImputationConfirmModal(false);
+      return;
+    }
+
     const imputedPoints = imputationResult.grid.filter((pt) => pt.isImputed);
     if (imputedPoints.length === 0) {
       toast({
@@ -1660,65 +1954,74 @@ export default function KoreksiDataPage() {
 
     try {
       setIsApplyingImputation(true);
-      const updates: BatchSensorFieldUpdate[] = [];
 
-      for (let i = 0; i < imputedPoints.length; i++) {
-        const pt = imputedPoints[i];
-        updates.push({
-          timestampInSeconds: pt.timestampInSeconds,
-          field: selectedVar.key,
-          newValue: pt.imputedVal,
-        });
-        updates.push({
-          timestampInSeconds: pt.timestampInSeconds,
-          field: "status",
-          newValue: "IMPUTED",
-        });
-        updates.push({
-          timestampInSeconds: pt.timestampInSeconds,
-          field: "timestamp",
-          newValue: pt.timestampInSeconds,
-        });
-      }
+      const nodePayloads = buildCompleteGapNodePayloads(
+        imputationResult.grid,
+        rawRecords,
+        loadedContext.startMs,
+        loadedContext.endMs,
+        selectedVar.key,
+        {
+          microGapLimitMinutes: gapMicroLimitMinutes,
+          enableSpatialTransfer: gapImputeMethod === "auto_hybrid" || gapImputeMethod === "companion_ridge",
+          enableModelGuided: gapImputeMethod === "auto_hybrid" || gapImputeMethod === "model_guided",
+          enableBoundaryBridging: enableGapBridging,
+          enablePhysicsPostProcessing: enableGapPhysics,
+        },
+        refStationRecords,
+        referenceGuidePoints
+      );
 
-      const totalUpdated = await batchUpdateSensorFields(sensorId, updates);
+      const writtenNodes = await batchWriteGapImputedNodes(sensorId, nodePayloads);
 
-      const startEpoch = Math.floor(new Date(`${startDateStr}T${startTimeStr}:00`).getTime() / 1000);
-      const endEpoch = Math.floor(new Date(`${endDateStr}T${endTimeStr}:59`).getTime() / 1000);
+      const startEpoch = Math.floor(loadedContext.startMs / 1000);
+      const endEpoch = Math.floor(loadedContext.endMs / 1000);
 
       await logSensorCorrection({
         sensorId,
         timestamp: Date.now(),
         field: selectedVar.key,
         method: `GAP_IMPUTATION_${gapImputeMethod.toUpperCase()}`,
-        pointCount: imputedPoints.length,
+        pointCount: writtenNodes,
         range: {
           start: startEpoch,
           end: endEpoch,
-          startDateFormatted: `${startDateStr} ${startTimeStr}`,
-          endDateFormatted: `${endDateStr} ${endTimeStr}`,
+          startDateFormatted: `${loadedContext.startDateStr} ${loadedContext.startTimeStr} WIB`,
+          endDateFormatted: `${loadedContext.endDateStr} ${loadedContext.endTimeStr} WIB`,
         },
         parameters: {
           microGapLimit: gapMicroLimitMinutes,
           gapMethod: gapImputeMethod,
           boundaryBridging: enableGapBridging,
           physicsPostProcess: enableGapPhysics,
-          totalGapsFilled: imputedPoints.length,
-          companionStation: solarRefStationId,
+          totalGapsFilled: writtenNodes,
+          multiVarCompleted: true,
+          companionStation:
+            solarRefStationId && solarRefStationId !== sensorId ? solarRefStationId : undefined,
         },
-        appliedAt: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
+        appliedAt: format(new Date(), "yyyy-MM-dd HH:mm:ss") + " WIB",
         appliedBy: user?.displayName || user?.email || "Admin Operator",
-        notes: auditNotes || `Imputasi celah data ${imputedPoints.length} menit menggunakan algoritma 2-Fase Hibrida (Model Imputasi)`,
+        notes:
+          auditNotes.trim() ||
+          `Imputasi celah data ${writtenNodes} menit lengkap multi-variabel menggunakan algoritma 2-Fase Hibrida`,
       });
+
+      await invalidateServerSensorCache(sensorId);
 
       toast({
         title: "Imputasi Celah Berhasil Disimpan",
-        description: `Berhasil menulis ${imputedPoints.length} menit data baru (${totalUpdated} entri) ke Firebase RTDB dengan status IMPUTED.`,
+        description: `Berhasil menuliskan ${writtenNodes} node waktu lengkap (multi-variabel + ${selectedVar.key}) ke Firebase RTDB.`,
       });
 
       setShowImputationConfirmModal(false);
-      handleFetchData();
-      loadAuditTrail(sensorId);
+      setAuditNotes("");
+      await fetchDataForRange(
+        loadedContext.startDateStr,
+        loadedContext.startTimeStr,
+        loadedContext.endDateStr,
+        loadedContext.endTimeStr
+      );
+      await loadAuditTrail(sensorId);
     } catch (err: any) {
       console.error("Gagal menyimpan imputasi celah:", err);
       toast({
@@ -1733,6 +2036,16 @@ export default function KoreksiDataPage() {
 
   // 7. Apply Batch Correction to RTDB
   const handleApplyBatchCorrection = async () => {
+    if (!loadedContext || isFilterDirty) {
+      toast({
+        title: "Periode Belum Dimuat",
+        description: "Filter stasiun atau tanggal berubah. Klik \"Ambil Data Target\" terlebih dahulu.",
+        variant: "destructive",
+      });
+      setShowConfirmModal(false);
+      return;
+    }
+
     if (modifiedItems.length === 0) {
       toast({
         title: "Tidak Ada Perubahan",
@@ -1773,7 +2086,7 @@ export default function KoreksiDataPage() {
       // 1. Eksekusi batch updates ke RTDB
       const updatedCount = await batchUpdateSensorFields(sensorId, updates);
 
-      // 2. Simpan rekaman audit trail
+      // 2. Simpan rekaman audit trail (dibersihkan dari undefined/NaN di FetchingSensorData)
       const auditLog: SensorCorrectionAuditLog = {
         timestamp: Date.now(),
         sensorId,
@@ -1786,31 +2099,29 @@ export default function KoreksiDataPage() {
           clampMin: correctionMethod === "clamp" ? clampMin : undefined,
           clampMax: correctionMethod === "clamp" ? clampMax : undefined,
           scaleFactor: correctionMethod === "scale" ? scaleFactor : undefined,
-          interpolationSubMethod: correctionMethod === "interpolate" ? interpolationSubMethod : undefined,
+          interpolationSubMethod:
+            correctionMethod === "interpolate" ? interpolationSubMethod : undefined,
           referenceModel:
-            correctionMethod === "interpolate"
-              ? activeRefLabel
-              : undefined,
+            correctionMethod === "interpolate" ? activeRefLabel : undefined,
           solarRefSource:
             correctionMethod === "interpolate" && interpolationSubMethod === "solar_cosine_hermite"
               ? solarRefSource
               : undefined,
           solarThreshold:
-            correctionMethod === "interpolate" && interpolationSubMethod === "solar_cosine_hermite"
+            correctionMethod === "interpolate" &&
+            (interpolationSubMethod === "solar_cosine_hermite" || enableSolarAnomalyCheck)
               ? solarThreshold
               : undefined,
           syncRhRecovery:
-            correctionMethod === "interpolate" && interpolationSubMethod === "solar_cosine_hermite"
-              ? syncRhRecovery
-              : undefined,
+            selectedVar.key === "temperature" ? syncRhRecovery : undefined,
           rhPointsRecovered: rhUpdateCount > 0 ? rhUpdateCount : undefined,
           onlyAnomalies,
         },
         range: {
-          start: new Date(`${startDateStr}T${startTimeStr}:00+07:00`).getTime(),
-          end: new Date(`${endDateStr}T${endTimeStr}:59+07:00`).getTime(),
-          startDateFormatted: `${startDateStr} ${startTimeStr} WIB`,
-          endDateFormatted: `${endDateStr} ${endTimeStr} WIB`,
+          start: loadedContext.startMs,
+          end: loadedContext.endMs,
+          startDateFormatted: `${loadedContext.startDateStr} ${loadedContext.startTimeStr} WIB`,
+          endDateFormatted: `${loadedContext.endDateStr} ${loadedContext.endTimeStr} WIB`,
         },
         pointCount: updatedCount,
         notes: auditNotes.trim() || undefined,
@@ -1819,19 +2130,26 @@ export default function KoreksiDataPage() {
       };
 
       await logSensorCorrection(auditLog);
+      await invalidateServerSensorCache(sensorId);
 
       toast({
         title: "Koreksi Berhasil Diterapkan!",
-        description: rhUpdateCount > 0
-          ? `${modifiedItems.length} titik ${selectedVar.label} diperbarui dan ${rhUpdateCount} titik Kelembapan (RH via Magnus) dipulihkan secara simultan di database.`
-          : `${updatedCount} titik data untuk ${selectedVar.label} berhasil diperbarui di database.`,
+        description:
+          rhUpdateCount > 0
+            ? `${modifiedItems.length} titik ${selectedVar.label} diperbarui dan ${rhUpdateCount} titik Kelembapan (RH via Magnus) dipulihkan secara simultan di database.`
+            : `${updatedCount} titik data untuk ${selectedVar.label} berhasil diperbarui di database.`,
       });
 
       setShowConfirmModal(false);
       setAuditNotes("");
 
-      // Refresh data
-      await handleFetchData();
+      // Refresh data & audit trail
+      await fetchDataForRange(
+        loadedContext.startDateStr,
+        loadedContext.startTimeStr,
+        loadedContext.endDateStr,
+        loadedContext.endTimeStr
+      );
       await loadAuditTrail(sensorId);
     } catch (err: any) {
       console.error("Gagal menerapkan koreksi batch:", err);
@@ -1844,6 +2162,83 @@ export default function KoreksiDataPage() {
       setIsApplying(false);
     }
   };
+
+  const previewRows = useMemo(
+    () => (showOnlyModifiedRows ? modifiedItems : correctedResults),
+    [showOnlyModifiedRows, modifiedItems, correctedResults]
+  );
+
+  const previewTotalPages = useMemo(() => {
+    if (previewPageSize <= 0 || previewRows.length === 0) return 1;
+    return Math.max(1, Math.ceil(previewRows.length / previewPageSize));
+  }, [previewRows.length, previewPageSize]);
+
+  const safePreviewPage = Math.min(previewPage, previewTotalPages);
+
+  const paginatedPreviewRows = useMemo(() => {
+    if (previewPageSize <= 0) return previewRows;
+    const startIdx = (safePreviewPage - 1) * previewPageSize;
+    return previewRows.slice(startIdx, startIdx + previewPageSize);
+  }, [previewRows, safePreviewPage, previewPageSize]);
+
+  const handleExportPreviewCsv = useCallback(() => {
+    if (previewRows.length === 0) {
+      toast({
+        title: "Tidak Ada Data",
+        description: "Tidak ada baris data pratinjau untuk diekspor ke CSV.",
+      });
+      return;
+    }
+
+    const escapeCsv = (val: string | number) => {
+      const s = String(val);
+      return /[,"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+
+    const includeRh = syncRhRecovery && selectedVar.key === "temperature";
+    const headers = [
+      "Waktu (WIB)",
+      "Timestamp (ms)",
+      `Nilai Mentah (${selectedVar.unit})`,
+      `Nilai Koreksi (${selectedVar.unit})`,
+      `Selisih (${selectedVar.unit})`,
+      "Status",
+      ...(includeRh ? ["RH Mentah (%)", "RH Magnus (%)", "Selisih RH (%)"] : []),
+    ];
+
+    const lines = [headers.map(escapeCsv).join(",")];
+    for (const row of previewRows) {
+      const statusLabel = row.isAnomaly ? "Anomali" : row.isModified ? "Terkoreksi" : "Tetap";
+      const baseCols = [
+        row.dateFormatted,
+        row.timestamp,
+        row.rawVal,
+        row.correctedVal,
+        row.diff,
+        statusLabel,
+      ];
+      if (includeRh) {
+        baseCols.push(
+          row.rawRhVal != null ? row.rawRhVal : "",
+          row.recoveredRhVal != null ? row.recoveredRhVal : "",
+          row.diffRh != null ? row.diffRh : ""
+        );
+      }
+      lines.push(baseCols.map(escapeCsv).join(","));
+    }
+
+    const csvContent = "\uFEFF" + lines.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const dateTag = loadedContext?.startDateStr || startDateStr;
+    link.href = url;
+    link.download = `koreksi-${sensorId || "aws"}-${selectedVar.key}-${dateTag}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [previewRows, syncRhRecovery, selectedVar, loadedContext, startDateStr, sensorId, toast]);
 
   return (
     <div className="space-y-6 pb-12">
@@ -1882,6 +2277,14 @@ export default function KoreksiDataPage() {
                 value={sensorId}
                 onValueChange={(val) => {
                   setSensorId(val);
+                  setRefStationRecords([]);
+                  if (solarRefStationId === val) {
+                    const alt =
+                      val === "id-05" && devices.some((d) => (d.authToken || d.id) === "id-03")
+                        ? devices.find((d) => (d.authToken || d.id) === "id-03")
+                        : devices.find((d) => (d.authToken || d.id) !== val);
+                    setSolarRefStationId(alt ? ((alt.authToken || alt.id) as string) : "");
+                  }
                   const matched = devices.find((d) => (d.authToken || d.id) === val);
                   if (matched) {
                     setSelectedStationName(`${matched.name} (${matched.location})`);
@@ -1990,8 +2393,8 @@ export default function KoreksiDataPage() {
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 font-mono">
                     {startDateStr === endDateStr
-                      ? format(new Date(`${startDateStr}T00:00:00`), "EEEE, dd MMMM yyyy", { locale: localeId })
-                      : `${format(new Date(`${startDateStr}T00:00:00`), "dd MMM yyyy", { locale: localeId })} – ${format(new Date(`${endDateStr}T00:00:00`), "dd MMM yyyy", { locale: localeId })}`}
+                      ? formatWibFullDisplayDate(startDateStr)
+                      : `${formatWibMediumDisplayDate(startDateStr)} – ${formatWibMediumDisplayDate(endDateStr)}`}
                   </span>
                   <span className="text-[11px] text-slate-400 font-mono">
                     ({startTimeStr} - {endTimeStr} WIB)
@@ -2098,6 +2501,44 @@ export default function KoreksiDataPage() {
           </div>
         </CardContent>
       </Card>
+
+      {isFilterDirty && loadedContext && (
+        <Alert className="border-amber-500/60 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertTitle className="text-xs font-bold flex flex-wrap items-center justify-between gap-2">
+            <span>Filter Stasiun / Rentang Waktu Belum Dimuat Ulang</span>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleFetchData}
+              disabled={loading}
+              className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              <RefreshCw className={`h-3 w-3 mr-1 ${loading ? "animate-spin" : ""}`} />
+              Muat Data Target Terbaru
+            </Button>
+          </AlertTitle>
+          <AlertDescription className="text-xs mt-1">
+            Data yang sedang tampil berasal dari stasiun <strong className="font-mono">{loadedContext.sensorId}</strong> periode{" "}
+            <strong className="font-mono">
+              {loadedContext.startDateStr} {loadedContext.startTimeStr} – {loadedContext.endDateStr} {loadedContext.endTimeStr} WIB
+            </strong>
+            . Klik &quot;Muat Data Target Terbaru&quot; atau &quot;Ambil Data Target&quot; sebelum menulis ke database.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {activeCalibrationVars.length > 0 && (
+        <Alert className="border-sky-500/40 bg-sky-500/10 text-sky-900 dark:text-sky-200">
+          <Info className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+          <AlertTitle className="text-xs font-bold">
+            Kalibrasi Otomatis Aktif di Lapisan Tampilan ({activeCalibrationVars.join(", ")})
+          </AlertTitle>
+          <AlertDescription className="text-xs mt-0.5">
+            Stasiun ini memiliki profil kalibrasi aktif pada modul Kalibrasi Sensor. Halaman Koreksi Data ini menampilkan dan menyunting nilai <strong>RAW database</strong> secara langsung sebelum kalibrasi tampilan diterapkan.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Main Tabs Navigation (2 Tabs: Workspace Koreksi & Riwayat Audit) */}
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)}>
@@ -2235,15 +2676,40 @@ export default function KoreksiDataPage() {
                     Metode matematis untuk menyelaraskan bias sensor ke standar fisik meteorologi
                   </CardDescription>
                 </div>
-                <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <Switch
-                    id="onlyAnomaliesSwitch"
-                    checked={onlyAnomalies}
-                    onCheckedChange={setOnlyAnomalies}
-                  />
-                  <Label htmlFor="onlyAnomaliesSwitch" className="text-xs font-medium cursor-pointer">
-                    Hanya Koreksi Titik Anomali ({anomalies.length} Terdeteksi)
-                  </Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedVar.key === "temperature" && (
+                    <div className="flex items-center space-x-2 bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800/60">
+                      <Switch
+                        id="enableSolarAnomalySwitch"
+                        checked={
+                          enableSolarAnomalyCheck ||
+                          (correctionMethod === "interpolate" &&
+                            interpolationSubMethod === "solar_cosine_hermite")
+                        }
+                        disabled={
+                          correctionMethod === "interpolate" &&
+                          interpolationSubMethod === "solar_cosine_hermite"
+                        }
+                        onCheckedChange={setEnableSolarAnomalyCheck}
+                      />
+                      <Label
+                        htmlFor="enableSolarAnomalySwitch"
+                        className="text-xs font-medium cursor-pointer text-amber-900 dark:text-amber-200"
+                      >
+                        Deteksi Overheating Surya
+                      </Label>
+                    </div>
+                  )}
+                  <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <Switch
+                      id="onlyAnomaliesSwitch"
+                      checked={onlyAnomalies}
+                      onCheckedChange={setOnlyAnomalies}
+                    />
+                    <Label htmlFor="onlyAnomaliesSwitch" className="text-xs font-medium cursor-pointer">
+                      Hanya Koreksi Titik Anomali ({anomalies.length} Terdeteksi)
+                    </Label>
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -2321,11 +2787,10 @@ export default function KoreksiDataPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Input
-                        type="number"
+                      <NumericInputField
                         step={selectedVar.step}
                         value={offsetValue}
-                        onChange={(e) => setOffsetValue(parseFloat(e.target.value) || 0)}
+                        onCommit={setOffsetValue}
                         className="w-32 h-9 text-xs"
                       />
                       <input
@@ -2334,7 +2799,10 @@ export default function KoreksiDataPage() {
                         max={10 * selectedVar.step * 10}
                         step={selectedVar.step}
                         value={offsetValue}
-                        onChange={(e) => setOffsetValue(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          if (Number.isFinite(v)) setOffsetValue(v);
+                        }}
                         className="flex-1 accent-indigo-600 cursor-pointer"
                       />
                       <Button
@@ -2366,11 +2834,10 @@ export default function KoreksiDataPage() {
                         <Label className="text-[11px] text-slate-500">
                           Offset Awal Rentang (δ₀): {driftStart > 0 ? `+${driftStart}` : driftStart} {selectedVar.unit}
                         </Label>
-                        <Input
-                          type="number"
+                        <NumericInputField
                           step={selectedVar.step}
                           value={driftStart}
-                          onChange={(e) => setDriftStart(parseFloat(e.target.value) || 0)}
+                          onCommit={setDriftStart}
                           className="h-9 text-xs"
                         />
                       </div>
@@ -2378,11 +2845,10 @@ export default function KoreksiDataPage() {
                         <Label className="text-[11px] text-slate-500">
                           Offset Akhir Rentang (δ₁): {driftEnd > 0 ? `+${driftEnd}` : driftEnd} {selectedVar.unit}
                         </Label>
-                        <Input
-                          type="number"
+                        <NumericInputField
                           step={selectedVar.step}
                           value={driftEnd}
-                          onChange={(e) => setDriftEnd(parseFloat(e.target.value) || 0)}
+                          onCommit={setDriftEnd}
                           className="h-9 text-xs"
                         />
                       </div>
@@ -2406,11 +2872,10 @@ export default function KoreksiDataPage() {
                         <Label className="text-[11px] text-slate-500">
                           Batas Bawah Fisik (Min):
                         </Label>
-                        <Input
-                          type="number"
+                        <NumericInputField
                           step={selectedVar.step}
                           value={clampMin}
-                          onChange={(e) => setClampMin(parseFloat(e.target.value) || 0)}
+                          onCommit={setClampMin}
                           className="h-9 text-xs"
                         />
                       </div>
@@ -2418,11 +2883,10 @@ export default function KoreksiDataPage() {
                         <Label className="text-[11px] text-slate-500">
                           Batas Atas Fisik (Max):
                         </Label>
-                        <Input
-                          type="number"
+                        <NumericInputField
                           step={selectedVar.step}
                           value={clampMax}
-                          onChange={(e) => setClampMax(parseFloat(e.target.value) || 0)}
+                          onCommit={setClampMax}
                           className="h-9 text-xs"
                         />
                       </div>
@@ -2442,11 +2906,12 @@ export default function KoreksiDataPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Input
-                        type="number"
+                      <NumericInputField
                         step={0.01}
+                        min={0.1}
+                        max={5.0}
                         value={scaleFactor}
-                        onChange={(e) => setScaleFactor(parseFloat(e.target.value) || 1.0)}
+                        onCommit={setScaleFactor}
                         className="w-32 h-9 text-xs"
                       />
                       <input
@@ -2455,7 +2920,10 @@ export default function KoreksiDataPage() {
                         max={1.5}
                         step={0.005}
                         value={scaleFactor}
-                        onChange={(e) => setScaleFactor(parseFloat(e.target.value) || 1.0)}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          if (Number.isFinite(v)) setScaleFactor(v);
+                        }}
                         className="flex-1 accent-indigo-600 cursor-pointer"
                       />
                       <Button
@@ -2798,7 +3266,7 @@ export default function KoreksiDataPage() {
                             </div>
                           </div>
 
-                          {/* Parameter Threshold & Sync RH */}
+                          {/* Parameter Threshold */}
                           <div className="space-y-3">
                             <div className="space-y-1.5">
                               <div className="flex items-center justify-between">
@@ -2808,13 +3276,12 @@ export default function KoreksiDataPage() {
                                 <span className="text-[10px] text-slate-400 font-mono">09:00 - 17:30 WIB</span>
                               </div>
                               <div className="flex items-center gap-3">
-                                <Input
-                                  type="number"
-                                  step={0.5}
+                                <NumericInputField
+                                  step={0.1}
                                   min={0.5}
                                   max={10.0}
                                   value={solarThreshold}
-                                  onChange={(e) => setSolarThreshold(parseFloat(e.target.value) || 2.0)}
+                                  onCommit={setSolarThreshold}
                                   className="w-24 h-8 text-xs font-mono"
                                 />
                                 <input
@@ -2823,30 +3290,16 @@ export default function KoreksiDataPage() {
                                   max={8.0}
                                   step={0.1}
                                   value={solarThreshold}
-                                  onChange={(e) => setSolarThreshold(parseFloat(e.target.value) || 2.0)}
+                                  onChange={(e) => {
+                                    const v = Number(e.target.value);
+                                    if (Number.isFinite(v)) setSolarThreshold(v);
+                                  }}
                                   className="flex-1 accent-amber-600 cursor-pointer"
                                 />
                               </div>
                               <p className="text-[10px] text-slate-500">
-                                Kelebihan suhu &Delta;T &gt; {solarThreshold}°C di atas baseline malam pada siang hari akan dikoreksi melengkung halus mengikuti referensi.
+                                Kelebihan suhu &Delta;T &gt; {solarThreshold.toFixed(1)}°C di atas baseline malam pada siang hari akan dikoreksi melengkung halus mengikuti referensi.
                               </p>
-                            </div>
-
-                            <div className="flex items-start space-x-2.5 p-2 rounded-lg bg-amber-100/40 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/40">
-                              <Switch
-                                id="syncRhRecoverySwitch"
-                                checked={syncRhRecovery}
-                                onCheckedChange={setSyncRhRecovery}
-                                className="mt-0.5"
-                              />
-                              <div className="space-y-0.5">
-                                <Label htmlFor="syncRhRecoverySwitch" className="text-xs font-semibold cursor-pointer text-amber-900 dark:text-amber-200">
-                                  Sinkronkan Pemulihan RH Termodinamika (Magnus-Tetens)
-                                </Label>
-                                <p className="text-[10px] text-slate-600 dark:text-slate-400">
-                                  Menghitung ulang kelembapan relatif fisis dari titik embun ($T_d$) dan suhu terkoreksi, serta mengunggah field <code className="font-mono text-indigo-600 dark:text-indigo-400">humidity</code> ke Firebase RTDB secara atomik.
-                                </p>
-                              </div>
                             </div>
                           </div>
                         </div>
@@ -2855,6 +3308,25 @@ export default function KoreksiDataPage() {
                   </div>
                 )}
               </div>
+
+              {selectedVar.key === "temperature" && (
+                <div className="flex items-start space-x-2.5 p-3 rounded-xl bg-cyan-50/70 dark:bg-cyan-950/20 border border-cyan-200/80 dark:border-cyan-900/50">
+                  <Switch
+                    id="syncRhRecoverySwitch"
+                    checked={syncRhRecovery}
+                    onCheckedChange={setSyncRhRecovery}
+                    className="mt-0.5"
+                  />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="syncRhRecoverySwitch" className="text-xs font-semibold cursor-pointer text-cyan-900 dark:text-cyan-200">
+                      Sinkronkan Pemulihan Kelembapan Relatif Termodinamika (Magnus-Tetens)
+                    </Label>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                      Opsional untuk semua metode koreksi suhu: menghitung ulang kelembapan relatif fisis dari titik embun (T<sub>d</sub>) dan suhu terkoreksi, lalu menulis field <code className="font-mono text-indigo-600 dark:text-indigo-400">humidity</code> ke Firebase RTDB secara simultan.
+                    </p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -2949,7 +3421,7 @@ export default function KoreksiDataPage() {
                     <div>
                       <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Pemulihan RH (Magnus):</span>
                       <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400">
-                        +{stats.meanRhRecovery}% ({stats.rhModifiedCount} titik)
+                        {Number(stats.meanRhRecovery) > 0 ? `+${stats.meanRhRecovery}` : stats.meanRhRecovery}% ({stats.rhModifiedCount} titik)
                       </span>
                     </div>
                   )}
@@ -2958,7 +3430,7 @@ export default function KoreksiDataPage() {
                 <div className="flex items-center gap-2 ml-auto">
                   <Button
                     onClick={() => setShowConfirmModal(true)}
-                    disabled={modifiedItems.length === 0 || isApplying}
+                    disabled={modifiedItems.length === 0 || isApplying || isFilterDirty}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm h-9 px-4"
                   >
                     <Check className="h-4 w-4 mr-1.5" />
@@ -2971,22 +3443,38 @@ export default function KoreksiDataPage() {
 
           {/* 4. Table of Affected Records */}
           <Card className="border shadow-sm">
-            <CardHeader className="py-3 px-5 border-b flex flex-row items-center justify-between">
+            <CardHeader className="py-3 px-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <Database className="h-4 w-4 text-slate-500" />
-                  Rincian Titik Data Observasi
+                  Rincian Titik Data Observasi ({previewRows.length.toLocaleString("id-ID")} Baris)
                 </CardTitle>
               </div>
-              <div className="flex items-center gap-2 text-xs">
-                <Switch
-                  id="showModifiedRowsSwitch"
-                  checked={showOnlyModifiedRows}
-                  onCheckedChange={setShowOnlyModifiedRows}
-                />
-                <Label htmlFor="showModifiedRowsSwitch" className="cursor-pointer text-xs">
-                  Hanya Tampilkan Baris yang Berubah
-                </Label>
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="showModifiedRowsSwitch"
+                    checked={showOnlyModifiedRows}
+                    onCheckedChange={(checked) => {
+                      setShowOnlyModifiedRows(checked);
+                      setPreviewPage(1);
+                    }}
+                  />
+                  <Label htmlFor="showModifiedRowsSwitch" className="cursor-pointer text-xs">
+                    Hanya Tampilkan Baris yang Berubah
+                  </Label>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExportPreviewCsv}
+                  disabled={previewRows.length === 0}
+                  className="h-8 text-xs gap-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Ekspor CSV
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -3002,7 +3490,7 @@ export default function KoreksiDataPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                    {(showOnlyModifiedRows ? modifiedItems : correctedResults).slice(0, 150).map((row) => {
+                    {paginatedPreviewRows.map((row) => {
                       const isMod = row.isModified;
                       return (
                         <tr
@@ -3023,7 +3511,7 @@ export default function KoreksiDataPage() {
                             <div>{row.correctedVal} {selectedVar.unit}</div>
                             {row.isRhModified && row.recoveredRhVal !== undefined && (
                               <div className="text-[10px] text-cyan-600 dark:text-cyan-400 font-normal">
-                                RH: {row.rawRhVal}% → {row.recoveredRhVal}% (+{row.diffRh}%)
+                                RH: {row.rawRhVal}% → {row.recoveredRhVal}% ({row.diffRh && row.diffRh > 0 ? `+${row.diffRh}` : row.diffRh}%)
                               </div>
                             )}
                           </td>
@@ -3046,7 +3534,7 @@ export default function KoreksiDataPage() {
                         </tr>
                       );
                     })}
-                    {(showOnlyModifiedRows ? modifiedItems : correctedResults).length === 0 && (
+                    {paginatedPreviewRows.length === 0 && (
                       <tr>
                         <td colSpan={5} className="text-center p-6 text-slate-400">
                           Tidak ada baris data yang ditampilkan.
@@ -3057,6 +3545,60 @@ export default function KoreksiDataPage() {
                 </table>
               </ScrollArea>
             </CardContent>
+            {previewRows.length > 0 && (
+              <CardFooter className="py-2.5 px-5 border-t bg-slate-50/70 dark:bg-slate-900/40 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                  {previewPageSize <= 0
+                    ? `Menampilkan seluruh ${previewRows.length.toLocaleString("id-ID")} baris`
+                    : `Menampilkan ${((safePreviewPage - 1) * previewPageSize + 1).toLocaleString("id-ID")}–${Math.min(safePreviewPage * previewPageSize, previewRows.length).toLocaleString("id-ID")} dari ${previewRows.length.toLocaleString("id-ID")} baris`}
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
+                    value={String(previewPageSize)}
+                    onValueChange={(val) => {
+                      setPreviewPageSize(Number(val));
+                      setPreviewPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="h-7 w-[118px] text-[11px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="100">100 / hal</SelectItem>
+                      <SelectItem value="250">250 / hal</SelectItem>
+                      <SelectItem value="0">Tampilkan Semua</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {previewPageSize > 0 && previewTotalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={safePreviewPage <= 1}
+                        onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
+                        className="h-7 px-2 text-[11px]"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="font-mono text-[11px] px-1.5">
+                        {safePreviewPage}/{previewTotalPages}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={safePreviewPage >= previewTotalPages}
+                        onClick={() => setPreviewPage((p) => Math.min(previewTotalPages, p + 1))}
+                        className="h-7 px-2 text-[11px]"
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardFooter>
+            )}
           </Card>
         </div>
       ) : (
@@ -3257,11 +3799,21 @@ export default function KoreksiDataPage() {
                       min={5}
                       max={60}
                       step={5}
-                      value={gapMicroLimitMinutes}
-                      onChange={(e) => setGapMicroLimitMinutes(parseInt(e.target.value) || 15)}
+                      value={Math.min(60, Math.max(5, gapMicroLimitMinutes))}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        if (Number.isFinite(v)) setGapMicroLimitMinutes(v);
+                      }}
                       className="flex-1 accent-purple-600 cursor-pointer"
                     />
-                    <span className="font-mono text-xs w-8 text-right">{gapMicroLimitMinutes}m</span>
+                    <NumericInputField
+                      min={5}
+                      max={120}
+                      step={5}
+                      value={gapMicroLimitMinutes}
+                      onCommit={(v) => setGapMicroLimitMinutes(Math.round(v))}
+                      className="w-16 h-7 text-xs font-mono text-right px-2"
+                    />
                   </div>
                   <span className="text-[10px] text-slate-500">
                     Celah di atas {gapMicroLimitMinutes} menit diisi via Macro Ridge Transfer / Model.
@@ -3346,7 +3898,7 @@ export default function KoreksiDataPage() {
 
               <Button
                 onClick={() => setShowImputationConfirmModal(true)}
-                disabled={imputationResult.summary.originalMissingCount === 0 || isApplyingImputation}
+                disabled={imputationResult.summary.originalMissingCount === 0 || isApplyingImputation || isFilterDirty}
                 className="bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs shadow-sm h-9 px-4 ml-auto"
               >
                 <Check className="h-4 w-4 mr-1.5" />
@@ -3369,8 +3921,8 @@ export default function KoreksiDataPage() {
                   <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 sticky top-0 z-10">
                     <tr>
                       <th className="p-2.5 pl-5 font-semibold">Segmen ID</th>
-                      <th className="p-2.5 font-semibold">Waktu Mulai</th>
-                      <th className="p-2.5 font-semibold">Waktu Selesai</th>
+                      <th className="p-2.5 font-semibold">Waktu Mulai (WIB)</th>
+                      <th className="p-2.5 font-semibold">Waktu Selesai (WIB)</th>
                       <th className="p-2.5 font-semibold">Durasi</th>
                       <th className="p-2.5 font-semibold">Kategori</th>
                       <th className="p-2.5 font-semibold">Nilai Batas (Start → End)</th>
@@ -3381,8 +3933,8 @@ export default function KoreksiDataPage() {
                     {imputationResult.summary.segments.map((seg, idx) => (
                       <tr key={seg.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-900/40">
                         <td className="p-2.5 pl-5 font-mono text-slate-500">#{idx + 1}</td>
-                        <td className="p-2.5 font-mono">{format(new Date(seg.startTs), "dd/MM/yyyy HH:mm")}</td>
-                        <td className="p-2.5 font-mono">{format(new Date(seg.endTs), "dd/MM/yyyy HH:mm")}</td>
+                        <td className="p-2.5 font-mono">{getWibTimeComponents(seg.startTs).dateFormatted}</td>
+                        <td className="p-2.5 font-mono">{getWibTimeComponents(seg.endTs).dateFormatted}</td>
                         <td className="p-2.5 font-mono font-bold text-slate-700 dark:text-slate-200">{seg.durationMinutes} Menit</td>
                         <td className="p-2.5">
                           {seg.type === "micro" ? (
@@ -3532,7 +4084,12 @@ export default function KoreksiDataPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Rentang Waktu:</span>
-                <span>{startDateStr} {startTimeStr} s/d {endDateStr} {endTimeStr} WIB</span>
+                <span>
+                  {loadedContext
+                    ? `${loadedContext.startDateStr} ${loadedContext.startTimeStr} s/d ${loadedContext.endDateStr} ${loadedContext.endTimeStr}`
+                    : `${startDateStr} ${startTimeStr} s/d ${endDateStr} ${endTimeStr}`}{" "}
+                  WIB
+                </span>
               </div>
             </div>
 
@@ -3624,7 +4181,12 @@ export default function KoreksiDataPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Rentang Waktu:</span>
-                <span>{startDateStr} {startTimeStr} s/d {endDateStr} {endTimeStr} WIB</span>
+                <span>
+                  {loadedContext
+                    ? `${loadedContext.startDateStr} ${loadedContext.startTimeStr} s/d ${loadedContext.endDateStr} ${loadedContext.endTimeStr}`
+                    : `${startDateStr} ${startTimeStr} s/d ${endDateStr} ${endTimeStr}`}{" "}
+                  WIB
+                </span>
               </div>
             </div>
 

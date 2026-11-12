@@ -106,3 +106,34 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function POST(request: Request) {
+  try {
+    const body = (await request.json().catch(() => ({}))) as {
+      action?: string;
+      sensorId?: string;
+    };
+    if (body.action !== "invalidate") {
+      return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
+    }
+
+    let cleared = 0;
+    if (body.sensorId) {
+      const prefix = `${body.sensorId}:`;
+      for (const key of Array.from(rangeCache.keys())) {
+        if (key.startsWith(prefix)) {
+          rangeCache.delete(key);
+          cleared++;
+        }
+      }
+    } else {
+      cleared = rangeCache.size;
+      rangeCache.clear();
+    }
+
+    return NextResponse.json({ invalidated: true, cleared, sensorId: body.sensorId ?? "*" });
+  } catch (error: any) {
+    console.error("API Error in POST /api/sensors:", error);
+    return NextResponse.json({ error: error.message || "Failed to invalidate cache" }, { status: 500 });
+  }
+}

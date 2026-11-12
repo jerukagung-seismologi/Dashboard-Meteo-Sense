@@ -31,8 +31,161 @@ export function interpolateTimeLinear(
 }
 
 /**
+ * Evaluasi polinomial kubik Hermite terfaktorisasi pada u in [0, 1].
+ */
+function evaluateCubicHermite(
+  u: number,
+  h: number,
+  y0: number,
+  y1: number,
+  d0: number,
+  d1: number
+): number {
+  const u2 = u * u;
+  const u3 = u2 * u;
+  const h00 = 2 * u3 - 3 * u2 + 1;
+  const h10 = u3 - 2 * u2 + u;
+  const h01 = -2 * u3 + 3 * u2;
+  const h11 = u3 - u2;
+  return h00 * y0 + h10 * h * d0 + h01 * y1 + h11 * h * d1;
+}
+
+function clampPchipEndpointSlope(
+  dEndpoint: number,
+  secantEdge: number
+): number {
+  if (secantEdge === 0) return 0;
+  if (dEndpoint * secantEdge <= 0) return 0;
+  if (Math.abs(dEndpoint) > Math.abs(3 * secantEdge)) {
+    return 3 * secantEdge;
+  }
+  return dEndpoint;
+}
+
+/**
+ * Menghitung array kemiringan PCHIP (d_k = dy/dt) untuk deret titik berjarak waktu tidak seragam.
+ */
+export function computePchipSlopes(
+  points: ReadonlyArray<{ timestamp: number; value: number }>
+): number[] {
+  const n = points.length;
+  if (n === 0) return [];
+  if (n === 1) return [0];
+
+  const h: number[] = [];
+  const delta: number[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const dt = points[i + 1].timestamp - points[i].timestamp;
+    const safeDt = dt > 0 ? dt : 1;
+    h.push(safeDt);
+    delta.push((points[i + 1].value - points[i].value) / safeDt);
+  }
+
+  const slopes = new Array<number>(n).fill(0);
+  if (n === 2) {
+    slopes[0] = delta[0];
+    slopes[1] = delta[0];
+    return slopes;
+  }
+
+  for (let i = 1; i < n - 1; i++) {
+    const dPrev = delta[i - 1];
+    const dCurr = delta[i];
+    if (dPrev === 0 || dCurr === 0 || dPrev * dCurr <= 0) {
+      slopes[i] = 0;
+    } else {
+      const w1 = 2 * h[i] + h[i - 1];
+      const w2 = h[i] + 2 * h[i - 1];
+      slopes[i] = (w1 + w2) / (w1 / dPrev + w2 / dCurr);
+    }
+  }
+
+  const d0Raw = ((2 * h[0] + h[1]) * delta[0] - h[0] * delta[1]) / (h[0] + h[1]);
+  slopes[0] = clampPchipEndpointSlope(d0Raw, delta[0]);
+
+  const last = n - 1;
+  const dEndRaw =
+    ((2 * h[last - 1] + h[last - 2]) * delta[last - 1] - h[last - 1] * delta[last - 2]) /
+    (h[last - 1] + h[last - 2]);
+  slopes[last] = clampPchipEndpointSlope(dEndRaw, delta[last - 1]);
+
+  return slopes;
+}
+
+/**
+ * Menghitung array kemiringan sub-spline Akima 5-titik yang mendukung interval waktu tak seragam.
+ */
+export function computeAkimaSlopes(
+  points: ReadonlyArray<{ timestamp: number; value: number }>
+): number[] {
+  const n = points.length;
+  if (n === 0) return [];
+  if (n === 1) return [0];
+
+  const m: number[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const dt = points[i + 1].timestamp - points[i].timestamp;
+    m.push((points[i + 1].value - points[i].value) / (dt > 0 ? dt : 1));
+  }
+
+  if (n === 2) return [m[0], m[0]];
+
+  const mMinus1 = 2 * m[0] - m[1];
+  const mMinus2 = 2 * mMinus1 - m[0];
+  const mN = 2 * m[n - 2] - m[n - 3];
+  const mNPlus1 = 2 * mN - m[n - 2];
+
+  const getSecant = (idx: number): number => {
+    if (idx === -2) return mMinus2;
+    if (idx === -1) return mMinus1;
+    if (idx >= 0 && idx < m.length) return m[idx];
+    if (idx === m.length) return mN;
+    return mNPlus1;
+  };
+
+  const slopes = new Array<number>(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    const mPrev2 = getSecant(i - 2);
+    const mPrev1 = getSecant(i - 1);
+    const mCurr = getSecant(i);
+    const mNext1 = getSecant(i + 1);
+
+    const w1 = Math.abs(mNext1 - mCurr);
+    const w2 = Math.abs(mPrev1 - mPrev2);
+    if (w1 + w2 > 0) {
+      slopes[i] = (w1 * mPrev1 + w2 * mCurr) / (w1 + w2);
+    } else {
+      slopes[i] = 0.5 * (mPrev1 + mCurr);
+    }
+  }
+  return slopes;
+}
+
+/**
+ * Evaluasi kubik Hermite menggunakan kemiringan eksternal tanpa pemangkasan monoton PCHIP
+ * (misalnya untuk sub-spline Akima yang telah dihitung gradien C1-nya).
+ */
+export function interpolateHermiteWithSlopes(
+  t: number,
+  t0: number,
+  y0: number,
+  t1: number,
+  y1: number,
+  m0: number,
+  m1: number
+): number {
+  if (t1 === t0) return y0;
+  const h = t1 - t0;
+  const u = Math.min(1, Math.max(0, (t - t0) / h));
+  const secant = (y1 - y0) / h;
+  const d0 = Number.isFinite(m0) ? m0 : secant;
+  const d1 = Number.isFinite(m1) ? m1 : secant;
+  return evaluateCubicHermite(u, h, y0, y1, d0, d1);
+}
+
+/**
  * 2. Interpolasi Kubik Hermite Monoton (PCHIP - Piecewise Cubic Hermite)
- * Menghasilkan kurva transisi mulus berkontur diurnal alami tanpa osilasi buatan (Runge's overshoot).
+ * Menerapkan kondisi Fritsch-Carlson penuh (alpha^2 + beta^2 <= 9) agar kurva bebas overshoot.
  */
 export function interpolateCubicHermite(
   t: number,
@@ -47,36 +200,38 @@ export function interpolateCubicHermite(
   const h = t1 - t0;
   const u = Math.min(1, Math.max(0, (t - t0) / h));
 
-  // Secant slope
   const secant = (y1 - y0) / h;
+  let d0 = m0 != null && Number.isFinite(m0) ? m0 : secant;
+  let d1 = m1 != null && Number.isFinite(m1) ? m1 : secant;
 
-  // Tentukan slope batas jika tidak disediakan
-  let d0 = m0 != null ? m0 : secant;
-  let d1 = m1 != null ? m1 : secant;
-
-  // Fritsch-Carlson condition untuk mencegah overshoot
   if (secant === 0) {
     d0 = 0;
     d1 = 0;
-  } else if ((d0 * secant < 0) || (d1 * secant < 0)) {
-    // Tanda berlawanan, set ke 0 agar kurva monoton
-    if (d0 * secant < 0) d0 = 0;
-    if (d1 * secant < 0) d1 = 0;
+  } else {
+    let alpha = d0 / secant;
+    let beta = d1 / secant;
+    if (alpha <= 0) {
+      alpha = 0;
+      d0 = 0;
+    }
+    if (beta <= 0) {
+      beta = 0;
+      d1 = 0;
+    }
+    const r2 = alpha * alpha + beta * beta;
+    if (r2 > 9) {
+      const tau = 3 / Math.sqrt(r2);
+      d0 = tau * alpha * secant;
+      d1 = tau * beta * secant;
+    }
   }
 
-  // Hermite Basis Functions
-  const h00 = 2 * Math.pow(u, 3) - 3 * Math.pow(u, 2) + 1;
-  const h10 = Math.pow(u, 3) - 2 * Math.pow(u, 2) + u;
-  const h01 = -2 * Math.pow(u, 3) + 3 * Math.pow(u, 2);
-  const h11 = Math.pow(u, 3) - Math.pow(u, 2);
-
-  return h00 * y0 + h10 * h * d0 + h01 * y1 + h11 * h * d1;
+  return evaluateCubicHermite(u, h, y0, y1, d0, d1);
 }
 
 /**
  * 3. Interpolasi Akima Sub-Spline
- * Menggunakan pembobotan gradien 5-titik lokal Hiroshi Akima.
- * Sangat cocok untuk meteorologi saat terjadi front dingin mendadak atau hembusan angin badai.
+ * Menggunakan pembobotan gradien lokal Hiroshi Akima dengan dukungan interval waktu tak seragam.
  */
 export function interpolateAkima(
   t: number,
@@ -85,23 +240,27 @@ export function interpolateAkima(
   t1: number,
   y1: number,
   prevY?: number,
-  nextY?: number
+  nextY?: number,
+  tPrev?: number,
+  tNext?: number
 ): number {
   if (t1 === t0) return y0;
   const h = t1 - t0;
-  const secant = (y1 - y0) / h;
+  const hPrev = tPrev != null && tPrev < t0 ? t0 - tPrev : h;
+  const hNext = tNext != null && tNext > t1 ? tNext - t1 : h;
 
-  // Estimasi kemiringan Akima sederhana dari titik tetangga
-  const sPrev = prevY != null ? (y0 - prevY) / h : secant;
-  const sNext = nextY != null ? (nextY - y1) / h : secant;
+  const secant = (y1 - y0) / h;
+  const sPrev = prevY != null && Number.isFinite(prevY) ? (y0 - prevY) / hPrev : secant;
+  const sNext = nextY != null && Number.isFinite(nextY) ? (nextY - y1) / hNext : secant;
 
   const w0 = Math.abs(secant - sPrev);
   const w1 = Math.abs(sNext - secant);
 
-  const m0 = w0 + w1 > 0 ? (w1 * sPrev + w0 * secant) / (w0 + w1) : secant;
-  const m1 = w0 + w1 > 0 ? (w1 * secant + w0 * sNext) / (w0 + w1) : secant;
+  const m0 = w0 + w1 > 0 ? (w1 * sPrev + w0 * secant) / (w0 + w1) : 0.5 * (sPrev + secant);
+  const m1 = w0 + w1 > 0 ? (w1 * secant + w0 * sNext) / (w0 + w1) : 0.5 * (secant + sNext);
 
-  return interpolateCubicHermite(t, t0, y0, t1, y1, m0, m1);
+  const u = Math.min(1, Math.max(0, (t - t0) / h));
+  return evaluateCubicHermite(u, h, y0, y1, m0, m1);
 }
 
 /**
@@ -122,7 +281,9 @@ export function interpolateModelGuided(
   y0: number,
   t1: number,
   y1: number,
-  getModelVal: (ts: number) => number | null
+  getModelVal: (ts: number) => number | null,
+  m0Slope?: number,
+  m1Slope?: number
 ): number {
   if (t1 === t0) return y0;
 
@@ -130,9 +291,16 @@ export function interpolateModelGuided(
   const m1 = getModelVal(t1);
   const mt = getModelVal(t);
 
-  // Jika model tidak tersedia pada titik ini, fallback ke Cubic Hermite
-  if (m0 === null || m1 === null || mt === null) {
-    return interpolateCubicHermite(t, t0, y0, t1, y1);
+  // Jika model tidak tersedia pada titik ini, fallback ke Cubic Hermite (PCHIP)
+  if (
+    m0 === null ||
+    m1 === null ||
+    mt === null ||
+    !Number.isFinite(m0) ||
+    !Number.isFinite(m1) ||
+    !Number.isFinite(mt)
+  ) {
+    return interpolateCubicHermite(t, t0, y0, t1, y1, m0Slope, m1Slope);
   }
 
   // Hitung baseline bias sensor terhadap model pada titik jangkar awal dan akhir
@@ -204,12 +372,18 @@ export function interpolateSolarCosineHermite(
   refValAtB: number,
   baselineNightOffset: number = 0
 ): number {
-  if (tB <= tA) return yStart;
+  if (!Number.isFinite(refValAtT) || !Number.isFinite(refValAtA) || !Number.isFinite(refValAtB)) {
+    return interpolateCubicHermite(t, tA, yStart, tB, yEnd);
+  }
+  const tNominalT = refValAtT + baselineNightOffset;
+  if (tB <= tA) {
+    const deltaA = yStart - (refValAtA + baselineNightOffset);
+    return tNominalT + deltaA;
+  }
   const tau = Math.min(1, Math.max(0, (t - tA) / (tB - tA)));
   // Bobot Cosine-Hermite S-Curve: w(0)=0, w(1)=1, w'(0)=0, w'(1)=0
   const w = (1.0 - Math.cos(Math.PI * tau)) / 2.0;
 
-  const tNominalT = refValAtT + baselineNightOffset;
   const tNominalA = refValAtA + baselineNightOffset;
   const tNominalB = refValAtB + baselineNightOffset;
 
