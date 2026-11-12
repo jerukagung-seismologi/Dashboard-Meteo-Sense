@@ -84,6 +84,9 @@ import type { ReferenceGuidePoint } from "@/app/api/weather/reference-guide/rout
 import {
   runUniversalGapImputation,
   buildCompleteGapNodePayloads,
+  buildSelfHistoryDiurnalProfile,
+  lookupSelfHistoryProfileAt,
+  fitNodeSignatureTransferModel,
   getWibTimeComponents,
   ImputedGridPoint,
   ImputationSummary,
@@ -386,8 +389,11 @@ export default function KoreksiDataPage() {
   // Meteorological Interpolation Sub-methods
   const [interpolationSubMethod, setInterpolationSubMethod] = useState<InterpolationSubMethod>("solar_cosine_hermite");
 
-  // Dual-Reference State (AWS Co-located Station vs Open-Meteo ECMWF Model)
-  const [solarRefSource, setSolarRefSource] = useState<"station_aws" | "model_ecmwf">("station_aws");
+  // Unified Reference State (Pola Node H-1..N vs AWS Tetangga vs Open-Meteo ECMWF Model)
+  const [solarRefSource, setSolarRefSource] = useState<"self_history" | "station_aws" | "model_ecmwf">("self_history");
+  const [historyLookbackDays, setHistoryLookbackDays] = useState<1 | 3 | 7>(3);
+  const [selfHistoryRecords, setSelfHistoryRecords] = useState<SensorDate[]>([]);
+  const [loadingSelfHistory, setLoadingSelfHistory] = useState<boolean>(false);
   const [solarRefStationId, setSolarRefStationId] = useState<string>("");
   const [solarThreshold, setSolarThreshold] = useState<number>(0.7);
   const [syncRhRecovery, setSyncRhRecovery] = useState<boolean>(false);
@@ -417,7 +423,9 @@ export default function KoreksiDataPage() {
   // Mode Operasi: "point_correction" (Koreksi Nilai & Anomali) vs "gap_imputation" (Imputasi Celah 1440/Hari)
   const [operationMode, setOperationMode] = useState<"point_correction" | "gap_imputation">("point_correction");
   const [gapMicroLimitMinutes, setGapMicroLimitMinutes] = useState<number>(15);
-  const [gapImputeMethod, setGapImputeMethod] = useState<"auto_hybrid" | "companion_ridge" | "model_guided" | "pchip_spline">("auto_hybrid");
+  const [gapImputeMethod, setGapImputeMethod] = useState<
+    "auto_hybrid" | "self_history" | "companion_ridge" | "model_guided" | "pchip_spline"
+  >("auto_hybrid");
   const [enableGapBridging, setEnableGapBridging] = useState<boolean>(true);
   const [enableGapPhysics, setEnableGapPhysics] = useState<boolean>(true);
   const [isApplyingImputation, setIsApplyingImputation] = useState<boolean>(false);
@@ -477,13 +485,14 @@ export default function KoreksiDataPage() {
     [referenceGuidePoints]
   );
 
-  // Fetch Open-Meteo Reference Guide
+  // Fetch Open-Meteo Reference Guide (including lookback days for node signature fitting)
   const fetchReferenceGuide = useCallback(
     async (
       targetDevice?: Device,
-      sDate = startDateStr,
-      eDate = endDateStr,
-      mType = referenceModelType
+      sDate = loadedContext?.startDateStr || startDateStr,
+      eDate = loadedContext?.endDateStr || endDateStr,
+      mType = referenceModelType,
+      lookbackDays: number = historyLookbackDays
     ) => {
       const dev = targetDevice || devices.find((d) => (d.authToken || d.id) === sensorId);
       const hasValidCoords =
@@ -493,13 +502,14 @@ export default function KoreksiDataPage() {
         (dev.coordinates.lat !== 0 || dev.coordinates.lng !== 0);
       const lat = hasValidCoords ? dev!.coordinates!.lat : -7.7121;
       const lng = hasValidCoords ? dev!.coordinates!.lng : 109.6892;
+      const expandedStartDate = lookbackDays > 0 ? shiftWibDateStr(sDate, -lookbackDays) : sDate;
 
       setLoadingReference(true);
       try {
         const params = new URLSearchParams({
           latitude: lat.toString(),
           longitude: lng.toString(),
-          start_date: sDate,
+          start_date: expandedStartDate,
           end_date: eDate,
           model: mType,
         });
@@ -522,22 +532,58 @@ export default function KoreksiDataPage() {
         setLoadingReference(false);
       }
     },
-    [devices, sensorId, startDateStr, endDateStr, referenceModelType]
+    [devices, sensorId, loadedContext, startDateStr, endDateStr, referenceModelType, historyLookbackDays]
   );
 
-  // Fetch Co-located AWS Reference Station Data from RTDB
+  // Fetch Self Historical Pattern (H-1..H-N) for the target station itself
+  const fetchSelfHistoryData = useCallback(
+    async (
+      targetId = sensorId,
+      targetStartMs = loadedContext?.startMs ?? parseWibEpochMs(startDateStr, startTimeStr, "00"),
+      lookbackDays: number = historyLookbackDays
+    ) => {
+      if (!targetId) {
+        setSelfHistoryRecords([]);
+        return;
+      }
+      setLoadingSelfHistory(true);
+      try {
+        const histStartMs = targetStartMs - lookbackDays * 86400000;
+        const histEndMs = targetStartMs - 60000;
+        const data = await fetchSensorDataByDateRange(
+          targetId,
+          histStartMs,
+          histEndMs,
+          false,
+          true,
+          "raw"
+        );
+        const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
+        setSelfHistoryRecords(sorted);
+      } catch (err) {
+        console.warn("Gagal mengambil riwayat pola node:", err);
+        setSelfHistoryRecords([]);
+      } finally {
+        setLoadingSelfHistory(false);
+      }
+    },
+    [sensorId, loadedContext, startDateStr, startTimeStr, historyLookbackDays]
+  );
+
+  // Fetch Co-located AWS Reference Station Data from RTDB (expanded with lookback days)
   const fetchRefStationData = useCallback(
     async (
       targetRefId = solarRefStationId,
-      sDate = startDateStr,
-      sTime = startTimeStr,
-      eDate = endDateStr,
-      eTime = endTimeStr
+      sDate = loadedContext?.startDateStr || startDateStr,
+      sTime = loadedContext?.startTimeStr || startTimeStr,
+      eDate = loadedContext?.endDateStr || endDateStr,
+      eTime = loadedContext?.endTimeStr || endTimeStr,
+      lookbackDays: number = historyLookbackDays
     ) => {
       if (!targetRefId || targetRefId === sensorId) return;
       setLoadingRefStation(true);
       try {
-        const startMs = parseWibEpochMs(sDate, sTime, "00");
+        const startMs = parseWibEpochMs(sDate, sTime, "00") - lookbackDays * 86400000;
         const endMs = parseWibEpochMs(eDate, eTime, "59");
         const data = await fetchSensorDataByDateRange(
           targetRefId,
@@ -555,7 +601,7 @@ export default function KoreksiDataPage() {
         setLoadingRefStation(false);
       }
     },
-    [solarRefStationId, sensorId, startDateStr, startTimeStr, endDateStr, endTimeStr]
+    [solarRefStationId, sensorId, loadedContext, startDateStr, startTimeStr, endDateStr, endTimeStr, historyLookbackDays]
   );
 
   // Continuous lookup helper for reference AWS station values at timestamp ts
@@ -601,16 +647,128 @@ export default function KoreksiDataPage() {
     [refStationRecords]
   );
 
-  // Unified Reference Value Lookup (either AWS station or ECMWF model)
+  const selfHistorySelectedProfile = useMemo(
+    () => buildSelfHistoryDiurnalProfile(selfHistoryRecords, selectedVar.key),
+    [selfHistoryRecords, selectedVar.key]
+  );
+
+  const selfHistoryTempProfile = useMemo(
+    () =>
+      selectedVar.key === "temperature"
+        ? selfHistorySelectedProfile
+        : buildSelfHistoryDiurnalProfile(selfHistoryRecords, "temperature"),
+    [selfHistoryRecords, selectedVar.key, selfHistorySelectedProfile]
+  );
+
+  const buildNodeAdapterFor = useCallback(
+    (varKey: string, sourceKind: "station_aws" | "model_ecmwf") => {
+      const lookupFn =
+        sourceKind === "station_aws" ? getRefStationValAtTimestamp : getModelValAtTimestamp;
+      if (
+        (sourceKind === "station_aws" && refStationRecords.length === 0) ||
+        (sourceKind === "model_ecmwf" && referenceGuidePoints.length === 0)
+      ) {
+        return null;
+      }
+
+      const pairs: Array<{ targetVal: number; companionVal: number; timestamp: number }> = [];
+      for (const rec of selfHistoryRecords) {
+        const tVal = Number((rec as any)[varKey]);
+        const rVal = lookupFn(rec.timestamp, varKey);
+        if (Number.isFinite(tVal) && rVal !== null && Number.isFinite(rVal)) {
+          pairs.push({ targetVal: tVal, companionVal: rVal, timestamp: rec.timestamp });
+        }
+      }
+      for (const rec of rawRecords) {
+        const hour = Math.floor(getWibTimeComponents(rec.timestamp).hourFrac);
+        if (hour <= 5 || hour >= 20) {
+          const tVal = Number((rec as any)[varKey]);
+          const rVal = lookupFn(rec.timestamp, varKey);
+          if (Number.isFinite(tVal) && rVal !== null && Number.isFinite(rVal)) {
+            pairs.push({ targetVal: tVal, companionVal: rVal, timestamp: rec.timestamp });
+          }
+        }
+      }
+      return fitNodeSignatureTransferModel(pairs, varKey);
+    },
+    [
+      selfHistoryRecords,
+      rawRecords,
+      refStationRecords.length,
+      referenceGuidePoints.length,
+      getRefStationValAtTimestamp,
+      getModelValAtTimestamp,
+    ]
+  );
+
+  const activeNodeAdapter = useMemo(() => {
+    if (solarRefSource === "station_aws") return buildNodeAdapterFor(selectedVar.key, "station_aws");
+    if (solarRefSource === "model_ecmwf") return buildNodeAdapterFor(selectedVar.key, "model_ecmwf");
+    return null;
+  }, [solarRefSource, selectedVar.key, buildNodeAdapterFor]);
+
+  const activeTempNodeAdapter = useMemo(() => {
+    if (selectedVar.key === "temperature") return activeNodeAdapter;
+    if (solarRefSource === "station_aws") return buildNodeAdapterFor("temperature", "station_aws");
+    if (solarRefSource === "model_ecmwf") return buildNodeAdapterFor("temperature", "model_ecmwf");
+    return null;
+  }, [selectedVar.key, activeNodeAdapter, solarRefSource, buildNodeAdapterFor]);
+
+  // Unified Reference Value Lookup (Self History / AWS Station / ECMWF Model adapted to Node Signature)
   const getUnifiedRefValAtTimestamp = useCallback(
     (ts: number, varKey: string): number | null => {
+      if (solarRefSource === "self_history") {
+        const profile =
+          varKey === selectedVar.key
+            ? selfHistorySelectedProfile
+            : varKey === "temperature"
+              ? selfHistoryTempProfile
+              : null;
+        const selfVal = lookupSelfHistoryProfileAt(profile, ts);
+        if (selfVal !== null) return selfVal;
+        if (refStationRecords.length > 0) {
+          const awsVal = getRefStationValAtTimestamp(ts, varKey);
+          if (awsVal !== null) return awsVal;
+        }
+        return getModelValAtTimestamp(ts, varKey);
+      }
+
       if (solarRefSource === "station_aws" && refStationRecords.length > 0) {
         const awsVal = getRefStationValAtTimestamp(ts, varKey);
-        if (awsVal !== null) return awsVal;
+        if (awsVal !== null) {
+          const adapter =
+            varKey === selectedVar.key
+              ? activeNodeAdapter
+              : varKey === "temperature"
+                ? activeTempNodeAdapter
+                : null;
+          return adapter ? adapter.predict(awsVal, ts) : awsVal;
+        }
       }
-      return getModelValAtTimestamp(ts, varKey);
+
+      const modelVal = getModelValAtTimestamp(ts, varKey);
+      if (modelVal !== null) {
+        const adapter =
+          varKey === selectedVar.key
+            ? activeNodeAdapter
+            : varKey === "temperature"
+              ? activeTempNodeAdapter
+              : null;
+        return adapter ? adapter.predict(modelVal, ts) : modelVal;
+      }
+      return null;
     },
-    [solarRefSource, refStationRecords.length, getRefStationValAtTimestamp, getModelValAtTimestamp]
+    [
+      solarRefSource,
+      selectedVar.key,
+      selfHistorySelectedProfile,
+      selfHistoryTempProfile,
+      refStationRecords.length,
+      getRefStationValAtTimestamp,
+      getModelValAtTimestamp,
+      activeNodeAdapter,
+      activeTempNodeAdapter,
+    ]
   );
 
   // Baseline Night Offset between target sensor and reference series (00:00 - 05:59 & 20:00 - 23:59 WIB)
@@ -739,12 +897,13 @@ export default function KoreksiDataPage() {
         });
         setPreviewPage(1);
 
-        // Concurrently fetch the weather model reference guide and reference AWS station
-        fetchReferenceGuide(undefined, sDate, eDate, referenceModelType);
+        // Concurrently fetch self history (H-1..H-N), weather model reference guide, and AWS companion
+        fetchSelfHistoryData(sensorId, startMs, historyLookbackDays);
+        fetchReferenceGuide(undefined, sDate, eDate, referenceModelType, historyLookbackDays);
         const effectiveRefId =
           solarRefStationId && solarRefStationId !== sensorId ? solarRefStationId : "";
         if (effectiveRefId) {
-          fetchRefStationData(effectiveRefId, sDate, sTime, eDate, eTime);
+          fetchRefStationData(effectiveRefId, sDate, sTime, eDate, eTime, historyLookbackDays);
         } else {
           setRefStationRecords([]);
         }
@@ -771,7 +930,55 @@ export default function KoreksiDataPage() {
         setLoading(false);
       }
     },
-    [sensorId, startDateStr, startTimeStr, endDateStr, endTimeStr, toast, fetchReferenceGuide, referenceModelType, solarRefStationId, fetchRefStationData]
+    [
+      sensorId,
+      startDateStr,
+      startTimeStr,
+      endDateStr,
+      endTimeStr,
+      toast,
+      historyLookbackDays,
+      fetchSelfHistoryData,
+      fetchReferenceGuide,
+      referenceModelType,
+      solarRefStationId,
+      fetchRefStationData,
+    ]
+  );
+
+  const handleChangeHistoryLookback = useCallback(
+    (nextDays: 1 | 3 | 7) => {
+      setHistoryLookbackDays(nextDays);
+      const targetId = loadedContext?.sensorId || sensorId;
+      const sDate = loadedContext?.startDateStr || startDateStr;
+      const sTime = loadedContext?.startTimeStr || startTimeStr;
+      const eDate = loadedContext?.endDateStr || endDateStr;
+      const eTime = loadedContext?.endTimeStr || endTimeStr;
+      const baseStartMs = loadedContext?.startMs ?? parseWibEpochMs(sDate, sTime, "00");
+
+      if (targetId) {
+        fetchSelfHistoryData(targetId, baseStartMs, nextDays);
+      }
+      fetchReferenceGuide(undefined, sDate, eDate, referenceModelType, nextDays);
+      const effectiveRefId =
+        solarRefStationId && solarRefStationId !== targetId ? solarRefStationId : "";
+      if (effectiveRefId) {
+        fetchRefStationData(effectiveRefId, sDate, sTime, eDate, eTime, nextDays);
+      }
+    },
+    [
+      loadedContext,
+      sensorId,
+      startDateStr,
+      startTimeStr,
+      endDateStr,
+      endTimeStr,
+      fetchSelfHistoryData,
+      fetchReferenceGuide,
+      referenceModelType,
+      solarRefStationId,
+      fetchRefStationData,
+    ]
   );
 
   const handleFetchData = useCallback(() => {
@@ -939,7 +1146,10 @@ export default function KoreksiDataPage() {
     }
 
     if (refId && refId !== sensorId) {
+      setSolarRefSource("station_aws");
       fetchRefStationData(refId);
+    } else {
+      setSolarRefSource("model_ecmwf");
     }
     if (referenceGuidePoints.length === 0) {
       fetchReferenceGuide();
@@ -1405,12 +1615,15 @@ export default function KoreksiDataPage() {
 
   // Active Reference Label for Charts & Legends
   const activeRefLabel = useMemo(() => {
+    if (solarRefSource === "self_history") {
+      return `Pola Node (H-${historyLookbackDays}..H-1)`;
+    }
     if (solarRefSource === "station_aws" && solarRefStationId) {
       const match = devices.find((d) => (d.authToken || d.id) === solarRefStationId);
-      return match ? `${match.name} (${match.location || solarRefStationId})` : `AWS ${solarRefStationId}`;
+      return match ? `${match.name} (AWS)` : `AWS ${solarRefStationId}`;
     }
     return referenceModelName;
-  }, [solarRefSource, solarRefStationId, devices, referenceModelName]);
+  }, [solarRefSource, historyLookbackDays, solarRefStationId, devices, referenceModelName]);
 
   // Reference Guide Series for ECharts
   const refSeries = useMemo(() => {
@@ -1759,11 +1972,14 @@ export default function KoreksiDataPage() {
         microGapLimitMinutes: gapMicroLimitMinutes,
         enableSpatialTransfer: gapImputeMethod === "auto_hybrid" || gapImputeMethod === "companion_ridge",
         enableModelGuided: gapImputeMethod === "auto_hybrid" || gapImputeMethod === "model_guided",
+        enableSelfHistory: gapImputeMethod === "auto_hybrid" || gapImputeMethod === "self_history",
+        preferSelfHistory: gapImputeMethod === "self_history",
         enableBoundaryBridging: enableGapBridging,
         enablePhysicsPostProcessing: enableGapPhysics,
       },
       refStationRecords,
-      referenceGuidePoints
+      referenceGuidePoints,
+      selfHistoryRecords
     );
   }, [
     rawRecords,
@@ -1776,6 +1992,7 @@ export default function KoreksiDataPage() {
     enableGapPhysics,
     refStationRecords,
     referenceGuidePoints,
+    selfHistoryRecords,
   ]);
 
   // ECharts Option for Gap Imputation Preview
@@ -1856,7 +2073,7 @@ export default function KoreksiDataPage() {
               <span class="font-mono font-bold text-purple-600 dark:text-purple-400">${pt.imputedVal} ${selectedVar.unit}</span>
             </div>
             <div class="text-[11px] text-slate-500 mt-1">
-              Status Celah: <strong class="text-amber-600">${pt.gapType === "micro" ? "Gap Mikro (≤15m)" : "Gap Makro (>15m)"}</strong>
+              Status Celah: <strong class="text-amber-600">${pt.gapType === "micro" ? `Gap Mikro (≤${gapMicroLimitMinutes}m)` : `Gap Makro (>${gapMicroLimitMinutes}m)`}</strong>
             </div>`;
           }
 
@@ -1915,7 +2132,7 @@ export default function KoreksiDataPage() {
         },
       ],
     };
-  }, [imputationResult, isDarkMode, selectedVar]);
+  }, [imputationResult, isDarkMode, selectedVar, gapMicroLimitMinutes]);
 
   // Cache invalidation helper for server /api/sensors range cache
   const invalidateServerSensorCache = useCallback(async (sid: string) => {
@@ -1965,11 +2182,14 @@ export default function KoreksiDataPage() {
           microGapLimitMinutes: gapMicroLimitMinutes,
           enableSpatialTransfer: gapImputeMethod === "auto_hybrid" || gapImputeMethod === "companion_ridge",
           enableModelGuided: gapImputeMethod === "auto_hybrid" || gapImputeMethod === "model_guided",
+          enableSelfHistory: gapImputeMethod === "auto_hybrid" || gapImputeMethod === "self_history",
+          preferSelfHistory: gapImputeMethod === "self_history",
           enableBoundaryBridging: enableGapBridging,
           enablePhysicsPostProcessing: enableGapPhysics,
         },
         refStationRecords,
-        referenceGuidePoints
+        referenceGuidePoints,
+        selfHistoryRecords
       );
 
       const writtenNodes = await batchWriteGapImputedNodes(sensorId, nodePayloads);
@@ -2104,8 +2324,14 @@ export default function KoreksiDataPage() {
           referenceModel:
             correctionMethod === "interpolate" ? activeRefLabel : undefined,
           solarRefSource:
-            correctionMethod === "interpolate" && interpolationSubMethod === "solar_cosine_hermite"
+            correctionMethod === "interpolate" &&
+            (interpolationSubMethod === "solar_cosine_hermite" || interpolationSubMethod === "model_guided")
               ? solarRefSource
+              : undefined,
+          historyLookbackDays:
+            correctionMethod === "interpolate" &&
+            (interpolationSubMethod === "solar_cosine_hermite" || interpolationSubMethod === "model_guided")
+              ? historyLookbackDays
               : undefined,
           solarThreshold:
             correctionMethod === "interpolate" &&
@@ -2247,7 +2473,7 @@ export default function KoreksiDataPage() {
         gradient="indigo"
         icon={Wrench}
         title="Koreksi Data & Kontrol Kualitas (QC)"
-        subtitle="Pembersihan anomali, eliminasi sensor drift, rekonstruksi radiasi matahari berpenuntun ECMWF IFS / ERA5, dan standar WMO No. 8"
+        subtitle="Kontrol kualitas, eliminasi anomali, dan rekonstruksi pola mikroklimat node AWS."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -2519,11 +2745,11 @@ export default function KoreksiDataPage() {
             </Button>
           </AlertTitle>
           <AlertDescription className="text-xs mt-1">
-            Data yang sedang tampil berasal dari stasiun <strong className="font-mono">{loadedContext.sensorId}</strong> periode{" "}
+            Menampilkan data <strong className="font-mono">{loadedContext.sensorId}</strong> (
             <strong className="font-mono">
               {loadedContext.startDateStr} {loadedContext.startTimeStr} – {loadedContext.endDateStr} {loadedContext.endTimeStr} WIB
             </strong>
-            . Klik &quot;Muat Data Target Terbaru&quot; atau &quot;Ambil Data Target&quot; sebelum menulis ke database.
+            ). Muat ulang sebelum menulis ke database.
           </AlertDescription>
         </Alert>
       )}
@@ -2532,10 +2758,10 @@ export default function KoreksiDataPage() {
         <Alert className="border-sky-500/40 bg-sky-500/10 text-sky-900 dark:text-sky-200">
           <Info className="h-4 w-4 text-sky-600 dark:text-sky-400" />
           <AlertTitle className="text-xs font-bold">
-            Kalibrasi Otomatis Aktif di Lapisan Tampilan ({activeCalibrationVars.join(", ")})
+            Kalibrasi Tampilan Aktif ({activeCalibrationVars.join(", ")})
           </AlertTitle>
           <AlertDescription className="text-xs mt-0.5">
-            Stasiun ini memiliki profil kalibrasi aktif pada modul Kalibrasi Sensor. Halaman Koreksi Data ini menampilkan dan menyunting nilai <strong>RAW database</strong> secara langsung sebelum kalibrasi tampilan diterapkan.
+            Menampilkan &amp; menyunting nilai <strong>RAW database</strong> langsung.
           </AlertDescription>
         </Alert>
       )}
@@ -2610,12 +2836,8 @@ export default function KoreksiDataPage() {
                   QC Flag Aktif
                 </Badge>
               </AlertTitle>
-              <AlertDescription className="text-xs mt-1.5 space-y-2">
-                <p>
-                  Sistem otomatis mendeteksi titik yang melanggar batas fisik WMO, mengalami lonjakan ekstrem (spike jump),
-                  sensor macet (flatline), atau lonjakan suhu akibat paparan radiasi panas matahari siang hari.
-                </p>
-                <div className="flex flex-wrap items-center gap-2 pt-1">
+              <AlertDescription className="text-xs mt-1.5">
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
                   <Button
                     size="sm"
                     variant="outline"
@@ -2625,11 +2847,11 @@ export default function KoreksiDataPage() {
                       setOnlyAnomalies(true);
                       toast({
                         title: "Metode Clamping Dipilih",
-                        description: "Koreksi disetel untuk menjepit nilai anomali ke rentang batas WMO.",
+                        description: "Menjepit nilai anomali ke batas WMO.",
                       });
                     }}
                   >
-                    Jepit Nilai ke Batas WMO
+                    Jepit Batas WMO
                   </Button>
                   {selectedVar.key === "temperature" && (
                     <Button
@@ -2639,7 +2861,7 @@ export default function KoreksiDataPage() {
                       onClick={handleApplySolarOverheatingPreset}
                     >
                       <Sun className="h-3.5 w-3.5 mr-1 text-amber-500" />
-                      Koreksi Radiasi Surya (Cosine-Hermite + Magnus RH)
+                      Preset Radiasi Surya
                     </Button>
                   )}
                   <Button
@@ -2652,11 +2874,11 @@ export default function KoreksiDataPage() {
                       setOnlyAnomalies(true);
                       toast({
                         title: "Interpolasi PCHIP Dipilih",
-                        description: "Titik anomali akan direkonstruksi mulus bebas overshoot.",
+                        description: "Titik anomali direkonstruksi mulus bebas overshoot.",
                       });
                     }}
                   >
-                    Rekonstruksi Kubik PCHIP
+                    Rekonstruksi PCHIP
                   </Button>
                 </div>
               </AlertDescription>
@@ -2670,11 +2892,8 @@ export default function KoreksiDataPage() {
                 <div>
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <Sliders className="h-4 w-4 text-indigo-500" />
-                    Pilih Formula & Metode Koreksi
+                    Metode Koreksi Data
                   </CardTitle>
-                  <CardDescription className="text-xs">
-                    Metode matematis untuk menyelaraskan bias sensor ke standar fisik meteorologi
-                  </CardDescription>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {selectedVar.key === "temperature" && (
@@ -2720,13 +2939,13 @@ export default function KoreksiDataPage() {
                   {
                     id: "offset",
                     title: "Offset Tetap (Δ)",
-                    desc: "Penambahan/pengurangan seragam",
+                    desc: "Penyesuaian seragam",
                     icon: SlidersHorizontal,
                   },
                   {
                     id: "drift",
                     title: "Pergeseran Linier",
-                    desc: "Koreksi drift seiring waktu",
+                    desc: "Koreksi drift waktu",
                     icon: Activity,
                   },
                   {
@@ -2738,13 +2957,13 @@ export default function KoreksiDataPage() {
                   {
                     id: "scale",
                     title: "Faktor Skala (k)",
-                    desc: "Pengali rasio sensitivitas",
+                    desc: "Pengali rasio sensor",
                     icon: Activity,
                   },
                   {
                     id: "interpolate",
-                    title: "Interpolasi Celah & Model",
-                    desc: "ECMWF / PCHIP / Akima / Linier",
+                    title: "Interpolasi & Pola Node",
+                    desc: "Pola Node / AWS / Model",
                     icon: Sparkles,
                   },
                 ].map((m) => {
@@ -2778,14 +2997,9 @@ export default function KoreksiDataPage() {
                 {/* 1. Offset Tetap */}
                 {correctionMethod === "offset" && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        Nilai Offset Penyesuaian (Δ): {offsetValue > 0 ? `+${offsetValue}` : offsetValue} {selectedVar.unit}
-                      </Label>
-                      <span className="text-[11px] font-mono text-slate-400">
-                        Formula: y&apos;(t) = y(t) + Δ
-                      </span>
-                    </div>
+                    <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Offset (Δ): {offsetValue > 0 ? `+${offsetValue}` : offsetValue} {selectedVar.unit}
+                    </Label>
                     <div className="flex items-center gap-3">
                       <NumericInputField
                         step={selectedVar.step}
@@ -2821,18 +3035,13 @@ export default function KoreksiDataPage() {
                 {/* 2. Linear Drift */}
                 {correctionMethod === "drift" && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        Parameter Sensor Drift Linier Sepanjang Rentang Waktu
-                      </Label>
-                      <span className="text-[11px] font-mono text-slate-400">
-                        Formula: Δ(t) = δ₀ + ((t - t₀)/(t₁ - t₀)) × (δ₁ - δ₀)
-                      </span>
-                    </div>
+                    <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Linear Drift Sepanjang Rentang
+                    </Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label className="text-[11px] text-slate-500">
-                          Offset Awal Rentang (δ₀): {driftStart > 0 ? `+${driftStart}` : driftStart} {selectedVar.unit}
+                          Offset Awal (δ₀): {driftStart > 0 ? `+${driftStart}` : driftStart} {selectedVar.unit}
                         </Label>
                         <NumericInputField
                           step={selectedVar.step}
@@ -2843,7 +3052,7 @@ export default function KoreksiDataPage() {
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-[11px] text-slate-500">
-                          Offset Akhir Rentang (δ₁): {driftEnd > 0 ? `+${driftEnd}` : driftEnd} {selectedVar.unit}
+                          Offset Akhir (δ₁): {driftEnd > 0 ? `+${driftEnd}` : driftEnd} {selectedVar.unit}
                         </Label>
                         <NumericInputField
                           step={selectedVar.step}
@@ -2859,18 +3068,13 @@ export default function KoreksiDataPage() {
                 {/* 3. Clamp WMO */}
                 {correctionMethod === "clamp" && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        Batas Penjepitan Fisik (WMO No. 8 Physical Clamping)
-                      </Label>
-                      <span className="text-[11px] font-mono text-slate-400">
-                        Formula: y&apos;(t) = min(Max, max(Min, y(t)))
-                      </span>
-                    </div>
+                    <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Batas Penjepitan (Min / Max)
+                    </Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label className="text-[11px] text-slate-500">
-                          Batas Bawah Fisik (Min):
+                          Batas Bawah (Min):
                         </Label>
                         <NumericInputField
                           step={selectedVar.step}
@@ -2881,7 +3085,7 @@ export default function KoreksiDataPage() {
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-[11px] text-slate-500">
-                          Batas Atas Fisik (Max):
+                          Batas Atas (Max):
                         </Label>
                         <NumericInputField
                           step={selectedVar.step}
@@ -2897,14 +3101,9 @@ export default function KoreksiDataPage() {
                 {/* 4. Multiplicative Scaling Factor */}
                 {correctionMethod === "scale" && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        Faktor Pengali Sensitivitas Sensor (k): {scaleFactor.toFixed(3)}x
-                      </Label>
-                      <span className="text-[11px] font-mono text-slate-400">
-                        Formula: y&apos;(t) = k × y(t)
-                      </span>
-                    </div>
+                    <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Faktor Pengali (k): {scaleFactor.toFixed(3)}x
+                    </Label>
                     <div className="flex items-center gap-3">
                       <NumericInputField
                         step={0.01}
@@ -2939,19 +3138,14 @@ export default function KoreksiDataPage() {
                   </div>
                 )}
 
-                {/* 5. Meteorological Interpolation & Weather Model Guide */}
+                {/* 5. Meteorological Interpolation & Node Reference Guide */}
                 {correctionMethod === "interpolate" && (
                   <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
-                      <div>
-                        <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-indigo-500" />
-                          Metode Rekonstruksi & Interpolasi Meteorologi
-                        </h4>
-                        <p className="text-[11px] text-slate-500">
-                          Pilih algoritma interpolasi fisik untuk rekonstruksi celah data, lonjakan, atau anomali radiasi matahari.
-                        </p>
-                      </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5">
+                      <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-indigo-500" />
+                        Metode Rekonstruksi
+                      </h4>
                       <div className="flex items-center gap-2">
                         <Button
                           type="button"
@@ -2961,14 +3155,14 @@ export default function KoreksiDataPage() {
                           className="border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold gap-1.5 h-8"
                         >
                           <Sun className="h-3.5 w-3.5 text-amber-500" />
-                          Preset: Koreksi Radiasi Surya (S-Curve + Magnus RH)
+                          Preset Radiasi Surya
                         </Button>
                       </div>
                     </div>
 
                     {/* Radio/Card Grid for 5 Sub-methods */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
-                      {/* 1. Model Guided */}
+                      {/* 1. Reference-Guided */}
                       <button
                         type="button"
                         onClick={() => setInterpolationSubMethod("model_guided")}
@@ -2978,12 +3172,12 @@ export default function KoreksiDataPage() {
                             : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40"
                         }`}
                       >
-                        <div className="flex items-center gap-1.5 font-semibold text-xs text-cyan-700 dark:text-cyan-300 mb-1">
+                        <div className="flex items-center gap-1.5 font-semibold text-xs text-cyan-700 dark:text-cyan-300 mb-0.5">
                           <Sun className="h-3.5 w-3.5 text-amber-500" />
-                          Penuntun Model Cuaca
+                          Terpandu Acuan
                         </div>
                         <div className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
-                          ECMWF IFS / ERA5 Open-Meteo. Rekonstruksi kurva diurnal alami saat sensor terpapar sengatan panas matahari.
+                          Pola Node / AWS / Model
                         </div>
                       </button>
 
@@ -2997,12 +3191,12 @@ export default function KoreksiDataPage() {
                             : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40"
                         }`}
                       >
-                        <div className="flex items-center gap-1.5 font-semibold text-xs text-indigo-700 dark:text-indigo-300 mb-1">
+                        <div className="flex items-center gap-1.5 font-semibold text-xs text-indigo-700 dark:text-indigo-300 mb-0.5">
                           <Sliders className="h-3.5 w-3.5 text-indigo-500" />
-                          Kubik Monoton (PCHIP)
+                          Kubik PCHIP
                         </div>
                         <div className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
-                          Standar WMO No. 8. Kurva kubik mulus yang dijamin bebas osilasi palsu (Runge&apos;s overshoot).
+                          Bebas osilasi palsu
                         </div>
                       </button>
 
@@ -3016,12 +3210,12 @@ export default function KoreksiDataPage() {
                             : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40"
                         }`}
                       >
-                        <div className="flex items-center gap-1.5 font-semibold text-xs text-emerald-700 dark:text-emerald-300 mb-1">
+                        <div className="flex items-center gap-1.5 font-semibold text-xs text-emerald-700 dark:text-emerald-300 mb-0.5">
                           <Activity className="h-3.5 w-3.5 text-emerald-500" />
                           Akima Sub-Spline
                         </div>
                         <div className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
-                          Pembobotan gradien 5-titik Hiroshi Akima. Sangat stabil saat terjadi front dingin atau perubahan tajam mendadak.
+                          Stabil di perubahan tajam
                         </div>
                       </button>
 
@@ -3035,12 +3229,12 @@ export default function KoreksiDataPage() {
                             : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40"
                         }`}
                       >
-                        <div className="flex items-center gap-1.5 font-semibold text-xs text-purple-700 dark:text-purple-300 mb-1">
+                        <div className="flex items-center gap-1.5 font-semibold text-xs text-purple-700 dark:text-purple-300 mb-0.5">
                           <SlidersHorizontal className="h-3.5 w-3.5 text-purple-500" />
-                          Linier Berbobot Waktu
+                          Linier Berbobot
                         </div>
                         <div className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
-                          Interpolasi linier dengan pembobotan delta waktu presisi milidetik untuk interval data tidak seragam.
+                          Berbasis delta waktu
                         </div>
                       </button>
 
@@ -3049,7 +3243,9 @@ export default function KoreksiDataPage() {
                         type="button"
                         onClick={() => {
                           setInterpolationSubMethod("solar_cosine_hermite");
-                          if (solarRefSource === "station_aws" && refStationRecords.length === 0) {
+                          if (solarRefSource === "self_history" && selfHistoryRecords.length === 0) {
+                            fetchSelfHistoryData(sensorId);
+                          } else if (solarRefSource === "station_aws" && refStationRecords.length === 0) {
                             fetchRefStationData(solarRefStationId);
                           } else if (solarRefSource === "model_ecmwf" && referenceGuidePoints.length === 0) {
                             fetchReferenceGuide();
@@ -3061,86 +3257,70 @@ export default function KoreksiDataPage() {
                             : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40"
                         }`}
                       >
-                        <div className="flex items-center gap-1.5 font-semibold text-xs text-amber-700 dark:text-amber-300 mb-1">
+                        <div className="flex items-center gap-1.5 font-semibold text-xs text-amber-700 dark:text-amber-300 mb-0.5">
                           <Sun className="h-3.5 w-3.5 text-amber-500" />
-                          Kosinus-Hermite + RH
+                          Kosinus-Hermite
                         </div>
                         <div className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
-                          Koreksi radiasi matahari kurva S bebas step-jump &amp; rekonstruksi RH sinkron via Magnus-Tetens.
+                          Kurva S + Magnus RH
                         </div>
                       </button>
                     </div>
 
-                    {/* Detail Info for Current Sub-method */}
-                    {interpolationSubMethod === "model_guided" && (
-                      <div className="p-3 rounded-lg bg-cyan-50/60 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-                        <div className="space-y-1">
-                          <div className="font-semibold text-cyan-900 dark:text-cyan-200 flex items-center gap-1.5">
-                            <Info className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
-                            Penuntun Model Aktif: {referenceModelName}
+                    {/* Unified Reference Source & Lookback Configuration */}
+                    {(interpolationSubMethod === "model_guided" ||
+                      interpolationSubMethod === "solar_cosine_hermite") && (
+                      <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 space-y-3 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/60 dark:border-amber-800/40 pb-2">
+                          <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                            Sumber Acuan &amp; Adaptasi Pola Node
                           </div>
-                          <p className="text-[11px] text-slate-600 dark:text-slate-400">
-                            Nilai anomali dihitung dengan mengadaptasi fluktuasi diurnal model atmosfer terhadap titik valid awal dan akhir.
-                            {referenceGuidePoints.length > 0 ? (
-                              <span className="text-emerald-600 dark:text-emerald-400 font-medium ml-1">
-                                ✓ {referenceGuidePoints.length} titik model penuntun siap digunakan.
-                              </span>
-                            ) : (
-                              <span className="text-amber-600 dark:text-amber-400 font-medium ml-1">
-                                ⚠ Data penuntun belum dimuat. Klik tombol &quot;Muat Penuntun Cuaca&quot;.
-                              </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {activeNodeAdapter && solarRefSource !== "self_history" && (
+                              <Badge
+                                variant="outline"
+                                className="border-indigo-400 text-indigo-700 dark:text-indigo-300 font-mono text-[10px] py-0.5"
+                              >
+                                {activeNodeAdapter.mode === "spatial_ridge"
+                                  ? `Ridge (k=${activeNodeAdapter.slope.toFixed(2)}, n=${activeNodeAdapter.sampleCount})`
+                                  : `Bias (${activeNodeAdapter.bias >= 0 ? "+" : ""}${activeNodeAdapter.bias.toFixed(2)})`}
+                              </Badge>
                             )}
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => fetchReferenceGuide()}
-                          disabled={loadingReference}
-                          className="text-xs h-8 border-cyan-300 dark:border-cyan-700 hover:bg-cyan-100/50"
-                        >
-                          {loadingReference ? (
-                            <RefreshCw className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <RefreshCw className="h-3 w-3 mr-1" />
-                          )}
-                          Muat Ulang Model
-                        </Button>
-                      </div>
-                    )}
-
-                    {interpolationSubMethod === "solar_cosine_hermite" && (
-                      <div className="p-4 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 space-y-3.5 text-xs">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 dark:border-amber-800/40 pb-2.5">
-                          <div className="space-y-0.5">
-                            <div className="font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                              <Sun className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                              Konfigurasi Koreksi Radiasi Panas Matahari (Cosine-Hermite S-Curve + Magnus RH)
-                            </div>
-                            <p className="text-[11px] text-slate-600 dark:text-slate-400">
-                              Algoritma C0 &amp; C1 smooth transition mengeliminasi lonjakan akibat pemanasan radiasi surya langsung pada sensor, memulihkan RH termodinamika secara simultan.
-                            </p>
+                            {baselineNightOffset !== 0 && (
+                              <Badge
+                                variant="outline"
+                                className="border-amber-400 text-amber-700 dark:text-amber-300 font-mono text-[10px] py-0.5"
+                              >
+                                Δ Malam: {baselineNightOffset > 0 ? `+${baselineNightOffset.toFixed(2)}` : baselineNightOffset.toFixed(2)} °C
+                              </Badge>
+                            )}
                           </div>
-                          {baselineNightOffset !== 0 && (
-                            <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300 bg-amber-100/50 dark:bg-amber-900/30 font-mono text-[11px] py-1">
-                              Baseline Malam: {baselineNightOffset > 0 ? `+${baselineNightOffset.toFixed(2)}` : baselineNightOffset.toFixed(2)} °C
-                            </Badge>
-                          )}
                         </div>
 
-                        {/* Dual Reference Configuration */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                              Sumber Data Referensi Cuaca:
-                            </Label>
-                            <div className="flex items-center gap-2">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+                          {/* Source Buttons + Lookback */}
+                          <div className="lg:col-span-7 space-y-2">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={solarRefSource === "self_history" ? "default" : "outline"}
+                                className={`h-8 text-xs ${solarRefSource === "self_history" ? "bg-indigo-600 hover:bg-indigo-700 text-white" : ""}`}
+                                onClick={() => {
+                                  setSolarRefSource("self_history");
+                                  if (selfHistoryRecords.length === 0) {
+                                    fetchSelfHistoryData(sensorId);
+                                  }
+                                }}
+                              >
+                                <History className="h-3.5 w-3.5 mr-1" /> Pola Node (H-1..N)
+                              </Button>
                               <Button
                                 type="button"
                                 size="sm"
                                 variant={solarRefSource === "station_aws" ? "default" : "outline"}
-                                className={`h-8 text-xs flex-1 ${solarRefSource === "station_aws" ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}`}
+                                className={`h-8 text-xs ${solarRefSource === "station_aws" ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}`}
                                 onClick={() => {
                                   setSolarRefSource("station_aws");
                                   if (refStationRecords.length === 0) {
@@ -3148,13 +3328,13 @@ export default function KoreksiDataPage() {
                                   }
                                 }}
                               >
-                                <Database className="h-3.5 w-3.5 mr-1" /> Stasiun AWS Tetangga
+                                <Database className="h-3.5 w-3.5 mr-1" /> AWS Tetangga
                               </Button>
                               <Button
                                 type="button"
                                 size="sm"
                                 variant={solarRefSource === "model_ecmwf" ? "default" : "outline"}
-                                className={`h-8 text-xs flex-1 ${solarRefSource === "model_ecmwf" ? "bg-cyan-600 hover:bg-cyan-700 text-white" : ""}`}
+                                className={`h-8 text-xs ${solarRefSource === "model_ecmwf" ? "bg-cyan-600 hover:bg-cyan-700 text-white" : ""}`}
                                 onClick={() => {
                                   setSolarRefSource("model_ecmwf");
                                   if (referenceGuidePoints.length === 0) {
@@ -3162,127 +3342,171 @@ export default function KoreksiDataPage() {
                                   }
                                 }}
                               >
-                                <Sparkles className="h-3.5 w-3.5 mr-1" /> Model Atmosfer ECMWF
+                                <Sparkles className="h-3.5 w-3.5 mr-1" /> Model ECMWF
                               </Button>
+
+                              <div className="flex items-center gap-1 ml-auto bg-white/70 dark:bg-slate-900/60 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
+                                <span className="text-[10px] text-slate-500">Histori:</span>
+                                {([1, 3, 7] as const).map((d) => (
+                                  <button
+                                    key={d}
+                                    type="button"
+                                    onClick={() => handleChangeHistoryLookback(d)}
+                                    className={`px-1.5 py-0.5 rounded text-[11px] font-mono transition-colors ${
+                                      historyLookbackDays === d
+                                        ? "bg-indigo-600 text-white font-semibold"
+                                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/70 dark:hover:bg-slate-800"
+                                    }`}
+                                  >
+                                    {d}H
+                                  </button>
+                                ))}
+                              </div>
                             </div>
 
-                            {/* Source specific controls */}
-                            {solarRefSource === "station_aws" ? (
-                              <div className="flex items-center gap-2 pt-1">
-                                <Select
-                                  value={solarRefStationId}
-                                  onValueChange={(val) => {
-                                    setSolarRefStationId(val);
-                                    fetchRefStationData(val);
-                                  }}
-                                >
-                                  <SelectTrigger className="h-8 text-xs flex-1">
-                                    <SelectValue placeholder="Pilih Stasiun Referensi" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {devices
-                                      .filter((d) => (d.authToken || d.id) !== sensorId)
-                                      .map((device) => {
-                                        const devVal = (device.authToken || device.id) as string;
-                                        return (
-                                          <SelectItem key={device.id} value={devVal}>
-                                            {device.name} ({devVal})
-                                          </SelectItem>
-                                        );
-                                      })}
-                                  </SelectContent>
-                                </Select>
+                            {solarRefSource === "self_history" ? (
+                              <div className="flex items-center justify-between gap-2 pt-0.5">
+                                <span className="text-[11px] text-slate-600 dark:text-slate-400">
+                                  {loadingSelfHistory ? (
+                                    <span className="text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1">
+                                      <RefreshCw className="h-3 w-3 animate-spin" /> Memuat histori {historyLookbackDays} hari...
+                                    </span>
+                                  ) : selfHistorySelectedProfile ? (
+                                    <span className="text-emerald-600 dark:text-emerald-400">
+                                      ✓ {selfHistorySelectedProfile.sourceRecordCount} titik historis ({historyLookbackDays} hari terakhir)
+                                    </span>
+                                  ) : (
+                                    <span className="text-amber-600 dark:text-amber-400">
+                                      ⚠ Riwayat pola node kosong (fallback ke acuan lain jika tersedia)
+                                    </span>
+                                  )}
+                                </span>
                                 <Button
                                   type="button"
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => fetchRefStationData(solarRefStationId)}
-                                  disabled={loadingRefStation}
-                                  className="h-8 text-xs px-2.5"
-                                  title="Segarkan data stasiun referensi"
+                                  onClick={() => fetchSelfHistoryData(sensorId)}
+                                  disabled={loadingSelfHistory}
+                                  className="h-7 text-xs px-2"
                                 >
-                                  <RefreshCw className={`h-3 w-3 ${loadingRefStation ? "animate-spin" : ""}`} />
+                                  <RefreshCw className={`h-3 w-3 ${loadingSelfHistory ? "animate-spin" : ""}`} />
                                 </Button>
+                              </div>
+                            ) : solarRefSource === "station_aws" ? (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Select
+                                    value={solarRefStationId}
+                                    onValueChange={(val) => {
+                                      setSolarRefStationId(val);
+                                      fetchRefStationData(val);
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs flex-1">
+                                      <SelectValue placeholder="Pilih Stasiun Acuan" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {devices
+                                        .filter((d) => (d.authToken || d.id) !== sensorId)
+                                        .map((device) => {
+                                          const devVal = (device.authToken || device.id) as string;
+                                          return (
+                                            <SelectItem key={device.id} value={devVal}>
+                                              {device.name} ({devVal})
+                                            </SelectItem>
+                                          );
+                                        })}
+                                    </SelectContent>
+                                  </Select>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => fetchRefStationData(solarRefStationId)}
+                                    disabled={loadingRefStation}
+                                    className="h-8 text-xs px-2.5"
+                                  >
+                                    <RefreshCw className={`h-3 w-3 ${loadingRefStation ? "animate-spin" : ""}`} />
+                                  </Button>
+                                </div>
+                                <div className="text-[11px] text-slate-500">
+                                  {loadingRefStation ? (
+                                    <span className="text-amber-600">Memuat {solarRefStationId}...</span>
+                                  ) : refStationRecords.length > 0 ? (
+                                    <span className="text-emerald-600 dark:text-emerald-400">
+                                      ✓ {refStationRecords.length} titik ({solarRefStationId})
+                                    </span>
+                                  ) : (
+                                    <span className="text-amber-600">Belum ada data acuan.</span>
+                                  )}
+                                </div>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-2 pt-1">
-                                <Select
-                                  value={referenceModelType}
-                                  onValueChange={(val: "ecmwf_ifs" | "era5") => {
-                                    setReferenceModelType(val);
-                                    fetchReferenceGuide(undefined, startDateStr, endDateStr, val);
-                                  }}
-                                >
-                                  <SelectTrigger className="h-8 text-xs flex-1">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="ecmwf_ifs">ECMWF IFS (9 km)</SelectItem>
-                                    <SelectItem value="era5">ERA5 Reanalysis (31 km)</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => fetchReferenceGuide()}
-                                  disabled={loadingReference}
-                                  className="h-8 text-xs px-2.5"
-                                  title="Segarkan data model ECMWF"
-                                >
-                                  <RefreshCw className={`h-3 w-3 ${loadingReference ? "animate-spin" : ""}`} />
-                                </Button>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Select
+                                    value={referenceModelType}
+                                    onValueChange={(val: "ecmwf_ifs" | "era5") => {
+                                      setReferenceModelType(val);
+                                      fetchReferenceGuide(
+                                        undefined,
+                                        loadedContext?.startDateStr || startDateStr,
+                                        loadedContext?.endDateStr || endDateStr,
+                                        val
+                                      );
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs flex-1">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="ecmwf_ifs">ECMWF IFS (9 km)</SelectItem>
+                                      <SelectItem value="era5">ERA5 Reanalysis (31 km)</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => fetchReferenceGuide()}
+                                    disabled={loadingReference}
+                                    className="h-8 text-xs px-2.5"
+                                  >
+                                    <RefreshCw className={`h-3 w-3 ${loadingReference ? "animate-spin" : ""}`} />
+                                  </Button>
+                                </div>
+                                <div className="text-[11px] text-slate-500">
+                                  {loadingReference ? (
+                                    <span className="text-cyan-600">Memuat {referenceModelName}...</span>
+                                  ) : referenceGuidePoints.length > 0 ? (
+                                    <span className="text-emerald-600 dark:text-emerald-400">
+                                      ✓ {referenceGuidePoints.length} titik ({referenceModelName})
+                                    </span>
+                                  ) : (
+                                    <span className="text-amber-600">Model belum termuat.</span>
+                                  )}
+                                </div>
                               </div>
                             )}
-
-                            <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                              {solarRefSource === "station_aws" ? (
-                                loadingRefStation ? (
-                                  <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                                    <RefreshCw className="h-3 w-3 animate-spin" /> Mengunduh data stasiun {solarRefStationId}...
-                                  </span>
-                                ) : refStationRecords.length > 0 ? (
-                                  <span className="text-emerald-600 dark:text-emerald-400">
-                                    ✓ {refStationRecords.length} titik observasi stasiun {solarRefStationId} termuat.
-                                  </span>
-                                ) : (
-                                  <span className="text-amber-600 dark:text-amber-400">
-                                    ⚠ Belum ada titik data. Klik tombol segarkan untuk memuat stasiun {solarRefStationId}.
-                                  </span>
-                                )
-                              ) : loadingReference ? (
-                                <span className="text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
-                                  <RefreshCw className="h-3 w-3 animate-spin" /> Mengunduh model {referenceModelName}...
-                                </span>
-                              ) : referenceGuidePoints.length > 0 ? (
-                                <span className="text-emerald-600 dark:text-emerald-400">
-                                  ✓ {referenceGuidePoints.length} titik model {referenceModelName} siap digunakan.
-                                </span>
-                              ) : (
-                                <span className="text-amber-600 dark:text-amber-400">
-                                  ⚠ Model belum termuat. Klik tombol segarkan.
-                                </span>
-                              )}
-                            </div>
                           </div>
 
-                          {/* Parameter Threshold */}
-                          <div className="space-y-3">
-                            <div className="space-y-1.5">
+                          {/* Solar Excess Threshold */}
+                          {(interpolationSubMethod === "solar_cosine_hermite" || enableSolarAnomalyCheck) && (
+                            <div className="lg:col-span-5 space-y-1.5">
                               <div className="flex items-center justify-between">
                                 <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                                  Ambang Batas Radiasi Surya (ΔT Excess): +{solarThreshold.toFixed(1)} °C
+                                  Ambang ΔT Surya: +{solarThreshold.toFixed(1)} °C
                                 </Label>
-                                <span className="text-[10px] text-slate-400 font-mono">09:00 - 17:30 WIB</span>
+                                <span className="text-[10px] text-slate-400 font-mono">09:00–17:30 WIB</span>
                               </div>
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2.5">
                                 <NumericInputField
                                   step={0.1}
                                   min={0.5}
                                   max={10.0}
                                   value={solarThreshold}
                                   onCommit={setSolarThreshold}
-                                  className="w-24 h-8 text-xs font-mono"
+                                  className="w-20 h-8 text-xs font-mono"
                                 />
                                 <input
                                   type="range"
@@ -3297,11 +3521,8 @@ export default function KoreksiDataPage() {
                                   className="flex-1 accent-amber-600 cursor-pointer"
                                 />
                               </div>
-                              <p className="text-[10px] text-slate-500">
-                                Kelebihan suhu &Delta;T &gt; {solarThreshold.toFixed(1)}°C di atas baseline malam pada siang hari akan dikoreksi melengkung halus mengikuti referensi.
-                              </p>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -3310,20 +3531,19 @@ export default function KoreksiDataPage() {
               </div>
 
               {selectedVar.key === "temperature" && (
-                <div className="flex items-start space-x-2.5 p-3 rounded-xl bg-cyan-50/70 dark:bg-cyan-950/20 border border-cyan-200/80 dark:border-cyan-900/50">
+                <div className="flex items-center space-x-2.5 p-3 rounded-xl bg-cyan-50/70 dark:bg-cyan-950/20 border border-cyan-200/80 dark:border-cyan-900/50">
                   <Switch
                     id="syncRhRecoverySwitch"
                     checked={syncRhRecovery}
                     onCheckedChange={setSyncRhRecovery}
-                    className="mt-0.5"
                   />
-                  <div className="space-y-0.5">
+                  <div className="flex flex-wrap items-baseline gap-x-2">
                     <Label htmlFor="syncRhRecoverySwitch" className="text-xs font-semibold cursor-pointer text-cyan-900 dark:text-cyan-200">
-                      Sinkronkan Pemulihan Kelembapan Relatif Termodinamika (Magnus-Tetens)
+                      Pulihkan RH Simultan (Magnus-Tetens)
                     </Label>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400">
-                      Opsional untuk semua metode koreksi suhu: menghitung ulang kelembapan relatif fisis dari titik embun (T<sub>d</sub>) dan suhu terkoreksi, lalu menulis field <code className="font-mono text-indigo-600 dark:text-indigo-400">humidity</code> ke Firebase RTDB secara simultan.
-                    </p>
+                    <span className="text-[11px] text-slate-500">
+                      Hitung ulang field <code className="font-mono text-indigo-600 dark:text-indigo-400">humidity</code> dari T<sub>d</sub> dan suhu terkoreksi.
+                    </span>
                   </div>
                 </div>
               )}
@@ -3336,11 +3556,11 @@ export default function KoreksiDataPage() {
               <div>
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <Activity className="h-4 w-4 text-emerald-500" />
-                  Pratinjau Visual: Sebelum vs Sesudah Koreksi (Non-Destructive Live Preview)
+                  Pratinjau Koreksi
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Garis merah dashed = Data Mentah saat ini di database | Garis hijau solid = Hasil proyeksi koreksi
-                  {showReferenceGuide && referenceGuidePoints.length > 0 && " | Garis cyan dashed = Penuntun Model Cuaca"}
+                  Merah: Raw | Hijau: Terkoreksi
+                  {showReferenceGuide && ` | Cyan: ${activeRefLabel}`}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -3351,24 +3571,31 @@ export default function KoreksiDataPage() {
                     onCheckedChange={setShowReferenceGuide}
                   />
                   <Label htmlFor="toggle-ref-guide" className="text-xs font-medium cursor-pointer text-cyan-600 dark:text-cyan-400">
-                    Penuntun Model ({referenceModelType === "ecmwf_ifs" ? "ECMWF IFS" : "ERA5"})
+                    Garis Acuan
                   </Label>
                 </div>
-                <Select
-                  value={referenceModelType}
-                  onValueChange={(val: "ecmwf_ifs" | "era5") => {
-                    setReferenceModelType(val);
-                    fetchReferenceGuide(undefined, startDateStr, endDateStr, val);
-                  }}
-                >
-                  <SelectTrigger className="h-8 text-xs w-[130px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ecmwf_ifs">ECMWF IFS</SelectItem>
-                    <SelectItem value="era5">ERA5 Reanalysis</SelectItem>
-                  </SelectContent>
-                </Select>
+                {solarRefSource === "model_ecmwf" && (
+                  <Select
+                    value={referenceModelType}
+                    onValueChange={(val: "ecmwf_ifs" | "era5") => {
+                      setReferenceModelType(val);
+                      fetchReferenceGuide(
+                        undefined,
+                        loadedContext?.startDateStr || startDateStr,
+                        loadedContext?.endDateStr || endDateStr,
+                        val
+                      );
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-xs w-[130px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ecmwf_ifs">ECMWF IFS</SelectItem>
+                      <SelectItem value="era5">ERA5 Reanalysis</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
                 <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 text-xs">
                   {rawRecords.length} Titik Observasi
                 </Badge>
@@ -3670,46 +3897,45 @@ export default function KoreksiDataPage() {
                 <div>
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-purple-500" />
-                    Pilih Algoritma Imputasi Celah (Framework Model Imputasi)
+                    Algoritma Imputasi Celah
                   </CardTitle>
-                  <CardDescription className="text-xs">
-                    Arsitektur Two-Phase Hybrid: Rekonstruksi mulus celah mikro dan transfer spasial makro bebas patahan vertikal
-                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
 
             <CardContent className="p-5 space-y-4">
-              {/* Grid 4 Methods */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              {/* Grid 5 Methods */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
                 {[
                   {
                     id: "auto_hybrid",
-                    title: "2-Fase Hibrida Otomatis",
-                    desc: "Micro Spline (≤15m) + Companion Ridge Transfer (>15m). Rekomendasi WMO & ML.",
+                    title: "2-Fase Hibrida",
+                    desc: "Mikro PCHIP + adaptasi node",
                     icon: Sparkles,
-                    color: "purple",
+                  },
+                  {
+                    id: "self_history",
+                    title: "Pola Node (H-1..N)",
+                    desc: "Profil diurnal stasiun ini",
+                    icon: History,
                   },
                   {
                     id: "companion_ridge",
-                    title: "Companion Spatial Ridge",
-                    desc: "Regresi harmonik diurnal antar stasiun AWS tetangga (id-03 / id-05 / id-01).",
+                    title: "AWS Tetangga (Ridge)",
+                    desc: "Adaptasi kurva stasiun sebelah",
                     icon: Database,
-                    color: "indigo",
                   },
                   {
                     id: "model_guided",
-                    title: "Panduan Model Cuaca",
-                    desc: "ECMWF IFS (9 km) / ERA5 Reanalysis Open-Meteo via Boundary Residual Bridging.",
+                    title: "Model ECMWF / ERA5",
+                    desc: "Penuntun atmosfer Open-Meteo",
                     icon: Sun,
-                    color: "cyan",
                   },
                   {
                     id: "pchip_spline",
-                    title: "Harmonic PCHIP Spline",
-                    desc: "Interpolasi polinomial kubik monoton bebas osilasi palsu (Runge overshoot).",
+                    title: "Kubik PCHIP",
+                    desc: "Kurva monoton internal",
                     icon: Activity,
-                    color: "emerald",
                   },
                 ].map((m) => {
                   const IconComp = m.icon;
@@ -3725,7 +3951,7 @@ export default function KoreksiDataPage() {
                           : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40"
                       }`}
                     >
-                      <div className="flex items-center gap-1.5 font-semibold text-xs text-purple-700 dark:text-purple-300 mb-1">
+                      <div className="flex items-center gap-1.5 font-semibold text-xs text-purple-700 dark:text-purple-300 mb-0.5">
                         <IconComp className="h-3.5 w-3.5 text-purple-500" />
                         {m.title}
                       </div>
@@ -3738,11 +3964,39 @@ export default function KoreksiDataPage() {
               </div>
 
               {/* Imputation Settings Bar */}
-              <div className="p-4 rounded-xl bg-slate-50/80 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="p-4 rounded-xl bg-slate-50/80 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+                {/* Lookback window */}
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                    Histori Pola Node (H-1..N):
+                  </Label>
+                  <div className="flex items-center gap-1.5">
+                    {([1, 3, 7] as const).map((d) => (
+                      <Button
+                        key={d}
+                        type="button"
+                        size="sm"
+                        variant={historyLookbackDays === d ? "default" : "outline"}
+                        onClick={() => handleChangeHistoryLookback(d)}
+                        className={`h-8 text-xs flex-1 font-mono ${historyLookbackDays === d ? "bg-purple-600 hover:bg-purple-700 text-white" : ""}`}
+                      >
+                        {d} Hari
+                      </Button>
+                    ))}
+                  </div>
+                  <span className="text-[10px] text-slate-500 block">
+                    {loadingSelfHistory
+                      ? "Memuat histori node..."
+                      : selfHistoryRecords.length > 0
+                        ? `✓ ${selfHistoryRecords.length} titik historis siap`
+                        : "Histori node kosong"}
+                  </span>
+                </div>
+
                 {/* Companion station selector */}
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                    Stasiun Pendamping Acuan (Companion Node):
+                    Stasiun Pendamping:
                   </Label>
                   <div className="flex items-center gap-2">
                     <Select
@@ -3775,13 +4029,12 @@ export default function KoreksiDataPage() {
                       onClick={() => fetchRefStationData(solarRefStationId)}
                       disabled={loadingRefStation}
                       className="h-8 text-xs px-2.5"
-                      title="Segarkan data stasiun pendamping"
                     >
                       <RefreshCw className={`h-3 w-3 ${loadingRefStation ? "animate-spin" : ""}`} />
                     </Button>
                   </div>
-                  <span className="text-[10px] text-slate-500">
-                    {refStationRecords.length > 0 ? `✓ ${refStationRecords.length} titik observasi stasiun pendamping siap.` : "Memerlukan data stasiun tetangga untuk transfer Ridge."}
+                  <span className="text-[10px] text-slate-500 block">
+                    {refStationRecords.length > 0 ? `✓ ${refStationRecords.length} titik siap` : "Opsional untuk Ridge spasial"}
                   </span>
                 </div>
 
@@ -3789,9 +4042,9 @@ export default function KoreksiDataPage() {
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center">
                     <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                      Batas Celah Mikro: {gapMicroLimitMinutes} Menit
+                      Batas Celah Mikro: {gapMicroLimitMinutes}m
                     </Label>
-                    <span className="text-[10px] text-slate-400 font-mono">≤15m Spline</span>
+                    <span className="text-[10px] text-slate-400 font-mono">≤{gapMicroLimitMinutes}m PCHIP</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <input
@@ -3815,13 +4068,10 @@ export default function KoreksiDataPage() {
                       className="w-16 h-7 text-xs font-mono text-right px-2"
                     />
                   </div>
-                  <span className="text-[10px] text-slate-500">
-                    Celah di atas {gapMicroLimitMinutes} menit diisi via Macro Ridge Transfer / Model.
-                  </span>
                 </div>
 
                 {/* Toggles */}
-                <div className="space-y-2">
+                <div className="space-y-2 flex flex-col justify-center">
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="enableBridgingSwitch"
@@ -3829,7 +4079,7 @@ export default function KoreksiDataPage() {
                       onCheckedChange={setEnableGapBridging}
                     />
                     <Label htmlFor="enableBridgingSwitch" className="cursor-pointer text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                      Boundary Residual Bridging (Δ=0.00 di Titik Batas)
+                      Boundary Bridging
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -3839,7 +4089,7 @@ export default function KoreksiDataPage() {
                       onCheckedChange={setEnableGapPhysics}
                     />
                     <Label htmlFor="enablePhysicsSwitch" className="cursor-pointer text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                      Physics Post-Processing (Savitzky-Golay &amp; Magnus)
+                      Filter Fisika WMO
                     </Label>
                   </div>
                 </div>
@@ -3853,10 +4103,10 @@ export default function KoreksiDataPage() {
               <div>
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <Activity className="h-4 w-4 text-purple-500" />
-                  Pratinjau Rekonstruksi Grid 1-Menit (Data Asli vs Celah Terimputasi)
+                  Pratinjau Grid 1-Menit
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Titik hijau = Observasi Riil | Garis ungu = Hasil Imputasi Mulus | Area berbayang = Segmen Celah Tertutup
+                  Hijau: Observasi | Ungu: Imputasi | Area: Celah
                 </CardDescription>
               </div>
               <Badge variant="outline" className="border-purple-500/40 text-purple-600 dark:text-purple-400 text-xs">
@@ -3981,11 +4231,8 @@ export default function KoreksiDataPage() {
               <div>
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <History className="h-4 w-4 text-indigo-500" />
-                  Histori & Catatan Audit Koreksi Data
+                  Riwayat Audit Koreksi ({selectedStationName})
                 </CardTitle>
-                <CardDescription className="text-xs">
-                  Rekaman jejak permanen seluruh pembaruan batch yang pernah diterapkan pada stasiun {selectedStationName}
-                </CardDescription>
               </div>
               <Button
                 size="sm"
@@ -4056,7 +4303,7 @@ export default function KoreksiDataPage() {
               <ShieldAlert className="h-5 w-5 text-amber-500" /> Konfirmasi Penulisan Koreksi ke Database
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Tindakan ini akan langsung memperbarui titik-titik data mentah di Firebase Realtime Database.
+              Menulis pembaruan nilai RAW ke Firebase RTDB.
             </DialogDescription>
           </DialogHeader>
 
@@ -4096,12 +4343,9 @@ export default function KoreksiDataPage() {
             {syncRhRecovery && selectedVar.key === "temperature" && (
               <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2">
                 <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                <div>
-                  <span className="font-bold">⚡ Pembaruan Simultan Atomik Aktif:</span>
-                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
-                    Menulis nilai Suhu Udara ({modifiedItems.length} titik) dan Kelembapan Relatif ({stats?.rhModifiedCount || 0} titik via formula Magnus-Tetens) secara bersamaan ke node Firebase RTDB.
-                  </p>
-                </div>
+                <span>
+                  Simultan: suhu ({modifiedItems.length} titik) + RH ({stats?.rhModifiedCount || 0} titik).
+                </span>
               </div>
             )}
 
@@ -4157,7 +4401,7 @@ export default function KoreksiDataPage() {
               <Sparkles className="h-5 w-5 text-purple-500" /> Konfirmasi Penulisan Imputasi Celah ke Database
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Tindakan ini akan mensintesis dan menuliskan titik-titik data baru yang sebelumnya kosong ke Firebase Realtime Database dengan status IMPUTED.
+              Menulis titik grid baru dengan status IMPUTED ke Firebase RTDB.
             </DialogDescription>
           </DialogHeader>
 
@@ -4192,12 +4436,7 @@ export default function KoreksiDataPage() {
 
             <div className="p-2.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300 text-xs flex items-center gap-2">
               <Check className="h-4 w-4 text-purple-600 shrink-0" />
-              <div>
-                <span className="font-bold">⚡ Grid Kontinu 1-Menit (1440/Hari):</span>
-                <p className="text-[11px] text-purple-700 dark:text-purple-400">
-                  Data yang ditulis dijamin mulus (C0/C1 continuous), bebas patahan vertikal, dan tervalidasi batasan fisik meteorologi WMO.
-                </p>
-              </div>
+              <span>Grid 1-menit kontinu tervalidasi batas fisik WMO.</span>
             </div>
 
             <div className="space-y-1">

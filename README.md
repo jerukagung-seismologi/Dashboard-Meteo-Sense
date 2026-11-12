@@ -23,6 +23,7 @@
    - [5. Alur Pelaporan & Ekspor Data Eksternal](#5-alur-pelaporan--ekspor-data-eksternal)
 3. [Algoritma & Formulasi Ilmiah](#-algoritma--formulasi-ilmiah)
    - [Kalibrasi & Koreksi Bias Sensor](#kalibrasi--koreksi-bias-sensor)
+   - [Koreksi Data, Adaptasi Pola Node, & Imputasi Celah 2-Fase](#koreksi-data-adaptasi-pola-node--imputasi-celah-2-fase)
    - [Parameter Turunan Meteorologi](#parameter-turunan-meteorologi)
    - [Standar Jendela Waktu Ekstrem Sinoptik WMO/BMKG](#standar-jendela-waktu-ekstrem-sinoptik-wmobmkg)
    - [Imputasi Reanalisis Atmosfer (ECMWF ERA5)](#imputasi-reanalisis-atmosfer-ecmwf-era5)
@@ -272,6 +273,55 @@ $$y^{\text{cal}} = a \cdot (y^{\text{sensor}})^2 + b \cdot y^{\text{sensor}} + c
 
 ---
 
+### Koreksi Data, Adaptasi Pola Node, & Imputasi Celah 2-Fase
+
+Berbeda dari modul **Kalibrasi Sensor** (yang menyimpan fungsi transfer pada lapisan tampilan Firestore tanpa menyentuh telemetri mentah), modul **Koreksi Data & Imputasi Celah** (`/dashboard/koreksi-data`) beroperasi langsung pada titik-titik waktu **RAW Firebase Realtime Database** beserta catatan audit permanen, dan mengutamakan replikasi pola mikroklimat khas masing-masing node stasiun pada skala waktu deterministik **WIB ($\text{UTC}+07:00$)**.
+
+#### A. Mode Koreksi Nilai & Anomali (Point Correction)
+Deteksi QC otomatis menandai empat jenis anomali: pelanggaran batas fisik **WMO No. 8** (`wmo_boundary`), lonjakan sesaat (`spike_jump`) yang dinormalisasi terhadap interval $\sqrt{\Delta t / 5}$ dengan pengecualian reset counter harian curah hujan `00:00 UTC` (`07:00 WIB`), sensor macet (`flatline`), dan paparan radiasi panas surya berlebih (`solar_overheating`, 09:00–17:30 WIB saat $\Delta T$ di atas *baseline* malam melampaui ambang batas).
+
+Lima metode koreksi tersedia:
+1. **Offset Tetap ($\Delta$)**:
+   $$y'(t) = y(t) + \Delta$$
+2. **Pergeseran Linier (*Linear Drift*)**:
+   $$\Delta(t) = \delta_0 + \frac{t - t_0}{t_1 - t_0}(\delta_1 - \delta_0), \qquad y'(t) = y(t) + \Delta(t)$$
+3. **Penjepitan Fisik WMO (*Physical Clamping*)**:
+   $$y'(t) = \min(\text{Max}, \max(\text{Min}, y(t)))$$
+4. **Faktor Skala (*Multiplicative Scaling*)**:
+   $$y'(t) = k \cdot y(t)$$
+5. **Interpolasi & Rekonstruksi Pola Node**:
+   - **Kubik Monoton PCHIP (*Fritsch-Carlson*, standar WMO No. 8)**: Spline kubik Hermite dengan pembatasan gradien harmonik sehingga dijamin bebas osilasi palsu (*Runge's overshoot*) dan menjaga kemonotonan lokal antar jangkar valid.
+   - **Akima Sub-Spline (5-Titik)**: Menghitung turunan lokal berbasis bobot selisih gradien 5 titik berurutan; tahan terhadap perubahan gradien tajam seperti *cold front*.
+   - **Linier Berbobot Waktu**: Interpolasi lurus berbasis rasio milidetik $\tau = (t - t_A)/(t_B - t_A)$ untuk sampling asinkron.
+   - **Terpandu Acuan (`model_guided`)**: Menyesuaikan fluktuasi kurva acuan ke titik jangkar valid $(t_A, y_A)$ dan $(t_B, y_B)$ secara kontinu per-menit via pencarian biner.
+   - **Kosinus-Hermite S-Curve + Magnus RH (`solar_cosine_hermite`)**: Menghilangkan lompatan step (*C0/C1 discontinuity*) menggunakan fungsi transisi S-Curve:
+     $$w(\tau) = \frac{1 - \cos(\pi \tau)}{2}, \quad \tau \in [0, 1]$$
+     Bila opsi **Pulihkan RH Simultan** diaktifkan pada parameter `temperature`, nilai `humidity` dihitung ulang secara atomik dari $T_d$ dan $T'$ melalui persamaan Magnus-Tetens dan dijepit ketat pada batas fisik mutlak $[0\%, 100\%]$.
+
+#### B. Rekonstruksi Berbasis Pola Node Sendiri (*Self-History* $H-1 \dots H-N$)
+Agar kurva koreksi dan pengisian celah semirip mungkin dengan karakteristik mikroklimat node target (naungan vegetasi, elevasi, kelembapan lokal, dan ritme sunrise/sunset), sistem mengambil histori bersih stasiun itu sendiri untuk jendela *lookback* **1, 3, atau 7 hari** sebelumnya (`buildSelfHistoryDiurnalProfile`):
+- Setiap observasi bersih yang lolos penyaringan kewajaran fisik dipetakan ke **1440 slot menit diurnal WIB** ($00:00 \dots 23:59$).
+- Nilai tiap slot dihitung sebagai **median** (tahan terhadap pencilan sesaat), disambung secara melingkar (*circular wrapping* $23:59 \to 00:00\ \text{WIB}$), lalu dihaluskan menggunakan filter segitiga melingkar berbobot ($\pm 7$ menit) sehingga mempertahankan amplitudo puncak siang dan lembah dini hari.
+- **Pengecualian Presipitasi**: Variabel `rainfall` (akumulasi harian UTC $00:00\text{Z}$) dan `rainrate` tidak menggunakan replikasi siklus diurnal karena kejadian hujan bersifat stokastik, sehingga celah curah hujan tetap mempertahankan perilaku *monotonic carry* dan reset harian `00:00 UTC`.
+
+#### C. Adaptor Tanda Mikroklimat Node (*Node Signature Transfer* & Spatial Ridge Aman)
+Saat pengguna memakai referensi eksternal (**Stasiun AWS Tetangga** atau **Model ECMWF IFS / ERA5**), sistem terlebih dahulu melatih fungsi transfer (`fitNodeSignatureTransferModel`) menggunakan pasangan data historis $H-1\dots H-N$ serta sampel malam hari dari node target:
+$$\hat{y}_{\text{node}}(t) = \beta_0 \, r(t) + \beta_1 \sin\!\left(\frac{2\pi h_{\text{WIB}}}{24}\right) + \beta_2 \cos\!\left(\frac{2\pi h_{\text{WIB}}}{24}\right) + \beta_3$$
+yang diselesaikan melalui regresi Ridge $L_2$ ($X^T X + \alpha I, \ \alpha = 1.0$) sehingga perbedaan amplitudo, pergeseran fase pagi/sore, dan offset dasar ikut menyesuaikan pola khas node target.
+- **Guardrail Anti-Ekstrapolasi**: Model harmonik 4-fitur hanya diaktifkan jika sampel latih mencakup $\ge 24$ titik valid, $\ge 6$ jam unik, $\ge 2$ kuadran 6-jam yang berbeda, kemiringan wajar ($0.05 \le \beta_0 \le 2.5$), dan RMSE tidak lebih buruk daripada koreksi bias sederhana; jika data latih hanya berasal dari jam malam yang sempit, adaptor otomatis mundur ke pergeseran median skalar ($\hat{y}(t) = r(t) + \text{bias}$).
+
+#### D. Mesin Imputasi Celah 2-Fase (`1440 Menit/Hari`)
+Mengisi *missing timestamps* ke dalam grid seragam 1-menit kontinu melalui tiga tahap (`runUniversalGapImputation` & `buildCompleteGapNodePayloads`):
+1. **Fase 1 — *Micro-Gap* ($\le \text{batas mikro}$, default 15 menit)**: Menggunakan spline kubik monoton PCHIP (*Fritsch-Carlson*), atau *monotonic rainfall carry* dengan deteksi batas reset harian `00:00 UTC` (`07:00 WIB`).
+2. **Fase 2 — *Macro-Gap* ($> \text{batas mikro}$)**:
+   - Pada mode **2-Fase Hibrida Otomatis**, prioritas berurutan adalah: **AWS Tetangga (Ridge teradaptasi)** $\to$ **Model ECMWF/ERA5 (teradaptasi)** $\to$ **Pola Node ($H-1\dots H-N$)** $\to$ **PCHIP** (tersedia juga mode khusus **Pola Node ($H-1\dots H-N$)** sebagai prioritas utama).
+   - **Boundary-Conditioned Residual Bridging**: Selisih antara observasi valid sebelum/sesudah celah dengan prediksi acuan ($\delta_{\text{awal}}, \delta_{\text{akhir}}$) disisipkan mulus menggunakan kurva S Kosinus-Hermite (atau peluruhan eksponensial $\tau = 120$ menit bila celah terbuka di awal/akhir rentang) sehingga $\Delta = 0$ tepat di tepi celah tanpa patahan vertikal (*step-jump*).
+3. **Fase 3 — *Physics Post-Processing* & Multi-Variabel RTDB**:
+   - Penghalusan opsional *Savitzky-Golay* (otomatis dilewati untuk `rainfall` dan `rainrate` agar tidak menghasilkan presipitasi negatif).
+   - Penjepitan batas WMO (`humidity` $\in [0\%, 100\%]$, `pressure` $\in [850, 1080]\ \text{hPa}$, non-negatif untuk intensitas angin/radiasi/hujan) serta penegakan konsistensi termodinamika $T_d \le T_{\text{ambient}}$ ketika menulis payload multi-variabel ke RTDB.
+
+---
+
 ### Parameter Turunan Meteorologi
 
 #### 1. Titik Embun / Dew Point ($T_d$) — Formula Magnus-Tetens
@@ -392,13 +442,19 @@ Untuk prakiraan jangka panjang 6–7 bulan (ENSO Niño 3.4, IOD, MJO):
 - Visualisasi kurva fitting dinamis secara instan (*Live Scatter & Fitted Line Curve*).
 - Fitur *1-Click Apply & Sync* ke Cloud Firestore untuk mengaktifkan koreksi pada seluruh sistem.
 
-### 5. Modul Pelaporan & Ekspor Data (`/dashboard/laporan`)
+### 5. Modul Koreksi Data & Imputasi Celah (`/dashboard/koreksi-data`)
+- Penyuntingan nilai **RAW Firebase RTDB** dengan deteksi QC otomatis (WMO limit, *spike jump*, *flatline*, dan *solar overheating*) serta audit trail permanen di Firestore.
+- Koreksi nilai melalui 5 formula matematis (*Offset*, *Linear Drift*, *WMO Clamp*, *Scaling*, serta *Interpolasi PCHIP / Akima / Kosinus-Hermite + Pemulihan RH Magnus*).
+- Adaptasi kurva khas node stasiun berbasis histori $H-1 \dots H-N$ (`1/3/7 hari`) dan *Node Signature Transfer* (Spatial Ridge aman) terhadap AWS tetangga maupun ECMWF IFS / ERA5.
+- Mesin **Imputasi Celah 2-Fase** untuk rekonstruksi grid 1-menit kontinu (`1440 titik/hari`) lengkap dengan penulisan node multi-variabel yang menjaga kontinuitas reset curah hujan `00:00 UTC`.
+
+### 6. Modul Pelaporan & Ekspor Data (`/dashboard/laporan`)
 - Generator laporan cuaca berkala (harian, mingguan, bulanan).
 - Tata letak cetak dokumen A4 resmi berstandar BMKG/WMO dengan tombol cetak langsung browser.
 - Ekspor bulk upload terstruktur untuk **UK Met Office WOW** dan **Weather Underground**.
 - Format unduhan CSV, JSON, dan integrasi cadangan basis data SQLite lokal.
 
-### 6. Modul Agrometeorologi & Kualitas Udara (`/dashboard/agromet` & `/dashboard/air-quality`)
+### 7. Modul Agrometeorologi & Kualitas Udara (`/dashboard/agromet` & `/dashboard/air-quality`)
 - Estimasi kebutuhan air tanaman dan evapotranspirasi acuan $ET_0$.
 - Pemantauan partikulat PM2.5 dan PM10 dengan skala indeks kualitas udara (AQI).
 
@@ -444,6 +500,7 @@ Dashboard-Meteo-Sense/
 │   │   ├── climatology/                 # Endpoint Normal & Ekstrem Klimatologi
 │   │   ├── devices/                     # Manajemen Node Perangkat IoT
 │   │   ├── reanalysis/                  # Integrasi ECMWF ERA5 & Imputasi
+│   │   ├── weather/reference-guide/     # Penuntun Model ECMWF IFS / ERA5 untuk QC
 │   │   └── wow/                         # Endpoint Ekspor Met Office WOW
 │   ├── dashboard/                       # Subhalaman Modul Dashboard
 │   │   ├── agromet/                     # Modul Agrometeorologi & Evapotranspirasi
@@ -457,6 +514,7 @@ Dashboard-Meteo-Sense/
 │   │   ├── indeks-monsun/               # Analisis AUSMI & WNPMI
 │   │   ├── kalibrasi/                   # Modul Kalibrasi Sensor & Fitting Curve
 │   │   ├── klimatologi/                 # Modul Analisis Iklim & Ekstrem
+│   │   ├── koreksi-data/                # Modul QC, Koreksi Nilai RAW, & Imputasi Celah 2-Fase
 │   │   ├── laporan/                     # Modul Laporan Resmi A4 & Bulk WOW
 │   │   ├── meteorologi/                 # Dasbor Meteorologi Real-time & Diurnal
 │   │   ├── perangkat-benchmark/         # Pemantauan Stasiun Standar BMKG
@@ -485,6 +543,8 @@ Dashboard-Meteo-Sense/
 │   ├── reanalysis/                      # Sumber Data SQLite & ERA5 Correction
 │   ├── ConfigFirebase.ts                # Inisialisasi Kredensial Firebase SDK
 │   ├── FetchingSensorData.ts            # Akses Data Sensor dari Realtime Database
+│   ├── meteorologicalImputationEngine.ts # Imputasi 2-Fase, Profil Pola Node, & Spatial Ridge
+│   ├── meteorologicalInterpolation.ts   # PCHIP, Akima, Kosinus-Hermite S-Curve, & Magnus RH
 │   └── weatherUtils.ts                  # Formulasi Magnus-Tetens, Heat Index, WMO Extrema
 ├── .agents/                             # Aturan & Standar Proyek (Project Rules & Guardrails)
 │   └── rules/                           # Standar Visualisasi ECharts, Kalibrasi, Pelaporan

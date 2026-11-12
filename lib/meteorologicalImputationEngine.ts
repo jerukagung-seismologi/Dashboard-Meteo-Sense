@@ -159,7 +159,13 @@ export interface ImputedGridPoint {
   imputedVal: number;
   isOriginal: boolean;
   isImputed: boolean;
-  imputationPhase: "original" | "micro_spline" | "companion_ridge" | "model_guided" | "pchip_spline";
+  imputationPhase:
+    | "original"
+    | "micro_spline"
+    | "self_history"
+    | "companion_ridge"
+    | "model_guided"
+    | "pchip_spline";
   gapType: "micro" | "macro" | null;
   // Multi-variable support
   temperature?: number;
@@ -180,11 +186,166 @@ export interface ImputationConfig {
   companionStationId?: string;
   enableSpatialTransfer?: boolean;
   enableModelGuided?: boolean;
+  enableSelfHistory?: boolean; // default: true
+  preferSelfHistory?: boolean; // default: false
   enableBoundaryBridging?: boolean; // default: true
   enablePhysicsPostProcessing?: boolean; // default: true
   savgolWindow?: number; // default: 15
   savgolPoly?: number; // default: 2
   ridgeAlpha?: number; // default: 1.0
+}
+
+export interface SelfHistoryDiurnalProfile {
+  varKey: string;
+  slots: number[]; // panjang 1440 (menit 00:00..23:59 WIB)
+  populatedSlots: number;
+  sourceRecordCount: number;
+}
+
+const NON_DIURNAL_VARS = new Set(["rainfall", "rainrate"]);
+
+const NON_NEGATIVE_VARS = new Set([
+  "rainfall",
+  "rainrate",
+  "windSpeed",
+  "wind_speed",
+  "lux",
+  "solar_radiation",
+  "battery",
+  "volt",
+]);
+
+const HISTORY_SANITY_BOUNDS: Record<string, [number, number]> = {
+  temperature: [-10, 55],
+  humidity: [0, 100],
+  pressure: [850, 1080],
+  dew: [-10, 45],
+  dewpoint: [-10, 45],
+  windSpeed: [0, 75],
+  wind_speed: [0, 75],
+  lux: [0, 200000],
+  soil_temp: [-10, 65],
+  volt: [0, 30],
+};
+
+export function clampPhysicsBounds(varKey: string, val: number): number {
+  if (!Number.isFinite(val)) return val;
+  if (varKey === "humidity") return Math.min(100.0, Math.max(0.0, val));
+  if (varKey === "pressure") return Math.min(1080.0, Math.max(850.0, val));
+  if (NON_NEGATIVE_VARS.has(varKey)) return Math.max(0.0, val);
+  return val;
+}
+
+/**
+ * Membangun profil diurnal median per-menit (1440 slot WIB) dari riwayat bersih node target sendiri (H-1..H-N).
+ * Menolak variabel presipitasi (rainfall/rainrate) karena tidak bersifat siklik diurnal.
+ */
+export function buildSelfHistoryDiurnalProfile(
+  historyRecords: Array<{ timestamp: number; [key: string]: any }>,
+  varKey: string,
+  smoothRadius: number = 7
+): SelfHistoryDiurnalProfile | null {
+  if (NON_DIURNAL_VARS.has(varKey) || !historyRecords || historyRecords.length === 0) {
+    return null;
+  }
+
+  const sanity = HISTORY_SANITY_BOUNDS[varKey];
+  const buckets: number[][] = Array.from({ length: 1440 }, () => []);
+  let validCount = 0;
+
+  for (let i = 0; i < historyRecords.length; i++) {
+    const r = historyRecords[i];
+    if (!Number.isFinite(r.timestamp)) continue;
+    const v = readVarNumber(r, varKey);
+    if (!Number.isFinite(v)) continue;
+    if (sanity && (v < sanity[0] || v > sanity[1])) continue;
+
+    const { hourFrac } = getWibTimeComponents(r.timestamp);
+    const slot = Math.min(1439, Math.max(0, Math.floor(hourFrac * 60)));
+    buckets[slot].push(v);
+    validCount++;
+  }
+
+  if (validCount === 0) return null;
+
+  const rawSlots: Array<number | null> = new Array(1440).fill(null);
+  const populatedIndices: number[] = [];
+  for (let m = 0; m < 1440; m++) {
+    if (buckets[m].length > 0) {
+      rawSlots[m] = computeMedian(buckets[m]);
+      populatedIndices.push(m);
+    }
+  }
+
+  if (populatedIndices.length === 0) return null;
+
+  // Interpolasi melingkar (wrapping 23:59 -> 00:00 WIB) untuk slot kosong
+  const filled = new Array<number>(1440);
+  if (populatedIndices.length === 1) {
+    const onlyVal = rawSlots[populatedIndices[0]]!;
+    filled.fill(onlyVal);
+  } else {
+    for (let p = 0; p < populatedIndices.length; p++) {
+      const i0 = populatedIndices[p];
+      const i1 = populatedIndices[(p + 1) % populatedIndices.length];
+      const v0 = rawSlots[i0]!;
+      const v1 = rawSlots[i1]!;
+      filled[i0] = v0;
+
+      const stepSpan = i1 > i0 ? i1 - i0 : 1440 - i0 + i1;
+      for (let k = 1; k < stepSpan; k++) {
+        const targetIdx = (i0 + k) % 1440;
+        const frac = k / stepSpan;
+        filled[targetIdx] = v0 + frac * (v1 - v0);
+      }
+    }
+  }
+
+  // Penghalusan melingkar berbobot segitiga (±smoothRadius menit) agar ritme diurnal mulus tanpa meratakan puncak
+  const r = Math.max(0, Math.min(30, Math.floor(smoothRadius)));
+  const smoothed = new Array<number>(1440);
+  for (let m = 0; m < 1440; m++) {
+    if (r === 0) {
+      smoothed[m] = clampPhysicsBounds(varKey, filled[m]);
+      continue;
+    }
+    let wSum = 0;
+    let vSum = 0;
+    for (let d = -r; d <= r; d++) {
+      const idx = ((m + d) % 1440 + 1440) % 1440;
+      const w = r + 1 - Math.abs(d);
+      vSum += filled[idx] * w;
+      wSum += w;
+    }
+    smoothed[m] = clampPhysicsBounds(varKey, vSum / wSum);
+  }
+
+  return {
+    varKey,
+    slots: smoothed,
+    populatedSlots: populatedIndices.length,
+    sourceRecordCount: validCount,
+  };
+}
+
+/**
+ * Mengambil nilai acuan profil diurnal historis pada timestamp tsMs (WIB +07:00)
+ * menggunakan interpolasi linier sub-menit antarslot.
+ */
+export function lookupSelfHistoryProfileAt(
+  profile: SelfHistoryDiurnalProfile | null | undefined,
+  tsMs: number
+): number | null {
+  if (!profile || profile.slots.length !== 1440 || !Number.isFinite(tsMs)) return null;
+  const { hourFrac } = getWibTimeComponents(tsMs);
+  const minutePos = (((hourFrac * 60) % 1440) + 1440) % 1440;
+  const m0 = Math.floor(minutePos) % 1440;
+  const m1 = (m0 + 1) % 1440;
+  const frac = minutePos - Math.floor(minutePos);
+  const y0 = profile.slots[m0];
+  const y1 = profile.slots[m1];
+  if (!Number.isFinite(y0) || !Number.isFinite(y1)) return null;
+  return y0 * (1 - frac) + y1 * frac;
 }
 
 export interface ImputationSummary {
@@ -255,10 +416,22 @@ function invertMatrix4x4(A: number[][]): number[][] | null {
  * Melatih model regresi Ridge dengan fitur:
  * [ X_companion, sin(2*pi*t/24), cos(2*pi*t/24), 1 (intercept) ] -> Y_target
  */
-export function fitSpatialRidgeModel(
+export interface NodeSignatureTransferModel {
+  predict: (refVal: number, timestamp: number) => number;
+  mode: "spatial_ridge" | "scalar_bias";
+  sampleCount: number;
+  distinctHours: number;
+  bias: number;
+  slope: number;
+}
+
+function fitSpatialRidgeWithCoeffs(
   commonSamples: Array<{ targetVal: number; companionVal: number; timestamp: number }>,
   alpha: number = 1.0
-): ((companionVal: number, timestamp: number) => number) | null {
+): {
+  beta: [number, number, number, number];
+  predict: (companionVal: number, timestamp: number) => number;
+} | null {
   if (commonSamples.length < 15) return null; // Kurang data latih
 
   // Bangun matriks X^T * X (4x4) dan vektor X^T * y (4x1)
@@ -296,19 +469,118 @@ export function fitSpatialRidgeModel(
   if (!inv) return null;
 
   // Hitung koefisien beta = inv * Xty
-  const beta: number[] = [0, 0, 0, 0];
+  const beta: [number, number, number, number] = [0, 0, 0, 0];
   for (let i = 0; i < 4; i++) {
     for (let j = 0; j < 4; j++) {
       beta[i] += inv[i][j] * Xty[j];
     }
   }
 
-  // Kembalikan fungsi prediktor kontinu (tetap pada skala waktu WIB +07:00)
-  return (companionVal: number, timestamp: number) => {
-    const { hourFrac } = getWibTimeComponents(timestamp);
-    const sinT = Math.sin((2 * Math.PI * hourFrac) / 24.0);
-    const cosT = Math.cos((2 * Math.PI * hourFrac) / 24.0);
-    return beta[0] * companionVal + beta[1] * sinT + beta[2] * cosT + beta[3];
+  if (!beta.every((v) => Number.isFinite(v))) return null;
+
+  return {
+    beta,
+    predict: (companionVal: number, timestamp: number) => {
+      const { hourFrac } = getWibTimeComponents(timestamp);
+      const sinT = Math.sin((2 * Math.PI * hourFrac) / 24.0);
+      const cosT = Math.cos((2 * Math.PI * hourFrac) / 24.0);
+      return beta[0] * companionVal + beta[1] * sinT + beta[2] * cosT + beta[3];
+    },
+  };
+}
+
+export function fitSpatialRidgeModel(
+  commonSamples: Array<{ targetVal: number; companionVal: number; timestamp: number }>,
+  alpha: number = 1.0
+): ((companionVal: number, timestamp: number) => number) | null {
+  return fitSpatialRidgeWithCoeffs(commonSamples, alpha)?.predict ?? null;
+}
+
+/**
+ * Melatih adaptor tanda mikroklimat node (Node Signature Transfer):
+ * - Menggunakan 4-fitur Spatial Ridge (slope + fase sin/cos 24h WIB + intercept) bila sampel
+ *   bersih mencukupi cakupan diurnal (>=24 sampel, >=6 jam berbeda, >=2 kuadran 6-jam) dan slope wajar.
+ * - Fallback aman ke bias median skalar agar tidak terjadi ekstrapolasi liar saat data latih hanya malam hari.
+ */
+export function fitNodeSignatureTransferModel(
+  commonSamples: Array<{ targetVal: number; companionVal: number; timestamp: number }>,
+  varKey: string,
+  alpha: number = 1.0
+): NodeSignatureTransferModel | null {
+  if (NON_DIURNAL_VARS.has(varKey) || !commonSamples || commonSamples.length === 0) {
+    return null;
+  }
+
+  const sanity = HISTORY_SANITY_BOUNDS[varKey];
+  const valid: Array<{ targetVal: number; companionVal: number; timestamp: number }> = [];
+  const hourSet = new Set<number>();
+  const quadrantSet = new Set<number>();
+
+  for (let i = 0; i < commonSamples.length; i++) {
+    const item = commonSamples[i];
+    if (
+      !Number.isFinite(item.targetVal) ||
+      !Number.isFinite(item.companionVal) ||
+      !Number.isFinite(item.timestamp)
+    ) {
+      continue;
+    }
+    if (
+      sanity &&
+      (item.targetVal < sanity[0] ||
+        item.targetVal > sanity[1] ||
+        item.companionVal < sanity[0] ||
+        item.companionVal > sanity[1])
+    ) {
+      continue;
+    }
+    valid.push(item);
+    const { hourFrac } = getWibTimeComponents(item.timestamp);
+    const hourInt = Math.min(23, Math.max(0, Math.floor(hourFrac)));
+    hourSet.add(hourInt);
+    quadrantSet.add(Math.floor(hourInt / 6));
+  }
+
+  if (valid.length === 0) return null;
+
+  const bias = computeMedian(valid.map((s) => s.targetVal - s.companionVal)) ?? 0;
+
+  if (valid.length >= 24 && hourSet.size >= 6 && quadrantSet.size >= 2) {
+    const fitted = fitSpatialRidgeWithCoeffs(valid, alpha);
+    if (fitted && fitted.beta[0] >= 0.05 && fitted.beta[0] <= 2.5) {
+      let sqRidge = 0;
+      let sqBias = 0;
+      for (let i = 0; i < valid.length; i++) {
+        const s = valid[i];
+        const rPred = clampPhysicsBounds(varKey, fitted.predict(s.companionVal, s.timestamp));
+        const bPred = clampPhysicsBounds(varKey, s.companionVal + bias);
+        sqRidge += (rPred - s.targetVal) ** 2;
+        sqBias += (bPred - s.targetVal) ** 2;
+      }
+      const ridgeRmse = Math.sqrt(sqRidge / valid.length);
+      const biasRmse = Math.sqrt(sqBias / valid.length);
+
+      if (ridgeRmse <= Math.max(biasRmse * 1.15, biasRmse + 0.5)) {
+        return {
+          mode: "spatial_ridge",
+          sampleCount: valid.length,
+          distinctHours: hourSet.size,
+          bias,
+          slope: fitted.beta[0],
+          predict: (refVal: number, timestamp: number) =>
+            clampPhysicsBounds(varKey, fitted.predict(refVal, timestamp)),
+        };
+      }
+    }
+  }
+
+  return {
+    mode: "scalar_bias",
+    sampleCount: valid.length,
+    distinctHours: hourSet.size,
+    bias,
+    slope: 1.0,
+    predict: (refVal: number) => clampPhysicsBounds(varKey, refVal + bias),
   };
 }
 
@@ -536,7 +808,8 @@ export function runUniversalGapImputation(
   targetVarKey: string,
   config: ImputationConfig = {},
   companionRecords: Array<{ timestamp: number; [key: string]: any }> = [],
-  modelReferencePoints: Array<{ timestamp: number; [key: string]: any }> = []
+  modelReferencePoints: Array<{ timestamp: number; [key: string]: any }> = [],
+  selfHistoryRecords: Array<{ timestamp: number; [key: string]: any }> = []
 ): {
   grid: ImputedGridPoint[];
   summary: ImputationSummary;
@@ -544,6 +817,8 @@ export function runUniversalGapImputation(
   const microLimitMinutes = config.microGapLimitMinutes ?? 15;
   const enableSpatial = config.enableSpatialTransfer ?? true;
   const enableModel = config.enableModelGuided ?? true;
+  const enableSelfHistory = config.enableSelfHistory ?? true;
+  const preferSelfHistory = config.preferSelfHistory ?? false;
   const enableBridge = config.enableBoundaryBridging ?? true;
   const enablePhysics = config.enablePhysicsPostProcessing ?? true;
   const isRainfallVar = targetVarKey === "rainfall";
@@ -573,14 +848,23 @@ export function runUniversalGapImputation(
   const targetFallback =
     computeMedian(targetValuesForStats) ?? DEFAULT_BASELINE_BY_VAR[targetVarKey] ?? 0;
 
-  // Bangun deret terurut untuk pencarian biner kontinu (eliminasi sawtooth)
+  // Bangun profil diurnal node target (H-1..H-N) dan deret pembanding untuk pencarian biner kontinu
+  const selfProfile =
+    enableSelfHistory && !isRainfallVar && selfHistoryRecords.length > 0
+      ? buildSelfHistoryDiurnalProfile(selfHistoryRecords, targetVarKey)
+      : null;
+  const selfHistorySamples =
+    !isRainfallVar && selfHistoryRecords.length > 0
+      ? buildSortedSamples(selfHistoryRecords, targetVarKey)
+      : [];
   const companionSamples = buildSortedSamples(companionRecords, targetVarKey);
   const modelSamples = buildSortedSamples(modelReferencePoints, targetVarKey);
 
-  // 2. Latih Model Spatial Ridge jika companion tersedia
+  // 2. Latih Adaptor Tanda Mikroklimat Node (Spatial Ridge aman / bias skalar) dari target + H-1..H-N
   let spatialPredictor: ((compVal: number, ts: number) => number) | null = null;
   if (enableSpatial && companionSamples.length > 0) {
     const commonPairs: Array<{ targetVal: number; companionVal: number; timestamp: number }> = [];
+    const seenTs = new Set<number>();
     for (const [ts, tItem] of targetMap.entries()) {
       const cVal = interpolateSortedAt(companionSamples, ts, 5 * 60000);
       if (cVal !== null && Number.isFinite(cVal)) {
@@ -589,9 +873,58 @@ export function runUniversalGapImputation(
           companionVal: cVal,
           timestamp: ts,
         });
+        seenTs.add(ts);
       }
     }
-    spatialPredictor = fitSpatialRidgeModel(commonPairs, config.ridgeAlpha ?? 1.0);
+    for (let i = 0; i < selfHistorySamples.length; i++) {
+      const h = selfHistorySamples[i];
+      if (seenTs.has(h.ts)) continue;
+      const cVal = interpolateSortedAt(companionSamples, h.ts, 5 * 60000);
+      if (cVal !== null && Number.isFinite(cVal)) {
+        commonPairs.push({
+          targetVal: h.val,
+          companionVal: cVal,
+          timestamp: h.ts,
+        });
+      }
+    }
+    spatialPredictor =
+      fitNodeSignatureTransferModel(commonPairs, targetVarKey, config.ridgeAlpha ?? 1.0)?.predict ??
+      null;
+  }
+
+  let modelTransferPredictor: ((modelVal: number, ts: number) => number) | null = null;
+  if (enableModel && modelSamples.length > 0 && !isRainfallVar) {
+    const modelPairs: Array<{ targetVal: number; companionVal: number; timestamp: number }> = [];
+    const seenTs = new Set<number>();
+    for (const [ts, tItem] of targetMap.entries()) {
+      const mVal = interpolateSortedAt(modelSamples, ts, MODEL_MAX_GAP_MS);
+      if (mVal !== null && Number.isFinite(mVal)) {
+        modelPairs.push({
+          targetVal: tItem.val,
+          companionVal: mVal,
+          timestamp: ts,
+        });
+        seenTs.add(ts);
+      }
+    }
+    for (let i = 0; i < selfHistorySamples.length; i++) {
+      const h = selfHistorySamples[i];
+      if (seenTs.has(h.ts)) continue;
+      const mVal = interpolateSortedAt(modelSamples, h.ts, MODEL_MAX_GAP_MS);
+      if (mVal !== null && Number.isFinite(mVal)) {
+        modelPairs.push({
+          targetVal: h.val,
+          companionVal: mVal,
+          timestamp: h.ts,
+        });
+      }
+    }
+    if (modelPairs.length >= 12) {
+      modelTransferPredictor =
+        fitNodeSignatureTransferModel(modelPairs, targetVarKey, config.ridgeAlpha ?? 1.0)?.predict ??
+        null;
+    }
   }
 
   // 3. Bangun Grid Kontinu Awal dengan format waktu Asia/Jakarta (+07:00 WIB)
@@ -716,7 +1049,12 @@ export function runUniversalGapImputation(
     const seg = segments[sIdx];
     const segLen = seg.endIndex - seg.startIndex + 1;
     let rawPredicted: number[] = new Array(segLen);
-    let chosenPhase: "micro_spline" | "companion_ridge" | "model_guided" | "pchip_spline" = "micro_spline";
+    let chosenPhase:
+      | "micro_spline"
+      | "self_history"
+      | "companion_ridge"
+      | "model_guided"
+      | "pchip_spline" = "micro_spline";
     let predAtBefore: number | null = null;
     let predAtAfter: number | null = null;
 
@@ -789,9 +1127,38 @@ export function runUniversalGapImputation(
           );
         }
       } else {
-        // 2A: Companion Spatial Ridge Transfer (dengan pencarian kontinu toleransi 15 menit)
-        let companionAvailable = false;
-        if (enableSpatial && spatialPredictor && companionSamples.length > 0) {
+        type MacroCandidateResult = {
+          phase: "self_history" | "companion_ridge" | "model_guided";
+          predicted: number[];
+          edgeBefore: number | null;
+          edgeAfter: number | null;
+        };
+
+        const trySelfHistory = (): MacroCandidateResult | null => {
+          if (!enableSelfHistory || !selfProfile) return null;
+          const histSeries: Array<number | null> = new Array(segLen);
+          let validHistCount = 0;
+          for (let k = 0; k < segLen; k++) {
+            const ts = grid[seg.startIndex + k].timestamp;
+            const hVal = lookupSelfHistoryProfileAt(selfProfile, ts);
+            if (hVal !== null && Number.isFinite(hVal)) {
+              histSeries[k] = hVal;
+              validHistCount++;
+            } else {
+              histSeries[k] = null;
+            }
+          }
+          if (validHistCount === 0) return null;
+          return {
+            phase: "self_history",
+            predicted: fillSubGapsInPredicted(histSeries, seg.valBefore, seg.valAfter, targetFallback),
+            edgeBefore: tBefore !== null ? lookupSelfHistoryProfileAt(selfProfile, tBefore) : null,
+            edgeAfter: tAfter !== null ? lookupSelfHistoryProfileAt(selfProfile, tAfter) : null,
+          };
+        };
+
+        const tryCompanion = (): MacroCandidateResult | null => {
+          if (!enableSpatial || !spatialPredictor || companionSamples.length === 0) return null;
           const compSeries: Array<number | null> = new Array(segLen);
           let validCompCount = 0;
           for (let k = 0; k < segLen; k++) {
@@ -804,49 +1171,55 @@ export function runUniversalGapImputation(
               compSeries[k] = null;
             }
           }
-          if (validCompCount > segLen * 0.4) {
-            companionAvailable = true;
-            chosenPhase = "companion_ridge";
-            rawPredicted = fillSubGapsInPredicted(compSeries, seg.valBefore, seg.valAfter, targetFallback);
-            if (tBefore !== null) {
-              const cb = interpolateSortedAt(companionSamples, tBefore, COMPANION_MAX_GAP_MS);
-              if (cb !== null && Number.isFinite(cb)) predAtBefore = spatialPredictor(cb, tBefore);
-            }
-            if (tAfter !== null) {
-              const ca = interpolateSortedAt(companionSamples, tAfter, COMPANION_MAX_GAP_MS);
-              if (ca !== null && Number.isFinite(ca)) predAtAfter = spatialPredictor(ca, tAfter);
-            }
-          }
-        }
+          if (validCompCount <= segLen * 0.4) return null;
+          const cb = tBefore !== null ? interpolateSortedAt(companionSamples, tBefore, COMPANION_MAX_GAP_MS) : null;
+          const ca = tAfter !== null ? interpolateSortedAt(companionSamples, tAfter, COMPANION_MAX_GAP_MS) : null;
+          return {
+            phase: "companion_ridge",
+            predicted: fillSubGapsInPredicted(compSeries, seg.valBefore, seg.valAfter, targetFallback),
+            edgeBefore: cb !== null && Number.isFinite(cb) ? spatialPredictor(cb, tBefore!) : null,
+            edgeAfter: ca !== null && Number.isFinite(ca) ? spatialPredictor(ca, tAfter!) : null,
+          };
+        };
 
-        // 2B: Atmospheric Model Guided Transfer (ECMWF/ERA5 kontinu per-menit via binary search)
-        if (!companionAvailable && enableModel && modelSamples.length > 0) {
+        const tryModel = (): MacroCandidateResult | null => {
+          if (!enableModel || modelSamples.length === 0) return null;
+          const evalModel = (rawM: number, ts: number) =>
+            modelTransferPredictor ? modelTransferPredictor(rawM, ts) : rawM;
           const modelSeries: Array<number | null> = new Array(segLen);
           let validModelCount = 0;
           for (let k = 0; k < segLen; k++) {
             const ts = grid[seg.startIndex + k].timestamp;
             const mVal = interpolateSortedAt(modelSamples, ts, MODEL_MAX_GAP_MS);
             if (mVal !== null && Number.isFinite(mVal)) {
-              modelSeries[k] = mVal;
+              modelSeries[k] = evalModel(mVal, ts);
               validModelCount++;
             } else {
               modelSeries[k] = null;
             }
           }
-          if (validModelCount > 0) {
-            chosenPhase = "model_guided";
-            rawPredicted = fillSubGapsInPredicted(modelSeries, seg.valBefore, seg.valAfter, targetFallback);
-            if (tBefore !== null) {
-              predAtBefore = interpolateSortedAt(modelSamples, tBefore, MODEL_MAX_GAP_MS);
-            }
-            if (tAfter !== null) {
-              predAtAfter = interpolateSortedAt(modelSamples, tAfter, MODEL_MAX_GAP_MS);
-            }
-          }
-        }
+          if (validModelCount === 0) return null;
+          const mb = tBefore !== null ? interpolateSortedAt(modelSamples, tBefore, MODEL_MAX_GAP_MS) : null;
+          const ma = tAfter !== null ? interpolateSortedAt(modelSamples, tAfter, MODEL_MAX_GAP_MS) : null;
+          return {
+            phase: "model_guided",
+            predicted: fillSubGapsInPredicted(modelSeries, seg.valBefore, seg.valAfter, targetFallback),
+            edgeBefore: mb !== null && Number.isFinite(mb) ? evalModel(mb, tBefore!) : null,
+            edgeAfter: ma !== null && Number.isFinite(ma) ? evalModel(ma, tAfter!) : null,
+          };
+        };
 
-        // 2C: Fallback Fritsch-Carlson Monotone PCHIP Spline sejati
-        if (!companionAvailable && chosenPhase !== "model_guided") {
+        const macroResult = preferSelfHistory
+          ? trySelfHistory() || tryCompanion() || tryModel()
+          : tryCompanion() || tryModel() || trySelfHistory();
+
+        if (macroResult) {
+          chosenPhase = macroResult.phase;
+          rawPredicted = macroResult.predicted;
+          predAtBefore = macroResult.edgeBefore;
+          predAtAfter = macroResult.edgeAfter;
+        } else {
+          // Fallback Fritsch-Carlson Monotone PCHIP Spline sejati
           chosenPhase = "pchip_spline";
           if (
             seg.valBefore !== null &&
@@ -881,7 +1254,9 @@ export function runUniversalGapImputation(
 
     // Fase 2.5: Boundary-Conditioned Residual Bridging (lewati pada rainfall agar monotonicity terjaga)
     const shouldBridge =
-      enableBridge && !isRainfallVar && (chosenPhase === "companion_ridge" || chosenPhase === "model_guided");
+      enableBridge &&
+      !isRainfallVar &&
+      (chosenPhase === "self_history" || chosenPhase === "companion_ridge" || chosenPhase === "model_guided");
     const bridged = shouldBridge
       ? applyBoundaryBridging(rawPredicted, seg.valBefore, seg.valAfter, predAtBefore, predAtAfter)
       : rawPredicted;
@@ -904,28 +1279,11 @@ export function runUniversalGapImputation(
       ? applySavitzkyGolayFilter(allVals, config.savgolWindow ?? 15)
       : allVals;
 
-    const nonNegativeKeys = new Set([
-      "rainfall",
-      "rainrate",
-      "windSpeed",
-      "wind_speed",
-      "lux",
-      "solar_radiation",
-      "battery",
-      "volt",
-    ]);
-
     for (let i = 0; i < grid.length; i++) {
       let finalVal = grid[i].isOriginal ? grid[i].rawVal! : smoothedVals[i];
 
       // Batasan Fisik WMO-No. 8 & Batas Mutlak RH [0%, 100%]
-      if (targetVarKey === "humidity") {
-        finalVal = Math.min(100.0, Math.max(0.0, finalVal));
-      } else if (targetVarKey === "pressure") {
-        finalVal = Math.min(1080.0, Math.max(850.0, finalVal));
-      } else if (nonNegativeKeys.has(targetVarKey)) {
-        finalVal = Math.max(0.0, finalVal);
-      }
+      finalVal = clampPhysicsBounds(targetVarKey, finalVal);
 
       grid[i].imputedVal = Number(finalVal.toFixed(2));
 
@@ -994,7 +1352,8 @@ export function buildCompleteGapNodePayloads(
   primaryVarKey: string,
   config: ImputationConfig = {},
   companionRecords: Array<{ timestamp: number; [key: string]: any }> = [],
-  modelReferencePoints: Array<{ timestamp: number; [key: string]: any }> = []
+  modelReferencePoints: Array<{ timestamp: number; [key: string]: any }> = [],
+  selfHistoryRecords: Array<{ timestamp: number; [key: string]: any }> = []
 ): CompleteGapNodePayload[] {
   const existingByMinute = new Map<number, Record<string, any>>();
   let hasWindSpeed = primaryVarKey === "windSpeed";
@@ -1024,7 +1383,8 @@ export function buildCompleteGapNodePayloads(
         vKey,
         config,
         companionRecords,
-        modelReferencePoints
+        modelReferencePoints,
+        selfHistoryRecords
       );
       auxGrids.set(vKey, grid);
     }
