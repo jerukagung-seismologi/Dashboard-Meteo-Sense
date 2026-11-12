@@ -288,6 +288,20 @@ function formatWibMediumDisplayDate(dateStr: string): string {
   return format(new Date(`${dateStr}T12:00:00+07:00`), "dd MMM yyyy", { locale: localeId });
 }
 
+function readFiniteField(rec: Record<string, any> | null | undefined, varKey: string): number | null {
+  if (!rec) return null;
+  let raw = rec[varKey];
+  if ((raw === undefined || raw === null) && (varKey === "dew" || varKey === "dewpoint")) {
+    raw = varKey === "dew" ? rec.dewpoint : rec.dew;
+  }
+  if ((raw === undefined || raw === null) && (varKey === "windSpeed" || varKey === "wind_speed")) {
+    raw = varKey === "windSpeed" ? rec.wind_speed : rec.windSpeed;
+  }
+  if (raw === undefined || raw === null || raw === "") return null;
+  const num = Number(raw);
+  return Number.isFinite(num) ? num : null;
+}
+
 function NumericInputField({
   value,
   onCommit,
@@ -376,14 +390,14 @@ export default function KoreksiDataPage() {
   const [loadedContext, setLoadedContext] = useState<LoadedDataContext | null>(null);
 
   // Correction Method Configuration
-  const [correctionMethod, setCorrectionMethod] = useState<CorrectionMethod>("offset");
+  const [correctionMethod, setCorrectionMethod] = useState<CorrectionMethod>("interpolate");
   const [offsetValue, setOffsetValue] = useState<number>(0);
   const [driftStart, setDriftStart] = useState<number>(0);
   const [driftEnd, setDriftEnd] = useState<number>(0);
   const [clampMin, setClampMin] = useState<number>(selectedVar.wmoMin);
   const [clampMax, setClampMax] = useState<number>(selectedVar.wmoMax);
   const [scaleFactor, setScaleFactor] = useState<number>(1.0);
-  const [onlyAnomalies, setOnlyAnomalies] = useState<boolean>(false);
+  const [onlyAnomalies, setOnlyAnomalies] = useState<boolean>(true);
   const [enableSolarAnomalyCheck, setEnableSolarAnomalyCheck] = useState<boolean>(false);
 
   // Meteorological Interpolation Sub-methods
@@ -673,18 +687,18 @@ export default function KoreksiDataPage() {
 
       const pairs: Array<{ targetVal: number; companionVal: number; timestamp: number }> = [];
       for (const rec of selfHistoryRecords) {
-        const tVal = Number((rec as any)[varKey]);
+        const tVal = readFiniteField(rec, varKey);
         const rVal = lookupFn(rec.timestamp, varKey);
-        if (Number.isFinite(tVal) && rVal !== null && Number.isFinite(rVal)) {
+        if (tVal !== null && rVal !== null && Number.isFinite(rVal)) {
           pairs.push({ targetVal: tVal, companionVal: rVal, timestamp: rec.timestamp });
         }
       }
       for (const rec of rawRecords) {
         const hour = Math.floor(getWibTimeComponents(rec.timestamp).hourFrac);
         if (hour <= 5 || hour >= 20) {
-          const tVal = Number((rec as any)[varKey]);
+          const tVal = readFiniteField(rec, varKey);
           const rVal = lookupFn(rec.timestamp, varKey);
-          if (Number.isFinite(tVal) && rVal !== null && Number.isFinite(rVal)) {
+          if (tVal !== null && rVal !== null && Number.isFinite(rVal)) {
             pairs.push({ targetVal: tVal, companionVal: rVal, timestamp: rec.timestamp });
           }
         }
@@ -779,9 +793,15 @@ export default function KoreksiDataPage() {
     for (const rec of rawRecords) {
       const hour = Math.floor(getWibTimeComponents(rec.timestamp).hourFrac);
       if (hour <= 5 || hour >= 20) {
-        const tVal = Number((rec as any)["temperature"]);
+        const tVal = readFiniteField(rec, "temperature");
         const rVal = getUnifiedRefValAtTimestamp(rec.timestamp, "temperature");
-        if (Number.isFinite(tVal) && rVal !== null && Number.isFinite(rVal)) {
+        if (
+          tVal !== null &&
+          tVal >= 15.0 &&
+          tVal <= 45.0 &&
+          rVal !== null &&
+          Number.isFinite(rVal)
+        ) {
           nightDiffs.push(tVal - rVal);
         }
       }
@@ -1187,9 +1207,9 @@ export default function KoreksiDataPage() {
 
     for (let i = 0; i < rawRecords.length; i++) {
       const rec = rawRecords[i];
-      const rawField = (rec as any)[varKey];
+      const numVal = readFiniteField(rec, varKey);
 
-      if (rawField === null || rawField === undefined || rawField === "" || !Number.isFinite(Number(rawField))) {
+      if (numVal === null) {
         flags.push({
           index: i,
           timestamp: rec.timestamp,
@@ -1199,8 +1219,6 @@ export default function KoreksiDataPage() {
         });
         continue;
       }
-
-      const numVal = Number(rawField);
 
       // 1. Cek Batas Fisik WMO
       if (numVal < selectedVar.wmoMin || numVal > selectedVar.wmoMax) {
@@ -1220,8 +1238,11 @@ export default function KoreksiDataPage() {
         if (refTemp !== null && Number.isFinite(refTemp)) {
           const { hourFrac } = getWibTimeComponents(rec.timestamp);
           if (hourFrac >= 9.0 && hourFrac <= 17.5) {
-            const excessT = numVal - refTemp - baselineNightOffset;
-            if (excessT >= solarThreshold) {
+            const rawExcess = numVal - refTemp;
+            const excessT = rawExcess - baselineNightOffset;
+            const hasNodeScaleRef =
+              solarRefSource === "self_history" || activeNodeAdapter !== null;
+            if (excessT >= solarThreshold && (!hasNodeScaleRef || rawExcess > 0)) {
               flags.push({
                 index: i,
                 timestamp: rec.timestamp,
@@ -1290,8 +1311,7 @@ export default function KoreksiDataPage() {
       if (i >= 12 && varKey !== "rainfall" && varKey !== "rainrate" && !isNaturalZero) {
         let isFlat = true;
         for (let k = 1; k <= 12; k++) {
-          const pastRaw = (rawRecords[i - k] as any)[varKey];
-          if (pastRaw === null || pastRaw === undefined || Number(pastRaw) !== numVal) {
+          if (readFiniteField(rawRecords[i - k], varKey) !== numVal) {
             isFlat = false;
             break;
           }
@@ -1314,6 +1334,8 @@ export default function KoreksiDataPage() {
     selectedVar,
     getUnifiedRefValAtTimestamp,
     baselineNightOffset,
+    solarRefSource,
+    activeNodeAdapter,
     correctionMethod,
     interpolationSubMethod,
     solarThreshold,
@@ -1378,13 +1400,14 @@ export default function KoreksiDataPage() {
     };
 
     return rawRecords.map((rec, idx) => {
-      const rawVal = Number((rec as any)[varKey]);
+      const rawValOpt = readFiniteField(rec, varKey);
+      const rawVal = rawValOpt ?? NaN;
       const isAnomaly = anomalyIndexSet.has(idx);
       const wibTime = getWibTimeComponents(rec.timestamp);
 
       // If user selected "Hanya Koreksi Anomali" and this point is clean, keep raw
       if (onlyAnomalies && !isAnomaly) {
-        const rawRh = Number((rec as any)["humidity"]);
+        const rawRh = readFiniteField(rec, "humidity") ?? undefined;
         return {
           timestamp: rec.timestamp,
           timestampInSeconds: Math.floor(rec.timestamp / 1000),
@@ -1395,8 +1418,8 @@ export default function KoreksiDataPage() {
           diff: 0,
           isModified: false,
           isAnomaly: false,
-          recoveredRhVal: Number.isFinite(rawRh) ? rawRh : undefined,
-          rawRhVal: Number.isFinite(rawRh) ? rawRh : undefined,
+          recoveredRhVal: rawRh,
+          rawRhVal: rawRh,
           diffRh: 0,
           isRhModified: false,
         };
@@ -1474,7 +1497,7 @@ export default function KoreksiDataPage() {
                 refT,
                 refA,
                 refB,
-                baselineNightOffset
+                varKey === "temperature" ? baselineNightOffset : 0
               );
             } else {
               targetVal = interpolateCubicHermite(
@@ -1558,15 +1581,15 @@ export default function KoreksiDataPage() {
       let isRhModified: boolean = false;
 
       if (selectedVar.key === "temperature" && syncRhRecovery) {
-        const rawRh = Number((rec as any)["humidity"]);
-        const rawDew = Number((rec as any)["dew"] ?? (rec as any)["dew_point"]);
-        if (Number.isFinite(rawRh)) rawRhVal = rawRh;
+        const rawRh = readFiniteField(rec, "humidity");
+        const rawDew = readFiniteField(rec, "dew");
+        if (rawRh !== null) rawRhVal = rawRh;
 
-        if (Number.isFinite(rawDew)) {
+        if (rawDew !== null) {
           const calcRh = recalculateRHMagnus(roundedVal, Math.min(rawDew, roundedVal));
           if (Number.isFinite(calcRh)) {
             recoveredRhVal = Number(Math.min(100, Math.max(0, calcRh)).toFixed(1));
-            if (Number.isFinite(rawRh)) {
+            if (rawRh !== null) {
               diffRh = Number((recoveredRhVal - rawRh).toFixed(1));
               isRhModified = Math.abs(diffRh) > 0.1;
             }
@@ -2909,7 +2932,28 @@ export default function KoreksiDataPage() {
                           correctionMethod === "interpolate" &&
                           interpolationSubMethod === "solar_cosine_hermite"
                         }
-                        onCheckedChange={setEnableSolarAnomalyCheck}
+                        onCheckedChange={(checked) => {
+                          setEnableSolarAnomalyCheck(checked);
+                          if (checked) {
+                            const isNoOpMethod =
+                              (correctionMethod === "offset" && offsetValue === 0) ||
+                              (correctionMethod === "drift" && driftStart === 0 && driftEnd === 0) ||
+                              (correctionMethod === "scale" && scaleFactor === 1.0) ||
+                              (correctionMethod === "clamp" &&
+                                clampMin === selectedVar.wmoMin &&
+                                clampMax === selectedVar.wmoMax);
+                            if (isNoOpMethod) {
+                              setCorrectionMethod("interpolate");
+                              setInterpolationSubMethod("solar_cosine_hermite");
+                              setOnlyAnomalies(true);
+                              setShowReferenceGuide(true);
+                              toast({
+                                title: "Koreksi Kosinus-Hermite Diaktifkan",
+                                description: "Mode otomatis beralih dari parameter Δ=0 ke Interpolasi Pola Node.",
+                              });
+                            }
+                          }
+                        }}
                       />
                       <Label
                         htmlFor="enableSolarAnomalySwitch"
@@ -2973,7 +3017,17 @@ export default function KoreksiDataPage() {
                     <button
                       key={m.id}
                       type="button"
-                      onClick={() => setCorrectionMethod(m.id as CorrectionMethod)}
+                      onClick={() => {
+                        const next = m.id as CorrectionMethod;
+                        if (next !== correctionMethod) {
+                          if (next === "interpolate" || next === "clamp") {
+                            setOnlyAnomalies(true);
+                          } else if (correctionMethod === "interpolate" || correctionMethod === "clamp") {
+                            setOnlyAnomalies(false);
+                          }
+                        }
+                        setCorrectionMethod(next);
+                      }}
                       className={`text-left p-3 rounded-lg border transition-all ${
                         isActive
                           ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500 ring-1 ring-indigo-500"
@@ -3596,6 +3650,11 @@ export default function KoreksiDataPage() {
                     </SelectContent>
                   </Select>
                 )}
+                {stats && stats.modifiedCount === 0 && rawRecords.length > 0 && (
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 text-xs">
+                    Δ=0 • Belum ada koreksi
+                  </Badge>
+                )}
                 <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 text-xs">
                   {rawRecords.length} Titik Observasi
                 </Badge>
@@ -3610,6 +3669,7 @@ export default function KoreksiDataPage() {
               ) : (
                 <ReactECharts
                   option={chartOptions}
+                  notMerge={true}
                   style={{ height: "380px", width: "100%" }}
                   opts={{ renderer: "canvas" }}
                 />
@@ -4122,6 +4182,7 @@ export default function KoreksiDataPage() {
               ) : (
                 <ReactECharts
                   option={gapChartOptions}
+                  notMerge={true}
                   style={{ height: "380px", width: "100%" }}
                   opts={{ renderer: "canvas" }}
                 />
