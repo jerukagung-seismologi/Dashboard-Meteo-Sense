@@ -1,7 +1,8 @@
 // app/dashboard/peta/page.tsx
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchAllDevices } from "@/lib/FetchingDevice";
@@ -15,14 +16,12 @@ import {
   Radio,
   Thermometer,
   Droplets,
-  CloudRain,
-  Compass,
   Globe,
   Layers,
-  Activity,
   CheckCircle2,
   Maximize2,
   Minimize2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,12 +31,16 @@ import {
 import {
   seedBenchmarkDevicesIfEmpty,
   fetchLiveERA5WeatherForStations,
-  BenchmarkDevice,
 } from "@/lib/FetchingBenchmarkDevice";
 import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner";
+import "leaflet/dist/leaflet.css";
 
-export default function PetaPage() {
+function PetaPageContent() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const layerParam = searchParams.get("layer");
+
   const [deviceData, setDeviceData] = useState<StationData[]>(KEBUMEN_DEFAULT_STATIONS);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -165,7 +168,6 @@ export default function PetaPage() {
           });
 
           const userResults = await Promise.all(userDevicePromises);
-          // Combine user devices with benchmark stations from Firestore
           mergedStations = [...userResults, ...benchmarkStations];
         }
       }
@@ -174,7 +176,6 @@ export default function PetaPage() {
       setLastRefreshed(new Date());
     } catch (err) {
       console.error("Error loading map data", err);
-      // Fallback to Kebumen default stations
       setDeviceData(KEBUMEN_DEFAULT_STATIONS);
     } finally {
       setLoading(false);
@@ -222,7 +223,7 @@ export default function PetaPage() {
           <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-3"></div>
             <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-              Memuat Peta Wilayah Kebumen...
+              Memuat Peta Geospasial Kebumen...
             </p>
           </div>
         ),
@@ -237,8 +238,8 @@ export default function PetaPage() {
       <PageHeaderBanner
         gradient="indigo"
         icon={Globe}
-        title="Sistem Informasi Geografis (Universal GIS)"
-        subtitle="Platform geospasial universal untuk pemantauan multi-layer: batas administrasi wilayah, jaringan hidrologi & DAS, persebaran stasiun cuaca, dan dinamika atmosfer real-time"
+        title="Sistem Informasi Geografis"
+        subtitle="Platform pemantauan spasial terintegrasi untuk stasiun cuaca, jaringan sungai, batas wilayah, dan prakiraan iklim"
         actions={
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="relative flex-1 sm:flex-initial">
@@ -256,7 +257,7 @@ export default function PetaPage() {
               size="sm"
               onClick={loadData}
               disabled={loading}
-              className="gap-1.5 text-xs font-semibold text-white bg-slate-800/90 hover:bg-slate-700 border-slate-700 shadow-sm h-8 shrink-0"
+              className="gap-1.5 text-xs font-semibold text-white bg-slate-800/90 hover:bg-slate-700 border-slate-700 shadow-sm h-8 shrink-0 cursor-pointer"
             >
               <RefreshCw className={`h-3.5 w-3.5 text-indigo-400 ${loading ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">Segarkan</span>
@@ -265,7 +266,7 @@ export default function PetaPage() {
               variant="outline"
               size="sm"
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="gap-1.5 text-xs font-semibold text-white bg-indigo-600/90 hover:bg-indigo-600 border-indigo-500 shadow-sm h-8 shrink-0"
+              className="gap-1.5 text-xs font-semibold text-white bg-indigo-600/90 hover:bg-indigo-600 border-indigo-500 shadow-sm h-8 shrink-0 cursor-pointer"
               title="Buka Peta Mode Layar Penuh"
             >
               {isFullscreen ? (
@@ -304,7 +305,7 @@ export default function PetaPage() {
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Termal Spasial
+              Rerata Suhu
             </span>
             <div className="text-xl font-black text-rose-600 dark:text-rose-400 font-mono">
               {stats.avgTemp}{" "}
@@ -320,7 +321,7 @@ export default function PetaPage() {
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Lengas Udara
+              Rerata Kelembapan
             </span>
             <div className="text-xl font-black text-sky-600 dark:text-sky-400 font-mono">
               {stats.avgHum}{" "}
@@ -329,14 +330,14 @@ export default function PetaPage() {
           </div>
         </div>
 
-        {/* Lapisan Data Universal */}
+        {/* Lapisan Data Peta */}
         <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 shrink-0">
             <Layers className="h-5 w-5" />
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Lapisan Universal
+              Lapisan Peta
             </span>
             <div className="text-base font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -346,8 +347,8 @@ export default function PetaPage() {
         </div>
       </div>
 
-      {/* Main Map Container */}
-      <div className="h-[52vh] sm:h-[calc(100dvh-220px)] min-h-[380px] sm:min-h-[500px] w-full rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden relative bg-slate-100 dark:bg-slate-950">
+      {/* Main Single Map Container with Integrated Layers */}
+      <div className="h-[62vh] sm:h-[calc(100dvh-230px)] min-h-[480px] sm:min-h-[580px] w-full rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden relative bg-slate-100 dark:bg-slate-950">
         {loading && (
           <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-white/70 dark:bg-slate-950/70 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-2">
@@ -366,8 +367,24 @@ export default function PetaPage() {
           stats={stats}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          initialShowSeasonal={tabParam === "musim" || layerParam === "musim"}
         />
       </div>
     </div>
+  );
+}
+
+export default function PetaPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center h-[60vh] space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+          <p className="text-xs text-slate-500">Memuat Sistem Informasi Geografis...</p>
+        </div>
+      }
+    >
+      <PetaPageContent />
+    </Suspense>
   );
 }

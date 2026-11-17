@@ -29,10 +29,17 @@ import {
   Wind,
   Thermometer,
   CloudRain,
+  CalendarDays,
+  Loader2,
   X,
 } from "lucide-react";
 import { StationMarkerPopup, StationData } from "./StationMarkerPopup";
 import { StationDetailDrawer } from "./StationDetailDrawer";
+import {
+  KecamatanDetailDrawer,
+  KecamatanSeasonalData,
+} from "./KecamatanDetailDrawer";
+import { getSeasonData } from "@/lib/SeasonalFirestoreService";
 
 // Fix default leaflet icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -260,6 +267,7 @@ interface MapProps {
   stats?: MapStats;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
+  initialShowSeasonal?: boolean;
 }
 
 const Map = ({
@@ -270,6 +278,7 @@ const Map = ({
   stats,
   searchQuery,
   onSearchChange,
+  initialShowSeasonal = false,
 }: MapProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [internalFullscreen, setInternalFullscreen] = useState(false);
@@ -282,12 +291,72 @@ const Map = ({
   const [selectedStation, setSelectedStation] = useState<StationData | null>(null);
   const [showLayerMenu, setShowLayerMenu] = useState<boolean>(false);
 
-  // Layer Overlay Tematik Universal (Sungai, Batas Wilayah, Stasiun)
+  // Layer Overlay Tematik (Sungai, Batas Wilayah, Stasiun, Prakiraan Musim)
   const [showRivers, setShowRivers] = useState<boolean>(true);
   const [riverGeoJson, setRiverGeoJson] = useState<any>(null);
   const [showBoundaries, setShowBoundaries] = useState<boolean>(true);
   const [boundaryGeoJson, setBoundaryGeoJson] = useState<any>(null);
   const [showStations, setShowStations] = useState<boolean>(true);
+
+  // Lapisan Prakiraan Musim & Iklim (Choropleth dari Cloud Firestore)
+  const [showSeasonal, setShowSeasonal] = useState<boolean>(initialShowSeasonal);
+  const [seasonalMetric, setSeasonalMetric] = useState<"amh" | "sh" | "curah">("amh");
+  const [seasonalRecords, setSeasonalRecords] = useState<Record<string, KecamatanSeasonalData>>({});
+  const [seasonalLoading, setSeasonalLoading] = useState<boolean>(false);
+  const [selectedKecamatan, setSelectedKecamatan] = useState<KecamatanSeasonalData | null>(null);
+
+  useEffect(() => {
+    if (initialShowSeasonal !== undefined) {
+      setShowSeasonal(initialShowSeasonal);
+    }
+  }, [initialShowSeasonal]);
+
+  // Muat data prediksi musim dari Firestore jika lapisan diaktifkan
+  useEffect(() => {
+    if (showSeasonal && Object.keys(seasonalRecords).length === 0) {
+      setSeasonalLoading(true);
+      getSeasonData("2026_2027", "", "kebumen")
+        .then((res) => {
+          const recMap: Record<string, KecamatanSeasonalData> = {};
+          const hujanList = res.kecDataset?.hujan || [];
+          for (const item of hujanList) {
+            const key = (item.kecamatan || "").toLowerCase().trim();
+            const code = item.code || "";
+            recMap[key] = item;
+            if (code) recMap[code] = item;
+          }
+          setSeasonalRecords(recMap);
+        })
+        .catch((err) => console.warn("Gagal memuat data musiman:", err))
+        .finally(() => setSeasonalLoading(false));
+    }
+  }, [showSeasonal, seasonalRecords]);
+
+  // Kalkulasi Pewarnaan Poligon Berdasarkan Metrik Musim Terpilih
+  const getSeasonalColor = (record?: KecamatanSeasonalData) => {
+    if (!record) return "#94a3b8";
+    if (seasonalMetric === "amh") {
+      const status = (record.perbandingan_amh_thd_normal || "").toLowerCase();
+      if (status.includes("maju")) return "#2563eb"; // Biru
+      if (status.includes("mundur")) return "#ea580c"; // Oranye
+      return "#16a34a"; // Hijau (Sama)
+    }
+    if (seasonalMetric === "sh") {
+      const sh = (record.sifat_hujan || "").toLowerCase();
+      if (sh.includes("atas")) return "#0891b2"; // Cyan
+      if (sh.includes("bawah")) return "#ef4444"; // Merah
+      return "#22c55e"; // Hijau (Normal)
+    }
+    if (seasonalMetric === "curah") {
+      const ch = record.prakiraan_curah_hujan_total || 0;
+      if (ch >= 3000) return "#1e1b4b";
+      if (ch >= 2500) return "#1d4ed8";
+      if (ch >= 2000) return "#0284c7";
+      if (ch >= 1500) return "#059669";
+      return "#d97706";
+    }
+    return "#94a3b8";
+  };
 
   useEffect(() => {
     // 1. Fetch Jaringan Sungai & Hidrologi DAS
@@ -299,7 +368,7 @@ const Map = ({
       .then((data) => setRiverGeoJson(data))
       .catch((err) => console.warn("Informasi layer sungai:", err));
 
-    // 2. Fetch Batas Administrasi Kecamatan (Universal Boundary Layer)
+    // 2. Fetch Batas Administrasi Kecamatan
     fetch("/data/kebumen/kebumen_kecamatan.json")
       .then((res) => {
         if (!res.ok) throw new Error("Gagal mengambil data batas kecamatan");
@@ -437,7 +506,7 @@ const Map = ({
         {isFullscreen && (
           <div className="hidden lg:flex items-center gap-2 pl-2 pr-3 border-r border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100">
             <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
-            <span>Universal GIS Meteo Sense</span>
+            <span>Sistem Informasi Geografis</span>
           </div>
         )}
 
@@ -540,10 +609,10 @@ const Map = ({
                   </div>
                 </div>
 
-                {/* Thematic Overlays (Universal Spatial Layers) */}
+                {/* Thematic Overlays (Spatial Layers) */}
                 <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-800 space-y-1">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 py-0.5">
-                    Lapisan Universal
+                    Lapisan Peta
                   </div>
 
                   {/* Toggle Stasiun & Sensor Cuaca */}
@@ -602,6 +671,66 @@ const Map = ({
                       {showBoundaries ? "AKTIF" : "OFF"}
                     </span>
                   </button>
+
+                  {/* Toggle Lapisan Prakiraan Musim & Iklim (Choropleth Firestore) */}
+                  <div className="pt-1 border-t border-slate-200/50 dark:border-slate-800/80">
+                    <button
+                      type="button"
+                      onClick={() => setShowSeasonal(!showSeasonal)}
+                      className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
+                        showSeasonal
+                          ? "bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 font-bold"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${showSeasonal ? "bg-sky-500" : "bg-slate-300 dark:bg-slate-600"}`}></span>
+                        <span>Prakiraan Musim (Iklim)</span>
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${showSeasonal ? "bg-sky-500 text-white font-bold" : "bg-slate-200 dark:bg-slate-700 text-slate-500"}`}>
+                        {showSeasonal ? "AKTIF" : "OFF"}
+                      </span>
+                    </button>
+
+                    {/* Sub-selector indikator saat lapisan musim aktif */}
+                    {showSeasonal && (
+                      <div className="grid grid-cols-3 gap-1 px-1 pt-1.5 pb-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setSeasonalMetric("amh")}
+                          className={`py-1 px-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                            seasonalMetric === "amh"
+                              ? "bg-sky-600 text-white shadow-xs"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                          }`}
+                        >
+                          Awal MH
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSeasonalMetric("sh")}
+                          className={`py-1 px-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                            seasonalMetric === "sh"
+                              ? "bg-sky-600 text-white shadow-xs"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                          }`}
+                        >
+                          Sifat Hujan
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSeasonalMetric("curah")}
+                          className={`py-1 px-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                            seasonalMetric === "curah"
+                              ? "bg-sky-600 text-white shadow-xs"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                          }`}
+                        >
+                          Curah Hujan
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -650,15 +779,90 @@ const Map = ({
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
         <div>
           <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
-            Sistem Geografis Universal
+            Sistem Informasi Geografis
           </span>
           <span className="text-[10px] text-slate-400 block -mt-0.5">
             {showStations ? `${devices.length} Stasiun` : "Stasiun Nonaktif"}
             {showRivers ? " • Sungai/DAS" : ""}
             {showBoundaries ? " • Batas Wilayah" : ""}
+            {showSeasonal ? ` • Musim (${seasonalMetric.toUpperCase()})` : ""}
           </span>
         </div>
       </div>
+
+      {/* Floating Seasonal Legend Badge */}
+      {showSeasonal && (
+        <div className="absolute bottom-4 right-4 z-[1000] p-2.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-200/80 dark:border-slate-800 text-xs flex flex-col gap-1.5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-1">
+            <span className="font-bold text-[10px] text-slate-500 uppercase tracking-wider flex items-center gap-1">
+              <CalendarDays className="h-3 w-3 text-sky-500" />
+              <span>
+                {seasonalMetric === "amh"
+                  ? "Awal Musim Hujan 2026/27"
+                  : seasonalMetric === "sh"
+                  ? "Sifat Hujan 2026/27"
+                  : "Akumulasi Hujan Total"}
+              </span>
+            </span>
+            {seasonalLoading && <Loader2 className="h-3 w-3 animate-spin text-sky-500" />}
+          </div>
+
+          <div className="flex items-center gap-2 text-[11px] font-semibold">
+            {seasonalMetric === "amh" && (
+              <>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-blue-600"></span>
+                  <span>Maju</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-emerald-600"></span>
+                  <span>Sama</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-amber-600"></span>
+                  <span>Mundur</span>
+                </span>
+              </>
+            )}
+            {seasonalMetric === "sh" && (
+              <>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-cyan-600"></span>
+                  <span>Atas Normal</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-emerald-600"></span>
+                  <span>Normal</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-rose-600"></span>
+                  <span>Bawah Normal</span>
+                </span>
+              </>
+            )}
+            {seasonalMetric === "curah" && (
+              <>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[#1e1b4b]"></span>
+                  <span>&gt;3000</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-blue-700"></span>
+                  <span>2500-3000</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-sky-600"></span>
+                  <span>2000-2500</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-amber-600"></span>
+                  <span>&lt;2000 mm</span>
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Fullscreen Telemetry HUD Badges (Bottom Right) */}
       {isFullscreen && stats && (
@@ -696,30 +900,72 @@ const Map = ({
           maxZoom={19}
         />
 
-        {/* Overlay Batas Administrasi Kecamatan (Universal Layer) */}
-        {showBoundaries && boundaryGeoJson && (
+        {/* Overlay Batas Administrasi / Prakiraan Musim Kecamatan */}
+        {(showBoundaries || showSeasonal) && boundaryGeoJson && (
           <GeoJSON
-            key="batas-kecamatan-vector-layer"
+            key={`batas-kecamatan-${showSeasonal ? seasonalMetric : "standard"}`}
             data={boundaryGeoJson}
-            style={() => ({
-              color: isDarkMode ? "#38bdf8" : "#4f46e5",
-              weight: 1.6,
-              opacity: 0.65,
-              fillColor: isDarkMode ? "#38bdf8" : "#6366f1",
-              fillOpacity: 0.03,
-              dashArray: "4 4",
-            })}
+            style={(feature) => {
+              if (showSeasonal) {
+                const p = feature?.properties || {};
+                const nameKey = (p.name || p.nm_kecamatan || p.kecamatan || "").toLowerCase().trim();
+                const codeKey = p.kemendagri_code || p.code || "";
+                const rec = seasonalRecords[nameKey] || (codeKey ? seasonalRecords[codeKey] : undefined);
+                const fillColor = getSeasonalColor(rec);
+                return {
+                  color: "#ffffff",
+                  weight: 1.5,
+                  opacity: 0.9,
+                  fillColor,
+                  fillOpacity: 0.65,
+                };
+              }
+              return {
+                color: isDarkMode ? "#38bdf8" : "#4f46e5",
+                weight: 1.6,
+                opacity: 0.65,
+                fillColor: isDarkMode ? "#38bdf8" : "#6366f1",
+                fillOpacity: 0.03,
+                dashArray: "4 4",
+              };
+            }}
             onEachFeature={(feature, layer) => {
               const p = feature.properties || {};
               const name = p.name || p.nm_kecamatan || p.kecamatan || "Kecamatan";
               const code = p.kemendagri_code || p.code || "";
+              const nameKey = name.toLowerCase().trim();
+              const rec = seasonalRecords[nameKey] || (code ? seasonalRecords[code] : undefined);
+
+              let tooltipExtra = "";
+              if (showSeasonal && rec) {
+                if (seasonalMetric === "amh") {
+                  tooltipExtra = `<div style="margin-top:2px;font-size:10px;color:#1e293b;">Awal MH: <strong>${rec.prakiraan_amh || "-"}</strong> (${rec.perbandingan_amh_thd_normal || "Sama"})</div>`;
+                } else if (seasonalMetric === "sh") {
+                  tooltipExtra = `<div style="margin-top:2px;font-size:10px;color:#1e293b;">Sifat Hujan: <strong>${rec.sifat_hujan || "Normal"}</strong></div>`;
+                } else if (seasonalMetric === "curah") {
+                  tooltipExtra = `<div style="margin-top:2px;font-size:10px;color:#1e293b;">Total Curah Hujan: <strong>${rec.prakiraan_curah_hujan_total?.toLocaleString("id-ID") || "-"} mm</strong></div>`;
+                }
+              }
+
               layer.bindTooltip(
                 `<div style="font-family: system-ui, -apple-system, sans-serif; font-size: 11px; padding: 2px 4px; line-height: 1.3;">
                   <div style="font-weight: 800; color: #4338ca; font-size: 11.5px;">Kecamatan ${name}</div>
                   ${code ? `<div style="font-size: 9.5px; color: #64748b;">Kode Kemendagri: ${code}</div>` : ""}
+                  ${tooltipExtra}
                 </div>`,
                 { sticky: true, direction: "center" }
               );
+
+              layer.on("click", () => {
+                if (rec) {
+                  setSelectedKecamatan(rec);
+                } else {
+                  setSelectedKecamatan({
+                    kecamatan: name,
+                    code,
+                  });
+                }
+              });
             }}
           />
         )}
@@ -816,6 +1062,13 @@ const Map = ({
       <StationDetailDrawer
         station={selectedStation}
         onClose={() => setSelectedStation(null)}
+        isDarkMode={isDarkMode}
+      />
+
+      {/* Slide-out Detailed Kecamatan Seasonal Forecast & KATAM Drawer */}
+      <KecamatanDetailDrawer
+        data={selectedKecamatan}
+        onClose={() => setSelectedKecamatan(null)}
         isDarkMode={isDarkMode}
       />
     </div>
