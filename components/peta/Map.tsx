@@ -647,11 +647,21 @@ const Map = ({
             key="sungai-kebumen-vector-layer"
             data={riverGeoJson}
             style={(feature) => {
-              const isMain = feature?.properties?.type === "main";
+              const pType = feature?.properties?.type;
+              if (pType === "waterbody") {
+                return {
+                  color: "#0284c7",
+                  fillColor: "#38bdf8",
+                  fillOpacity: 0.35,
+                  weight: 1.5,
+                  opacity: 0.9,
+                };
+              }
+              const isMain = pType === "main";
               return {
                 color: isMain ? "#0284c7" : "#38bdf8",
-                weight: isMain ? 3.2 : 1.6,
-                opacity: isMain ? 0.9 : 0.65,
+                weight: isMain ? 3.4 : 1.6,
+                opacity: isMain ? 0.92 : 0.65,
                 lineCap: "round",
                 lineJoin: "round",
               };
@@ -665,6 +675,11 @@ const Map = ({
                   ${
                     p.dis_m3s
                       ? `<div style="font-size: 9.5px; color: #0284c7; font-weight: 600; margin-top: 1px;">Debit Rerata: ${p.dis_m3s} m³/detik &bull; Pjg: ${p.length_km} km</div>`
+                      : ""
+                  }
+                  ${
+                    p.detail
+                      ? `<div style="font-size: 9px; color: #0d9488; font-style: italic; margin-top: 1px;">${p.detail}</div>`
                       : ""
                   }
                 </div>`,
