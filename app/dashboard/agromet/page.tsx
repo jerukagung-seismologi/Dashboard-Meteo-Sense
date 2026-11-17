@@ -292,25 +292,6 @@ function AgrometPageContent() {
 
   return (
     <div className="space-y-5 pb-16">
-      {/* Top Banner Quick Link to SIG */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-        <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-semibold px-1">
-          <Sprout className="h-4 w-4 text-emerald-500" />
-          <span>Monitoring Cuaca Mikro &amp; Agrometeorologi Lahan</span>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          asChild
-          className="gap-2 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 border-sky-300 dark:border-sky-800/80 bg-sky-50/50 dark:bg-sky-950/40 h-8 cursor-pointer"
-        >
-          <Link href="/dashboard/peta?tab=musim">
-            <CalendarDays className="h-3.5 w-3.5 text-sky-500" />
-            <span>Buka Peta Prakiraan Musim di SIG &rarr;</span>
-          </Link>
-        </Button>
-      </div>
-
       {/* Main Agromet Content */}
       <div className="space-y-6">
           {sensorOptions.length === 0 ? (

@@ -11,6 +11,7 @@ import type {
   KemarauRecord,
   UnifiedLayerDef,
 } from "@/lib/seasonalPredictionTypes";
+import type { StationData } from "@/components/peta/StationMarkerPopup";
 
 interface SeasonalLeafletCanvasProps {
   geojson: GeoJSON.FeatureCollection;
@@ -24,6 +25,8 @@ interface SeasonalLeafletCanvasProps {
   kabupatenName?: string;
   isDarkMode?: boolean;
   showRivers?: boolean;
+  stations?: StationData[];
+  showStations?: boolean;
 }
 
 const BASEMAP_CONFIGS: Record<
@@ -62,12 +65,15 @@ export default function SeasonalLeafletCanvas({
   onSelectCode,
   kabupatenName = "Kabupaten Kebumen",
   showRivers = true,
+  stations,
+  showStations = true,
 }: SeasonalLeafletCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const geoLayerRef = useRef<L.GeoJSON | null>(null);
   const riverLayerRef = useRef<L.GeoJSON | null>(null);
+  const stationLayerRef = useRef<L.LayerGroup | null>(null);
   const boundsRef = useRef<L.LatLngBounds | null>(null);
   const prevGeojsonRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const onSelectRef = useRef(onSelectCode);
@@ -158,6 +164,8 @@ export default function SeasonalLeafletCanvas({
       mapRef.current = null;
       tileLayerRef.current = null;
       geoLayerRef.current = null;
+      riverLayerRef.current = null;
+      stationLayerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -335,6 +343,87 @@ export default function SeasonalLeafletCanvas({
     }
   }, [showRivers, kabupatenName]);
 
+  // Perbarui Overlay Titik Stasiun Cuaca & Sensor IoT
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (stationLayerRef.current) {
+      map.removeLayer(stationLayerRef.current);
+      stationLayerRef.current = null;
+    }
+
+    if (showStations && stations && stations.length > 0) {
+      const group = L.layerGroup();
+      stations.forEach((st) => {
+        const isOnline = st.status !== "offline";
+        const tempText = st.temp ? `${st.temp.toFixed(1)}°C` : "--°C";
+        const humText = st.hum ? `${st.hum}%` : "--%";
+
+        const iconHtml = `
+          <div style="
+            background: rgba(15, 23, 42, 0.95);
+            border: 1.5px solid #6366f1;
+            color: #ffffff;
+            border-radius: 9999px;
+            padding: 2px 7px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+            font-size: 10.5px;
+            font-weight: 700;
+            white-space: nowrap;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+          ">
+            <span style="
+              width: 6px;
+              height: 6px;
+              border-radius: 9999px;
+              background-color: ${isOnline ? '#22c55e' : '#ef4444'};
+              display: inline-block;
+            "></span>
+            <span style="color: #fda4af;">${tempText}</span>
+            <span style="color: #7dd3fc;">${humText}</span>
+          </div>
+        `;
+
+        const customIcon = L.divIcon({
+          html: iconHtml,
+          className: "custom-station-leaflet-marker",
+          iconSize: [84, 24],
+          iconAnchor: [42, 12],
+        });
+
+        const marker = L.marker([st.lat, st.lng], { icon: customIcon });
+
+        const popupContent = `
+          <div style="font-family: inherit; font-size: 12px; color: #0f172a; min-width: 180px; padding: 2px;">
+            <div style="font-weight: 800; font-size: 13px; color: #4338ca;">${st.name}</div>
+            <div style="font-size: 10.5px; color: #64748b; margin-bottom: 6px;">${st.location || 'Kabupaten Kebumen'}</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px; background: #f8fafc; padding: 6px 8px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div>Suhu: <strong style="color: #e11d48;">${st.temp ? st.temp.toFixed(1) : '-'} °C</strong></div>
+              <div>RH: <strong style="color: #0284c7;">${st.hum ?? '-'} %</strong></div>
+              <div>Curah: <strong>${st.rainfall ?? 0} mm</strong></div>
+              <div>Angin: <strong>${st.windSpeed ? st.windSpeed.toFixed(1) : 0} m/s</strong></div>
+            </div>
+            <div style="margin-top: 6px; font-size: 10px; color: ${isOnline ? '#16a34a' : '#dc2626'}; font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
+              <span>Status: ${isOnline ? '● Online Real-time' : '○ Standby'}</span>
+              <span style="color: #64748b;">${st.lastUpdate || ''}</span>
+            </div>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent, { offset: [0, -10] });
+        group.addLayer(marker);
+      });
+
+      group.addTo(map);
+      stationLayerRef.current = group;
+    }
+  }, [showStations, stations]);
+
   const handleResetView = () => {
     if (mapRef.current && boundsRef.current) {
       mapRef.current.fitBounds(boundsRef.current, { padding: [32, 32] });
@@ -343,6 +432,12 @@ export default function SeasonalLeafletCanvas({
 
   return (
     <div className="relative w-full h-full">
+      <style jsx global>{`
+        .custom-station-leaflet-marker {
+          background: transparent !important;
+          border: none !important;
+        }
+      `}</style>
       <div ref={containerRef} className="w-full h-full" />
 
       {/* Tombol Reset Posisi tepat di bawah Zoom (+/-) kanan atas */}

@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { AlertTriangle, Layers, Loader2, MapPin, Search, X } from "lucide-react";
+import { AlertTriangle, Layers, Loader2, MapPin, Search, X, Radio } from "lucide-react";
 import KatamTimeline from "./KatamTimeline";
 import CewsAlertCard from "./CewsAlertCard";
 import SeasonEvaluationTab from "./SeasonEvaluationTab";
@@ -21,6 +21,7 @@ import type {
   SeasonId,
   UnifiedLayerDef,
 } from "@/lib/seasonalPredictionTypes";
+import type { StationData } from "@/components/peta/StationMarkerPopup";
 
 const SeasonalLeafletCanvas = dynamic(() => import("./SeasonalLeafletCanvas"), {
   ssr: false,
@@ -333,9 +334,13 @@ export const KABUPATEN_CONFIGS: KabupatenConfig[] = [
 
 interface SeasonalPredictionMapProps {
   isDarkMode?: boolean;
+  stations?: StationData[];
 }
 
-export default function SeasonalPredictionMap({ isDarkMode = false }: SeasonalPredictionMapProps) {
+export default function SeasonalPredictionMap({
+  isDarkMode = false,
+  stations,
+}: SeasonalPredictionMapProps) {
   const [kecGeojson, setKecGeojson] = useState<GeoJSON.FeatureCollection | null>(null);
   const [kecDataset, setKecDataset] = useState<SeasonalDataset | null>(null);
   const [desaGeojson, setDesaGeojson] = useState<GeoJSON.FeatureCollection | null>(null);
@@ -358,6 +363,7 @@ export default function SeasonalPredictionMap({ isDarkMode = false }: SeasonalPr
   const [panelOpen, setPanelOpen] = useState<boolean>(true);
   const [basemap, setBasemap] = useState<BasemapId>("jalan");
   const [showRivers, setShowRivers] = useState<boolean>(true);
+  const [showStations, setShowStations] = useState<boolean>(true);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [detailTab, setDetailTab] = useState<"ringkasan" | "evaluasi" | "katam" | "grafik" | "cews">("ringkasan");
@@ -690,6 +696,8 @@ export default function SeasonalPredictionMap({ isDarkMode = false }: SeasonalPr
         }
         isDarkMode={isDarkMode}
         showRivers={showRivers}
+        stations={stations}
+        showStations={showStations}
       />
 
       {/* Top-Center High-Contrast Blue Banner (CEWS BMKG style) */}
@@ -934,7 +942,7 @@ export default function SeasonalPredictionMap({ isDarkMode = false }: SeasonalPr
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                    Aliran Sungai & Waduk
+                    Aliran Sungai &amp; Waduk
                   </p>
                   <p className="text-[10px] text-slate-500">
                     Kelokan riil Luk Ulo, Kemit, Waduk Sempor
@@ -948,6 +956,29 @@ export default function SeasonalPredictionMap({ isDarkMode = false }: SeasonalPr
                 />
               </div>
             </div>
+
+            {/* Lapisan Tematik Stasiun Cuaca */}
+            {stations && stations.length > 0 && (
+              <div className="border-t border-slate-200 dark:border-slate-700 px-3 py-2.5 bg-indigo-50/50 dark:bg-slate-800/40">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                      <Radio className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>Titik Stasiun Cuaca</span>
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      {stations.length} stasiun telemetri real-time
+                    </p>
+                  </div>
+                  <Switch
+                    checked={showStations}
+                    onCheckedChange={setShowStations}
+                    aria-label="Toggle Titik Stasiun"
+                    className="scale-90 data-[state=checked]:bg-indigo-600 data-[state=unchecked]:bg-slate-300 dark:data-[state=unchecked]:bg-slate-700 cursor-pointer"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
