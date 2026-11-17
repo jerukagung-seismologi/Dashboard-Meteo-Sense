@@ -33,6 +33,7 @@ import {
   Loader2,
   X,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { StationMarkerPopup, StationData } from "./StationMarkerPopup";
 import { StationDetailDrawer } from "./StationDetailDrawer";
 import {
@@ -379,54 +380,29 @@ const Map = ({
   }, []);
 
   const toggleFullscreen = () => {
-    const nextState = !isFullscreen;
     if (onToggleFullscreen) {
       onToggleFullscreen();
     } else {
-      setInternalFullscreen(nextState);
-    }
-
-    if (nextState) {
-      if (containerRef.current?.requestFullscreen) {
-        containerRef.current.requestFullscreen().catch(() => {});
-      } else if ((containerRef.current as any)?.webkitRequestFullscreen) {
-        (containerRef.current as any).webkitRequestFullscreen();
-      }
-    } else {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
+      setInternalFullscreen((prev) => !prev);
     }
   };
 
-  // Sync with native browser fullscreen changes
+  // Lock body scroll when fullscreen is active
   useEffect(() => {
-    const handleFsChange = () => {
-      const isNativeFs = !!document.fullscreenElement;
-      if (!isNativeFs && isFullscreen) {
-        if (onToggleFullscreen) {
-          onToggleFullscreen();
-        } else {
-          setInternalFullscreen(false);
-        }
-      }
-    };
-
-    document.addEventListener("fullscreenchange", handleFsChange);
-    document.addEventListener("webkitfullscreenchange", handleFsChange);
+    if (isFullscreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
     return () => {
-      document.removeEventListener("fullscreenchange", handleFsChange);
-      document.removeEventListener("webkitfullscreenchange", handleFsChange);
+      document.body.style.overflow = "";
     };
-  }, [isFullscreen, onToggleFullscreen]);
+  }, [isFullscreen]);
 
   // Support Escape key to exit fullscreen smoothly
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isFullscreen) {
-        if (document.fullscreenElement) {
-          document.exitFullscreen().catch(() => {});
-        }
         if (onToggleFullscreen) {
           onToggleFullscreen();
         } else {
@@ -465,7 +441,7 @@ const Map = ({
       ref={containerRef}
       className={
         isFullscreen
-          ? "fixed inset-0 z-[9999] w-screen h-screen bg-slate-950 overflow-hidden flex flex-col font-sans"
+          ? "fixed inset-0 z-[99999] w-screen h-screen bg-slate-950 overflow-hidden flex flex-col font-sans"
           : "relative h-full w-full overflow-hidden rounded-2xl"
       }
     >
@@ -578,158 +554,155 @@ const Map = ({
             </button>
 
             {showLayerMenu && (
-              <div className="absolute top-11 right-0 w-52 p-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl border border-slate-200/80 dark:border-slate-800 space-y-2 animate-in fade-in zoom-in-95 duration-150 z-[1100]">
-                {/* Basemap Selection */}
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 py-0.5">
-                    Peta Dasar
+              <div className="absolute top-11 right-0 w-64 sm:w-72 p-3 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl border border-slate-200/80 dark:border-slate-800 space-y-3 animate-in fade-in zoom-in-95 duration-150 z-[1100]">
+                {/* 1. LAPISAN INFORMASI (DATA & TEMATIK) */}
+                <div className="space-y-1.5">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1 pb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Layers className="h-3.5 w-3.5 text-indigo-500" />
+                      <span>Lapisan Informasi</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowLayerMenu(false)}
+                      className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                  <div className="space-y-0.5 mt-0.5">
+
+                  {/* Toggle Stasiun & Node Sensor Cuaca */}
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+                    <div>
+                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <Radio className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                        <span>Stasiun &amp; Sensor ({devices.length})</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Node sensor telemetri riil</p>
+                    </div>
+                    <Switch
+                      checked={showStations}
+                      onCheckedChange={setShowStations}
+                      className="scale-90 data-[state=checked]:bg-indigo-600 cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Toggle Prakiraan Musim (Iklim) */}
+                  <div className="p-2 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <CalendarDays className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+                          <span>Prakiraan Musim</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Choropleth iklim 26 kecamatan</p>
+                      </div>
+                      <Switch
+                        checked={showSeasonal}
+                        onCheckedChange={setShowSeasonal}
+                        className="scale-90 data-[state=checked]:bg-sky-600 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Sub-selector indikator saat lapisan musim aktif */}
+                    {showSeasonal && (
+                      <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1">
+                        <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                          Metrik Prakiraan Musim:
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setSeasonalMetric("amh")}
+                            className={`py-1 px-1 text-[10px] font-bold rounded-lg transition-all text-center cursor-pointer ${
+                              seasonalMetric === "amh"
+                                ? "bg-sky-600 text-white shadow-xs"
+                                : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600"
+                            }`}
+                          >
+                            Awal MH
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSeasonalMetric("sh")}
+                            className={`py-1 px-1 text-[10px] font-bold rounded-lg transition-all text-center cursor-pointer ${
+                              seasonalMetric === "sh"
+                                ? "bg-sky-600 text-white shadow-xs"
+                                : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600"
+                            }`}
+                          >
+                            Sifat Hujan
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSeasonalMetric("curah")}
+                            className={`py-1 px-1 text-[10px] font-bold rounded-lg transition-all text-center cursor-pointer ${
+                              seasonalMetric === "curah"
+                                ? "bg-sky-600 text-white shadow-xs"
+                                : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600"
+                            }`}
+                          >
+                            Curah Hujan
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Toggle Aliran Sungai & Waduk */}
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+                    <div>
+                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Aliran Sungai &amp; Waduk
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">DAS Luk Ulo, Kemit, Sempor</p>
+                    </div>
+                    <Switch
+                      checked={showRivers}
+                      onCheckedChange={setShowRivers}
+                      className="scale-90 data-[state=checked]:bg-sky-600 cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Toggle Batas Administrasi Kecamatan */}
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+                    <div>
+                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Batas Kecamatan
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Batas wilayah administrasi</p>
+                    </div>
+                    <Switch
+                      checked={showBoundaries}
+                      onCheckedChange={setShowBoundaries}
+                      className="scale-90 data-[state=checked]:bg-emerald-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. PETA DASAR (BASEMAP) - DIPISAH TEGAS DI BAWAH SESUAI STANDAR DASHBOARD JERUKAGUNG */}
+                <div className="pt-2.5 border-t border-slate-200 dark:border-slate-700 space-y-1.5">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
+                    Peta Dasar (Basemap)
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
                     {(Object.keys(MAP_LAYERS) as MapLayerType[]).map((layerKey) => {
                       const l = MAP_LAYERS[layerKey];
                       const isSelected = activeLayer === layerKey;
                       return (
                         <button
                           key={layerKey}
-                          onClick={() => {
-                            setActiveLayer(layerKey);
-                            setShowLayerMenu(false);
-                          }}
-                          className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between ${
+                          onClick={() => setActiveLayer(layerKey)}
+                          className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all text-center border cursor-pointer ${
                             isSelected
-                              ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-bold"
-                              : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                              ? "bg-blue-700 border-blue-700 text-white shadow-xs"
+                              : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                           }`}
                         >
-                          <span>{l.name}</span>
-                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>}
+                          {l.name}
                         </button>
                       );
                     })}
-                  </div>
-                </div>
-
-                {/* Thematic Overlays (Spatial Layers) */}
-                <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-800 space-y-1">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 py-0.5">
-                    Lapisan Peta
-                  </div>
-
-                  {/* Toggle Stasiun & Sensor Cuaca */}
-                  <button
-                    type="button"
-                    onClick={() => setShowStations(!showStations)}
-                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
-                      showStations
-                        ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-bold"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${showStations ? "bg-indigo-500" : "bg-slate-300 dark:bg-slate-600"}`}></span>
-                      <span>Stasiun & Sensor</span>
-                    </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${showStations ? "bg-indigo-500 text-white font-bold" : "bg-slate-200 dark:bg-slate-700 text-slate-500"}`}>
-                      {showStations ? "AKTIF" : "OFF"}
-                    </span>
-                  </button>
-
-                  {/* Toggle Aliran Sungai & DAS */}
-                  <button
-                    type="button"
-                    onClick={() => setShowRivers(!showRivers)}
-                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
-                      showRivers
-                        ? "bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 font-bold"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${showRivers ? "bg-sky-500" : "bg-slate-300 dark:bg-slate-600"}`}></span>
-                      <span>Aliran Sungai & DAS</span>
-                    </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${showRivers ? "bg-sky-500 text-white font-bold" : "bg-slate-200 dark:bg-slate-700 text-slate-500"}`}>
-                      {showRivers ? "AKTIF" : "OFF"}
-                    </span>
-                  </button>
-
-                  {/* Toggle Batas Administrasi Kecamatan */}
-                  <button
-                    type="button"
-                    onClick={() => setShowBoundaries(!showBoundaries)}
-                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
-                      showBoundaries
-                        ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-bold"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${showBoundaries ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600"}`}></span>
-                      <span>Batas Kecamatan</span>
-                    </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${showBoundaries ? "bg-emerald-500 text-white font-bold" : "bg-slate-200 dark:bg-slate-700 text-slate-500"}`}>
-                      {showBoundaries ? "AKTIF" : "OFF"}
-                    </span>
-                  </button>
-
-                  {/* Toggle Lapisan Prakiraan Musim & Iklim (Choropleth Firestore) */}
-                  <div className="pt-1 border-t border-slate-200/50 dark:border-slate-800/80">
-                    <button
-                      type="button"
-                      onClick={() => setShowSeasonal(!showSeasonal)}
-                      className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
-                        showSeasonal
-                          ? "bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 font-bold"
-                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full ${showSeasonal ? "bg-sky-500" : "bg-slate-300 dark:bg-slate-600"}`}></span>
-                        <span>Prakiraan Musim (Iklim)</span>
-                      </span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${showSeasonal ? "bg-sky-500 text-white font-bold" : "bg-slate-200 dark:bg-slate-700 text-slate-500"}`}>
-                        {showSeasonal ? "AKTIF" : "OFF"}
-                      </span>
-                    </button>
-
-                    {/* Sub-selector indikator saat lapisan musim aktif */}
-                    {showSeasonal && (
-                      <div className="grid grid-cols-3 gap-1 px-1 pt-1.5 pb-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setSeasonalMetric("amh")}
-                          className={`py-1 px-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
-                            seasonalMetric === "amh"
-                              ? "bg-sky-600 text-white shadow-xs"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-                          }`}
-                        >
-                          Awal MH
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSeasonalMetric("sh")}
-                          className={`py-1 px-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
-                            seasonalMetric === "sh"
-                              ? "bg-sky-600 text-white shadow-xs"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-                          }`}
-                        >
-                          Sifat Hujan
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSeasonalMetric("curah")}
-                          className={`py-1 px-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
-                            seasonalMetric === "curah"
-                              ? "bg-sky-600 text-white shadow-xs"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-                          }`}
-                        >
-                          Curah Hujan
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

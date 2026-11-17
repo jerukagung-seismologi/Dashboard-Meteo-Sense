@@ -215,15 +215,15 @@ function PetaPageContent() {
     };
   }, [deviceData]);
 
-  // Dynamic import for Unified GIS / Seasonal Prediction Map component (SSR disabled)
-  const SeasonalPredictionMap = useMemo(
+  // Dynamic import for Leaflet map component (SSR disabled)
+  const Map = useMemo(
     () =>
-      dynamic(() => import("@/components/prediksi-musim/SeasonalPredictionMap"), {
+      dynamic(() => import("@/components/peta/Map"), {
         loading: () => (
           <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-3"></div>
             <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-              Memuat Sistem Informasi Geografis Kebumen...
+              Memuat Peta Geospasial Kebumen...
             </p>
           </div>
         ),
@@ -347,14 +347,8 @@ function PetaPageContent() {
         </div>
       </div>
 
-      {/* Main Single Map Container with Integrated Layers (CEWS BMKG Architecture) */}
-      <div
-        className={`w-full rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden relative bg-slate-100 dark:bg-slate-950 ${
-          isFullscreen
-            ? "fixed inset-0 z-[9999] rounded-none h-screen w-screen"
-            : "h-[72vh] sm:h-[calc(100dvh-230px)] min-h-[580px] sm:min-h-[660px]"
-        }`}
-      >
+      {/* Main Single Map Container */}
+      <div className="h-[75vh] sm:h-[calc(100dvh-230px)] min-h-[580px] sm:min-h-[660px] w-full rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden relative bg-slate-100 dark:bg-slate-950">
         {loading && (
           <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-white/70 dark:bg-slate-950/70 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-2">
@@ -366,19 +360,14 @@ function PetaPageContent() {
           </div>
         )}
 
-        {isFullscreen && (
-          <button
-            type="button"
-            onClick={() => setIsFullscreen(false)}
-            className="absolute top-3 right-14 z-[1000] px-3 py-1.5 rounded-lg bg-slate-900/95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xl border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <Minimize2 className="h-3.5 w-3.5" />
-            <span>Keluar Layar Penuh</span>
-          </button>
-        )}
-
-        <SeasonalPredictionMap
-          stations={filteredDevices}
+        <Map
+          devices={filteredDevices}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
+          stats={stats}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          initialShowSeasonal={tabParam === "musim" || layerParam === "musim"}
         />
       </div>
     </div>
