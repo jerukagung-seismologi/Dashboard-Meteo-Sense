@@ -10,6 +10,7 @@ import {
   useMap,
   LayersControl,
   Circle,
+  GeoJSON,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -281,6 +282,20 @@ const Map = ({
   const [selectedStation, setSelectedStation] = useState<StationData | null>(null);
   const [showLayerMenu, setShowLayerMenu] = useState<boolean>(false);
 
+  // Layer Overlay Jaringan Sungai & DAS Kebumen
+  const [showRivers, setShowRivers] = useState<boolean>(true);
+  const [riverGeoJson, setRiverGeoJson] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/data/geo/sungai_kebumen.geojson")
+      .then((res) => {
+        if (!res.ok) throw new Error("Gagal mengambil data jaringan sungai");
+        return res.json();
+      })
+      .then((data) => setRiverGeoJson(data))
+      .catch((err) => console.warn("Informasi layer sungai:", err));
+  }, []);
+
   const toggleFullscreen = () => {
     const nextState = !isFullscreen;
     if (onToggleFullscreen) {
@@ -481,28 +496,60 @@ const Map = ({
             </button>
 
             {showLayerMenu && (
-              <div className="absolute top-11 right-0 w-44 p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl border border-slate-200/80 dark:border-slate-800 space-y-1 animate-in fade-in zoom-in-95 duration-150">
-                {(Object.keys(MAP_LAYERS) as MapLayerType[]).map((layerKey) => {
-                  const l = MAP_LAYERS[layerKey];
-                  const isSelected = activeLayer === layerKey;
-                  return (
-                    <button
-                      key={layerKey}
-                      onClick={() => {
-                        setActiveLayer(layerKey);
-                        setShowLayerMenu(false);
-                      }}
-                      className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between ${
-                        isSelected
-                          ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-bold"
-                          : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <span>{l.name}</span>
-                      {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>}
-                    </button>
-                  );
-                })}
+              <div className="absolute top-11 right-0 w-52 p-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl border border-slate-200/80 dark:border-slate-800 space-y-2 animate-in fade-in zoom-in-95 duration-150 z-[1100]">
+                {/* Basemap Selection */}
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 py-0.5">
+                    Peta Dasar
+                  </div>
+                  <div className="space-y-0.5 mt-0.5">
+                    {(Object.keys(MAP_LAYERS) as MapLayerType[]).map((layerKey) => {
+                      const l = MAP_LAYERS[layerKey];
+                      const isSelected = activeLayer === layerKey;
+                      return (
+                        <button
+                          key={layerKey}
+                          onClick={() => {
+                            setActiveLayer(layerKey);
+                            setShowLayerMenu(false);
+                          }}
+                          className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between ${
+                            isSelected
+                              ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-bold"
+                              : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          }`}
+                        >
+                          <span>{l.name}</span>
+                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Thematic Overlays (Sungai & Hidrologi) */}
+                <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-800">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 py-0.5">
+                    Lapisan Tematik
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowRivers(!showRivers)}
+                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between mt-0.5 cursor-pointer ${
+                      showRivers
+                        ? "bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 font-bold"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${showRivers ? "bg-sky-500" : "bg-slate-300 dark:bg-slate-600"}`}></span>
+                      <span>Aliran Sungai & DAS</span>
+                    </span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${showRivers ? "bg-sky-500 text-white font-bold" : "bg-slate-200 dark:bg-slate-700 text-slate-500"}`}>
+                      {showRivers ? "AKTIF" : "OFF"}
+                    </span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -553,7 +600,7 @@ const Map = ({
             Jaringan Stasiun Cuaca
           </span>
           <span className="text-[10px] text-slate-400 block -mt-0.5">
-            {devices.length} Stasiun Terpantau
+            {devices.length} Stasiun Terpantau {showRivers ? "• Hidrologi DAS Aktif" : ""}
           </span>
         </div>
       </div>
@@ -593,6 +640,39 @@ const Map = ({
           url={currentLayerConfig.url}
           maxZoom={19}
         />
+
+        {/* Overlay Jaringan Sungai & Hidrologi Kebumen */}
+        {showRivers && riverGeoJson && (
+          <GeoJSON
+            key="sungai-kebumen-vector-layer"
+            data={riverGeoJson}
+            style={(feature) => {
+              const isMain = feature?.properties?.type === "main";
+              return {
+                color: isMain ? "#0284c7" : "#38bdf8",
+                weight: isMain ? 3.2 : 1.6,
+                opacity: isMain ? 0.9 : 0.65,
+                lineCap: "round",
+                lineJoin: "round",
+              };
+            }}
+            onEachFeature={(feature, layer) => {
+              const p = feature.properties || {};
+              layer.bindTooltip(
+                `<div style="font-family: system-ui, -apple-system, sans-serif; font-size: 11px; padding: 2px 4px; line-height: 1.35;">
+                  <div style="font-weight: 800; color: #0369a1; font-size: 11.5px;">${p.name || "Alur Sungai"}</div>
+                  <div style="font-size: 10px; color: #64748b;">Wilayah: ${p.das || "Kabupaten Kebumen"}</div>
+                  ${
+                    p.dis_m3s
+                      ? `<div style="font-size: 9.5px; color: #0284c7; font-weight: 600; margin-top: 1px;">Debit Rerata: ${p.dis_m3s} m³/detik &bull; Pjg: ${p.length_km} km</div>`
+                      : ""
+                  }
+                </div>`,
+                { sticky: true, direction: "top", offset: [0, -4] }
+              );
+            }}
+          />
+        )}
 
         {/* Kebumen Area Subtle Focus Circle */}
         <Circle
