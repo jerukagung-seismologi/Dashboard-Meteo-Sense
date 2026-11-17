@@ -282,11 +282,15 @@ const Map = ({
   const [selectedStation, setSelectedStation] = useState<StationData | null>(null);
   const [showLayerMenu, setShowLayerMenu] = useState<boolean>(false);
 
-  // Layer Overlay Jaringan Sungai & DAS Kebumen
+  // Layer Overlay Tematik Universal (Sungai, Batas Wilayah, Stasiun)
   const [showRivers, setShowRivers] = useState<boolean>(true);
   const [riverGeoJson, setRiverGeoJson] = useState<any>(null);
+  const [showBoundaries, setShowBoundaries] = useState<boolean>(true);
+  const [boundaryGeoJson, setBoundaryGeoJson] = useState<any>(null);
+  const [showStations, setShowStations] = useState<boolean>(true);
 
   useEffect(() => {
+    // 1. Fetch Jaringan Sungai & Hidrologi DAS
     fetch("/data/geo/sungai_kebumen.geojson")
       .then((res) => {
         if (!res.ok) throw new Error("Gagal mengambil data jaringan sungai");
@@ -294,6 +298,15 @@ const Map = ({
       })
       .then((data) => setRiverGeoJson(data))
       .catch((err) => console.warn("Informasi layer sungai:", err));
+
+    // 2. Fetch Batas Administrasi Kecamatan (Universal Boundary Layer)
+    fetch("/data/kebumen/kebumen_kecamatan.json")
+      .then((res) => {
+        if (!res.ok) throw new Error("Gagal mengambil data batas kecamatan");
+        return res.json();
+      })
+      .then((data) => setBoundaryGeoJson(data))
+      .catch((err) => console.warn("Informasi batas wilayah:", err));
   }, []);
 
   const toggleFullscreen = () => {
@@ -424,7 +437,7 @@ const Map = ({
         {isFullscreen && (
           <div className="hidden lg:flex items-center gap-2 pl-2 pr-3 border-r border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100">
             <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
-            <span>Meteo Sense GIS</span>
+            <span>Universal GIS Meteo Sense</span>
           </div>
         )}
 
@@ -527,15 +540,36 @@ const Map = ({
                   </div>
                 </div>
 
-                {/* Thematic Overlays (Sungai & Hidrologi) */}
-                <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-800">
+                {/* Thematic Overlays (Universal Spatial Layers) */}
+                <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-800 space-y-1">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 py-0.5">
-                    Lapisan Tematik
+                    Lapisan Universal
                   </div>
+
+                  {/* Toggle Stasiun & Sensor Cuaca */}
+                  <button
+                    type="button"
+                    onClick={() => setShowStations(!showStations)}
+                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
+                      showStations
+                        ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-bold"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${showStations ? "bg-indigo-500" : "bg-slate-300 dark:bg-slate-600"}`}></span>
+                      <span>Stasiun & Sensor</span>
+                    </span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${showStations ? "bg-indigo-500 text-white font-bold" : "bg-slate-200 dark:bg-slate-700 text-slate-500"}`}>
+                      {showStations ? "AKTIF" : "OFF"}
+                    </span>
+                  </button>
+
+                  {/* Toggle Aliran Sungai & DAS */}
                   <button
                     type="button"
                     onClick={() => setShowRivers(!showRivers)}
-                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between mt-0.5 cursor-pointer ${
+                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
                       showRivers
                         ? "bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 font-bold"
                         : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -547,6 +581,25 @@ const Map = ({
                     </span>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${showRivers ? "bg-sky-500 text-white font-bold" : "bg-slate-200 dark:bg-slate-700 text-slate-500"}`}>
                       {showRivers ? "AKTIF" : "OFF"}
+                    </span>
+                  </button>
+
+                  {/* Toggle Batas Administrasi Kecamatan */}
+                  <button
+                    type="button"
+                    onClick={() => setShowBoundaries(!showBoundaries)}
+                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
+                      showBoundaries
+                        ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-bold"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${showBoundaries ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600"}`}></span>
+                      <span>Batas Kecamatan</span>
+                    </span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${showBoundaries ? "bg-emerald-500 text-white font-bold" : "bg-slate-200 dark:bg-slate-700 text-slate-500"}`}>
+                      {showBoundaries ? "AKTIF" : "OFF"}
                     </span>
                   </button>
                 </div>
@@ -597,10 +650,12 @@ const Map = ({
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
         <div>
           <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
-            Jaringan Stasiun Cuaca
+            Sistem Geografis Universal
           </span>
           <span className="text-[10px] text-slate-400 block -mt-0.5">
-            {devices.length} Stasiun Terpantau {showRivers ? "• Hidrologi DAS Aktif" : ""}
+            {showStations ? `${devices.length} Stasiun` : "Stasiun Nonaktif"}
+            {showRivers ? " • Sungai/DAS" : ""}
+            {showBoundaries ? " • Batas Wilayah" : ""}
           </span>
         </div>
       </div>
@@ -640,6 +695,34 @@ const Map = ({
           url={currentLayerConfig.url}
           maxZoom={19}
         />
+
+        {/* Overlay Batas Administrasi Kecamatan (Universal Layer) */}
+        {showBoundaries && boundaryGeoJson && (
+          <GeoJSON
+            key="batas-kecamatan-vector-layer"
+            data={boundaryGeoJson}
+            style={() => ({
+              color: isDarkMode ? "#38bdf8" : "#4f46e5",
+              weight: 1.6,
+              opacity: 0.65,
+              fillColor: isDarkMode ? "#38bdf8" : "#6366f1",
+              fillOpacity: 0.03,
+              dashArray: "4 4",
+            })}
+            onEachFeature={(feature, layer) => {
+              const p = feature.properties || {};
+              const name = p.name || p.nm_kecamatan || p.kecamatan || "Kecamatan";
+              const code = p.kemendagri_code || p.code || "";
+              layer.bindTooltip(
+                `<div style="font-family: system-ui, -apple-system, sans-serif; font-size: 11px; padding: 2px 4px; line-height: 1.3;">
+                  <div style="font-weight: 800; color: #4338ca; font-size: 11.5px;">Kecamatan ${name}</div>
+                  ${code ? `<div style="font-size: 9.5px; color: #64748b;">Kode Kemendagri: ${code}</div>` : ""}
+                </div>`,
+                { sticky: true, direction: "center" }
+              );
+            }}
+          />
+        )}
 
         {/* Overlay Jaringan Sungai & Hidrologi Kebumen */}
         {showRivers && riverGeoJson && (
@@ -703,29 +786,30 @@ const Map = ({
         />
 
         {/* Station Markers */}
-        {devices.map((station, idx) => {
-          const isSelected = selectedStation?.id === station.id;
-          return (
-            <Marker
-              key={station.id || idx}
-              position={[station.lat, station.lng]}
-              icon={createStationDivIcon(station, isSelected, displayMetric)}
-              eventHandlers={{
-                click: () => {
-                  setTargetPos([station.lat, station.lng]);
-                },
-              }}
-            >
-              <Popup minWidth={310} maxWidth={350} autoPan={true}>
-                <StationMarkerPopup
-                  station={station}
-                  isDarkMode={isDarkMode}
-                  onOpenDetail={(st) => setSelectedStation(st)}
-                />
-              </Popup>
-            </Marker>
-          );
-        })}
+        {showStations &&
+          devices.map((station, idx) => {
+            const isSelected = selectedStation?.id === station.id;
+            return (
+              <Marker
+                key={station.id || idx}
+                position={[station.lat, station.lng]}
+                icon={createStationDivIcon(station, isSelected, displayMetric)}
+                eventHandlers={{
+                  click: () => {
+                    setTargetPos([station.lat, station.lng]);
+                  },
+                }}
+              >
+                <Popup minWidth={310} maxWidth={350} autoPan={true}>
+                  <StationMarkerPopup
+                    station={station}
+                    isDarkMode={isDarkMode}
+                    onOpenDetail={(st) => setSelectedStation(st)}
+                  />
+                </Popup>
+              </Marker>
+            );
+          })}
       </MapContainer>
 
       {/* Slide-out Detailed Station Inspector Drawer */}

@@ -20,6 +20,7 @@ import {
   Archive,
   Waves,
   Wrench,
+  CalendarDays,
   LucideIcon
 } from "lucide-react"
 
@@ -37,8 +38,8 @@ export const dashboardNavigation: NavigationItem[] = [
   { name: "Beranda", href: "/dashboard", icon: LayoutDashboard, roles: ['Admin', 'User'] },
   { name: "Perangkat", href: "/dashboard/perangkat", icon: Network, roles: ['Admin'] },
   { name: "Stasiun Benchmark", href: "/dashboard/perangkat-benchmark", icon: Radio, roles: ['Admin'] },
-  { name: "Sistem Geografis", href: "/dashboard/peta", icon: Earth, roles: ['Admin', 'User'] },
-  { name: "Agrometeorologi", href: "/dashboard/agromet", icon: Sprout, roles: ['Admin', 'User'] },
+  { name: "Sistem Geografis", href: "/dashboard/peta", icon: Earth, badge: "Universal GIS", roles: ['Admin', 'User'] },
+  { name: "Agrometeorologi", href: "/dashboard/agromet", icon: Sprout, badge: "Musim & KATAM", roles: ['Admin', 'User'] },
   { name: "Meteorologi", href: "/dashboard/meteorologi", icon: ChartNoAxesCombined, roles: ['Admin'] },
   { name: "Klimatologis", href: "/dashboard/klimatologi", icon: TrendingUp, roles: ['Admin', 'User'] },
   { name: "Indeks Iklim Global", href: "/dashboard/climate-drivers", icon: Globe, roles: ['Admin', 'User'] },

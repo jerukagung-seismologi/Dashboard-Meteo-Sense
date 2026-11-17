@@ -17,6 +17,9 @@ import {
   Droplets,
   CloudRain,
   Compass,
+  Globe,
+  Layers,
+  Activity,
   CheckCircle2,
   Maximize2,
   Minimize2,
@@ -233,9 +236,9 @@ export default function PetaPage() {
       {/* Unified Single Header Banner */}
       <PageHeaderBanner
         gradient="indigo"
-        icon={Compass}
-        title="Peta Persebaran Stasiun Cuaca"
-        subtitle="Sistem Informasi Geografis real-time stasiun cuaca Meteo Sense"
+        icon={Globe}
+        title="Sistem Informasi Geografis (Universal GIS)"
+        subtitle="Platform geospasial universal untuk pemantauan multi-layer: batas administrasi wilayah, jaringan hidrologi & DAS, persebaran stasiun cuaca, dan dinamika atmosfer real-time"
         actions={
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="relative flex-1 sm:flex-initial">
@@ -278,30 +281,30 @@ export default function PetaPage() {
 
       {/* Summary KPI Badges Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* Titik Pantau Kebumen */}
+        {/* Titik Pantau Stasiun */}
         <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shrink-0">
             <MapPin className="h-5 w-5" />
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Stasiun Cuaca
+              Titik Stasiun
             </span>
             <div className="text-xl font-black text-slate-900 dark:text-slate-100 font-mono">
               {filteredDevices.length}{" "}
-              <span className="text-xs font-normal text-slate-500">Stasiun</span>
+              <span className="text-xs font-normal text-slate-500">Titik</span>
             </div>
           </div>
         </div>
 
-        {/* Rerata Suhu Kebumen */}
+        {/* Rerata Suhu Wilayah */}
         <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 shrink-0">
             <Thermometer className="h-5 w-5" />
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Rerata Suhu Wilayah
+              Termal Spasial
             </span>
             <div className="text-xl font-black text-rose-600 dark:text-rose-400 font-mono">
               {stats.avgTemp}{" "}
@@ -317,7 +320,7 @@ export default function PetaPage() {
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Kelembapan Udara
+              Lengas Udara
             </span>
             <div className="text-xl font-black text-sky-600 dark:text-sky-400 font-mono">
               {stats.avgHum}{" "}
@@ -326,18 +329,18 @@ export default function PetaPage() {
           </div>
         </div>
 
-        {/* Status Jaringan Telemetri */}
+        {/* Lapisan Data Universal */}
         <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 shrink-0">
-            <Radio className="h-5 w-5" />
+            <Layers className="h-5 w-5" />
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Jaringan Telemetri
+              Lapisan Universal
             </span>
             <div className="text-base font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <span>{stats.activeCount} Online</span>
+              <span>Multi-Layer Aktif</span>
             </div>
           </div>
         </div>

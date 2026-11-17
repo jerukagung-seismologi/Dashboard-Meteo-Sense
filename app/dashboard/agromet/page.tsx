@@ -1,7 +1,8 @@
 // app/dashboard/agromet/page.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import useSWR from "swr";
 import {
   RefreshCw,
@@ -22,6 +23,8 @@ import {
   Cloud,
   Layers,
   Calendar,
+  CalendarDays,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchAllDevices } from "@/lib/FetchingDevice";
@@ -48,10 +51,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MonsoonAgrometSection } from "@/components/agromet/MonsoonAgrometSection";
 import { EnsembleAgrometSection } from "@/components/agromet/EnsembleAgrometSection";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
+
+const SeasonalPredictionMap = dynamic(
+  () => import("@/components/prediksi-musim/SeasonalPredictionMap"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-col items-center justify-center min-h-[600px] w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-12">
+        <Loader2 className="h-10 w-10 animate-spin text-sky-600 dark:text-sky-400 mb-3" />
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+          Memuat Peta Spasial & Model Prediksi Musim AI-LSTM...
+        </span>
+        <span className="text-xs text-slate-400 mt-1">
+          Menghubungkan ke Cloud Firestore & data dasarian Kabupaten Kebumen
+        </span>
+      </div>
+    ),
+  }
+);
 
 // Dynamic imports for Leaflet to avoid SSR issues
 const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
@@ -80,8 +102,26 @@ interface SensorOption {
   lng: number;
 }
 
-export default function AgrometPage() {
+function AgrometPageContent() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<string>(tabParam === "musim" ? "musim" : "lahan");
+
+  useEffect(() => {
+    if (tabParam === "musim" || tabParam === "lahan") {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
+  const handleTabChange = (val: string) => {
+    setActiveTab(val);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", val);
+    router.replace(url.pathname + url.search, { scroll: false });
+  };
+
   const [sensorOptions, setSensorOptions] = useState<SensorOption[]>([]);
   const [selectedSensor, setSelectedSensor] = useState<SensorOption | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -275,19 +315,46 @@ export default function AgrometPage() {
     [hourly, textColor, gridColor]
   );
 
-  if (sensorOptions.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh] space-y-3">
-        <Sprout className="h-10 w-10 text-emerald-500 animate-bounce" />
-        <p className="text-sm text-slate-500">Memuat konfigurasi stasiun sensor agrometeorologi...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6 pb-16">
-      {/* 1. Header Banner & Location Selector (Compact Single Banner) */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-950 p-4 sm:p-5 text-white shadow-md border border-emerald-800/40">
+    <div className="space-y-5 pb-16">
+      {/* Top Navigation Tabs Switcher */}
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <TabsList className="grid grid-cols-2 w-full sm:w-[480px] bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+            <TabsTrigger
+              value="lahan"
+              className="flex items-center justify-center gap-2 text-xs sm:text-sm font-bold py-2 rounded-lg transition-all data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-xs cursor-pointer"
+            >
+              <Sprout className="h-4 w-4" />
+              <span>Cuaca Mikro &amp; Lahan</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="musim"
+              className="flex items-center justify-center gap-2 text-xs sm:text-sm font-bold py-2 rounded-lg transition-all data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=active]:shadow-xs cursor-pointer"
+            >
+              <CalendarDays className="h-4 w-4" />
+              <span>Prakiraan Musim &amp; KATAM</span>
+              <Badge className="bg-sky-500/20 text-sky-200 border-sky-400/40 text-[10px] px-1.5 py-0 font-mono">AI</Badge>
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 px-3 font-medium">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Pusat Layanan Iklim Pertanian &amp; Agrometeorologi</span>
+          </div>
+        </div>
+
+        {/* Tab 1: Cuaca Mikro & Lahan */}
+        <TabsContent value="lahan" className="space-y-6 mt-0">
+          {sensorOptions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[50vh] space-y-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8">
+              <Sprout className="h-10 w-10 text-emerald-500 animate-bounce" />
+              <p className="text-sm text-slate-500">Memuat konfigurasi stasiun sensor agrometeorologi...</p>
+            </div>
+          ) : (
+            <>
+              {/* 1. Header Banner & Location Selector (Compact Single Banner) */}
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-950 p-4 sm:p-5 text-white shadow-md border border-emerald-800/40">
         <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5 max-w-2xl min-w-0">
@@ -881,6 +948,32 @@ export default function AgrometPage() {
           <MonsoonAgrometSection isDarkMode={isDarkMode} />
         </>
       )}
+    </>
+  )}
+</TabsContent>
+
+        {/* Tab 2: Prakiraan Musim & KATAM AI */}
+        <TabsContent value="musim" className="space-y-5 mt-0">
+          <div className="w-full h-[calc(100vh-210px)] min-h-[640px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-md">
+            <SeasonalPredictionMap isDarkMode={isDarkMode} />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
+  );
+}
+
+export default function AgrometPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center h-[60vh] space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+          <p className="text-xs text-slate-500">Memuat modul agrometeorologi...</p>
+        </div>
+      }
+    >
+      <AgrometPageContent />
+    </Suspense>
   );
 }
