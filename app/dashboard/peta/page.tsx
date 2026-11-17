@@ -10,15 +10,9 @@ import { fetchSensorData } from "@/lib/apiClient";
 import { StationData } from "@/components/peta/StationMarkerPopup";
 import { SensorDataPoint } from "@/components/peta/OneHourTrendChart";
 import {
-  MapPin,
   RefreshCw,
   Search,
-  Radio,
-  Thermometer,
-  Droplets,
   Globe,
-  Layers,
-  CheckCircle2,
   Maximize2,
   Minimize2,
   Loader2,
@@ -215,15 +209,15 @@ function PetaPageContent() {
     };
   }, [deviceData]);
 
-  // Dynamic import for Leaflet map component (SSR disabled)
-  const Map = useMemo(
+  // Dynamic import for SeasonalPredictionMap component (SSR disabled)
+  const SeasonalPredictionMap = useMemo(
     () =>
-      dynamic(() => import("@/components/peta/Map"), {
+      dynamic(() => import("@/components/prediksi-musim/SeasonalPredictionMap"), {
         loading: () => (
           <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-3"></div>
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mb-3" />
             <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-              Memuat Peta Geospasial Kebumen...
+              Memuat Peta Geospasial &amp; Prakiraan Musim...
             </p>
           </div>
         ),
@@ -239,7 +233,6 @@ function PetaPageContent() {
         gradient="indigo"
         icon={Globe}
         title="Sistem Informasi Geografis"
-        subtitle="Platform pemantauan spasial terintegrasi untuk stasiun cuaca, jaringan sungai, batas wilayah, dan prakiraan iklim"
         actions={
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="relative flex-1 sm:flex-initial">
@@ -280,75 +273,8 @@ function PetaPageContent() {
         }
       />
 
-      {/* Summary KPI Badges Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* Titik Pantau Stasiun */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shrink-0">
-            <MapPin className="h-5 w-5" />
-          </div>
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Titik Stasiun
-            </span>
-            <div className="text-xl font-black text-slate-900 dark:text-slate-100 font-mono">
-              {filteredDevices.length}{" "}
-              <span className="text-xs font-normal text-slate-500">Titik</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Rerata Suhu Wilayah */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 shrink-0">
-            <Thermometer className="h-5 w-5" />
-          </div>
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Rerata Suhu
-            </span>
-            <div className="text-xl font-black text-rose-600 dark:text-rose-400 font-mono">
-              {stats.avgTemp}{" "}
-              <span className="text-xs font-normal text-slate-500">°C</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Rerata Kelembapan */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 shrink-0">
-            <Droplets className="h-5 w-5" />
-          </div>
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Rerata Kelembapan
-            </span>
-            <div className="text-xl font-black text-sky-600 dark:text-sky-400 font-mono">
-              {stats.avgHum}{" "}
-              <span className="text-xs font-normal text-slate-500">%</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Lapisan Data Peta */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 shrink-0">
-            <Layers className="h-5 w-5" />
-          </div>
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Lapisan Peta
-            </span>
-            <div className="text-base font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <span>Multi-Layer Aktif</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Single Map Container */}
-      <div className="h-[75vh] sm:h-[calc(100dvh-230px)] min-h-[580px] sm:min-h-[660px] w-full rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden relative bg-slate-100 dark:bg-slate-950">
+      <div className="h-[calc(100dvh-150px)] min-h-[640px] w-full rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden relative bg-slate-100 dark:bg-slate-950">
         {loading && (
           <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-white/70 dark:bg-slate-950/70 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-2">
@@ -360,14 +286,13 @@ function PetaPageContent() {
           </div>
         )}
 
-        <Map
-          devices={filteredDevices}
+        <SeasonalPredictionMap
+          stations={filteredDevices}
           isFullscreen={isFullscreen}
           onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
           stats={stats}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          initialShowSeasonal={tabParam === "musim" || layerParam === "musim"}
         />
       </div>
     </div>

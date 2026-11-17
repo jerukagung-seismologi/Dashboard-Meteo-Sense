@@ -27,6 +27,9 @@ interface SeasonalLeafletCanvasProps {
   showRivers?: boolean;
   stations?: StationData[];
   showStations?: boolean;
+  isFullscreen?: boolean;
+  onSelectStation?: (station: StationData) => void;
+  displayMetric?: "wind" | "temperature" | "rainfall";
 }
 
 const BASEMAP_CONFIGS: Record<
@@ -67,6 +70,9 @@ export default function SeasonalLeafletCanvas({
   showRivers = true,
   stations,
   showStations = true,
+  isFullscreen = false,
+  onSelectStation,
+  displayMetric = "wind",
 }: SeasonalLeafletCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -77,8 +83,10 @@ export default function SeasonalLeafletCanvas({
   const boundsRef = useRef<L.LatLngBounds | null>(null);
   const prevGeojsonRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const onSelectRef = useRef(onSelectCode);
+  const onSelectStationRef = useRef(onSelectStation);
 
   onSelectRef.current = onSelectCode;
+  onSelectStationRef.current = onSelectStation;
 
   const activeField =
     adminLevel === "desa" && activeLayer?.desaField ? activeLayer.desaField : activeLayer?.field;
@@ -169,6 +177,23 @@ export default function SeasonalLeafletCanvas({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Tangani Invalidation Size saat Mode Layar Penuh (Fullscreen) Berubah
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const trigger = () => {
+      mapRef.current?.invalidateSize({ pan: false });
+    };
+    trigger();
+    const t1 = setTimeout(trigger, 80);
+    const t2 = setTimeout(trigger, 250);
+    const t3 = setTimeout(trigger, 500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [isFullscreen]);
 
   // Perbarui Basemap Tile
   useEffect(() => {
@@ -357,72 +382,165 @@ export default function SeasonalLeafletCanvas({
       const group = L.layerGroup();
       stations.forEach((st) => {
         const isOnline = st.status !== "offline";
-        const tempText = st.temp ? `${st.temp.toFixed(1)}°C` : "--°C";
-        const humText = st.hum ? `${st.hum}%` : "--%";
+        const speed = st.windSpeed !== undefined ? st.windSpeed.toFixed(1) : "0.0";
+        const originDir = st.windDirection ?? 0;
+        const flowDir = (originDir + 180) % 360;
+        const tempText = st.temp !== undefined ? `${st.temp.toFixed(1)}°` : "--°";
+        const rainText = st.rainfall !== undefined ? `${st.rainfall.toFixed(1)}` : "0.0";
+
+        let badgeContent = "";
+        let borderColor = "#06b6d4";
+        let bgColor = "#042f2e";
+        let iconWidth = 88;
+        const iconHeight = 32;
+
+        if (displayMetric === "rainfall") {
+          borderColor = "#10b981";
+          bgColor = "#022c22";
+          iconWidth = 72;
+          badgeContent = `
+            <div style="display:flex;align-items:center;gap:3px;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+                <path d="M16 14v6"></path>
+                <path d="M8 14v6"></path>
+                <path d="M12 16v6"></path>
+              </svg>
+              <span style="font-size:10.5px;font-weight:800;font-family:monospace;color:#f8fafc;">${rainText}</span>
+              <span style="font-size:8px;color:#6ee7b7;font-weight:700;">mm</span>
+            </div>
+          `;
+        } else if (displayMetric === "temperature") {
+          borderColor = "#f43f5e";
+          bgColor = "#1c1917";
+          iconWidth = 66;
+          badgeContent = `
+            <div style="display:flex;align-items:center;gap:3px;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fda4af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"></path>
+              </svg>
+              <span style="font-size:10.5px;font-weight:800;font-family:monospace;color:#f8fafc;">${tempText}</span>
+            </div>
+          `;
+        } else {
+          // Default: Mode Arah & Angin Aerodinamis + Suhu
+          borderColor = "#06b6d4";
+          bgColor = "#042f2e";
+          iconWidth = 92;
+          badgeContent = `
+            <div style="display:flex;align-items:center;gap:4px;" title="Angin: ${speed} km/h, Dari: ${originDir}° (bertiup ke ${flowDir}°)">
+              <div style="
+                display:inline-flex;
+                align-items:center;
+                justify-content:center;
+                width:13px;
+                height:13px;
+                transform:rotate(${flowDir}deg);
+                transition:transform 0.4s ease;
+                color:#38bdf8;
+              ">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+                </svg>
+              </div>
+              <span style="font-size:10.5px;font-weight:800;font-family:monospace;color:#f8fafc;">${speed}</span>
+              <span style="font-size:8px;color:#67e8f9;font-weight:700;margin-left:-2px;">k/h</span>
+              <span style="font-size:10px;font-weight:800;font-family:monospace;color:#fda4af;margin-left:2px;">${tempText}</span>
+            </div>
+          `;
+        }
 
         const iconHtml = `
-          <div style="
-            background: rgba(15, 23, 42, 0.95);
-            border: 1.5px solid #6366f1;
-            color: #ffffff;
-            border-radius: 9999px;
-            padding: 2px 7px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.35);
-            font-size: 10.5px;
-            font-weight: 700;
-            white-space: nowrap;
-            cursor: pointer;
-            backdrop-filter: blur(4px);
-          ">
-            <span style="
-              width: 6px;
-              height: 6px;
-              border-radius: 9999px;
-              background-color: ${isOnline ? '#22c55e' : '#ef4444'};
-              display: inline-block;
-            "></span>
-            <span style="color: #fda4af;">${tempText}</span>
-            <span style="color: #7dd3fc;">${humText}</span>
+          <div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;position:relative;">
+            <div style="
+              position:relative;
+              display:flex;
+              align-items:center;
+              gap:4px;
+              padding:2.5px 7px;
+              border-radius:9999px;
+              box-shadow:0 4px 14px rgba(0,0,0,0.45);
+              border:1.8px solid ${borderColor};
+              background-color:${bgColor};
+              color:#ffffff;
+              backdrop-filter:blur(4px);
+              white-space:nowrap;
+            ">
+              ${badgeContent}
+              <span style="
+                width:6px;
+                height:6px;
+                border-radius:9999px;
+                background-color:${isOnline ? "#10b981" : "#ef4444"};
+                display:inline-block;
+                box-shadow:${isOnline ? "0 0 6px #10b981" : "none"};
+                margin-left:2px;
+              "></span>
+            </div>
+            <div style="
+              width:0;
+              height:0;
+              border-left:5px solid transparent;
+              border-right:5px solid transparent;
+              border-top:6px solid ${borderColor};
+              margin-top:-1px;
+            "></div>
           </div>
         `;
 
         const customIcon = L.divIcon({
           html: iconHtml,
           className: "custom-station-leaflet-marker",
-          iconSize: [84, 24],
-          iconAnchor: [42, 12],
+          iconSize: [iconWidth, iconHeight],
+          iconAnchor: [iconWidth / 2, iconHeight],
+          popupAnchor: [0, -iconHeight],
         });
 
         const marker = L.marker([st.lat, st.lng], { icon: customIcon });
 
         const popupContent = `
-          <div style="font-family: inherit; font-size: 12px; color: #0f172a; min-width: 180px; padding: 2px;">
-            <div style="font-weight: 800; font-size: 13px; color: #4338ca;">${st.name}</div>
-            <div style="font-size: 10.5px; color: #64748b; margin-bottom: 6px;">${st.location || 'Kabupaten Kebumen'}</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px; background: #f8fafc; padding: 6px 8px; border-radius: 8px; border: 1px solid #e2e8f0;">
-              <div>Suhu: <strong style="color: #e11d48;">${st.temp ? st.temp.toFixed(1) : '-'} °C</strong></div>
-              <div>RH: <strong style="color: #0284c7;">${st.hum ?? '-'} %</strong></div>
+          <div style="font-family:inherit;font-size:12px;color:#0f172a;min-width:200px;padding:2px;">
+            <div style="font-weight:800;font-size:13px;color:#4338ca;">${st.name}</div>
+            <div style="font-size:10.5px;color:#64748b;margin-bottom:6px;">${st.location || 'Kabupaten Kebumen'}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;background:#f8fafc;padding:6px 8px;border-radius:8px;border:1px solid #e2e8f0;">
+              <div>Suhu: <strong style="color:#e11d48;">${st.temp ? st.temp.toFixed(1) : '-'} °C</strong></div>
+              <div>RH: <strong style="color:#0284c7;">${st.hum ?? '-'} %</strong></div>
               <div>Curah: <strong>${st.rainfall ?? 0} mm</strong></div>
               <div>Angin: <strong>${st.windSpeed ? st.windSpeed.toFixed(1) : 0} m/s</strong></div>
             </div>
-            <div style="margin-top: 6px; font-size: 10px; color: ${isOnline ? '#16a34a' : '#dc2626'}; font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
-              <span>Status: ${isOnline ? '● Online Real-time' : '○ Standby'}</span>
-              <span style="color: #64748b;">${st.lastUpdate || ''}</span>
+            <div style="margin-top:6px;font-size:10px;color:${isOnline ? '#16a34a' : '#dc2626'};font-weight:700;display:flex;align-items:center;justify-content:space-between;">
+              <span>Status: ${isOnline ? '● Online Telemetri' : '○ Standby'}</span>
+              <span style="color:#64748b;">${st.lastUpdate || ''}</span>
             </div>
+            <button id="btn-station-${st.id}" type="button" style="margin-top:8px;width:100%;padding:5px 8px;border-radius:8px;background:#4f46e5;color:#ffffff;font-size:11px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
+              <span>Buka Riwayat 1 Jam</span>
+              <span>&rarr;</span>
+            </button>
           </div>
         `;
 
-        marker.bindPopup(popupContent, { offset: [0, -10] });
+        marker.bindPopup(popupContent, { offset: [0, -8] });
+
+        marker.on("click", () => {
+          onSelectStationRef.current?.(st);
+        });
+
+        marker.on("popupopen", () => {
+          const btn = document.getElementById(`btn-station-${st.id}`);
+          if (btn) {
+            btn.onclick = () => {
+              onSelectStationRef.current?.(st);
+            };
+          }
+        });
+
         group.addLayer(marker);
       });
 
       group.addTo(map);
       stationLayerRef.current = group;
     }
-  }, [showStations, stations]);
+  }, [showStations, stations, displayMetric]);
 
   const handleResetView = () => {
     if (mapRef.current && boundsRef.current) {

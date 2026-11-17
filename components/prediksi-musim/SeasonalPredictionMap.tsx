@@ -4,7 +4,21 @@ import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { AlertTriangle, Layers, Loader2, MapPin, Search, X, Radio } from "lucide-react";
+import {
+  AlertTriangle,
+  Layers,
+  Loader2,
+  MapPin,
+  Search,
+  X,
+  Radio,
+  Maximize2,
+  Minimize2,
+  Wind,
+  Thermometer,
+  CloudRain,
+  Waves,
+} from "lucide-react";
 import KatamTimeline from "./KatamTimeline";
 import CewsAlertCard from "./CewsAlertCard";
 import SeasonEvaluationTab from "./SeasonEvaluationTab";
@@ -22,6 +36,7 @@ import type {
   UnifiedLayerDef,
 } from "@/lib/seasonalPredictionTypes";
 import type { StationData } from "@/components/peta/StationMarkerPopup";
+import { StationDetailDrawer } from "@/components/peta/StationDetailDrawer";
 
 const SeasonalLeafletCanvas = dynamic(() => import("./SeasonalLeafletCanvas"), {
   ssr: false,
@@ -335,12 +350,28 @@ export const KABUPATEN_CONFIGS: KabupatenConfig[] = [
 interface SeasonalPredictionMapProps {
   isDarkMode?: boolean;
   stations?: StationData[];
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  stats?: { avgTemp: number; avgHum: number; activeCount: number };
+  searchQuery?: string;
+  onSearchChange?: (q: string) => void;
 }
 
 export default function SeasonalPredictionMap({
   isDarkMode = false,
   stations,
+  isFullscreen: externalIsFullscreen,
+  onToggleFullscreen,
+  stats,
+  searchQuery: externalSearchQuery,
+  onSearchChange,
 }: SeasonalPredictionMapProps) {
+  const [internalFullscreen, setInternalFullscreen] = useState(false);
+  const isFullscreen = externalIsFullscreen !== undefined ? externalIsFullscreen : internalFullscreen;
+
+  const [selectedStation, setSelectedStation] = useState<StationData | null>(null);
+  const [displayMetric, setDisplayMetric] = useState<"wind" | "temperature" | "rainfall">("wind");
+
   const [kecGeojson, setKecGeojson] = useState<GeoJSON.FeatureCollection | null>(null);
   const [kecDataset, setKecDataset] = useState<SeasonalDataset | null>(null);
   const [desaGeojson, setDesaGeojson] = useState<GeoJSON.FeatureCollection | null>(null);
@@ -364,6 +395,37 @@ export default function SeasonalPredictionMap({
   const [basemap, setBasemap] = useState<BasemapId>("jalan");
   const [showRivers, setShowRivers] = useState<boolean>(true);
   const [showStations, setShowStations] = useState<boolean>(true);
+
+  const handleToggleFullscreen = () => {
+    if (onToggleFullscreen) {
+      onToggleFullscreen();
+    } else {
+      setInternalFullscreen((prev) => !prev);
+    }
+  };
+
+  // Kunci scroll body saat mode layar penuh aktif
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isFullscreen]);
+
+  // Dukungan tombol Escape untuk keluar dari mode layar penuh
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) {
+        handleToggleFullscreen();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen]);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [detailTab, setDetailTab] = useState<"ringkasan" | "evaluasi" | "katam" | "grafik" | "cews">("ringkasan");
@@ -678,7 +740,13 @@ export default function SeasonalPredictionMap({
   }
 
   return (
-    <div className="relative z-0 isolate w-full h-full overflow-hidden bg-slate-200 dark:bg-slate-900">
+    <div
+      className={
+        isFullscreen
+          ? "fixed inset-0 z-[99999] w-screen h-screen bg-slate-950 overflow-hidden flex flex-col font-sans"
+          : "relative z-0 isolate w-full h-full overflow-hidden bg-slate-200 dark:bg-slate-900 rounded-2xl sm:rounded-3xl"
+      }
+    >
       {/* Kanvas Peta Leaflet Penuh */}
       <SeasonalLeafletCanvas
         geojson={activeGeojson}
@@ -698,7 +766,73 @@ export default function SeasonalPredictionMap({
         showRivers={showRivers}
         stations={stations}
         showStations={showStations}
+        isFullscreen={isFullscreen}
+        onSelectStation={setSelectedStation}
+        displayMetric={displayMetric}
       />
+
+      {/* Top-Right Floating Controls (Metric Switcher & Fullscreen Toggle) */}
+      <div className="absolute top-2.5 right-2.5 z-[500] flex items-center gap-2 pointer-events-auto">
+        {stations && stations.length > 0 && showStations && (
+          <div className="hidden sm:flex items-center p-1 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-lg border border-slate-300 dark:border-slate-700 gap-1 text-[11px] font-bold">
+            <button
+              type="button"
+              onClick={() => setDisplayMetric("wind")}
+              title="Tampilkan Arah & Kecepatan Angin"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                displayMetric === "wind"
+                  ? "bg-cyan-600 text-white shadow-xs"
+                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+            >
+              <Wind className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Angin</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDisplayMetric("temperature")}
+              title="Tampilkan Suhu Udara"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                displayMetric === "temperature"
+                  ? "bg-rose-600 text-white shadow-xs"
+                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+            >
+              <Thermometer className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Suhu</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDisplayMetric("rainfall")}
+              title="Tampilkan Curah Hujan"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                displayMetric === "rainfall"
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+            >
+              <CloudRain className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Hujan</span>
+            </button>
+          </div>
+        )}
+
+        {/* Fullscreen Button */}
+        <button
+          type="button"
+          onClick={handleToggleFullscreen}
+          title={isFullscreen ? "Keluar Layar Penuh (Esc)" : "Mode Layar Penuh"}
+          aria-label={isFullscreen ? "Keluar Layar Penuh" : "Mode Layar Penuh"}
+          className="flex h-10 px-3 items-center gap-1.5 rounded-full bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 shadow-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold transition-colors cursor-pointer"
+        >
+          {isFullscreen ? (
+            <Minimize2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+          ) : (
+            <Maximize2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+          )}
+          <span className="hidden sm:inline">{isFullscreen ? "Keluar" : "Layar Penuh"}</span>
+        </button>
+      </div>
 
       {/* Top-Center High-Contrast Blue Banner (CEWS BMKG style) */}
       <div className="pointer-events-none absolute top-2.5 left-14 right-14 z-[450] flex justify-center">
@@ -911,7 +1045,51 @@ export default function SeasonalPredictionMap({
               onChangeOpacity={handleChangeLayerOpacity}
             />
 
-            {/* Grup 3: Peta Dasar */}
+            {/* Lapisan Tematik Stasiun & Sensor Cuaca */}
+            {stations && stations.length > 0 && (
+              <div className="border-t border-slate-200 dark:border-slate-700 px-3 py-2.5 bg-indigo-50/50 dark:bg-slate-800/40">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                      <Radio className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>Titik Stasiun Cuaca ({stations.length})</span>
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      Node telemetri IoT mikro real-time
+                    </p>
+                  </div>
+                  <Switch
+                    checked={showStations}
+                    onCheckedChange={setShowStations}
+                    aria-label="Toggle Titik Stasiun"
+                    className="scale-90 data-[state=checked]:bg-indigo-600 data-[state=unchecked]:bg-slate-300 dark:data-[state=unchecked]:bg-slate-700 cursor-pointer"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Lapisan Tematik Hidrologi & Waduk */}
+            <div className="border-t border-slate-200 dark:border-slate-700 px-3 py-2.5 bg-sky-50/50 dark:bg-slate-800/40">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                    <Waves className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+                    <span>Aliran Sungai &amp; Waduk</span>
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    Kelokan riil Luk Ulo, Kemit, Sempor
+                  </p>
+                </div>
+                <Switch
+                  checked={showRivers}
+                  onCheckedChange={setShowRivers}
+                  aria-label="Toggle Alur Sungai"
+                  className="scale-90 data-[state=checked]:bg-sky-600 data-[state=unchecked]:bg-slate-300 dark:data-[state=unchecked]:bg-slate-700 cursor-pointer"
+                />
+              </div>
+            </div>
+
+            {/* Grup 3: Peta Dasar (Basemap) - Dipisah tegas di bagian paling bawah */}
             <div className="border-t border-slate-200 dark:border-slate-700 px-3 py-2.5">
               <p className="text-xs font-bold text-slate-900 dark:text-slate-100 mb-1.5">
                 Peta Dasar (Basemap)
@@ -936,49 +1114,6 @@ export default function SeasonalPredictionMap({
                 })}
               </div>
             </div>
-
-            {/* Lapisan Tematik Hidrologi */}
-            <div className="border-t border-slate-200 dark:border-slate-700 px-3 py-2.5 bg-sky-50/50 dark:bg-slate-800/40">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                    Aliran Sungai &amp; Waduk
-                  </p>
-                  <p className="text-[10px] text-slate-500">
-                    Kelokan riil Luk Ulo, Kemit, Waduk Sempor
-                  </p>
-                </div>
-                <Switch
-                  checked={showRivers}
-                  onCheckedChange={setShowRivers}
-                  aria-label="Toggle Alur Sungai"
-                  className="scale-90 data-[state=checked]:bg-sky-600 data-[state=unchecked]:bg-slate-300 dark:data-[state=unchecked]:bg-slate-700 cursor-pointer"
-                />
-              </div>
-            </div>
-
-            {/* Lapisan Tematik Stasiun Cuaca */}
-            {stations && stations.length > 0 && (
-              <div className="border-t border-slate-200 dark:border-slate-700 px-3 py-2.5 bg-indigo-50/50 dark:bg-slate-800/40">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                      <Radio className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-                      <span>Titik Stasiun Cuaca</span>
-                    </p>
-                    <p className="text-[10px] text-slate-500">
-                      {stations.length} stasiun telemetri real-time
-                    </p>
-                  </div>
-                  <Switch
-                    checked={showStations}
-                    onCheckedChange={setShowStations}
-                    aria-label="Toggle Titik Stasiun"
-                    className="scale-90 data-[state=checked]:bg-indigo-600 data-[state=unchecked]:bg-slate-300 dark:data-[state=unchecked]:bg-slate-700 cursor-pointer"
-                  />
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -1139,6 +1274,15 @@ export default function SeasonalPredictionMap({
             </p>
           </div>
         </div>
+      )}
+
+      {/* Slide-over Detail Drawer untuk Stasiun Cuaca yang Diklik */}
+      {selectedStation && (
+        <StationDetailDrawer
+          station={selectedStation}
+          onClose={() => setSelectedStation(null)}
+          isDarkMode={isDarkMode}
+        />
       )}
     </div>
   );
