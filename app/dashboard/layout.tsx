@@ -10,6 +10,7 @@ import { signOutUser } from "@/lib/FetchingAuth"
 import { Sidebar } from "@/components/dashboard/Sidebar"
 import { Topbar } from "@/components/dashboard/Topbar"
 import { dashboardNavigation } from "@/lib/navigation"
+import { NodeHealthProvider } from "@/context/NodeHealthContext"
 import Loading from "@/app/loading"
 const inter = Inter({ subsets: ["latin"] });
 
@@ -62,43 +63,45 @@ export default function DashboardLayout({
   // const navigation: NavigationItem[] = [ ... ] // This is removed.
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-950">
-      {/* Topbar now spans full width */}
-      <Topbar 
-        user={user} 
-        profile={profile} 
-        setSidebarOpen={setSidebarOpen} 
-        handleLogout={handleLogout}
-        navigation={navigation} // Pass navigation to Topbar
-      />
-
-      {/* Mobile Drawer (active on small screens) */}
-      <div className="lg:hidden">
-        <Sidebar 
-          navigation={navigation}
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
+    <NodeHealthProvider>
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-950">
+        {/* Topbar now spans full width */}
+        <Topbar 
+          user={user} 
+          profile={profile} 
+          setSidebarOpen={setSidebarOpen} 
+          handleLogout={handleLogout}
+          navigation={navigation} // Pass navigation to Topbar
         />
-      </div>
 
-      {/* Content area with sidebar and main content */}
-      <div className="flex h-[calc(100dvh-4rem)]">
-        {/* Sidebar - fixed position on desktop only */}
-        <aside className="hidden lg:block lg:w-64 flex-shrink-0 h-[calc(100dvh-4rem)] overflow-hidden">
+        {/* Mobile Drawer (active on small screens) */}
+        <div className="lg:hidden">
           <Sidebar 
             navigation={navigation}
-            sidebarOpen={false}
+            sidebarOpen={sidebarOpen}
             setSidebarOpen={setSidebarOpen}
           />
-        </aside>
+        </div>
 
-        {/* Main content - scrollable with min-w-0 to prevent flex blowout */}
-        <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
-          <main className="py-4 sm:py-6">
-            <div className="px-3 sm:px-6 lg:px-8 max-w-full">{children}</div>
-          </main>
+        {/* Content area with sidebar and main content */}
+        <div className="flex h-[calc(100dvh-4rem)]">
+          {/* Sidebar - fixed position on desktop only */}
+          <aside className="hidden lg:block lg:w-64 flex-shrink-0 h-[calc(100dvh-4rem)] overflow-hidden">
+            <Sidebar 
+              navigation={navigation}
+              sidebarOpen={false}
+              setSidebarOpen={setSidebarOpen}
+            />
+          </aside>
+
+          {/* Main content - scrollable with min-w-0 to prevent flex blowout */}
+          <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+            <main className="py-4 sm:py-6">
+              <div className="px-3 sm:px-6 lg:px-8 max-w-full">{children}</div>
+            </main>
+          </div>
         </div>
       </div>
-    </div>
+    </NodeHealthProvider>
   )
 }

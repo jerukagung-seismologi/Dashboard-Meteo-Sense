@@ -20,9 +20,13 @@ import {
   ClockIcon,
   ChevronRight, // Import icon baru
   ExternalLink, // Import icon baru
+  BatteryWarning,
+  BatteryCharging,
+  Zap,
 } from "lucide-react"
 import { EmptyState } from "@/components/empty-state"
 import { useAuth } from "@/hooks/useAuth"
+import { useNodeHealth } from "@/context/NodeHealthContext"
 import Loading from "@/app/loading"
 import { fetchAllDevices, Device } from "@/lib/FetchingDevice"
 import { fetchSensorMetadata, fetchSensorData } from "@/lib/apiClient"
@@ -155,6 +159,43 @@ export default function DashboardPage() {
   })
   const [recentAlerts, setRecentAlerts] = useState<LogEvent[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Background Periodic Node Health Supervisor Context
+  const {
+    reports: healthReports,
+    lowBatteryNodes,
+    criticalBatteryNodes,
+    lastChecked: healthLastChecked,
+    isChecking: healthChecking,
+  } = useNodeHealth()
+
+  // Real-time synchronization when background supervisor finishes a periodic heartbeat check
+  useEffect(() => {
+    if (healthReports.length > 0) {
+      setDevices((prevDevices) => {
+        if (prevDevices.length === 0) return prevDevices;
+        const updated = prevDevices.map((dev) => {
+          const match = healthReports.find((h) => h.deviceId === dev.id);
+          if (!match) return dev;
+          return {
+            ...dev,
+            status: match.status,
+            lastUpdate: match.lastUpdate ?? dev.lastUpdate,
+            latestData:
+              match.volt != null
+                ? { ...(dev.latestData as any), volt: match.volt }
+                : dev.latestData,
+          };
+        });
+        const onlineCount = updated.filter((d) => d.status === "online").length;
+        setDeviceStats({
+          totalDevices: updated.length,
+          onlineDevices: onlineCount,
+        });
+        return updated;
+      });
+    }
+  }, [healthReports])
 
   const loadDashboardData = useCallback(async (forceRefresh: boolean = false) => {
     if (!user?.uid) return
@@ -346,20 +387,52 @@ export default function DashboardPage() {
         {/* Recent Alerts */}
         <Card className="shadow-lg border-l-4 border-l-red-500 dark:border-l-red-400 dark:bg-gray-800/50">
           <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 dark:bg-none dark:bg-gray-800">
-            <CardTitle className="flex items-center text-red-800 dark:text-red-300">
-              <AlertTriangleIcon className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" />
-              Peringatan Terbaru
-            </CardTitle>
-            <CardDescription className="text-red-600 dark:text-red-400">Notifikasi sistem dan status perangkat</CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center text-red-800 dark:text-red-300">
+                  <AlertTriangleIcon className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" />
+                  Peringatan Terbaru
+                </CardTitle>
+                <CardDescription className="text-red-600 dark:text-red-400">
+                  Notifikasi sistem, pemantauan offline, &amp; daya baterai
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-1.5 self-start sm:self-center">
+                <Badge
+                  variant="outline"
+                  className="text-[11px] bg-white/80 dark:bg-slate-900/70 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-mono py-0.5 px-2 flex items-center gap-1.5 shadow-xs"
+                >
+                  <span
+                    className={`inline-block w-2 h-2 rounded-full ${
+                      healthChecking ? "bg-amber-500 animate-ping" : "bg-emerald-500"
+                    }`}
+                  />
+                  <span>Auto QC Aktif</span>
+                  {healthLastChecked && (
+                    <span className="text-[10px] text-slate-400 hidden md:inline">
+                      ({healthLastChecked.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })})
+                    </span>
+                  )}
+                </Badge>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="pt-4 space-y-4">
-            {devices.filter((d) => d.status === "offline").length === 0 && recentAlerts.length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground dark:text-gray-400">
+          <CardContent className="pt-4 space-y-3">
+            {devices.filter((d) => d.status === "offline").length === 0 &&
+            lowBatteryNodes.length === 0 &&
+            recentAlerts.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground dark:text-gray-400">
                 <CheckCircleIcon className="h-8 w-8 mx-auto mb-2 text-green-500 dark:text-green-400" />
-                Tidak ada peringatan terbaru
+                <p className="font-medium text-sm text-gray-700 dark:text-gray-300">
+                  Semua stasiun online &amp; status daya normal
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Pemantau berkala aktif di latar belakang (tiap 2 menit).
+                </p>
               </div>
             ) : (
               <>
+                {/* 1. Stasiun Offline */}
                 {devices
                   .filter((d) => d.status === "offline")
                   .map((device) => {
@@ -376,36 +449,82 @@ export default function DashboardPage() {
                     return (
                       <div
                         key={`offline-${device.id}`}
-                        className="flex items-start space-x-3 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg dark:bg-gradient-to-r dark:from-gray-700/50 dark:to-gray-700"
+                        className="flex items-start space-x-3 p-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg dark:bg-gradient-to-r dark:from-orange-950/30 dark:to-amber-950/20 border border-orange-200/80 dark:border-orange-900/50"
                       >
-                        <WifiOffIcon className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-1" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                            Perangkat <span className="font-bold">{device.name}</span> offline
+                        <WifiOffIcon className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-1 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            Stasiun <span className="font-bold">{device.name}</span> Offline
                           </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">
-                            Terakhir aktif sekitar {offlineText} yang lalu
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                            Hilang sinyal • Terakhir aktif sekitar {offlineText} yang lalu
                           </p>
                         </div>
-                        <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300">
+                        <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300 font-semibold shrink-0">
                           OFFLINE
                         </Badge>
                       </div>
                     )
                   })}
+
+                {/* 2. Peringatan Baterai Rendah / Kritis */}
+                {lowBatteryNodes.map((node) => {
+                  const isCrit = node.batteryStatus === "critical"
+                  return (
+                    <div
+                      key={`battery-${node.deviceId}`}
+                      className={`flex items-start space-x-3 p-3 rounded-lg border ${
+                        isCrit
+                          ? "bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/20 border-red-200/80 dark:border-red-900/50"
+                          : "bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/20 border-amber-200/80 dark:border-amber-900/50"
+                      }`}
+                    >
+                      <BatteryWarning
+                        className={`h-4 w-4 mt-1 shrink-0 ${
+                          isCrit
+                            ? "text-red-600 dark:text-red-400 animate-pulse"
+                            : "text-amber-600 dark:text-amber-400"
+                        }`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          Stasiun <span className="font-bold">{node.deviceName}</span>: Baterai {isCrit ? "Kritis" : "Lemah"}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                          Tegangan {node.volt ? `${node.volt.toFixed(2)} V` : "Rendah"} •{" "}
+                          {isCrit
+                            ? "Risiko padam segera, periksa pengisian daya!"
+                            : "Pengisian solar cell rendah atau cuaca mendung"}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={isCrit ? "destructive" : "secondary"}
+                        className={`text-xs shrink-0 font-semibold ${
+                          isCrit
+                            ? "bg-red-600 text-white"
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300"
+                        }`}
+                      >
+                        {isCrit ? "DAYA KRITIS" : "BATERAI LEMAH"}
+                      </Badge>
+                    </div>
+                  )
+                })}
+
+                {/* 3. Log Event Peringatan Terakhir */}
                 {recentAlerts.map((alert) => (
                   <div
                     key={alert.id}
-                    className="flex items-start space-x-3 p-3 bg-gradient-to-r from-red-50 to-pink-50 rounded-lg dark:bg-gradient-to-r dark:from-gray-700/50 dark:to-gray-700"
+                    className="flex items-start space-x-3 p-3 bg-gradient-to-r from-red-50 to-pink-50 rounded-lg dark:bg-gradient-to-r dark:from-gray-700/50 dark:to-gray-700 border border-slate-200/60 dark:border-slate-700/60"
                   >
-                    <AlertTriangleIcon className="h-4 w-4 text-red-600 dark:text-red-400 mt-1" />
-                    <div className="flex-1">
+                    <AlertTriangleIcon className="h-4 w-4 text-red-600 dark:text-red-400 mt-1 shrink-0" />
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{alert.message}</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                         {new Date(alert.timestamp).toLocaleString("id-ID")} • {alert.device}
                       </p>
                     </div>
-                    <Badge variant="destructive" className="text-xs">
+                    <Badge variant="destructive" className="text-xs shrink-0">
                       {alert.severity}
                     </Badge>
                   </div>
