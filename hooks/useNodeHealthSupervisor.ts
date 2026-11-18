@@ -66,19 +66,47 @@ export function useNodeHealthSupervisor(options: UseNodeHealthSupervisorOptions 
 
             if (item.alert.type === "offline") {
               toast({
-                title: `⚠️ Stasiun Offline: ${item.deviceName}`,
+                title: `Stasiun Offline: ${item.deviceName}`,
                 description: item.alert.message,
                 variant: "destructive",
               });
             } else if (item.alert.type === "battery_critical") {
               toast({
-                title: `🔴 Baterai Kritis: ${item.deviceName}`,
+                title: `Baterai Kritis: ${item.deviceName}`,
                 description: item.alert.message,
                 variant: "destructive",
               });
             } else if (item.alert.type === "battery_low") {
               toast({
-                title: `🟡 Baterai Lemah: ${item.deviceName}`,
+                title: `Baterai Lemah: ${item.deviceName}`,
+                description: item.alert.message,
+              });
+            } else if (item.alert.type === "temp_extreme_high") {
+              toast({
+                title: `Bahaya Panas Ekstrem: ${item.deviceName}`,
+                description: item.alert.message,
+                variant: "destructive",
+              });
+            } else if (item.alert.type === "temp_rapid_rise") {
+              toast({
+                title: `Lonjakan Suhu Cepat: ${item.deviceName}`,
+                description: item.alert.message,
+                variant: item.alert.severity === "high" ? "destructive" : "default",
+              });
+            } else if (item.alert.type === "temp_sensor_error") {
+              toast({
+                title: `Anomali Sensor Suhu: ${item.deviceName}`,
+                description: item.alert.message,
+                variant: "destructive",
+              });
+            } else if (item.alert.type === "temp_high_warning") {
+              toast({
+                title: `Waspada Suhu Tinggi: ${item.deviceName}`,
+                description: item.alert.message,
+              });
+            } else if (item.alert.type === "temp_extreme_low") {
+              toast({
+                title: `Anomali Suhu Dingin: ${item.deviceName}`,
                 description: item.alert.message,
               });
             }
@@ -93,6 +121,13 @@ export function useNodeHealthSupervisor(options: UseNodeHealthSupervisorOptions 
           if (item.batteryStatus === "normal") {
             notifiedKeysRef.current.delete(`${item.deviceId}_battery_low`);
             notifiedKeysRef.current.delete(`${item.deviceId}_battery_critical`);
+          }
+          if (item.tempStatus === "normal") {
+            notifiedKeysRef.current.delete(`${item.deviceId}_temp_rapid_rise`);
+            notifiedKeysRef.current.delete(`${item.deviceId}_temp_extreme_high`);
+            notifiedKeysRef.current.delete(`${item.deviceId}_temp_high_warning`);
+            notifiedKeysRef.current.delete(`${item.deviceId}_temp_sensor_error`);
+            notifiedKeysRef.current.delete(`${item.deviceId}_temp_extreme_low`);
           }
         });
       }
@@ -135,12 +170,20 @@ export function useNodeHealthSupervisor(options: UseNodeHealthSupervisorOptions 
   const offlineNodes = reports.filter((r) => r.status === "offline");
   const lowBatteryNodes = reports.filter((r) => r.batteryStatus === "low" || r.batteryStatus === "critical");
   const criticalBatteryNodes = reports.filter((r) => r.batteryStatus === "critical");
+  const abnormalTempNodes = reports.filter((r) => r.tempStatus && r.tempStatus !== "normal");
+  const rapidRiseNodes = reports.filter((r) => r.tempStatus === "rapid_rise");
+  const extremeTempNodes = reports.filter(
+    (r) => r.tempStatus === "extreme_high" || r.tempStatus === "high_warning" || r.tempStatus === "sensor_error"
+  );
 
   return {
     reports,
     offlineNodes,
     lowBatteryNodes,
     criticalBatteryNodes,
+    abnormalTempNodes,
+    rapidRiseNodes,
+    extremeTempNodes,
     lastChecked,
     isChecking,
     error,

@@ -9,6 +9,9 @@ export interface NodeHealthContextValue {
   offlineNodes: NodeHealthReport[];
   lowBatteryNodes: NodeHealthReport[];
   criticalBatteryNodes: NodeHealthReport[];
+  abnormalTempNodes: NodeHealthReport[];
+  rapidRiseNodes: NodeHealthReport[];
+  extremeTempNodes: NodeHealthReport[];
   lastChecked: Date | null;
   isChecking: boolean;
   error: string | null;
@@ -39,6 +42,9 @@ export function useNodeHealth(): NodeHealthContextValue {
       offlineNodes: [],
       lowBatteryNodes: [],
       criticalBatteryNodes: [],
+      abnormalTempNodes: [],
+      rapidRiseNodes: [],
+      extremeTempNodes: [],
       lastChecked: null,
       isChecking: false,
       error: null,

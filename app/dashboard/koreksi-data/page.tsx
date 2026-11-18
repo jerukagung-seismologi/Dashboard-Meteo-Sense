@@ -1344,6 +1344,59 @@ export default function KoreksiDataPage() {
 
   const anomalyIndexSet = useMemo(() => new Set(anomalies.map((a) => a.index)), [anomalies]);
 
+  // Expanded anomaly set for solar overheating to absorb flank/shoulder heating
+  // and prevent contaminated anchors from distorting the cosine-hermite reconstruction
+  const effectiveAnomalyIndexSet = useMemo(() => {
+    const set = new Set(anomalies.map((a) => a.index));
+    if (selectedVar.key !== "temperature" || rawRecords.length === 0) return set;
+
+    const solarIndices = anomalies
+      .filter((a) => a.type === "solar_overheating")
+      .map((a) => a.index);
+    if (solarIndices.length === 0) return set;
+
+    const shoulderRelaxationThreshold = 0.25;
+    for (const sIdx of solarIndices) {
+      // Walk backward along rising heating flank
+      let left = sIdx - 1;
+      while (left >= 0 && !set.has(left)) {
+        const rec = rawRecords[left];
+        const { hourFrac } = getWibTimeComponents(rec.timestamp);
+        if (hourFrac < 8.5 || hourFrac > 17.5) break;
+        const val = readFiniteField(rec, "temperature");
+        const ref = getUnifiedRefValAtTimestamp(rec.timestamp, "temperature");
+        if (val === null || ref === null) break;
+        const excess = val - ref - baselineNightOffset;
+        if (excess > shoulderRelaxationThreshold) {
+          set.add(left);
+          left--;
+        } else {
+          break;
+        }
+      }
+
+      // Walk forward along falling cooling flank
+      let right = sIdx + 1;
+      while (right < rawRecords.length && !set.has(right)) {
+        const rec = rawRecords[right];
+        const { hourFrac } = getWibTimeComponents(rec.timestamp);
+        if (hourFrac < 8.5 || hourFrac > 17.5) break;
+        const val = readFiniteField(rec, "temperature");
+        const ref = getUnifiedRefValAtTimestamp(rec.timestamp, "temperature");
+        if (val === null || ref === null) break;
+        const excess = val - ref - baselineNightOffset;
+        if (excess > shoulderRelaxationThreshold) {
+          set.add(right);
+          right++;
+        } else {
+          break;
+        }
+      }
+    }
+
+    return set;
+  }, [anomalies, selectedVar.key, rawRecords, getUnifiedRefValAtTimestamp, baselineNightOffset]);
+
   // 5. Scientific Batch Correction Calculation (Real-Time Preview)
   const correctedResults = useMemo(() => {
     if (rawRecords.length === 0) return [];
@@ -1356,12 +1409,9 @@ export default function KoreksiDataPage() {
     // Kumpulkan jangkar valid dan pra-hitung kemiringan sejati untuk PCHIP & Akima
     const validAnchors: Array<{ idx: number; timestamp: number; value: number }> = [];
     for (let i = 0; i < n; i++) {
-      const raw = (rawRecords[i] as any)[varKey];
-      if (raw !== null && raw !== undefined && raw !== "") {
-        const v = Number(raw);
-        if (Number.isFinite(v) && !anomalyIndexSet.has(i)) {
-          validAnchors.push({ idx: i, timestamp: rawRecords[i].timestamp, value: v });
-        }
+      const val = readFiniteField(rawRecords[i], varKey);
+      if (val !== null && !effectiveAnomalyIndexSet.has(i)) {
+        validAnchors.push({ idx: i, timestamp: rawRecords[i].timestamp, value: val });
       }
     }
 
@@ -1402,7 +1452,7 @@ export default function KoreksiDataPage() {
     return rawRecords.map((rec, idx) => {
       const rawValOpt = readFiniteField(rec, varKey);
       const rawVal = rawValOpt ?? NaN;
-      const isAnomaly = anomalyIndexSet.has(idx);
+      const isAnomaly = effectiveAnomalyIndexSet.has(idx);
       const wibTime = getWibTimeComponents(rec.timestamp);
 
       // If user selected "Hanya Koreksi Anomali" and this point is clean, keep raw
@@ -1624,7 +1674,7 @@ export default function KoreksiDataPage() {
     clampMax,
     scaleFactor,
     onlyAnomalies,
-    anomalyIndexSet,
+    effectiveAnomalyIndexSet,
     interpolationSubMethod,
     getUnifiedRefValAtTimestamp,
     baselineNightOffset,
@@ -1706,25 +1756,91 @@ export default function KoreksiDataPage() {
       }
     }
 
-    // Visual mark points for anomalies (filter NaN & downsample dense overlays cleanly)
-    const finiteAnomalies = anomalies.filter((a) => Number.isFinite(a.value));
-    const maxPins = 25;
-    const step = finiteAnomalies.length > maxPins ? Math.ceil(finiteAnomalies.length / maxPins) : 1;
-    const markPointData = finiteAnomalies
-      .filter((_, idx) => idx % step === 0)
-      .map((a) => ({
-        name: a.reason,
-        coord: [a.index, a.value],
-        value:
-          a.type === "wmo_boundary"
-            ? "WMO"
-            : a.type === "solar_overheating"
-            ? "Surya"
-            : a.type === "flatline"
-            ? "Flat"
-            : "Spike",
-        itemStyle: { color: a.type === "solar_overheating" ? "#F59E0B" : "#EF4444" },
-      }));
+    // 1. Group consecutive anomalies into clusters to prevent visual pin overlap/clutter
+    const clusters: Array<{
+      type: string;
+      items: AnomalyFlag[];
+      peakItem: AnomalyFlag;
+      startIndex: number;
+      endIndex: number;
+    }> = [];
+
+    const sortedAnomalies = [...anomalies]
+      .filter((a) => Number.isFinite(a.value))
+      .sort((a, b) => a.index - b.index);
+
+    for (const anom of sortedAnomalies) {
+      const lastCluster = clusters[clusters.length - 1];
+      if (
+        lastCluster &&
+        lastCluster.type === anom.type &&
+        anom.index - lastCluster.endIndex <= 3
+      ) {
+        lastCluster.items.push(anom);
+        lastCluster.endIndex = anom.index;
+        const isHigher =
+          anom.type === "solar_overheating" || anom.type === "spike_jump"
+            ? anom.value > lastCluster.peakItem.value
+            : Math.abs(anom.value) > Math.abs(lastCluster.peakItem.value);
+        if (isHigher) {
+          lastCluster.peakItem = anom;
+        }
+      } else {
+        clusters.push({
+          type: anom.type,
+          items: [anom],
+          peakItem: anom,
+          startIndex: anom.index,
+          endIndex: anom.index,
+        });
+      }
+    }
+
+    // 2. Exactly one crisp markPoint per cluster positioned at the peak
+    const markPointData = clusters.map((c) => {
+      const count = c.items.length;
+      const countSuffix = count > 1 ? ` (${count}p)` : "";
+      const labelText =
+        c.type === "wmo_boundary"
+          ? `WMO${countSuffix}`
+          : c.type === "solar_overheating"
+          ? `Surya${countSuffix}`
+          : c.type === "flatline"
+          ? `Flat${countSuffix}`
+          : `Spike${countSuffix}`;
+
+      return {
+        name: c.peakItem.reason,
+        coord: [c.peakItem.index, c.peakItem.value],
+        value: labelText,
+        symbolSize: 32,
+        itemStyle: {
+          color: c.type === "solar_overheating" ? "#F59E0B" : "#EF4444",
+        },
+        label: {
+          fontSize: 10,
+          fontWeight: 600,
+        },
+      };
+    });
+
+    // 3. MarkArea softly highlights duration of multi-point anomaly clusters
+    const markAreaData = clusters
+      .filter((c) => c.items.length >= 2)
+      .map((c) => [
+        {
+          xAxis: c.startIndex,
+          itemStyle: {
+            color:
+              c.type === "solar_overheating"
+                ? "rgba(245, 158, 11, 0.12)"
+                : "rgba(239, 68, 68, 0.10)",
+          },
+        },
+        {
+          xAxis: c.endIndex,
+        },
+      ]);
 
     const seriesList: any[] = [
       {
@@ -1740,6 +1856,7 @@ export default function KoreksiDataPage() {
         },
         itemStyle: { color: "#F43F5E" },
         markPoint: markPointData.length > 0 ? { data: markPointData } : undefined,
+        markArea: markAreaData.length > 0 ? { data: markAreaData } : undefined,
         z: 5,
       },
       {

@@ -24,6 +24,7 @@
 3. [Algoritma & Formulasi Ilmiah](#-algoritma--formulasi-ilmiah)
    - [Kalibrasi & Koreksi Bias Sensor](#kalibrasi--koreksi-bias-sensor)
    - [Koreksi Data, Adaptasi Pola Node, & Imputasi Celah 2-Fase](#koreksi-data-adaptasi-pola-node--imputasi-celah-2-fase)
+   - [Pengawas Status Node & Deteksi Dini Anomali Suhu](#f-sistem-pengawas-status-node--deteksi-dini-anomali-suhu-real-time-periodic-node-health--temperature-anomaly-supervisor)
    - [Parameter Turunan Meteorologi](#parameter-turunan-meteorologi)
    - [Standar Jendela Waktu Ekstrem Sinoptik WMO/BMKG](#standar-jendela-waktu-ekstrem-sinoptik-wmobmkg)
    - [Imputasi Reanalisis Atmosfer (ECMWF ERA5)](#imputasi-reanalisis-atmosfer-ecmwf-era5)
@@ -304,13 +305,22 @@ Agar kurva koreksi dan pengisian celah semirip mungkin dengan karakteristik mikr
 - Nilai tiap slot dihitung sebagai **median** (tahan terhadap pencilan sesaat), disambung secara melingkar (*circular wrapping* $23:59 \to 00:00\ \text{WIB}$), lalu dihaluskan menggunakan filter segitiga melingkar berbobot ($\pm 7$ menit) sehingga mempertahankan amplitudo puncak siang dan lembah dini hari.
 - **Pengecualian Presipitasi**: Variabel `rainfall` (akumulasi harian UTC $00:00\text{Z}$) dan `rainrate` tidak menggunakan replikasi siklus diurnal karena kejadian hujan bersifat stokastik, sehingga celah curah hujan tetap mempertahankan perilaku *monotonic carry* dan reset harian `00:00 UTC`.
 
-#### C. Adaptor Tanda Mikroklimat Node (*Node Signature Transfer* & Spatial Ridge Aman)
+#### C. Penyangga Bahu Radiasi Surya (*Shoulder Buffer Expansion*) & Klasterisasi Visual ECharts
+1. **Pelebaran Penyangga Anomali Bahu (*Shoulder Relaxation*)**:
+   * *Akar Masalah Jangkar Terkontaminasi*: Saat sensor mengalami pemanasan surya berlebih (*solar overheating*), kenaikan suhu terjadi secara bertahap. Jika ambang kaku dipasang pada $\Delta T \ge +0.7^\circ\text{C}$, titik puncak (misal pukul 16:00 di 33.7°C) memang tertandai, namun lereng kenaikan (pukul 15:40 di 31.8°C dengan $\Delta T = +0.6^\circ\text{C}$) dianggap sebagai titik bersih (*clean anchor*). Akibatnya, interpolasi hanya menjembatani lereng yang sudah terlanjur panas sehingga kurva hasil koreksi tidak pernah turun ke kurva *baseline* acuan.
+   * *Solusi Ekspansi*: Algoritma `effectiveAnomalyIndexSet` secara adaptif meluaskan jendela anomali ke arah kiri (mundur) dan kanan (maju) sepanjang jam siang (08:30–17:30 WIB) hingga kelebihan suhu mereda kembali di bawah ambang relaksasi ($\Delta T \le 0.25^\circ\text{C}$). Hal ini menjamin jangkar awal $(t_A, y_A)$ ditarik murni sebelum pemanasan terjadi dan jangkar akhir $(t_B, y_B)$ ditarik setelah sensor mendingin normal, sehingga kurva Kosinus-Hermite merekonstruksi seluruh kejadian panas tepat di atas kurva nominal diurnal stasiun:
+     $$T_{\text{koreksi}}(t) = T_{\text{pola\_node}}(t) + \Delta T_{\text{malam}}$$
+2. **Klasterisasi Penanda (*Clustered Peak MarkPoints & MarkArea*)**:
+   * Menghilangkan penumpukan puluhan pin raksasa bertingkat (*visual clutter*) yang kerap menutupi grafik saat puluhan titik berurutan terdeteksi anomali.
+   * Titik-titik anomali berurutan ($\le 3$ langkah sampling) digabung menjadi satu kluster terpadu. Sistem hanya menempatkan **tepat 1 pin penanda kompak** (`symbolSize: 32`) pada titik deviasi puncak (*peak deviation*), dilengkapi pita arsiran transparan durasi (*MarkArea*) lembut di latar belakang.
+
+#### D. Adaptor Tanda Mikroklimat Node (*Node Signature Transfer* & Spatial Ridge Aman)
 Saat pengguna memakai referensi eksternal (**Stasiun AWS Tetangga** atau **Model ECMWF IFS / ERA5**), sistem terlebih dahulu melatih fungsi transfer (`fitNodeSignatureTransferModel`) menggunakan pasangan data historis $H-1\dots H-N$ serta sampel malam hari dari node target:
 $$\hat{y}_{\text{node}}(t) = \beta_0 \, r(t) + \beta_1 \sin\!\left(\frac{2\pi h_{\text{WIB}}}{24}\right) + \beta_2 \cos\!\left(\frac{2\pi h_{\text{WIB}}}{24}\right) + \beta_3$$
 yang diselesaikan melalui regresi Ridge $L_2$ ($X^T X + \alpha I, \ \alpha = 1.0$) sehingga perbedaan amplitudo, pergeseran fase pagi/sore, dan offset dasar ikut menyesuaikan pola khas node target.
 - **Guardrail Anti-Ekstrapolasi**: Model harmonik 4-fitur hanya diaktifkan jika sampel latih mencakup $\ge 24$ titik valid, $\ge 6$ jam unik, $\ge 2$ kuadran 6-jam yang berbeda, kemiringan wajar ($0.05 \le \beta_0 \le 2.5$), dan RMSE tidak lebih buruk daripada koreksi bias sederhana; jika data latih hanya berasal dari jam malam yang sempit, adaptor otomatis mundur ke pergeseran median skalar ($\hat{y}(t) = r(t) + \text{bias}$).
 
-#### D. Mesin Imputasi Celah 2-Fase (`1440 Menit/Hari`)
+#### E. Mesin Imputasi Celah 2-Fase (`1440 Menit/Hari`)
 Mengisi *missing timestamps* ke dalam grid seragam 1-menit kontinu melalui tiga tahap (`runUniversalGapImputation` & `buildCompleteGapNodePayloads`):
 1. **Fase 1 — *Micro-Gap* ($\le \text{batas mikro}$, default 15 menit)**: Menggunakan spline kubik monoton PCHIP (*Fritsch-Carlson*), atau *monotonic rainfall carry* dengan deteksi batas reset harian `00:00 UTC` (`07:00 WIB`).
 2. **Fase 2 — *Macro-Gap* ($> \text{batas mikro}$)**:
@@ -319,6 +329,33 @@ Mengisi *missing timestamps* ke dalam grid seragam 1-menit kontinu melalui tiga 
 3. **Fase 3 — *Physics Post-Processing* & Multi-Variabel RTDB**:
    - Penghalusan opsional *Savitzky-Golay* (otomatis dilewati untuk `rainfall` dan `rainrate` agar tidak menghasilkan presipitasi negatif).
    - Penjepitan batas WMO (`humidity` $\in [0\%, 100\%]$, `pressure` $\in [850, 1080]\ \text{hPa}$, non-negatif untuk intensitas angin/radiasi/hujan) serta penegakan konsistensi termodinamika $T_d \le T_{\text{ambient}}$ ketika menulis payload multi-variabel ke RTDB.
+
+#### F. Sistem Pengawas Status Node & Deteksi Dini Anomali Suhu (*Real-Time Periodic Node Health & Temperature Anomaly Supervisor*)
+Dashboard mengoperasikan subsistem pengawasan latar belakang mandiri (*background supervisor runtime*) yang berjalan otomatis saat pengguna membuka aplikasi dashboard tanpa membebani kinerja klien maupun konsumsi kuota Firebase:
+
+1. **Arsitektur Eksekusi Hemat Daya (*Client-Side Throttled Supervisor*)**:
+   - Dikelola oleh hook `useNodeHealthSupervisor` dan context global `NodeHealthProvider` (`/context/NodeHealthContext.tsx`).
+   - Berjalan pada interval **2 menit** dengan memeriksa `document.visibilityState`: eksekusi otomatis **dijeda (pause)** saat tab peramban diminimalkan atau tidak aktif guna mencegah pemborosan panggilan jaringan dan kuota RTDB.
+2. **Mesin Evaluasi Backend Terpusat (`/api/system/node-health`)**:
+   - Setiap siklus, server mengevaluasi seluruh stasiun yang terdaftar pada pengguna secara paralel.
+   - Mengambil 3 titik data terbaru (`limitToLast(3)`) per perangkat untuk meminimalkan beban bandwidth jaringan.
+   - **Kriteria Deteksi Kenaikan Suhu Cepat (*Rapid Temperature Rise*)**:
+     $$\frac{\Delta T}{\Delta t} \ge \frac{+2.0^\circ\text{C}}{15\ \text{menit}}$$
+     Mendeteksi lonjakan panas mendadak (misalnya kegagalan insulasi sangkar radiasi, kebakaran lingkungan sekitar, atau gangguan sensor) berbasis diferensiasi waktu aktual dua titik telemetri berturutan.
+   - **Kriteria Suhu Ekstrem & Galat Fisik Sensor (*Absolute Physical Bounds*)**:
+     - **Panas Ekstrem (*Extreme Heat*)**: $T \ge 37.0^\circ\text{C}$ (kondisi kritis indeks kenyamanan tropis).
+     - **Siaga Panas Tinggi (*High Heat Alert*)**: $T \ge 35.0^\circ\text{C}$.
+     - **Suhu Dingin Anomali (*Cold Anomaly*)**: $T \le 18.0^\circ\text{C}$ (tidak wajar untuk dataran rendah tropis).
+     - **Kerusakan Sensor (*Sensor Fault / Out of Bounds*)**: $T > 50.0^\circ\text{C} \lor T < 5.0^\circ\text{C}$.
+   - **Pemantauan Daya & Komunikasi (*Battery & Station Offline*)**:
+     - Tegangan Baterai Kritis: $V < 3.4\ \text{V}$.
+     - Tegangan Baterai Rendah: $V < 3.6\ \text{V}$.
+     - Stasiun Terputus (*Offline Timeout*): Selisih timestamp data terakhir $> 30\ \text{menit}$.
+3. **Pencatatan Log & Deduplikasi Permanen RTDB**:
+   - Setiap anomali yang lolos verifikasi dicatat secara atomik ke path Firebase Realtime Database:
+     `logs/${userId}/${timestamp}`
+   - **Jendela Deduplikasi 30 Menit**: Mencegah penumpukan log dan banjir notifikasi (*alert fatigue*) dengan memeriksa apakah peringatan sejenis untuk stasiun yang sama telah dicatat dalam kurun 30 menit terakhir.
+   - Pengguna menerima notifikasi visual *Toast* interaktif secara *on-the-fly* pada antarmuka dashboard.
 
 ---
 

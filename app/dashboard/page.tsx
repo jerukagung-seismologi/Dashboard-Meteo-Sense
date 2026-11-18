@@ -23,6 +23,9 @@ import {
   BatteryWarning,
   BatteryCharging,
   Zap,
+  Flame,
+  TrendingUp,
+  Thermometer,
 } from "lucide-react"
 import { EmptyState } from "@/components/empty-state"
 import { useAuth } from "@/hooks/useAuth"
@@ -165,6 +168,9 @@ export default function DashboardPage() {
     reports: healthReports,
     lowBatteryNodes,
     criticalBatteryNodes,
+    abnormalTempNodes,
+    rapidRiseNodes,
+    extremeTempNodes,
     lastChecked: healthLastChecked,
     isChecking: healthChecking,
   } = useNodeHealth()
@@ -182,8 +188,12 @@ export default function DashboardPage() {
             status: match.status,
             lastUpdate: match.lastUpdate ?? dev.lastUpdate,
             latestData:
-              match.volt != null
-                ? { ...(dev.latestData as any), volt: match.volt }
+              match.volt != null || match.temperature != null
+                ? {
+                    ...(dev.latestData as any),
+                    ...(match.volt != null ? { volt: match.volt } : {}),
+                    ...(match.temperature != null ? { temperature: match.temperature } : {}),
+                  }
                 : dev.latestData,
           };
         });
@@ -387,51 +397,102 @@ export default function DashboardPage() {
         {/* Recent Alerts */}
         <Card className="shadow-lg border-l-4 border-l-red-500 dark:border-l-red-400 dark:bg-gray-800/50">
           <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 dark:bg-none dark:bg-gray-800">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <CardTitle className="flex items-center text-red-800 dark:text-red-300">
-                  <AlertTriangleIcon className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" />
-                  Peringatan Terbaru
-                </CardTitle>
-                <CardDescription className="text-red-600 dark:text-red-400">
-                  Notifikasi sistem, pemantauan offline, &amp; daya baterai
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-1.5 self-start sm:self-center">
-                <Badge
-                  variant="outline"
-                  className="text-[11px] bg-white/80 dark:bg-slate-900/70 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-mono py-0.5 px-2 flex items-center gap-1.5 shadow-xs"
-                >
-                  <span
-                    className={`inline-block w-2 h-2 rounded-full ${
-                      healthChecking ? "bg-amber-500 animate-ping" : "bg-emerald-500"
-                    }`}
-                  />
-                  <span>Auto QC Aktif</span>
-                  {healthLastChecked && (
-                    <span className="text-[10px] text-slate-400 hidden md:inline">
-                      ({healthLastChecked.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })})
-                    </span>
-                  )}
-                </Badge>
-              </div>
-            </div>
+            <CardTitle className="flex items-center text-red-800 dark:text-red-300">
+              <AlertTriangleIcon className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" />
+              Peringatan Terbaru
+            </CardTitle>
+            <CardDescription className="text-red-600 dark:text-red-400">
+              Notifikasi sistem dan status perangkat
+            </CardDescription>
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
             {devices.filter((d) => d.status === "offline").length === 0 &&
             lowBatteryNodes.length === 0 &&
+            abnormalTempNodes.length === 0 &&
             recentAlerts.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground dark:text-gray-400">
+              <div className="text-center py-4 text-muted-foreground dark:text-gray-400">
                 <CheckCircleIcon className="h-8 w-8 mx-auto mb-2 text-green-500 dark:text-green-400" />
                 <p className="font-medium text-sm text-gray-700 dark:text-gray-300">
-                  Semua stasiun online &amp; status daya normal
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Pemantau berkala aktif di latar belakang (tiap 2 menit).
+                  Tidak ada peringatan terbaru
                 </p>
               </div>
             ) : (
               <>
+                {/* 1. Peringatan Suhu Naik Cepat & Anomali Suhu */}
+                {abnormalTempNodes.map((node) => {
+                  const isExtremeHeat = node.tempStatus === "extreme_high";
+                  const isRapidRise = node.tempStatus === "rapid_rise";
+                  const isSensorError = node.tempStatus === "sensor_error";
+                  const isHeatWarning = node.tempStatus === "high_warning";
+                  const isCold = node.tempStatus === "extreme_low";
+
+                  let bgGradient =
+                    "bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/20 border-red-200/80 dark:border-red-900/50";
+                  let badgeColor = "bg-red-600 text-white";
+                  let badgeText = "PANAS EKSTREM";
+                  let IconComponent = Flame;
+                  let iconClass = "text-red-600 dark:text-red-400 animate-pulse";
+
+                  if (isRapidRise) {
+                    bgGradient =
+                      "bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/20 border-orange-200/80 dark:border-orange-900/50";
+                    badgeColor = "bg-orange-500 text-white";
+                    badgeText = "SUHU NAIK CEPAT";
+                    IconComponent = TrendingUp;
+                    iconClass = "text-orange-600 dark:text-orange-400";
+                  } else if (isHeatWarning) {
+                    bgGradient =
+                      "bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border-amber-200/80 dark:border-amber-900/50";
+                    badgeColor = "bg-amber-600 text-white";
+                    badgeText = "WASPADA PANAS";
+                    IconComponent = Flame;
+                    iconClass = "text-amber-600 dark:text-amber-400";
+                  } else if (isSensorError) {
+                    bgGradient =
+                      "bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/20 border-purple-200/80 dark:border-purple-900/50";
+                    badgeColor = "bg-purple-600 text-white";
+                    badgeText = "SENSOR ERROR";
+                    IconComponent = AlertTriangleIcon;
+                    iconClass = "text-purple-600 dark:text-purple-400";
+                  } else if (isCold) {
+                    bgGradient =
+                      "bg-gradient-to-r from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/20 border-sky-200/80 dark:border-sky-900/50";
+                    badgeColor = "bg-sky-600 text-white";
+                    badgeText = "ANOMALI DINGIN";
+                    IconComponent = Thermometer;
+                    iconClass = "text-sky-600 dark:text-sky-400";
+                  }
+
+                  return (
+                    <div
+                      key={`temp-${node.deviceId}-${node.tempStatus}`}
+                      className={`flex items-start space-x-3 p-3 rounded-lg border ${bgGradient}`}
+                    >
+                      <IconComponent className={`h-4 w-4 mt-1 shrink-0 ${iconClass}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            Stasiun <span className="font-bold">{node.deviceName}</span>
+                          </p>
+                          <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+                            {node.temperature !== null ? `${node.temperature.toFixed(1)}°C` : ""}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                          {node.alert?.message ||
+                            (isRapidRise
+                              ? `Kenaikan drastis +${node.tempRiseDelta}°C dalam ${
+                                  node.tempRiseIntervalMinutes || 5
+                                } menit`
+                              : "Anomali suhu terdeteksi di stasiun")}
+                        </p>
+                      </div>
+                      <Badge className={`text-xs shrink-0 font-semibold ${badgeColor}`}>
+                        {badgeText}
+                      </Badge>
+                    </div>
+                  );
+                })}
                 {/* 1. Stasiun Offline */}
                 {devices
                   .filter((d) => d.status === "offline")
