@@ -67,4 +67,22 @@ describe("Barometric Pressure to Mean Sea Level Pressure (MSLP) Conversion", () 
     const mslpClamped = convertStationPressureToMSLP(1000, 100, 150);
     assert.ok(mslpClamped > 1000);
   });
+
+  it("handles high elevation mountain stations (>2000m) with strict hydrostatic round-trip fidelity", () => {
+    // High mountain AWS station at 2500m elevation (e.g. Mount Bromo / Mount Merapi plateau)
+    const pStation = 750.0;
+    const elevation = 2500.0;
+    const tempC = 8.0;
+
+    const mslp = convertStationPressureToMSLP(pStation, elevation, tempC);
+    // At 2500m elevation, MSLP is typically ~1000-1025 hPa when station pressure is 750 hPa
+    assert.ok(mslp >= 1000.0 && mslp <= 1030.0, `Expected realistic MSLP, got ${mslp}`);
+
+    // Round-trip must accurately recover station pressure within ±0.05 hPa
+    const back = convertMSLPToStationPressure(mslp, elevation, tempC);
+    assert.ok(
+      Math.abs(back - pStation) <= 0.05,
+      `High-elevation round-trip error: expected ${pStation}, got ${back}`
+    );
+  });
 });

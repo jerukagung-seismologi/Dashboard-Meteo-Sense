@@ -269,7 +269,11 @@ export interface ComparativeValidationResult {
     threshold: number;
     raw: CategoricalMetrics;
     corrected: CategoricalMetrics;
+    byThreshold?: Record<number, { raw: CategoricalMetrics; corrected: CategoricalMetrics }>;
+    byIntensityClass?: Record<string, { raw: CategoricalMetrics; corrected: CategoricalMetrics }>;
   };
+  /** Matched validation pairs for dynamic on-the-fly metric re-evaluation */
+  validationPairs?: { aws: number; era5Raw: number; era5Corrected: number }[];
   /** Homogeneity, consistency, trend, and sample adequacy tests */
   homogeneity?: {
     raps: RAPSResult;

@@ -57,6 +57,22 @@ describe("Probabilistic Verification (CRPS, Brier Score, Reliability Diagram)", 
       assert.equal(result.minCRPS, 0.0);
       assert.equal(result.maxCRPS, 0.5);
     });
+
+    it("handles empty or missing ensemble members safely without distorting mean error", () => {
+      // Empty ensemble returns NaN for CRPS
+      const emptyCRPS = calculateCRPS([], 25.0);
+      assert.ok(isNaN(emptyCRPS));
+
+      // In series evaluation, missing forecast steps must be skipped, NOT counted as 0 error
+      const seriesWithGaps = [
+        { ensemble: [20, 22], observed: 21 }, // Valid step: CRPS = 0.5
+        { ensemble: [], observed: 25 },       // Missing forecast step (sensor/NWP outage)
+      ];
+
+      const result = calculateMeanCRPS(seriesWithGaps);
+      assert.equal(result.sampleCount, 1);
+      assert.equal(result.meanCRPS, 0.5); // Remains 0.5, not distorted down to 0.25
+    });
   });
 
   describe("Brier Score (BS) & Brier Skill Score (BSS)", () => {
@@ -130,6 +146,32 @@ describe("Probabilistic Verification (CRPS, Brier Score, Reliability Diagram)", 
         { x: 0, y: 0 },
         { x: 1, y: 1 },
       ]);
+    });
+
+    it("handles empty dataset and sparse bins with null observed frequencies", () => {
+      // 1. Empty dataset
+      const emptyDiagram = generateReliabilityDiagram([], []);
+      assert.equal(emptyDiagram.sampleCount, 0);
+      assert.equal(emptyDiagram.bins.length, 0);
+      assert.equal(emptyDiagram.brierScore, 0);
+      assert.equal(emptyDiagram.brierSkillScore, 0);
+
+      // 2. Sparse dataset: only 0.15 bin is populated (binIndex = 1)
+      const sparseDiagram = generateReliabilityDiagram([0.15], [1], 10);
+      assert.equal(sparseDiagram.sampleCount, 1);
+      assert.equal(sparseDiagram.bins.length, 10);
+
+      // Populated bin (index 1: [0.1, 0.2]): observed frequency is 1.0 (event occurred)
+      const populatedBin = sparseDiagram.bins[1];
+      assert.equal(populatedBin.sampleCount, 1);
+      assert.equal(populatedBin.observedFrequency, 1.0);
+      assert.equal(populatedBin.calibrationError, 0.85); // |0.15 - 1.0|
+
+      // Unpopulated bins: observedFrequency must be null, not fake hits
+      const emptyBin = sparseDiagram.bins[9]; // [0.9, 1.0]
+      assert.equal(emptyBin.sampleCount, 0);
+      assert.equal(emptyBin.observedFrequency, null);
+      assert.equal(emptyBin.calibrationError, null);
     });
   });
 });

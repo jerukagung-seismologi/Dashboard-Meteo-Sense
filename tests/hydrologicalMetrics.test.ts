@@ -117,6 +117,21 @@ describe("Hydrological Metrics (NSE, RSR, NRMSE, KGE)", () => {
     assert.equal(nullResult.sampleCount, 0);
   });
 
+  it("handles near-zero observation values safely without KGE or beta explosion", () => {
+    // Dry season trace rainfall observations near zero (0.0001 mm)
+    const tracePairs = [
+      { observed: 0.0001, simulated: 0.5 },
+      { observed: 0.0002, simulated: 0.6 },
+      { observed: 0.0001, simulated: 0.4 },
+    ];
+
+    const result = calculateHydrologicalMetrics(tracePairs);
+    assert.equal(result.sampleCount, 3);
+    assert.ok(Number.isFinite(result.kge), `Expected finite KGE, got ${result.kge}`);
+    assert.ok(Number.isFinite(result.kgeComponents.beta), `Expected finite beta, got ${result.kgeComponents.beta}`);
+    assert.ok(result.kge <= 1.0);
+  });
+
   it("verifies rating categorization helper functions", () => {
     assert.equal(getNSECategory(0.85), "Sangat Baik");
     assert.equal(getNSECategory(0.70), "Baik");

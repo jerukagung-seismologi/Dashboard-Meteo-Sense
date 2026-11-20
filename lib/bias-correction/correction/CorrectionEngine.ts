@@ -11,7 +11,12 @@ import {
 } from "../types";
 import { calculateEvaluationMetrics } from "../statistics/metrics";
 import { calculateHydrologicalMetrics } from "../statistics/hydrologicalMetrics";
-import { calculateCategoricalMetrics } from "../statistics/categoricalMetrics";
+import {
+  calculateCategoricalMetrics,
+  calculateCategoricalMetricsForClass,
+  BMKG_RAINFALL_THRESHOLDS,
+  BMKG_INTENSITY_CLASSES,
+} from "../statistics/categoricalMetrics";
 import {
   calculateRAPS,
   calculateDoubleMassCurve,
@@ -248,15 +253,29 @@ export class BiasCorrectionEngine implements ICorrectionEngine {
     );
 
     // Categorical Verification (Default 0.1 mm/day threshold for rain or rainrate)
-    const catThreshold = this.variable === "precipitation" ? 0.1 : 0.1;
-    const rawCat = calculateCategoricalMetrics(
-      validationPairs.map(p => ({ observed: p.aws, forecast: p.era5Raw })),
-      catThreshold
-    );
-    const correctedCat = calculateCategoricalMetrics(
-      validationPairs.map(p => ({ observed: p.aws, forecast: p.era5Corrected })),
-      catThreshold
-    );
+    const catThreshold = 0.1;
+    const catPairsRaw = validationPairs.map(p => ({ observed: p.aws, forecast: p.era5Raw }));
+    const catPairsCorrected = validationPairs.map(p => ({ observed: p.aws, forecast: p.era5Corrected }));
+
+    const rawCat = calculateCategoricalMetrics(catPairsRaw, catThreshold);
+    const correctedCat = calculateCategoricalMetrics(catPairsCorrected, catThreshold);
+
+    // Precompute standard BMKG thresholds and classes for seamless UI switching
+    const byThreshold: Record<number, { raw: any; corrected: any }> = {};
+    for (const cfg of BMKG_RAINFALL_THRESHOLDS) {
+      byThreshold[cfg.threshold] = {
+        raw: calculateCategoricalMetrics(catPairsRaw, cfg.threshold),
+        corrected: calculateCategoricalMetrics(catPairsCorrected, cfg.threshold),
+      };
+    }
+
+    const byIntensityClass: Record<string, { raw: any; corrected: any }> = {};
+    for (const cls of BMKG_INTENSITY_CLASSES) {
+      byIntensityClass[cls.id] = {
+        raw: calculateCategoricalMetricsForClass(catPairsRaw, cls.id),
+        corrected: calculateCategoricalMetricsForClass(catPairsCorrected, cls.id),
+      };
+    }
 
     // Quality & Homogeneity Tests on AWS Ground Truth & Comparison
     const awsValues = validationPairs.map(p => p.aws);
@@ -287,7 +306,10 @@ export class BiasCorrectionEngine implements ICorrectionEngine {
         threshold: catThreshold,
         raw: rawCat,
         corrected: correctedCat,
+        byThreshold,
+        byIntensityClass,
       },
+      validationPairs,
       homogeneity: {
         raps: rapsResult,
         doubleMass: doubleMassResult,

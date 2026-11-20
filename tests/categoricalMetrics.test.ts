@@ -5,6 +5,8 @@ import {
   calculateContingencyTable,
   calculateCategoricalMetrics,
   calculateCategoricalMetricsFromTable,
+  calculateClassContingencyTable,
+  calculateCategoricalMetricsForClass,
   classifyBMKGRainfall,
   getBMKGRainfallLabel,
   calculateBMKGIntensityVerification,
@@ -141,5 +143,37 @@ describe("Categorical Verification & 2x2 Contingency Table", () => {
 
     // For lebat (threshold = 50 mm): observed 60, 120 (2 events), forecast 55, 110 (2 events) -> 2 hits
     assert.equal(bmkgResults["lebat"].table.hits, 2);
+
+    // Verify per-class verification entries are also populated
+    assert.ok(bmkgResults["class_sangat_ringan"]);
+    assert.ok(bmkgResults["class_ringan"]);
+    assert.ok(bmkgResults["class_sedang"]);
+    assert.ok(bmkgResults["class_lebat"]);
+    assert.ok(bmkgResults["class_sangat_lebat"]);
+  });
+
+  it("calculates BMKG class-interval 2x2 contingency tables and metrics accurately", () => {
+    const pairs = [
+      { observed: 2.5, forecast: 4.0 },   // Hit for SANGAT_RINGAN (both <= 5.0)
+      { observed: 3.0, forecast: 12.0 },  // Miss for SANGAT_RINGAN (obs <= 5.0, fcst > 5)
+      { observed: 15.0, forecast: 4.5 },  // False Alarm for SANGAT_RINGAN (obs > 5, fcst <= 5)
+      { observed: 25.0, forecast: 45.0 }, // Correct Negative for SANGAT_RINGAN (both > 5)
+      { observed: 0.0, forecast: 0.0 },   // Correct Negative for SANGAT_RINGAN (both BERAWAN < 0.1)
+    ];
+
+    const srTable = calculateClassContingencyTable(pairs, "SANGAT_RINGAN");
+    assert.equal(srTable.hits, 1);
+    assert.equal(srTable.falseAlarms, 1);
+    assert.equal(srTable.misses, 1);
+    assert.equal(srTable.correctNegatives, 2);
+    assert.equal(srTable.total, 5);
+
+    const srMetrics = calculateCategoricalMetricsForClass(pairs, "SANGAT_RINGAN");
+    // POD = 1 / (1 + 1) = 0.5
+    assert.equal(srMetrics.pod, 0.5);
+    // FAR = 1 / (1 + 1) = 0.5
+    assert.equal(srMetrics.far, 0.5);
+    // CSI = 1 / (1 + 1 + 1) = 0.3333
+    assert.equal(srMetrics.csi, 0.3333);
   });
 });

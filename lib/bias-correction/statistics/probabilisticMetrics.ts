@@ -41,8 +41,8 @@ export interface ReliabilityBin {
   sampleCount: number; // N_k
   sharpness: number; // N_k / N (fraction of total forecasts in this bin)
   meanForecastProb: number; // p_bar_k
-  observedFrequency: number; // o_bar_k
-  calibrationError: number; // |p_bar_k - o_bar_k|
+  observedFrequency: number | null; // o_bar_k (null if Nk === 0)
+  calibrationError: number | null; // |p_bar_k - o_bar_k| (null if Nk === 0)
 }
 
 export interface ReliabilityDiagramData {
@@ -81,7 +81,7 @@ export function calculateCRPS(
   observed: number | null | undefined
 ): number {
   if (observed === null || observed === undefined || isNaN(observed)) {
-    return 0;
+    return NaN;
   }
 
   const validMembers = ensemble.filter(
@@ -90,7 +90,7 @@ export function calculateCRPS(
 
   const M = validMembers.length;
   if (M === 0) {
-    return 0;
+    return NaN;
   }
 
   // Single deterministic member: CRPS = |x - y|
@@ -130,7 +130,9 @@ export function calculateMeanCRPS(
   for (const p of pairs) {
     if (p.observed !== null && p.observed !== undefined && !isNaN(p.observed)) {
       const score = calculateCRPS(p.ensemble, p.observed);
-      scores.push(score);
+      if (Number.isFinite(score)) {
+        scores.push(score);
+      }
     }
   }
 
@@ -263,6 +265,23 @@ export function generateReliabilityDiagram(
   }
 
   const N = validPairs.length;
+  if (N === 0) {
+    return {
+      sampleCount: 0,
+      bins: [],
+      brierScore: 0,
+      reliability: 0,
+      resolution: 0,
+      uncertainty: 0,
+      climatology: 0,
+      brierSkillScore: 0,
+      perfectDiagonal: [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ],
+    };
+  }
+
   const binWidth = 1 / numBins;
 
   // Initialize bins
@@ -279,7 +298,7 @@ export function generateReliabilityDiagram(
   for (const pair of validPairs) {
     if (pair.outcome === 1) totalEvents++;
   }
-  const oBar = N > 0 ? totalEvents / N : 0;
+  const oBar = totalEvents / N;
 
   const bins: ReliabilityBin[] = [];
   let reliabilitySum = 0; // sum(N_k * (p_bar_k - o_bar_k)^2)
@@ -292,10 +311,11 @@ export function generateReliabilityDiagram(
 
     const pairsInBin = binPairs[k];
     const Nk = pairsInBin.length;
-    const sharpness = N > 0 ? Nk / N : 0;
+    const sharpness = Nk / N;
 
     let pBarK = nominalProb;
-    let oBarK = 0;
+    let oBarK: number | null = null;
+    let calibrationError: number | null = null;
 
     if (Nk > 0) {
       const sumP = pairsInBin.reduce((acc, it) => acc + it.prob, 0);
@@ -305,12 +325,13 @@ export function generateReliabilityDiagram(
 
       reliabilitySum += Nk * Math.pow(pBarK - oBarK, 2);
       resolutionSum += Nk * Math.pow(oBarK - oBar, 2);
+      calibrationError = Math.abs(pBarK - oBarK);
     } else {
-      // Empty bin: observed frequency tracks nominal probability for neutral visual presentation
-      oBarK = nominalProb;
+      // Empty bin: no samples fell in this forecast probability range
+      pBarK = nominalProb;
+      oBarK = null;
+      calibrationError = null;
     }
-
-    const calibrationError = Math.abs(pBarK - oBarK);
 
     bins.push({
       binIndex: k,
@@ -319,8 +340,8 @@ export function generateReliabilityDiagram(
       sampleCount: Nk,
       sharpness: Number(sharpness.toFixed(4)),
       meanForecastProb: Number(pBarK.toFixed(4)),
-      observedFrequency: Number(oBarK.toFixed(4)),
-      calibrationError: Number(calibrationError.toFixed(4)),
+      observedFrequency: oBarK !== null ? Number(oBarK.toFixed(4)) : null,
+      calibrationError: calibrationError !== null ? Number(calibrationError.toFixed(4)) : null,
     });
   }
 

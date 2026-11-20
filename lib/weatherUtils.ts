@@ -682,17 +682,15 @@ export function convertStationPressureToMSLP(
     ? Math.max(-80, Math.min(60, temperatureCelsius!))
     : STANDARD_TEMP_C;
 
-  // Mean layer temperature between station elevation and sea level in Kelvin
-  // T_mean = T_station + 273.15 + (L * h / 2)
+  // Station temperature in Kelvin
   const tKelvin = tempC + 273.15;
-  const tMean = tKelvin + (LAPSE_RATE_K_PER_M * elevationMeters) / 2;
-
-  if (tMean <= 0) {
+  if (tKelvin <= 0) {
     return Number(stationPressureHpa.toFixed(2));
   }
 
-  // MSLP = P_stn * (1 + (L * h) / tMean)^5.25588
-  const factor = 1 + (LAPSE_RATE_K_PER_M * elevationMeters) / tMean;
+  // Standard Hypsometric Barometric Formula (WMO No. 8 / ICAO Doc 7488):
+  // MSLP = P_stn * (1 + (L * h) / T_stn)^5.25588
+  const factor = 1 + (LAPSE_RATE_K_PER_M * elevationMeters) / tKelvin;
   const mslp = stationPressureHpa * Math.pow(factor, BAROMETRIC_EXPONENT);
 
   return Number(mslp.toFixed(2));
@@ -724,13 +722,12 @@ export function convertMSLPToStationPressure(
     : STANDARD_TEMP_C;
 
   const tKelvin = tempC + 273.15;
-  const tMean = tKelvin + (LAPSE_RATE_K_PER_M * elevationMeters) / 2;
-
-  if (tMean <= 0) {
+  if (tKelvin <= 0) {
     return Number(mslpHpa.toFixed(2));
   }
 
-  const factor = 1 + (LAPSE_RATE_K_PER_M * elevationMeters) / tMean;
+  // Inverse reduction: P_stn = MSLP * (1 + (L * h) / T_stn)^(-5.25588)
+  const factor = 1 + (LAPSE_RATE_K_PER_M * elevationMeters) / tKelvin;
   const stnPressure = mslpHpa * Math.pow(factor, -BAROMETRIC_EXPONENT);
 
   return Number(stnPressure.toFixed(2));

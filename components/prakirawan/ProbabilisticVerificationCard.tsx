@@ -127,15 +127,16 @@ export const ProbabilisticVerificationCard: React.FC<ProbabilisticVerificationCa
     const gridColor = isDarkMode ? "#1E293B" : "#F1F5F9";
     const borderColor = isDarkMode ? "#334155" : "#E2E8F0";
 
-    // Curve data: nominalProb vs observedFrequency
-    const reliabilityCurve = rel.bins.map((b) => [
+    // Curve data: nominalProb vs observedFrequency (only for bins with actual forecast samples)
+    const validBins = rel.bins.filter((b) => b.sampleCount > 0 && b.observedFrequency !== null);
+    const reliabilityCurve = validBins.map((b) => [
       Number((b.nominalProb * 100).toFixed(1)),
-      Number((b.observedFrequency * 100).toFixed(1)),
+      Number(((b.observedFrequency ?? 0) * 100).toFixed(1)),
       b.sampleCount,
       b.sharpness,
     ]);
 
-    // Sharpness histogram data
+    // Sharpness histogram data across all bins
     const sharpnessData = rel.bins.map((b) => [
       Number((b.nominalProb * 100).toFixed(1)),
       Number((b.sharpness * 100).toFixed(1)),
@@ -150,18 +151,18 @@ export const ProbabilisticVerificationCard: React.FC<ProbabilisticVerificationCa
         textStyle: { color: isDarkMode ? "#F8FAFC" : "#0F172A", fontSize: 12 },
         formatter: (params: any) => {
           if (!Array.isArray(params) || params.length === 0) return "";
-          const p = params[0];
+          const p = params.find((it: any) => it.seriesName === "Kurva Reliabilitas Model") || params[0];
           const xVal = p.data ? p.data[0] : p.name;
-          const obsVal = p.data ? p.data[1] : 0;
+          const obsVal = p.data && p.data[1] !== null && p.data[1] !== undefined ? `${p.data[1]}%` : "N/A (0 sampel)";
           const count = p.data ? p.data[2] : 0;
-          const sharpness = p.data ? (p.data[3] * 100).toFixed(1) : 0;
+          const sharpness = p.data && p.data[3] !== undefined ? (p.data[3] * 100).toFixed(1) : "0.0";
 
           return `
             <div class="space-y-1 font-sans">
               <div class="font-bold text-xs border-b pb-1">Bin Probabilitas: ${xVal}%</div>
               <div class="text-[11px] flex justify-between gap-4">
                 <span class="text-slate-400">Frekuensi Teramati:</span>
-                <span class="font-bold text-blue-500">${obsVal}%</span>
+                <span class="font-bold text-blue-500">${obsVal}</span>
               </div>
               <div class="text-[11px] flex justify-between gap-4">
                 <span class="text-slate-400">Jumlah Sampel (N_k):</span>

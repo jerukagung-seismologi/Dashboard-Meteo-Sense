@@ -62,15 +62,9 @@ export interface BMKGThresholdConfig {
 export const BMKG_RAINFALL_THRESHOLDS: BMKGThresholdConfig[] = [
   {
     id: "rain_occurrence",
-    label: "Hujan Signifikan",
+    label: "Hujan (>= 0.1 mm)",
     threshold: 0.1,
     description: "Ambang batas deteksi presipitasi (Rain / No-Rain >= 0.1 mm)",
-  },
-  {
-    id: "sangat_ringan",
-    label: "Sangat Ringan (>= 0.1 mm)",
-    threshold: 0.1,
-    description: "Akumulasi presipitasi >= 0.1 mm/hari",
   },
   {
     id: "ringan",
@@ -95,6 +89,66 @@ export const BMKG_RAINFALL_THRESHOLDS: BMKGThresholdConfig[] = [
     label: "Sangat Lebat (> 100 mm)",
     threshold: 100.0,
     description: "Hujan Sangat Lebat BMKG (> 100.0 mm/hari)",
+  },
+];
+
+export interface BMKGClassConfig {
+  id: BMKGRainfallClass;
+  label: string;
+  min: number;
+  max: number;
+  description: string;
+}
+
+export const BMKG_INTENSITY_CLASSES: BMKGClassConfig[] = [
+  {
+    id: "BERAWAN",
+    label: "Berawan / Tanpa Hujan (< 0.1 mm)",
+    min: 0,
+    max: 0.1,
+    description: "Curah hujan harian < 0.1 mm",
+  },
+  {
+    id: "SANGAT_RINGAN",
+    label: "Sangat Ringan (<= 5 mm)",
+    min: 0.1,
+    max: 5.0,
+    description: "Curah hujan harian 0.1 s/d 5.0 mm",
+  },
+  {
+    id: "RINGAN",
+    label: "Ringan (> 5 - 20 mm)",
+    min: 5.0,
+    max: 20.0,
+    description: "Curah hujan harian > 5.0 s/d 20.0 mm",
+  },
+  {
+    id: "SEDANG",
+    label: "Sedang (> 20 - 50 mm)",
+    min: 20.0,
+    max: 50.0,
+    description: "Curah hujan harian > 20.0 s/d 50.0 mm",
+  },
+  {
+    id: "LEBAT",
+    label: "Lebat (> 50 - 100 mm)",
+    min: 50.0,
+    max: 100.0,
+    description: "Curah hujan harian > 50.0 s/d 100.0 mm",
+  },
+  {
+    id: "SANGAT_LEBAT",
+    label: "Sangat Lebat (> 100 - 150 mm)",
+    min: 100.0,
+    max: 150.0,
+    description: "Curah hujan harian > 100.0 s/d 150.0 mm",
+  },
+  {
+    id: "EKSTREM",
+    label: "Ekstrem (> 150 mm)",
+    min: 150.0,
+    max: Infinity,
+    description: "Curah hujan harian > 150.0 mm",
   },
 ];
 
@@ -291,15 +345,80 @@ export function calculateCategoricalMetrics(
 }
 
 /**
- * Evaluates pairs across standard BMKG rainfall intensity thresholds.
+ * Computes 2x2 contingency table for a specific BMKG intensity class.
+ * - Hits (a): Both observed and forecast fall into the target class interval.
+ * - False Alarms (b): Observed not in target class, but forecast is in target class.
+ * - Misses (c): Observed in target class, but forecast is not in target class.
+ * - Correct Negatives (d): Neither observed nor forecast are in target class.
+ */
+export function calculateClassContingencyTable(
+  pairs: { observed: number | null | undefined; forecast: number | null | undefined }[],
+  targetClass: BMKGRainfallClass
+): ContingencyTable2x2 {
+  let hits = 0;
+  let falseAlarms = 0;
+  let misses = 0;
+  let correctNegatives = 0;
+
+  for (const p of pairs) {
+    if (
+      p.observed === null ||
+      p.observed === undefined ||
+      isNaN(p.observed) ||
+      p.forecast === null ||
+      p.forecast === undefined ||
+      isNaN(p.forecast)
+    ) {
+      continue;
+    }
+
+    const obsInClass = classifyBMKGRainfall(p.observed) === targetClass;
+    const fcstInClass = classifyBMKGRainfall(p.forecast) === targetClass;
+
+    if (obsInClass && fcstInClass) {
+      hits++;
+    } else if (!obsInClass && fcstInClass) {
+      falseAlarms++;
+    } else if (obsInClass && !fcstInClass) {
+      misses++;
+    } else {
+      correctNegatives++;
+    }
+  }
+
+  const total = hits + falseAlarms + misses + correctNegatives;
+  return { hits, falseAlarms, misses, correctNegatives, total };
+}
+
+/**
+ * End-to-end evaluation of pairs against a specific BMKG rainfall intensity class.
+ */
+export function calculateCategoricalMetricsForClass(
+  pairs: { observed: number | null | undefined; forecast: number | null | undefined }[],
+  targetClass: BMKGRainfallClass
+): CategoricalMetrics {
+  const table = calculateClassContingencyTable(pairs, targetClass);
+  const cfg = BMKG_INTENSITY_CLASSES.find(c => c.id === targetClass);
+  const nominalThreshold = cfg ? cfg.min : 0.1;
+  return calculateCategoricalMetricsFromTable(table, nominalThreshold);
+}
+
+/**
+ * Evaluates pairs across standard BMKG rainfall intensity thresholds and classes.
  */
 export function calculateBMKGIntensityVerification(
   pairs: { observed: number | null | undefined; forecast: number | null | undefined }[]
 ): Record<string, CategoricalMetrics> {
   const results: Record<string, CategoricalMetrics> = {};
 
+  // 1. Exceedance thresholds
   for (const cfg of BMKG_RAINFALL_THRESHOLDS) {
     results[cfg.id] = calculateCategoricalMetrics(pairs, cfg.threshold);
+  }
+
+  // 2. Per-class intensity evaluation
+  for (const cls of BMKG_INTENSITY_CLASSES) {
+    results[`class_${cls.id.toLowerCase()}`] = calculateCategoricalMetricsForClass(pairs, cls.id);
   }
 
   return results;

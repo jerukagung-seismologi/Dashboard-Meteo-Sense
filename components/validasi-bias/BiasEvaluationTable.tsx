@@ -26,7 +26,10 @@ import {
 } from "@/lib/bias-correction/statistics/hydrologicalMetrics";
 import {
   calculateCategoricalMetrics,
+  calculateCategoricalMetricsForClass,
   BMKG_RAINFALL_THRESHOLDS,
+  BMKG_INTENSITY_CLASSES,
+  BMKGRainfallClass,
 } from "@/lib/bias-correction/statistics/categoricalMetrics";
 
 interface BiasEvaluationTableProps {
@@ -77,9 +80,11 @@ export const BiasEvaluationTable: React.FC<BiasEvaluationTableProps> = ({
   } = result;
 
   const [activeTab, setActiveTab] = useState<string>("error_metrics");
+  const [catMode, setCatMode] = useState<"threshold" | "class">("threshold");
   const [catThreshold, setCatThreshold] = useState<number>(
     result.categorical?.threshold ?? 0.1
   );
+  const [selectedClass, setSelectedClass] = useState<BMKGRainfallClass>("RINGAN");
 
   // Fallback hydrological metrics if not already populated
   const hydroMetrics = result.hydrological ?? {
@@ -404,35 +409,120 @@ export const BiasEvaluationTable: React.FC<BiasEvaluationTableProps> = ({
 
           {/* TAB 3: CATEGORICAL RAINFALL VERIFICATION */}
           <TabsContent value="categorical" className="mt-3 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-100 dark:border-slate-800">
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Ambang Batas Hujan:</span>
-              <div className="flex flex-wrap gap-1">
-                {BMKG_RAINFALL_THRESHOLDS.map(cfg => (
-                  <button
-                    key={cfg.id}
-                    type="button"
-                    onClick={() => setCatThreshold(cfg.threshold)}
-                    className={`text-[11px] px-2 py-1 rounded transition-colors ${
-                      catThreshold === cfg.threshold
-                        ? "bg-blue-600 text-white font-bold shadow-xs"
-                        : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100"
-                    }`}
-                  >
-                    {cfg.label}
-                  </button>
-                ))}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-0.5 rounded border border-slate-200 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setCatMode("threshold")}
+                  className={`text-[11px] px-2 py-1 rounded transition-colors ${
+                    catMode === "threshold"
+                      ? "bg-blue-600 text-white font-bold shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  }`}
+                >
+                  Ambang Kumulatif (≥ T)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCatMode("class")}
+                  className={`text-[11px] px-2 py-1 rounded transition-colors ${
+                    catMode === "class"
+                      ? "bg-blue-600 text-white font-bold shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  }`}
+                >
+                  Kelas Intensitas BMKG
+                </button>
               </div>
+
+              {catMode === "threshold" ? (
+                <div className="flex flex-wrap gap-1">
+                  {BMKG_RAINFALL_THRESHOLDS.map(cfg => (
+                    <button
+                      key={cfg.id}
+                      type="button"
+                      onClick={() => setCatThreshold(cfg.threshold)}
+                      className={`text-[11px] px-2 py-1 rounded transition-colors ${
+                        catThreshold === cfg.threshold
+                          ? "bg-blue-600 text-white font-bold shadow-xs"
+                          : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      {cfg.label}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {BMKG_INTENSITY_CLASSES.filter(c => c.id !== "BERAWAN").map(cls => (
+                    <button
+                      key={cls.id}
+                      type="button"
+                      onClick={() => setSelectedClass(cls.id)}
+                      className={`text-[11px] px-2 py-1 rounded transition-colors ${
+                        selectedClass === cls.id
+                          ? "bg-violet-600 text-white font-bold shadow-xs"
+                          : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      {cls.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {(() => {
-              // Recompute or use populated categorical metrics for active threshold
-              const catRaw = result.categorical && result.categorical.threshold === catThreshold
-                ? result.categorical.raw
-                : calculateCategoricalMetrics([], catThreshold);
+              let catRaw: any;
+              let catCorrected: any;
 
-              const catCorrected = result.categorical && result.categorical.threshold === catThreshold
-                ? result.categorical.corrected
-                : calculateCategoricalMetrics([], catThreshold);
+              if (catMode === "threshold") {
+                // 1. Check precomputed byThreshold
+                const precomputed = result.categorical?.byThreshold?.[catThreshold];
+                catRaw = precomputed?.raw;
+                catCorrected = precomputed?.corrected;
+
+                // 2. Check if default matches
+                if (!catRaw && result.categorical && result.categorical.threshold === catThreshold) {
+                  catRaw = result.categorical.raw;
+                  catCorrected = result.categorical.corrected;
+                }
+
+                // 3. Dynamic calculation if validationPairs exist
+                if (!catRaw && result.validationPairs && result.validationPairs.length > 0) {
+                  catRaw = calculateCategoricalMetrics(
+                    result.validationPairs.map(p => ({ observed: p.aws, forecast: p.era5Raw })),
+                    catThreshold
+                  );
+                  catCorrected = calculateCategoricalMetrics(
+                    result.validationPairs.map(p => ({ observed: p.aws, forecast: p.era5Corrected })),
+                    catThreshold
+                  );
+                }
+
+                // 4. Fallback to existing or empty
+                catRaw = catRaw ?? result.categorical?.raw ?? calculateCategoricalMetrics([], catThreshold);
+                catCorrected = catCorrected ?? result.categorical?.corrected ?? calculateCategoricalMetrics([], catThreshold);
+              } else {
+                // Class-based evaluation
+                const precomputedClass = result.categorical?.byIntensityClass?.[selectedClass];
+                catRaw = precomputedClass?.raw;
+                catCorrected = precomputedClass?.corrected;
+
+                if (!catRaw && result.validationPairs && result.validationPairs.length > 0) {
+                  catRaw = calculateCategoricalMetricsForClass(
+                    result.validationPairs.map(p => ({ observed: p.aws, forecast: p.era5Raw })),
+                    selectedClass
+                  );
+                  catCorrected = calculateCategoricalMetricsForClass(
+                    result.validationPairs.map(p => ({ observed: p.aws, forecast: p.era5Corrected })),
+                    selectedClass
+                  );
+                }
+
+                catRaw = catRaw ?? calculateCategoricalMetricsForClass([], selectedClass);
+                catCorrected = catCorrected ?? calculateCategoricalMetricsForClass([], selectedClass);
+              }
 
               return (
                 <div className="space-y-3">

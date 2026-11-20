@@ -25,6 +25,10 @@
    - [Kalibrasi & Koreksi Bias Sensor](#kalibrasi--koreksi-bias-sensor)
    - [Koreksi Data, Adaptasi Pola Node, & Imputasi Celah 2-Fase](#koreksi-data-adaptasi-pola-node--imputasi-celah-2-fase)
    - [Pengawas Status Node & Deteksi Dini Anomali Suhu](#f-sistem-pengawas-status-node--deteksi-dini-anomali-suhu-real-time-periodic-node-health--temperature-anomaly-supervisor)
+   - [Verifikasi Kategorikal Hujan & Tabel Kontingensi WMO/BMKG](#verifikasi-kategorikal-hujan--tabel-kontingensi-wmobmkg)
+   - [Metrik Hidrometeorologi & Uji Homogenitas Deret Waktu](#metrik-hidrometeorologi--uji-homogenitas-deret-waktu)
+   - [Reduksi Tekanan Barometrik ke Mean Sea Level Pressure (MSLP)](#reduksi-tekanan-barometrik-ke-mean-sea-level-pressure-mslp)
+   - [Verifikasi Probabilistik Ensambel (CRPS, Brier Score, & Reliability)](#verifikasi-probabilistik-ensambel-crps-brier-score--reliability)
    - [Parameter Turunan Meteorologi](#parameter-turunan-meteorologi)
    - [Standar Jendela Waktu Ekstrem Sinoptik WMO/BMKG](#standar-jendela-waktu-ekstrem-sinoptik-wmobmkg)
    - [Imputasi Reanalisis Atmosfer (ECMWF ERA5)](#imputasi-reanalisis-atmosfer-ecmwf-era5)
@@ -356,6 +360,123 @@ Dashboard mengoperasikan subsistem pengawasan latar belakang mandiri (*backgroun
      `logs/${userId}/${timestamp}`
    - **Jendela Deduplikasi 30 Menit**: Mencegah penumpukan log dan banjir notifikasi (*alert fatigue*) dengan memeriksa apakah peringatan sejenis untuk stasiun yang sama telah dicatat dalam kurun 30 menit terakhir.
    - Pengguna menerima notifikasi visual *Toast* interaktif secara *on-the-fly* pada antarmuka dashboard.
+
+---
+
+### Verifikasi Kategorikal Hujan & Tabel Kontingensi WMO/BMKG
+
+Untuk mengevaluasi keandalan prakiraan presipitasi maupun estimasi satelit/ERA5 terhadap penakar hujan AWS, sistem menyediakan tabel kontingensi $2 \times 2$ biner berdasarkan ambang batas presipitasi ($T$, default $0.1\ \text{mm}$ untuk kejadian hujan/tidak hujan):
+
+| Status Kejadian | Observasi $\ge T$ (Hujan) | Observasi $< T$ (Kering) | Total Prakiraan |
+| :--- | :---: | :---: | :---: |
+| **Prakiraan $\ge T$ (Hujan)** | **Hits ($a$)** | **False Alarms ($b$)** | $a + b$ |
+| **Prakiraan $< T$ (Kering)** | **Misses ($c$)** | **Correct Negatives ($d$)** | $c + d$ |
+| **Total Observasi** | $a + c$ | $b + d$ | $N = a + b + c + d$ |
+
+#### Metrik Keterampilan Kategorikal (WMO Standard Verification)
+- **Probability of Detection (POD / Hit Rate)**:
+  $$\text{POD} = \frac{a}{a + c}, \quad [0, 1], \ \text{ideal} = 1.0$$
+- **False Alarm Ratio (FAR)**:
+  $$\text{FAR} = \frac{b}{a + b}, \quad [0, 1], \ \text{ideal} = 0.0$$
+- **Frequency of Hits (FOH / Success Ratio)**:
+  $$\text{FOH} = 1 - \text{FAR} = \frac{a}{a + b}, \quad [0, 1], \ \text{ideal} = 1.0$$
+- **Critical Success Index (CSI / Threat Score)**:
+  $$\text{CSI} = \frac{a}{a + b + c}, \quad [0, 1], \ \text{ideal} = 1.0$$
+- **Heidke Skill Score (HSS)** (Mengoreksi keberuntungan acak / *random chance*):
+  $$\text{HSS} = \frac{2(ad - bc)}{(a + c)(c + d) + (a + b)(b + d)}, \quad [-\infty, 1], \ \text{ideal} = 1.0$$
+
+#### Klasifikasi Intensitas Hujan Harian BMKG
+Sistem memetakan evaluasi per-kelas intensitas standar BMKG:
+- **Sangat Ringan**: $R \le 5\ \text{mm/hari}$
+- **Ringan**: $5 < R \le 20\ \text{mm/hari}$
+- **Sedang**: $20 < R \le 50\ \text{mm/hari}$
+- **Lebat**: $50 < R \le 100\ \text{mm/hari}$
+- **Sangat Lebat**: $100 < R \le 150\ \text{mm/hari}$
+- **Ekstrem**: $R > 150\ \text{mm/hari}$
+
+---
+
+### Metrik Hidrometeorologi & Uji Homogenitas Deret Waktu
+
+#### 1. Nash-Sutcliffe Efficiency (NSE)
+Mengukur proporsi variansi observasi yang berhasil dimodelkan oleh simulasi/reanalisis (Nash & Sutcliffe, 1970):
+$$\text{NSE} = 1 - \frac{\sum_{i=1}^n (y_i^{\text{obs}} - y_i^{\text{sim}})^2}{\sum_{i=1}^n (y_i^{\text{obs}} - \bar{y}^{\text{obs}})^2}$$
+- $\text{NSE} > 0.75$: **Sangat Baik**
+- $0.65 < \text{NSE} \le 0.75$: **Baik**
+- $0.50 \le \text{NSE} \le 0.65$: **Memuaskan**
+- $\text{NSE} < 0.50$: **Tidak Memuaskan**
+
+#### 2. RMSE-Observations Standard Deviation Ratio (RSR)
+Standarisasi nilai RMSE terhadap dispersi data aktual (Moriasi et al., 2007):
+$$\text{RSR} = \frac{\text{RMSE}}{\text{STDEV}_{\text{obs}}} = \frac{\sqrt{\frac{1}{n}\sum_{i=1}^n (y_i^{\text{obs}} - y_i^{\text{sim}})^2}}{\sqrt{\frac{1}{n}\sum_{i=1}^n (y_i^{\text{obs}} - \bar{y}^{\text{obs}})^2}}$$
+- $\text{RSR} \le 0.50$: **Sangat Baik** | $0.50 < \text{RSR} \le 0.60$: **Baik** | $0.60 < \text{RSR} \le 0.70$: **Memuaskan** | $\text{RSR} > 0.70$: **Tidak Memuaskan**
+
+#### 3. Kling-Gupta Efficiency (KGE)
+Dekomposisi ortogonal korelasi, variabilitas, dan bias rata-rata (Gupta et al., 2009; Kling et al., 2012):
+$$\text{KGE} = 1 - \sqrt{(r - 1)^2 + (\alpha - 1)^2 + (\beta - 1)^2}$$
+di mana $r = \text{korelasi Pearson}$, $\alpha = \sigma_{\text{sim}} / \sigma_{\text{obs}}$, dan $\beta = \mu_{\text{sim}} / \mu_{\text{obs}}$. Dilengkapi proteksi kestabilan numerik jika $\mu_{\text{obs}} \approx 0$ atau $\sigma_{\text{obs}} \approx 0$.
+
+#### 4. Uji Rescaled Adjusted Partial Sums (RAPS)
+Mendeteksi diskontinuitas atau pergeseran struktural tiba-tiba (*structural shift*) akibat perubahan fisik lokasi stasiun:
+$$S_k^* = \frac{\sum_{i=1}^k (Y_i - \bar{Y})}{s_Y \cdot \sqrt{n}}, \quad k=1, 2, \dots, n$$
+Parameter statistik: $Q = \max(S_k^*) - \min(S_k^*)$ dan $R = \max |S_k^*|$.
+
+#### 5. Kurva Massa Ganda (Double Mass Curve)
+Memeriksa kestabilan konsistensi kumulatif deret observasi ($\sum Y_i$) terhadap deret referensi ($\sum X_i$). Rasio kemiringan $m_2 / m_1 \ne 1.0 \pm 0.10$ menandakan adanya pergeseran rezim mikroklimat atau drift instrumen.
+
+#### 6. Uji Tren Monotonik Spearman ($r_s$)
+Uji non-parametrik independen terhadap asumsi normalitas distribusi data:
+$$r_s = 1 - \frac{6 \sum_{i=1}^n d_i^2}{n(n^2 - 1)}, \quad t = r_s \sqrt{\frac{n - 2}{1 - r_s^2}}$$
+
+#### 7. Validasi Kecukupan Sampel
+Sesuai pedoman WMO CIMO Guide, perbandingan observasi AWS dengan data reanalisis memerlukan sampel minimum kontinu:
+$$N \ge 504\ \text{jam}\quad (3\ \text{minggu})$$
+Peringatan visual otomatis muncul pada UI jika jumlah sampel yang cocok berada di bawah ambang batas kecukupan statistik ini.
+
+---
+
+### Reduksi Tekanan Barometrik ke Mean Sea Level Pressure (MSLP)
+
+Pengukuran tekanan udara permukaan stasiun ($P_{\text{stn}}$) di stasiun inland/pegunungan harus dinormalisasi ke tekanan muka laut rata-rata (*Mean Sea Level Pressure* / MSLP, $P_0$) agar bias elevasi topografi tidak merusak validasi komparatif dengan model atmosfer permukaan laut:
+
+Mengikuti persamaan barometrik atmosfer standar **WMO No. 8 & ICAO Doc 7488**:
+$$P_0 = P_{\text{stn}} \left(1 + \frac{L \cdot h}{T_{\text{stn}}}\right)^{\frac{g \cdot M}{R \cdot L}}$$
+Konversi sebaliknya (MSLP ke tekanan stasiun):
+$$P_{\text{stn}} = P_0 \left(1 + \frac{L \cdot h}{T_{\text{stn}}}\right)^{-\frac{g \cdot M}{R \cdot L}}$$
+Konstanta fisik baku:
+- Lapse rate suhu troposfer standar ($L$): $0.0065\ \text{K/m}$ ($6.5^\circ\text{C}$ per $1000\ \text{m}$)
+- Percepatan gravitasi standar ($g$): $9.80665\ \text{m/s}^2$
+- Massa molar udara kering ($M$): $0.0289644\ \text{kg/mol}$
+- Konstanta gas universal ($R$): $8.31432\ \text{J/(mol}\cdot\text{K)}$
+- Eksponen barometrik: $\frac{g \cdot M}{R \cdot L} \approx 5.25588$
+- Suhu termodinamika absolut: $T_{\text{stn}} = T\ (^\circ\text{C}) + 273.15\ \text{K}$
+
+---
+
+### Verifikasi Probabilistik Ensambel (CRPS, Brier Score, & Reliability)
+
+#### 1. Continuous Ranked Probability Score (CRPS)
+Mengukur jarak kuadrat antara fungsi distribusi kumulatif ansambel $F(x)$ terhadap fungsi tangga Heaviside observasi aktual $H(x - y)$ (Hersbach, 2000):
+$$\text{CRPS}(F, y) = \int_{-\infty}^{\infty} [F(x) - \mathbf{1}(x \ge y)]^2 dx$$
+Untuk ansambel diskrit dengan $M$ anggota ($x_1 \le x_2 \le \dots \le x_M$):
+$$\text{CRPS} = \frac{1}{M}\sum_{m=1}^M |x_m - y| - \frac{1}{2M^2}\sum_{i=1}^M \sum_{j=1}^M |x_i - x_j|$$
+- Memiliki satuan yang sama dengan variabel yang dievaluasi (misal $^\circ\text{C}$ atau mm).
+- Tereduksi secara konsisten menjadi Mean Absolute Error (MAE) jika ukuran ansambel $M = 1$ (model deterministik).
+
+#### 2. Brier Score (BS) & Brier Skill Score (BSS)
+Mengukur akurasi kuadrat probabilitas prakiraan kejadian biner ($p_k \in [0, 1]$) terhadap kejadian aktual ($o_k \in \{0, 1\}$) pada ambang hujan tertentu:
+$$\text{BS} = \frac{1}{N}\sum_{k=1}^N (p_k - o_k)^2, \quad \text{BS} \in [0, 1], \ \text{ideal} = 0.0$$
+Skill score terhadap frekuensi klimatologi sampel ($\bar{o}$):
+$$\text{BSS} = 1 - \frac{\text{BS}}{\text{BS}_{\text{clim}}} = 1 - \frac{\text{BS}}{\bar{o}(1 - \bar{o})}, \quad [-\infty, 1], \ \text{ideal} = 1.0$$
+
+#### 3. Dekomposisi Tiga Komponen Murphy (1973) & Reliability Diagram
+Brier Score didekomposisi secara analitik menjadi tiga suku ortogonal:
+$$\text{BS} = \text{Reliability (REL)} - \text{Resolution (RES)} + \text{Uncertainty (UNC)}$$
+di mana sampel dikelompokkan ke dalam $K=10$ bin probabilitas nominal ($p_k$):
+- **Reliability (Keandalan)**: $\text{REL} = \sum_{k=1}^K \frac{N_k}{N} (p_k - \bar{o}_k)^2$ (penyimpangan kurva model dari garis diagonal 1:1, ideal = 0).
+- **Resolution (Resolusi)**: $\text{RES} = \sum_{k=1}^K \frac{N_k}{N} (\bar{o}_k - \bar{o})^2$ (kemampuan membedakan kondisi kejadian ekstrem dari rata-rata klimatologi, semakin besar semakin baik).
+- **Uncertainty (Ketidakpastian Alamiah)**: $\text{UNC} = \bar{o}(1 - \bar{o})$ (variansi inheren kejadian dalam sampel).
+- **Visualisasi Diagram Reliabilitas**: Kurva model hanya menghubungkan bin dengan sampel aktual ($N_k > 0$) untuk mengeliminasi titik palsu, dilengkapi garis referensi 1:1, garis no-skill, dan histogram ketajaman (*sharpness bar*) untuk menunjukkan seberapa sering model berani memprediksi probabilitas tinggi.
 
 ---
 

@@ -205,9 +205,10 @@ export function calculateHydrologicalMetrics(
   // 4. Kling-Gupta Efficiency (KGE)
   // beta = simMean / obsMean
   let beta = 1;
-  if (Math.abs(obsMean) > 1e-7) {
-    beta = simMean / obsMean;
-  } else if (Math.abs(simMean) <= 1e-7) {
+  if (Math.abs(obsMean) > 1e-4) {
+    const rawBeta = simMean / obsMean;
+    beta = Math.max(-50, Math.min(50, rawBeta));
+  } else if (Math.abs(simMean) <= 1e-4) {
     beta = 1;
   } else {
     beta = simMean > 0 ? 10 : -10;
@@ -215,9 +216,10 @@ export function calculateHydrologicalMetrics(
 
   // alpha = simStd / obsStd
   let alpha = 1;
-  if (obsStd > 0) {
-    alpha = simStd / obsStd;
-  } else if (simStd === 0) {
+  if (obsStd > 1e-4) {
+    const rawAlpha = simStd / obsStd;
+    alpha = Math.max(0, Math.min(50, rawAlpha));
+  } else if (simStd <= 1e-4) {
     alpha = 1;
   } else {
     alpha = 10;
@@ -225,16 +227,20 @@ export function calculateHydrologicalMetrics(
 
   // KGE = 1 - sqrt((r - 1)^2 + (alpha - 1)^2 + (beta - 1)^2)
   const ed = Math.sqrt(Math.pow(r - 1, 2) + Math.pow(alpha - 1, 2) + Math.pow(beta - 1, 2));
-  const kge = 1 - ed;
+  const rawKge = 1 - ed;
+  const kge = Number.isFinite(rawKge) ? Math.max(-999, rawKge) : -999;
 
   // Modified KGE (2012) using gamma = (simStd / simMean) / (obsStd / obsMean)
   let kgeModified: number | undefined;
-  if (Math.abs(obsMean) > 1e-7 && Math.abs(simMean) > 1e-7 && obsStd > 0) {
+  if (Math.abs(obsMean) > 1e-4 && Math.abs(simMean) > 1e-4 && obsStd > 1e-4) {
     const cvSim = simStd / simMean;
     const cvObs = obsStd / obsMean;
-    const gamma = cvObs !== 0 ? cvSim / cvObs : 1;
+    const gamma = Math.abs(cvObs) > 1e-4 ? Math.max(0, Math.min(50, cvSim / cvObs)) : 1;
     const edMod = Math.sqrt(Math.pow(r - 1, 2) + Math.pow(gamma - 1, 2) + Math.pow(beta - 1, 2));
-    kgeModified = Number((1 - edMod).toFixed(4));
+    const rawKgeMod = 1 - edMod;
+    if (Number.isFinite(rawKgeMod)) {
+      kgeModified = Number(Math.max(-999, rawKgeMod).toFixed(4));
+    }
   }
 
   // 5. Normalized RMSE (NRMSE)
