@@ -33,6 +33,10 @@
    - [Standar Jendela Waktu Ekstrem Sinoptik WMO/BMKG](#standar-jendela-waktu-ekstrem-sinoptik-wmobmkg)
    - [Imputasi Reanalisis Atmosfer (ECMWF ERA5)](#imputasi-reanalisis-atmosfer-ecmwf-era5)
    - [Prakiraan Ansambel Musiman Multi-Model Global](#prakiraan-ansambel-musiman-multi-model-global)
+   - [Peramalan Curah Hujan Fuzzy Time Series (FTS Chen & Song-Chissom)](#peramalan-curah-hujan-fuzzy-time-series-fts-chen--song-chissom)
+   - [Pipeline Rekayasa Fitur Meteorologi & Deret Waktu](#pipeline-rekayasa-fitur-meteorologi--deret-waktu)
+   - [Backend Python ML Service & Kontrak Antarmuka JSON](#backend-python-ml-service--kontrak-antarmuka-json)
+   - [Adaptor Model Cuaca AI Generasi Baru: WeatherNext 3 / PARDIG](#adaptor-model-cuaca-ai-generasi-baru-weathernext-3--pardig)
 4. [Sumber Data & Integrasi Eksternal](#-sumber-data--integrasi-eksternal)
 5. [Fitur-Fitur Utama Modul Dasbor](#-fitur-fitur-utama-modul-dasbor)
 6. [Tumpukan Teknologi & Dependensi (Packages)](#-tumpukan-teknologi--dependensi-packages)
@@ -480,6 +484,55 @@ di mana sampel dikelompokkan ke dalam $K=10$ bin probabilitas nominal ($p_k$):
 
 ---
 
+### Analisis Curah Hujan Rencana & Statistik Frekuensi Hidrologi
+
+Modul ini menghitung estimasi curah hujan rencana untuk periode ulang $T \in \{2, 5, 10, 20, 50, 100\}$ tahun dari deret Hujan Harian Maksimum Tahunan (HHMT) berdasarkan 4 distribusi probabilitas hidrologi standar WMO No. 168 dan Pedoman Analisis Hidrologi PUPR/BMKG:
+
+#### 1. Distribusi Normal (Gauss)
+Mengasumsikan distribusi variabel acak simetris dengan koefisien kemencengan $C_s \approx 0$:
+$$X_T = \bar{X} + K_T \cdot s_X$$
+di mana $K_T = z$ merupakan kuantil baku normal standar pada probabilitas kumulatif $F = 1 - 1/T$.
+
+#### 2. Distribusi Log-Normal (2-Parameter)
+Variabel ditransformasikan ke bentuk logaritma basis 10 ($Y = \log_{10} X$):
+$$Y_T = \bar{Y} + K_T \cdot s_Y \implies X_T = 10^{Y_T}$$
+
+#### 3. Distribusi Log-Pearson Tipe III (LP3)
+Memperhitungkan ketidaksimetrisan deret logaritma menggunakan koefisien kemencengan $C_{sy}$:
+$$Y_T = \bar{Y} + K_T(C_{sy}, T) \cdot s_Y \implies X_T = 10^{Y_T}$$
+Faktor frekuensi $K_T$ dihitung menggunakan interpolasi tabel US Water Resources Council (Bulletin 17B/17C) dipadukan dengan transformasi analitik Wilson-Hilferty / Kite (1977):
+$$K_T = \frac{2}{C_{sy}} \left[ \left( \frac{C_{sy}}{6}\left(z - \frac{C_{sy}}{6}\right) + 1 \right)^3 - 1 \right]$$
+
+#### 4. Distribusi Gumbel Tipe I (Extreme Value Type I)
+Menganalisis nilai-nilai ekstrem asimtotik:
+$$Y_T = -\ln\left(-\ln\left(1 - \frac{1}{T}\right)\right)$$
+$$X_T = \bar{X} + \frac{Y_T - Y_n}{S_n} s_X$$
+di mana $Y_n$ (*reduced mean*) dan $S_n$ (*reduced standard deviation*) dikoreksi berdasarkan ukuran sampel data aktual ($n$).
+
+#### 5. Uji Kecocokan Distribusi (*Goodness of Fit*)
+- **Uji Chi-Square ($\chi^2$)**: Menguji signifikansi perbedaan antara frekuensi teramati $O_j$ dengan frekuensi ekspektasi $E_j = n/K$ pada $K$ kelas interval probabilitas:
+  $$\chi^2 = \sum_{j=1}^K \frac{(O_j - E_j)^2}{E_j} < \chi^2_{\text{kritis}}(\alpha=0.05, dk)$$
+  dengan derajat kebebasan $dk = K - (p + 1)$ ($p=2$ untuk Normal/LN/Gumbel; $p=3$ untuk LP3).
+- **Uji Kolmogorov-Smirnov (KS)**: Menghitung selisih vertikal mutlak maksimum antara posisi plotting empiris Weibull $P_{\text{empiris}}(m) = \frac{m}{n+1}$ terhadap fungsi kumulatif teoritis $P_{\text{teoritis}}(X_m)$:
+  $$\Delta P_{\max} = \max_{1 \le m \le n} |P_{\text{empiris}}(m) - P_{\text{teoritis}}(X_m)| < \Delta P_{\text{kritis}}(\alpha=0.05, n) \approx \frac{1.36}{\sqrt{n}}$$
+- **Sistem Rekomendasi Otomatis**: Memilih distribusi yang lolos kedua uji ($\chi^2 < \chi^2_{\text{kritis}}$ dan $\Delta P_{\max} < \Delta P_{\text{kritis}}$) dengan galat $\Delta P_{\max}$ terkecil.
+
+---
+
+### Curah Hujan Wilayah Metode Poligon Thiessen Terpotong (*Clipped Voronoi*)
+
+Untuk memperhitungkan heterogenitas spasial hujan di Kabupaten Kebumen (yang memiliki topografi gabungan pegunungan karst hulu di Sempor/Karangsambung dan dataran rendah pesisir di Ambal/Klirong), curah hujan wilayah dihitung menggunakan metode Poligon Thiessen:
+
+1. **Pembentukan Poligon Voronoi Dinamis**: Dibangun menggunakan algoritma pemotongan bidang setengah (*Sutherland-Hodgman Half-Plane Clipping*) pada koordinat 20 stasiun jaringan Kebumen, lalu dipotong secara presisi terhadap batas administrasi Kabupaten Kebumen (`kebumen_kecamatan.json`).
+2. **Normalisasi Bobot Luasan ($w_i$)**:
+   $$w_i = \frac{A_i}{A_{\text{total}}}, \quad \sum_{i=1}^k w_i = 1.0 \ (100\%)$$
+   dengan $A_{\text{total}} = 1.281,1\text{ km}^2$.
+3. **Curah Hujan Rata-rata Tertimbang**:
+   $$R_{\text{areal}} = \sum_{i=1}^k w_i \cdot R_i$$
+4. **Reaktivitas Interaktif**: Sistem memungkinkan pengguna mengaktifkan/menonaktifkan stasiun tertentu secara langsung melalui peta GIS, dan poligon Thiessen serta bobot $w_i$ stasiun lain akan langsung dihitung ulang secara instan (*recalculated*).
+
+---
+
 ### Parameter Turunan Meteorologi
 
 #### 1. Titik Embun / Dew Point ($T_d$) — Formula Magnus-Tetens
@@ -548,6 +601,115 @@ Untuk prakiraan jangka panjang 6–7 bulan (ENSO Niño 3.4, IOD, MJO):
   - Peluang El Niño ($\text{Anomali SST} \ge +0.5^\circ\text{C}$)
   - Peluang Netral ($-0.5^\circ\text{C} < \text{Anomali SST} < +0.5^\circ\text{C}$)
   - Peluang La Niña ($\text{Anomali SST} \le -0.5^\circ\text{C}$)
+
+---
+
+### Peramalan Curah Hujan Fuzzy Time Series (FTS Chen & Song-Chissom)
+
+Untuk peramalan cepat curah hujan lokal pada resolusi dasarian (10 hari) dan bulanan tanpa memerlukan beban server inferensi deep learning eksternal, sistem mengimplementasikan algoritma **Fuzzy Time Series (FTS) Chen (1996)** yang diperluas dari kerangka **Song & Chissom (1993)** murni dalam TypeScript (`lib/forecasting/fuzzyTimeSeries.ts`):
+
+1. **Penentuan Semesta Pembicaraan (*Universe of Discourse*) $U$**:
+   $$U = [D_{\min} - D_1, \; D_{\max} + D_2]$$
+   di mana $D_{\min}$ dan $D_{\max}$ adalah nilai observasi curah hujan historis minimum dan maksimum, sedangkan $D_1$ dan $D_2$ adalah konstanta batas penyangga (dijaga non-negatif $U_{\min} \ge 0\ \text{mm}$).
+
+2. **Partisi Interval & Penentuan Nilai Tengah ($m_i$)**:
+   Semesta $U$ dipartisi menjadi $k$ interval dengan panjang sama:
+   $$u_i = [l_i, u_i], \quad \text{panjang interval } l = \frac{U_{\max} - U_{\min}}{k}$$
+   Nilai tengah (*midpoint*) masing-masing interval:
+   $$m_i = \frac{l_i + u_i}{2}, \quad i = 1, 2, \dots, k$$
+   Jumlah interval $k$ dapat diatur secara adaptif mengikuti Aturan Sturges: $k = \lceil 1 + 3.322 \log_{10}(n) \rceil$.
+
+3. **Fuzzifikasi**:
+   Data observasi numerik aktual $x(t)$ dipetakan ke himpunan fuzzy $A_i$ jika $x(t) \in u_i$.
+
+4. **Pembentukan Hubungan Logika Fuzzy (*Fuzzy Logical Relationships* / FLR)**:
+   Jika $x(t-1)$ difuzzifikasi ke $A_i$ dan $x(t)$ difuzzifikasi ke $A_j$, maka terbentuk relasi:
+   $$A_i \to A_j$$
+
+5. **Pengelompokan Relasi Logika Fuzzy (*Fuzzy Logical Relationship Groups* / FLRG)**:
+   Seluruh relasi yang memiliki sisi kiri (*antecedent*) sama dikelompokkan:
+   $$A_i \to A_{j_1}, A_{j_2}, \dots, A_{j_p}$$
+
+6. **Defuzzifikasi Aturan Rata-Rata Chen (1996)**:
+   Nilai ramalan dihitung berdasarkan tiga kondisi berikut:
+   - **Kasus 1**: Jika sisi kanan relasi kosong ($A_i \to \emptyset$), maka nilai ramalan adalah nilai tengah intervalnya sendiri:
+     $$\hat{y}_t = m_i$$
+   - **Kasus 2**: Jika sisi kanan hanya memiliki satu relasi ($A_i \to A_j$), maka nilai ramalan adalah nilai tengah interval tujuan:
+     $$\hat{y}_t = m_j$$
+   - **Kasus 3**: Jika sisi kanan memiliki $p$ relasi ($A_i \to A_{j_1}, A_{j_2}, \dots, A_{j_p}$), maka nilai ramalan adalah rata-rata nilai tengah seluruh interval tujuan:
+     $$\hat{y}_t = \frac{1}{p}\sum_{c=1}^{p} m_{j_c}$$
+
+7. **Metrik Akurasi**:
+   - $\text{MAPE} = \frac{1}{N}\sum_{t=1}^{N}\left|\frac{y_t - \hat{y}_t}{y_t}\right| \times 100\%$
+   - $\text{RMSE} = \sqrt{\frac{1}{N}\sum_{t=1}^{N}(y_t - \hat{y}_t)^2}$
+
+---
+
+### Pipeline Rekayasa Fitur Meteorologi & Deret Waktu
+
+Modul `lib/forecasting/meteorologicalFeatures.ts` mentransformasikan observasi per jam mentah menjadi matriks fitur berkualitas tinggi bebas kebocoran data (*data leakage*):
+
+1. **Encoding Waktu Siklik Ortonormal**:
+   $$\sin_{\text{hour}} = \sin\left(\frac{2\pi \cdot h}{24}\right), \quad \cos_{\text{hour}} = \cos\left(\frac{2\pi \cdot h}{24}\right)$$
+   $$\sin_{\text{month}} = \sin\left(\frac{2\pi \cdot m}{12}\right), \quad \cos_{\text{month}} = \cos\left(\frac{2\pi \cdot m}{12}\right)$$
+   $$\sin_{\text{DOY}} = \sin\left(\frac{2\pi \cdot \text{DOY}}{365.25}\right), \quad \cos_{\text{DOY}} = \cos\left(\frac{2\pi \cdot \text{DOY}}{365.25}\right)$$
+
+2. **Variabel Fisis Atmosfer Turunan**:
+   - **Titik Embun ($T_d$)**: Dihitung dengan rumus Magnus-Tetens.
+   - **Defisit Tekanan Uap / Vapor Pressure Deficit (VPD)**:
+     $$e_s(T) = 0.61078 \exp\left(\frac{17.27 T}{T + 237.3}\right)\ \text{kPa}, \quad \text{VPD} = e_s(T) \cdot \left(1 - \frac{RH}{100}\right)$$
+   - **Suhu Terasa / Apparent Temperature ($T_{\text{app}}$)**: Menggunakan formula Steadman dengan pengaruh angin dan kelembapan.
+
+3. **Statistik Jendela Bergerak (*Rolling Window*)**:
+   - Perubahan 3-jam: $\Delta T_{3h} = T_t - T_{t-3}$, $\Delta P_{3h} = P_t - P_{t-3}$, $\Delta RH_{3h} = RH_t - RH_{t-3}$.
+   - Simpangan baku 24-jam: $\sigma_{24h}(T)$ dan $\sigma_{24h}(RH)$.
+   - Akumulasi presipitasi: $R_{3h} = \sum_{k=0}^{2} R_{t-k}$ dan $R_{24h} = \sum_{k=0}^{23} R_{t-k}$.
+
+4. **Z-Score Anomali Klimatologis**:
+   $$Z_{\text{anomali}} = \frac{x_{m,h} - \mu_{m,h}^{\text{klimatologi}}}{\sigma_{m,h}^{\text{klimatologi}}}$$
+   dihitung terhadap normal 288 kombinasi bulan-jam ($12 \times 24$) khas pesisir selatan Kebumen.
+
+5. **Imputasi Tanpa Kebocoran (*Forward-Fill / LOCF*)**:
+   Pembersihan data hilang menggunakan *Last Observation Carried Forward* dengan batas jendela waktu lag maksimum (default 6 jam); gap yang melebihi batas diisi oleh profil diurnal klimatologi stasiun.
+
+---
+
+### Backend Python ML Service & Kontrak Antarmuka JSON
+
+Layanan pembelajaran mesin berbasis Python Cloud Functions (`functions-python/main.py`) bertindak sebagai mesin pelatihan dan inferensi lanjutan dengan antarmuka proksi BFF di `app/api/weather/ml-model/route.ts`:
+
+#### Spesifikasi Kontrak JSON Antarmuka Next.js & Python
+
+| Aksi (`action`) | Metode | Payload Masukan (Request Body) | Respons Utama (Response Body) |
+| :--- | :--- | :--- | :--- |
+| `train` | POST | `{ action: "train", modelType: "xgboost" \| "random_forest", sampleSize: 365 }` | `{ success: true, modelType, accuracy, featureImportances: [ [name, score], ... ], message }` |
+| `predict` | POST | `{ action: "predict", features: { temperature, humidity, pressure, pressure_change_3h, rain_accum_3h, ... } }` | `{ success: true, predictedClass, intensityLabel, probabilities: { nihil, ringan, sedang, lebat }, shapContributions: [ { feature, value, contribution } ] }` |
+| `optimize` | POST | `{ action: "optimize", nTrials: 15, targetMetric: "rmse" }` | `{ success: true, bestParams: { n_units, dropout, learning_rate, sequence_length, batch_size }, bestLossRmse, nTrials, algorithm }` |
+
+- **XGBoost & Random Forest Classifier**: Memprediksi 4 kelas intensitas hujan BMKG: Nihil (0 mm), Ringan (0.5–20 mm), Sedang (20–50 mm), dan Lebat (>50 mm).
+- **Atribusi Nilai SHAP (*SHapley Additive exPlanations*)**: Menghitung kontribusi fisis masing-masing prediktor (positif: mendorong hujan; negatif: menekan konveksi).
+- **Optimasi Hyperparameter Bayesian (Optuna TPE Sampler)**: Mencari kombinasi parameter arsitektur LSTM terbaik (`n_units`, `dropout`, `learning_rate`, `sequence_length`, `batch_size`) untuk meminimalkan RMSE.
+
+---
+
+### Adaptor Model Cuaca AI Generasi Baru: WeatherNext 3 / PARDIG
+
+Modul `lib/weather-models/weatherNext3Adapter.ts` menyediakan lapisan normalisasi untuk luaran model prakiraan cuaca global berbasis kecerdasan buatan (*AI Numerical Weather Prediction* / DeepMind WeatherNext 3 & ECMWF AI NWP):
+
+1. **Konversi Satuan Fisis**:
+   - Suhu: $T(^\circ\text{C}) = T(\text{K}) - 273.15$
+   - Vektor Angin $u, v$:
+     $$\text{Wind Speed} = \sqrt{u^2 + v^2}\ (\text{m/s}), \quad \text{Wind Direction} = \left(\text{atan2}(-u, -v) \times \frac{180}{\pi} + 360\right) \pmod{360}$$
+   - Presipitasi: $P_{\text{mm}} = P_{\text{meter}} \times 1000$
+   - Tekanan: $P_{\text{hPa}} = P_{\text{Pa}} / 100$
+
+2. **Resolusi Spasial & Siklus Operasional**:
+   - Resolusi spasial tinggi $0.05^\circ$ (~5.5 km) untuk stasiun tapak Kebumen.
+   - Mode *Deterministic Hourly*: jangkauan 48 jam dengan pembaruan siklus 24x/hari.
+   - Mode *Medium-Range Ensemble*: jangkauan 15 hari dengan 64 anggota ensambel siklus 6-jam.
+
+3. **Integrasi Konsensus Multi-Model**:
+   Dapat diaktifkan secara dinamis pada konsensus prakiraan cuaca `app/api/weather/consensus/route.ts` melalui *feature flag* variabel lingkungan `ENABLE_WEATHERNEXT3=true` atau parameter URL `?weathernext=true`.
 
 ---
 

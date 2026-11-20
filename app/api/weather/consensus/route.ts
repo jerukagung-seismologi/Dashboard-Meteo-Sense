@@ -1,6 +1,10 @@
 // app/api/weather/consensus/route.ts
 import { NextResponse } from "next/server";
 import { GLOBAL_NWP_MODELS } from "@/lib/forecast/nwpConsensusEngine";
+import {
+  generateSyntheticWeatherNext3Forecast,
+  weatherNext3ToConsensusPrediction,
+} from "@/lib/weather-models/weatherNext3Adapter";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300; // Cache 5 menit di level server / CDN
@@ -263,6 +267,13 @@ export async function GET(request: Request) {
     }
 
     // 2. Fetch Multi-Model Forecast dari Open-Meteo dengan start_date & end_date spesifik
+    const enableWeatherNext3 =
+      process.env.ENABLE_WEATHERNEXT3 === "true" ||
+      searchParams.get("weathernext") === "true";
+    const wn3Forecast = enableWeatherNext3
+      ? generateSyntheticWeatherNext3Forecast(lat, lon, targetDateStr, "hourly_48h")
+      : null;
+
     const modelIds = GLOBAL_NWP_MODELS.map((m) => m.id).join(",")
     const params = new URLSearchParams({
       latitude: lat.toString(),
@@ -317,6 +328,17 @@ export async function GET(request: Request) {
       usedModels = GLOBAL_NWP_MODELS.filter((m) =>
         ["ecmwf_ifs", "gfs_seamless", "icon_seamless", "jma_seamless", "cma_grapes_global"].includes(m.id)
       )
+    }
+
+    if (enableWeatherNext3) {
+      usedModels = [
+        ...usedModels,
+        {
+          id: "weathernext_3",
+          name: "WeatherNext 3 AI",
+          country: "Google DeepMind / ECMWF",
+        } as any,
+      ]
     }
 
     if (!response.ok) {
@@ -420,6 +442,19 @@ export async function GET(request: Request) {
           rainProb,
         }
       }).filter((p) => p.condition !== null && p.temperature !== null)
+
+      // Injeksi Model Cuaca AI Generasi Baru: WeatherNext 3 jika diaktifkan
+      if (enableWeatherNext3 && wn3Forecast) {
+        const [targetH] = targetTime.split(":")
+        const wn3Item = wn3Forecast.hourly.find((h) => {
+          const itemH = new Date(h.time).getUTCHours() + 7
+          return (itemH % 24) === parseInt(targetH, 10)
+        })
+        const wn3Pred = weatherNext3ToConsensusPrediction(wn3Item)
+        if (wn3Pred) {
+          modelPredictions.push(wn3Pred as SingleModelPrediction)
+        }
+      }
 
       const consensus = calculateMultiModelConsensus(modelPredictions)
 

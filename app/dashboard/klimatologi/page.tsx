@@ -76,6 +76,7 @@ import { ExtremesSpiTab } from "@/components/klimatologi/tabs/ExtremesSpiTab";
 import { ZomDynamicsTab } from "@/components/klimatologi/tabs/ZomDynamicsTab";
 import { Era5ReanalysisTab } from "@/components/klimatologi/tabs/Era5ReanalysisTab";
 import { ChcEstimatesTab } from "@/components/klimatologi/tabs/ChcEstimatesTab";
+import { DesignRainfallSection } from "@/components/climatology/DesignRainfallSection";
 
 // ─── Types & Presets ─────────────────────────────────────────────────────────
 interface DeviceOption {
@@ -1065,7 +1066,7 @@ function KlimatologiInner() {
 
       {/* ── C. Main Climatology & Meteorology Navigation ──────────────────── */}
       <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 h-auto p-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl gap-1">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 h-auto p-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl gap-1">
           <TabsTrigger value="profil-iklim" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
             <CloudSun className="h-4 w-4 text-blue-500 shrink-0" />
             <span>Profil Iklim WMO</span>
@@ -1077,6 +1078,10 @@ function KlimatologiInner() {
           <TabsTrigger value="ekstrem-spi" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
             <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />
             <span>Ekstrem &amp; SPI</span>
+          </TabsTrigger>
+          <TabsTrigger value="curah-hujan-rencana" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
+            <Droplets className="h-4 w-4 text-sky-500 shrink-0" />
+            <span>Hujan Rencana &amp; Thiessen</span>
           </TabsTrigger>
           <TabsTrigger value="zom-musim" className="py-2.5 flex flex-col sm:flex-row items-center gap-1.5 text-xs font-bold rounded-lg">
             <CalendarDays className="h-4 w-4 text-teal-500 shrink-0" />
@@ -1191,6 +1196,17 @@ function KlimatologiInner() {
             activeLocation={activeLocation}
             isDarkMode={isDarkMode}
             wmoNormalsData={wmoNormalsData}
+          />
+        </TabsContent>
+
+        {/* ─── TAB: CURAH HUJAN RENCANA & POLIGON THIESSEN KABUPATEN KEBUMEN ─── */}
+        <TabsContent value="curah-hujan-rencana" className="mt-6 space-y-6">
+          <DesignRainfallSection
+            initialStationId={
+              activeLocation?.mode === "station" && activeLocation.sensorId
+                ? activeLocation.sensorId
+                : "stasiun-jerukagung-klirong"
+            }
           />
         </TabsContent>
 

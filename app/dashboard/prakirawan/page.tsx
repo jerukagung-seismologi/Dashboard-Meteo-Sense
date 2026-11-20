@@ -3,6 +3,7 @@
 import ForecastForm from "@/components/prakirawan/ForecastFunction"
 import { Toaster } from "@/components/ui/toaster"
 import BMKGNowcasting from "@/components/prakirawan/FetchBMKGData"
+import MlForecastingExperimentCard from "@/components/prakirawan/MlForecastingExperimentCard"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { CloudSun, Calendar } from "lucide-react"
 import { PageHeaderBanner } from "@/components/ui/PageHeaderBanner"
@@ -42,6 +43,7 @@ export default function Page() {
                         <TabsList className="mb-4">
                             <TabsTrigger value="prakiraan_bmkg">Prakiraan Cuaca BMKG</TabsTrigger>
                             <TabsTrigger value="outlook">Form Prakiraan Cuaca</TabsTrigger>
+                            <TabsTrigger value="eksperimen_ai">Eksperimen AI & FTS</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="prakiraan_bmkg" className="mt-0">
@@ -50,6 +52,10 @@ export default function Page() {
 
                         <TabsContent value="outlook" className="mt-0">
                             <ForecastForm />
+                        </TabsContent>
+
+                        <TabsContent value="eksperimen_ai" className="mt-0">
+                            <MlForecastingExperimentCard />
                         </TabsContent>
                     </Tabs>
                 </div>
