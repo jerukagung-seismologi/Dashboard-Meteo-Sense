@@ -10,6 +10,14 @@ import {
   EvaluationMetrics,
 } from "../types";
 import { calculateEvaluationMetrics } from "../statistics/metrics";
+import { calculateHydrologicalMetrics } from "../statistics/hydrologicalMetrics";
+import { calculateCategoricalMetrics } from "../statistics/categoricalMetrics";
+import {
+  calculateRAPS,
+  calculateDoubleMassCurve,
+  calculateSpearmanTrendTest,
+  validateSampleAdequacy,
+} from "../statistics/homogeneityTests";
 import { fitMeanBias, transformMeanBias } from "./meanBias";
 import { fitDiurnalMBE, transformDiurnalMBE } from "./diurnalMBE";
 import { fitLinearRegression, transformLinearRegression } from "./linearRegression";
@@ -231,6 +239,36 @@ export class BiasCorrectionEngine implements ICorrectionEngine {
       fitParameters: this.fittedParams || {},
     };
 
+    // Hydrological Verification (NSE, RSR, NRMSE, KGE)
+    const rawHydro = calculateHydrologicalMetrics(
+      validationPairs.map(p => ({ observed: p.aws, simulated: p.era5Raw }))
+    );
+    const correctedHydro = calculateHydrologicalMetrics(
+      validationPairs.map(p => ({ observed: p.aws, simulated: p.era5Corrected }))
+    );
+
+    // Categorical Verification (Default 0.1 mm/day threshold for rain or rainrate)
+    const catThreshold = this.variable === "precipitation" ? 0.1 : 0.1;
+    const rawCat = calculateCategoricalMetrics(
+      validationPairs.map(p => ({ observed: p.aws, forecast: p.era5Raw })),
+      catThreshold
+    );
+    const correctedCat = calculateCategoricalMetrics(
+      validationPairs.map(p => ({ observed: p.aws, forecast: p.era5Corrected })),
+      catThreshold
+    );
+
+    // Quality & Homogeneity Tests on AWS Ground Truth & Comparison
+    const awsValues = validationPairs.map(p => p.aws);
+    const era5RawValues = validationPairs.map(p => p.era5Raw);
+    const rapsResult = calculateRAPS(awsValues);
+    const doubleMassResult = calculateDoubleMassCurve(awsValues, era5RawValues);
+    const spearmanResult = calculateSpearmanTrendTest(awsValues);
+    const sampleAdequacy = validateSampleAdequacy(
+      calibrationMeta.count + validationMeta.count,
+      504
+    );
+
     return {
       variable: this.variable,
       method: this.method,
@@ -241,6 +279,21 @@ export class BiasCorrectionEngine implements ICorrectionEngine {
       isDegraded,
       degradationWarning,
       provenance,
+      hydrological: {
+        raw: rawHydro,
+        corrected: correctedHydro,
+      },
+      categorical: {
+        threshold: catThreshold,
+        raw: rawCat,
+        corrected: correctedCat,
+      },
+      homogeneity: {
+        raps: rapsResult,
+        doubleMass: doubleMassResult,
+        spearmanTrend: spearmanResult,
+        sampleAdequacy,
+      },
     };
   }
 

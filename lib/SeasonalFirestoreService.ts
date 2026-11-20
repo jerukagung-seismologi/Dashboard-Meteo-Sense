@@ -130,12 +130,18 @@ export async function getSeasonData(
     console.warn(`[Firestore] Gagal memuat musim ${seasonId} (${kab}) dari Firestore, beralih ke fallback JSON statis:`, err);
   }
 
-  // Fallback ganda ke JSON statis lokal modular per kabupaten
+  // Fallback ganda ke API route modular atau JSON statis lokal modular per kabupaten
   const kabBase = `/data/${kab}`;
   const basePath = folder ? `${kabBase}/${folder}` : kabBase;
   const [kecRes, desaRes] = await Promise.all([
     fetch(`${basePath}/prediksi_musim.json`),
-    fetch(`${basePath}/prediksi_musim_desa.json`).catch(() => null),
+    fetch(`/api/seasonal/villages?kabupaten=${kab}&type=tabular`)
+      .then((r) => (r.ok ? r : null))
+      .catch(() => null)
+      .then(async (apiRes) => {
+        if (apiRes) return apiRes;
+        return fetch(`${basePath}/prediksi_musim_desa.json`).catch(() => null);
+      }),
   ]);
 
   if (!kecRes.ok) throw new Error(`Gagal memuat dataset prediksi musim (${seasonId}) untuk ${kab}.`);

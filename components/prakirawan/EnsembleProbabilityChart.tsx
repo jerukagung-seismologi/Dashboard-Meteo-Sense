@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import { WeatherCondition } from "@/components/prakirawan/ForecastFunction"
 import { cn } from "@/lib/utils"
+import { ProbabilisticVerificationCard } from "./ProbabilisticVerificationCard"
 
 // Palet warna standar BMKG / Meteo Sense untuk kondisi cuaca
 export const CONDITION_COLOR_MAP: Record<WeatherCondition, string> = {
@@ -87,7 +88,7 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
   isDarkMode = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(true)
-  const [activeView, setActiveView] = useState<"chart" | "matrix">("chart")
+  const [activeView, setActiveView] = useState<"chart" | "matrix" | "verification">("chart")
   const [matrixSubView, setMatrixSubView] = useState<"grid" | "summary">("grid")
 
   // Validasi data
@@ -550,6 +551,21 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
                   <TableIcon className="w-3.5 h-3.5 mr-1" />
                   Matriks Model
                 </Button>
+                <Button
+                  type="button"
+                  variant={activeView === "verification" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveView("verification")}
+                  className={cn(
+                    "h-7 px-2.5 text-xs font-medium rounded-md",
+                    activeView === "verification"
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                  )}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                  Verifikasi
+                </Button>
               </div>
             )}
 
@@ -741,6 +757,14 @@ export const EnsembleProbabilityChart: React.FC<EnsembleProbabilityChartProps> =
                   Tinggi Batang = 100% Total Konsensus
                 </span>
               </div>
+            </div>
+          ) : activeView === "verification" ? (
+            <div className="pt-1">
+              <ProbabilisticVerificationCard
+                data={data}
+                locationName={locationName}
+                isDarkMode={isDarkMode}
+              />
             </div>
           ) : (
             /* MATRIKS MODEL VIEW */

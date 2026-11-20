@@ -1,5 +1,6 @@
 // lib/reanalysis/era5Correction.ts
 import { WeatherRecord } from "@/lib/weatherUtils";
+export type { EvaluationMetrics, HourlyMeteorologicalRecord, MeteorologicalVariable } from "@/lib/types/meteorology";
 
 export interface BiasMetric {
   mbe: number;             // Mean Bias Error (AWS - ERA5/IFS)

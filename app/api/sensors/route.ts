@@ -6,6 +6,7 @@ import {
   fetchSensorMetadata
 } from "@/lib/FetchingSensorData";
 import { aggregateSensorToHourly } from "@/lib/bias-correction/preprocessing/hourlyAggregation";
+import { compressTimeSeries } from "@/lib/compression/adaptiveTimeSeries";
 
 type CacheEntry = {
   data: any;
@@ -37,6 +38,9 @@ export async function GET(request: Request) {
     },
   };
 
+  const isCompact = searchParams.get("compact") === "true";
+  const maxPoints = parseInt(searchParams.get("maxPoints") || "300", 10);
+
   try {
     switch (action) {
       case "metadata": {
@@ -47,6 +51,9 @@ export async function GET(request: Request) {
         const limitStr = searchParams.get("limit");
         const limit = limitStr ? parseInt(limitStr, 10) : 1;
         const data = await fetchSensorData(sensorId, limit, applyCalibration);
+        if (isCompact && Array.isArray(data) && data.length > 0) {
+          return NextResponse.json(compressTimeSeries(data, maxPoints), responseOptions);
+        }
         return NextResponse.json(data, responseOptions);
       }
       case "range": {
@@ -58,7 +65,7 @@ export async function GET(request: Request) {
         const startTimestamp = parseInt(startStr, 10);
         const endTimestamp = parseInt(endStr, 10);
         const resolution = searchParams.get("resolution") || searchParams.get("aggregate");
-        const cacheKey = `${sensorId}:${startTimestamp}:${endTimestamp}:${applyCalibration}:${resolution}`;
+        const cacheKey = `${sensorId}:${startTimestamp}:${endTimestamp}:${applyCalibration}:${resolution}:${isCompact ? `compact:${maxPoints}` : "raw"}`;
 
         if (!isRefresh) {
           const cached = rangeCache.get(cacheKey);
@@ -80,13 +87,17 @@ export async function GET(request: Request) {
           resolution === "hourly" ? "hourly" : "raw"
         );
 
+        const responsePayload = isCompact && Array.isArray(data) && data.length > 0
+          ? compressTimeSeries(data, maxPoints)
+          : data;
+
         if (rangeCache.size >= MAX_CACHE_ENTRIES) {
           const oldestKey = rangeCache.keys().next().value;
           if (oldestKey) rangeCache.delete(oldestKey);
         }
-        rangeCache.set(cacheKey, { data, cachedAt: Date.now() });
+        rangeCache.set(cacheKey, { data: responsePayload, cachedAt: Date.now() });
 
-        return NextResponse.json(data, responseOptions);
+        return NextResponse.json(responsePayload, responseOptions);
       }
       case "value": {
         const field = searchParams.get("field");
@@ -96,6 +107,9 @@ export async function GET(request: Request) {
         }
         const value = parseFloat(valueStr);
         const data = await fetchSensorDataByValue(sensorId, field, value, applyCalibration);
+        if (isCompact && Array.isArray(data) && data.length > 0) {
+          return NextResponse.json(compressTimeSeries(data, maxPoints), responseOptions);
+        }
         return NextResponse.json(data, responseOptions);
       }
       default:

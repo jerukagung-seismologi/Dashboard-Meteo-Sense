@@ -98,7 +98,7 @@ import {
   resolveActiveSensorId,
 } from "@/lib/activeSensorStorage";
 
-export const DEFAULT_STATION_OPTIONS = [
+const DEFAULT_STATION_OPTIONS = [
   { label: "Node ID-01 (Jerukagung Utama)", value: "id-01", lat: -7.7121, lng: 109.6892 },
   { label: "Node ID-02 (Kebumen Kota)", value: "id-02", lat: -7.6723, lng: 109.6533 },
   { label: "Node ID-03 (Ambal Pesisir)", value: "id-03", lat: -7.7812, lng: 109.7289 },

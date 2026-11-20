@@ -60,3 +60,24 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   - Fungsi agregasi curah hujan (`aggregateDailyUTC` dan `aggregateHourlyUTC`) wajib mengakumulasi pulsa sensor diskrit (`rainfall`) maupun integrasi laju hujan kontinu (`rainrate * dt`) agar tidak ada presipitasi yang terlewat.
 - **Physical Boundary for Visual Gauges**:
   - Tabung ukur curah hujan visual (*Rain Measuring Cup*) wajib menampilkan tabung kosong sempurna (tinggi cairan = 0%) saat curah hujan bernilai 0.0 mm.
+
+### 7. Strict UI Minimalism & Documentation Separation (Anti-Label Clutter)
+- **Minimalist Card Titles & Subtitles**:
+  - Keep dashboard card headers, titles, descriptions, and empty states strictly concise and clean.
+  - Prohibit appending verbose helper texts, explanatory subtitles, or runtime execution badges to standard headers (e.g. preserve `"Peringatan Terbaru"` and `"Notifikasi sistem dan status perangkat"` without appending `"pemantau offline"` or `"Auto QC Aktif (HH:MM)"`).
+- **Documentation Separation**:
+  - Do NOT clutter the live web UI with deep architectural explanations, math formulas, or algorithm descriptions.
+  - All deep scientific formulas, physical justifications, and technical architecture MUST be comprehensively documented in `README.md`.
+
+### 8. Git & Version Control Discipline
+- **Absolute Commit/Push Prohibition**:
+  - Under no circumstances should the agent execute `git commit` or `git push`.
+  - Staging inspection (`git status`, `git diff`) is permitted for verification, but creating commits and pushing to remotes is strictly reserved for the user.
+
+### 9. Time-Series Anomaly Visualization & Anchor Ergonomics
+- **Anti-Clutter Pin Clustering**:
+  - When visualizing sequential time-series anomalies (e.g. solar overheating or sensor spikes), never render individual full-sized `markPoint` pins at every timestamp step ($\le 3$ step intervals).
+  - Cluster consecutive anomalies into a single representative peak marker (`symbolSize: 32` or smaller) and use a soft, translucent `markArea` duration band in the background to avoid text overlap towers.
+- **Shoulder Buffer Relaxation for Baseline Interpolation**:
+  - When reconstructing anomaly segments via diurnal patterns (`solar_cosine_hermite`), expand the anomaly window dynamically until excess over baseline relaxes ($\Delta T \le 0.25^\circ\text{C}$).
+  - Boundary anchors $(t_A, y_A)$ and $(t_B, y_B)$ must never be sampled from already-heated transition flanks.

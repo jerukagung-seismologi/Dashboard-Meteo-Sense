@@ -9,10 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fetchSensorDataByDateRange } from "@/lib/apiClient";
 import { aggregateSensorToHourly } from "@/lib/bias-correction/preprocessing/hourlyAggregation";
+import { calculateHydrologicalMetrics } from "@/lib/bias-correction/statistics/hydrologicalMetrics";
 import {
   SUPPORTED_NWP_MODELS,
   NWPModelMeta,
-} from "@/app/api/weather/multi-model-validation/route";
+} from "@/lib/calibration/calibrationTypes";
 import {
   Trophy,
   RefreshCw,
@@ -85,6 +86,8 @@ interface ModelVerificationMetric {
   mbe: number;
   correlation: number;
   validPairs: number;
+  nse?: number;
+  kge?: number;
 }
 
 export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationProps> = ({
@@ -315,6 +318,10 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
       const denom = Math.sqrt(denM * denO);
       const correlation = denom > 0 ? num / denom : 0;
 
+      const hydro = calculateHydrologicalMetrics(
+        pairs.map((p) => ({ observed: p.aws, simulated: p.model }))
+      );
+
       results.push({
         modelId: m.id,
         modelName: m.name,
@@ -326,6 +333,8 @@ export const MultiModelWeatherValidation: React.FC<MultiModelWeatherValidationPr
         mbe: Number(mbe.toFixed(2)),
         correlation: Number(correlation.toFixed(3)),
         validPairs: N,
+        nse: hydro.nse,
+        kge: hydro.kge,
       });
     });
 

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const revalidate = 1800; // Cache for 30 minutes
 
-export const CAMS_PRODUCTS = {
+const CAMS_PRODUCTS = {
   "aerosol-forecasts": {
     label: "Aerosol & Debu (Optical Depth)",
     unit: "AOD (550nm)",

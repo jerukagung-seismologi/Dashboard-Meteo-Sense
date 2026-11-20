@@ -550,39 +550,43 @@ Dashboard-Meteo-Sense/
 │   │   │   └── monsoon/                 # Halaman Analisis Monsun
 │   │   ├── indeks-monsun/               # Analisis AUSMI & WNPMI
 │   │   ├── kalibrasi/                   # Modul Kalibrasi Sensor & Fitting Curve
-│   │   ├── klimatologi/                 # Modul Analisis Iklim & Ekstrem
+│   │   ├── klimatologi/                 # Modul Analisis Iklim, Ekstrem, SPI, & Agromet
 │   │   ├── koreksi-data/                # Modul QC, Koreksi Nilai RAW, & Imputasi Celah 2-Fase
 │   │   ├── laporan/                     # Modul Laporan Resmi A4 & Bulk WOW
 │   │   ├── meteorologi/                 # Dasbor Meteorologi Real-time & Diurnal
 │   │   ├── perangkat-benchmark/         # Pemantauan Stasiun Standar BMKG
 │   │   ├── peta/                        # Peta Geospasial Stasiun (Leaflet)
 │   │   └── reanalisis-era5/             # Modul Reanalisis Atmosfer ERA5
+│   ├── api/                             # Route Handlers Next.js
+│   │   ├── seasonal/villages/           # Endpoint Filter Geospasial Desa Kebumen (Cached)
+│   │   └── system/node-health/          # Pengawas Telemetri Node & Deteksi Anomali
 │   ├── globals.css                      # Konfigurasi Tailwind CSS 4 & Design Tokens
 │   ├── layout.tsx                       # Root Layout dengan Theme Provider
 │   └── page.tsx                         # Landing Page Utama
 ├── components/                          # Komponen Antarmuka Pengguna (UI)
 │   ├── climate-drivers/                 # Komponen Khusus Iklim & Prediksi Musiman
-│   │   ├── ENSOCharts.tsx               # Grafik Deret Waktu ONI, Niño 1+2, 3, 3.4, 4, SOI
-│   │   ├── ENSOForecastSection.tsx      # Komparasi 7 Model, Plume, & Probabilitas Fase
-│   │   ├── ResponsiveEChart.tsx         # Pembungkus ECharts Otomatis Responsif (ResizeObserver)
-│   │   └── SubpageHeader.tsx            # Header Konsisten Subhalaman
+│   ├── klimatologi/tabs/                # Tab Modular Klimatologi (Agromet, SPI, ZOM, ERA5)
+│   ├── koreksi-data/                    # Sub-komponen Koreksi Data & Visualizer ECharts
+│   ├── prakirawan/                      # Komponen Prakirawan Cuaca Konsensus Multi-Model
+│   │   ├── form/                        # Form Input Parameter & Model Toggles
+│   │   └── export/                      # Dialog Ekspor Buletin Resmi & Narasi Prakiraan
 │   ├── ui/                              # Komponen UI Reusable (Radix / Shadcn)
 │   └── weather/                         # Widget Cuaca, Gauge, & Indikator
+├── hooks/                               # Custom Hooks Logika & State
+│   └── koreksi-data/                    # State Orkestrasi, QC Anomali, Engine, & Imputasi
 ├── lib/                                 # Logika Bisnis, Algoritma, & Utilitas
 │   ├── bias-correction/                 # Pustaka Koreksi Bias & Evaluasi Statistik
-│   │   ├── correction/                  # Model Offset, Linier, Polinomial, Quantile
-│   │   ├── imputation/                  # Imputasi Reanalisis & Spasial
-│   │   ├── matching/                    # Pencocokan Temporal Sensor vs Benchmark
-│   │   ├── qc/                          # Quality Control & Limit Check WMO
-│   │   └── statistics/                  # Penghitungan MBE, MAE, RMSE, R²
 │   ├── calibration/                     # Mesin Kalibrasi & Integrasi Firestore
 │   ├── climate-drivers/                 # Pengambil Data Live ENSO, IOD, MJO & Parsers
+│   ├── forecast/                        # Mesin Konsensus Ansambel Multi-Model Prakiraan
 │   ├── reanalysis/                      # Sumber Data SQLite & ERA5 Correction
+│   ├── types/meteorology.ts             # Tipe Domain Meteorologi Bersama (Shared Types)
 │   ├── ConfigFirebase.ts                # Inisialisasi Kredensial Firebase SDK
 │   ├── FetchingSensorData.ts            # Akses Data Sensor dari Realtime Database
 │   ├── meteorologicalImputationEngine.ts # Imputasi 2-Fase, Profil Pola Node, & Spatial Ridge
 │   ├── meteorologicalInterpolation.ts   # PCHIP, Akima, Kosinus-Hermite S-Curve, & Magnus RH
 │   └── weatherUtils.ts                  # Formulasi Magnus-Tetens, Heat Index, WMO Extrema
+├── scripts/archive/                     # Arsip Skrip Diagnostik & Analisis Offline
 ├── .agents/                             # Aturan & Standar Proyek (Project Rules & Guardrails)
 │   └── rules/                           # Standar Visualisasi ECharts, Kalibrasi, Pelaporan
 ├── public/                              # Aset Statis (Ikon, Logo, Peta Wilayah)

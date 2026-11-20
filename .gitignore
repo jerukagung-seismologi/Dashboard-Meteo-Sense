@@ -33,3 +33,8 @@ firestore.indexes.json
 firebase.rules
 firebase.json
 database.rules.json
+
+# scratch and archived test scripts
+scratch/
+scripts/archive/*.js
+

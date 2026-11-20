@@ -503,9 +503,11 @@ export default function SeasonalPredictionMap({
           } as any);
         }
 
-        // Preload geometri batas desa di latar belakang agar perpindahan mode instan
+        // Preload geometri batas desa di latar belakang (melalui API route terkompresi / fallback statis)
         Promise.all(
           targetKabupatens.map(async (k) => {
+            const apiRes = await fetch(`/api/seasonal/villages?kabupaten=${k.id}&type=geojson`).catch(() => null);
+            if (apiRes && apiRes.ok) return apiRes.json();
             const res = await fetch(k.desaGeoUrl);
             if (!res.ok) return null;
             return res.json();
@@ -613,6 +615,8 @@ export default function SeasonalPredictionMap({
         if (!desaGeojson) {
           const dGeos = await Promise.all(
             targetKabupatens.map(async (k) => {
+              const apiRes = await fetch(`/api/seasonal/villages?kabupaten=${k.id}&type=geojson`).catch(() => null);
+              if (apiRes && apiRes.ok) return apiRes.json();
               const res = await fetch(k.desaGeoUrl);
               if (!res.ok) throw new Error(`Gagal memuat batas desa ${k.name}`);
               return res.json();

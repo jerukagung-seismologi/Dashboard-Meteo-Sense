@@ -1,461 +1,38 @@
-"use client"
+"use client";
 
-import React from "react"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import React from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { saveForecast, Forecast } from "@/lib/forecastService";
+import { APP_CONFIG } from "@/lib/appConfig";
+import { ForecastHistoryList } from "@/components/prakirawan/ForecastHistoryList";
+import { ForecastDetailModal } from "@/components/prakirawan/ForecastDetailModal";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTheme } from "next-themes";
+import { EnsembleProbabilityChart, EnsembleHourlyItem } from "@/components/prakirawan/EnsembleProbabilityChart";
+import html2canvas from "html2canvas-pro";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/hooks/useAuth"
-import { saveForecast, Forecast, ForecastRowData } from "@/lib/forecastService"
-import { APP_CONFIG } from "@/lib/appConfig"
-import { ForecastHistoryList } from "@/components/prakirawan/ForecastHistoryList"
-import { ForecastDetailModal } from "@/components/prakirawan/ForecastDetailModal"
-import { getLucideIconForCondition } from "@/components/prakirawan/WeatherIcons"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { useTheme } from "next-themes"
-import { EnsembleProbabilityChart, EnsembleHourlyItem } from "@/components/prakirawan/EnsembleProbabilityChart"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import {
-  Plus,
-  Trash2,
-  Save,
-  Download,
-  Share2,
-  Send,
-  ExternalLink,
-  ChevronDown,
-  Calendar,
-  Clock,
-  Copy,
-  Sparkles,
-  MessageSquare,
-  Check,
-  MapPin,
-  Search,
-  Loader2,
-  ChevronsUpDown,
-  X,
-  LocateFixed,
+  WeatherCondition,
+  ForecastRow,
+  initialTimes,
+  GLOBAL_NWP_MODELS,
+  SingleModelPrediction,
+  calculateMultiModelConsensus,
+  translateModelToCondition,
+} from "@/lib/forecast/nwpConsensusEngine";
+import { KEBUMEN_LAT, KEBUMEN_LON } from "@/lib/forecast/locationPresets";
+import { ForecastHeaderForm } from "@/components/prakirawan/form/ForecastHeaderForm";
+import { ForecastHourlyTable } from "@/components/prakirawan/form/ForecastHourlyTable";
+import { ForecastPrintableCard } from "@/components/prakirawan/export/ForecastPrintableCard";
 
-  Thermometer,
-  ThermometerSun,
-  Droplets,
-  Wind,
-  DatabaseZap,
-  Sun,
-  Cloud,
-  CloudSun,
-  CloudFog,
-  CloudDrizzle,
-  CloudRain,
-  CloudLightning,
-} from "lucide-react"
-import html2canvas from "html2canvas-pro"
-
-// --- IMPORT ERIK FLOWERS WEATHER ICONS ---
-import {
-  WiDaySunny,
-  WiNightClear,
-  WiDayCloudy,
-  WiNightAltCloudy,
-  WiCloudy,
-  WiFog,
-  WiDayShowers,
-  WiNightAltShowers,
-  WiRain,
-  WiRainWind,
-  WiThunderstorm,
-  WiStrongWind,
-  WiNa
-} from "react-icons/wi";
-import { cn } from "@/lib/utils"
-
-// --- TIPE DATA ---
-
-export type WeatherCondition =
-  | "Cerah"
-  | "Cerah Berawan"
-  | "Berawan"
-  | "Hujan Ringan"
-  | "Hujan Sedang"
-  | "Hujan Lebat"
-  | "Badai Petir"
-  | "Kabut"
-  | "Angin Kencang"
-
-export type ForecastRow = {
-  time: string
-  conditionMain: WeatherCondition | ""
-  probMain: string
-  conditionSub: WeatherCondition | ""
-  probSub: string
-  temperature: number | ""
-  temperatureError: number | ""
-  humidity: number | ""
-  humidityError: number | ""
-  heatIndex: number | ""
-  heatIndexError: number | ""
-}
-
-const initialTimes = ["07:00", "10:00", "13:00", "16:00", "19:00"]
-const probabilities = ["100", "90", "80", "70", "60", "50", "40", "30", "20", "10", "0"]
-
-// --- CONSTANTS ---
-export const KEBUMEN_LAT = -7.7366
-export const KEBUMEN_LON = 109.6458
-
-export interface LocationPreset {
-  name: string
-  region: string
-  lat: number
-  lon: number
-}
-
-// Preset kota & stasiun meteorologi populer di Indonesia untuk 1-klik pemilihan
-export const INDONESIA_POPULAR_LOCATIONS: LocationPreset[] = [
-  { name: "Kebumen", region: "Jawa Tengah (Stasiun Utama)", lat: -7.7366, lon: 109.6458 },
-  { name: "Semarang", region: "Jawa Tengah", lat: -6.9667, lon: 110.4167 },
-  { name: "Yogyakarta", region: "DI Yogyakarta", lat: -7.7956, lon: 110.3695 },
-  { name: "Surakarta (Solo)", region: "Jawa Tengah", lat: -7.5755, lon: 110.8243 },
-  { name: "Cilacap", region: "Jawa Tengah (Pantai Selatan)", lat: -7.7167, lon: 109.0167 },
-  { name: "Purwokerto", region: "Jawa Tengah (Banyumas)", lat: -7.4244, lon: 109.2306 },
-  { name: "Jakarta", region: "DKI Jakarta", lat: -6.2088, lon: 106.8456 },
-  { name: "Bandung", region: "Jawa Barat", lat: -6.9175, lon: 107.6191 },
-  { name: "Surabaya", region: "Jawa Timur", lat: -7.2575, lon: 112.7521 },
-  { name: "Malang", region: "Jawa Timur", lat: -7.9797, lon: 112.6304 },
-  { name: "Denpasar", region: "Bali", lat: -8.6705, lon: 115.2126 },
-  { name: "Medan", region: "Sumatera Utara", lat: 3.5952, lon: 98.6722 },
-  { name: "Palembang", region: "Sumatera Selatan", lat: -2.9761, lon: 104.7754 },
-  { name: "Makassar", region: "Sulawesi Selatan", lat: -5.1476, lon: 119.4327 },
-  { name: "Balikpapan", region: "Kalimantan Timur (IKN)", lat: -1.2654, lon: 116.8312 },
-  { name: "Pontianak", region: "Kalimantan Barat", lat: -0.0263, lon: 109.3425 },
-  { name: "Kupang", region: "Nusa Tenggara Timur", lat: -10.1772, lon: 123.6070 },
-  { name: "Jayapura", region: "Papua", lat: -2.5337, lon: 140.7181 },
-]
-
-
-// --- GLOBAL NWP & AI ENSEMBLE MODELS FOR CONSENSUS VOTING ---
-export const GLOBAL_NWP_MODELS = [
-  { id: "ecmwf_ifs", name: "ECMWF IFS HRES 9km", country: "Eropa", category: "Physics NWP" },
-  { id: "ecmwf_aifs025_single", name: "ECMWF AIFS 0.25°", country: "Eropa (AI)", category: "AI Model" },
-  { id: "ukmo_global_deterministic_10km", name: "UKMO Global 10km", country: "Inggris", category: "Physics NWP" },
-  { id: "meteofrance_arpege_world025", name: "Météo-France ARPEGE", country: "Prancis", category: "Physics NWP" },
-  { id: "icon_seamless", name: "DWD ICON", country: "Jerman", category: "Physics NWP" },
-  { id: "gfs_seamless", name: "NOAA GFS 0.11°", country: "Amerika Serikat", category: "Physics NWP" },
-  { id: "ncep_aigfs025", name: "NOAA AIGFS 0.25°", country: "Amerika Serikat (AI)", category: "AI Model" },
-  { id: "jma_seamless", name: "JMA GSM", country: "Jepang", category: "Physics NWP" },
-  { id: "gem_seamless", name: "CMC GEM GDPS", country: "Kanada", category: "Physics NWP" },
-  { id: "cma_grapes_global", name: "CMA Grapes 0.125°", country: "China", category: "Physics NWP" },
-] as const
-
-// --- HELPER: WMO CODE & PRECIPITATION TRANSLATOR ---
-const translateModelToCondition = (
-  code: number,
-  precip: number = 0,
-  rainProb: number | null = null
-): WeatherCondition => {
-  // Badai Petir (WMO 95: Thunderstorm, 96/99: Thunderstorm with hail)
-  if (code >= 95 && code <= 99) {
-    return "Badai Petir"
-  }
-  // Hujan Lebat (WMO 65: Heavy continuous rain, 82: Violent rain showers, atau presipitasi >= 5.0 mm/jam)
-  if (code === 65 || code === 82 || code === 77 || code === 85 || code === 86 || precip >= 5.0) {
-    return "Hujan Lebat"
-  }
-  // Hujan Sedang (WMO 63: Moderate continuous rain, 81: Moderate rain showers, atau presipitasi 1.0 - 5.0 mm/jam)
-  if (code === 63 || code === 81 || (code >= 61 && code <= 64) || (precip >= 1.0 && precip < 5.0)) {
-    return "Hujan Sedang"
-  }
-  // Hujan Ringan (WMO 51-57: Gerimis/Drizzle, 61: Hujan ringan, 80: Rain showers ringan, presipitasi 0.05 - 1.0 mm/jam, atau POP >= 60% jika ada presipitasi)
-  if (
-    (code >= 51 && code <= 57) ||
-    code === 61 ||
-    code === 80 ||
-    (precip > 0.05 && precip < 1.0) ||
-    (rainProb !== null && rainProb >= 60 && precip > 0)
-  ) {
-    return "Hujan Ringan"
-  }
-  // Kabut (WMO 45, 48)
-  if (code === 45 || code === 48) {
-    return "Kabut"
-  }
-  // Cerah (WMO 0)
-  if (code === 0) {
-    return "Cerah"
-  }
-  // Cerah Berawan (WMO 1, 2)
-  if (code === 1 || code === 2) {
-    return "Cerah Berawan"
-  }
-  // Berawan (WMO 3)
-  if (code === 3) {
-    return "Berawan"
-  }
-
-  return "Berawan"
-}
-
-// --- HELPER: MULTI-MODEL ENSEMBLE CONSENSUS ENGINE ---
-export interface SingleModelPrediction {
-  modelId: string
-  modelName: string
-  condition: WeatherCondition
-  temperature: number | null
-  humidity: number | null
-  precipitation: number
-  rainProb: number | null
-}
-
-export interface ModelConsensusResult {
-  conditionMain: WeatherCondition
-  probMain: string
-  conditionSub: WeatherCondition | ""
-  probSub: string
-  temperature: number | ""
-  temperatureError: number | ""
-  humidity: number | ""
-  humidityError: number | ""
-  heatIndex: number | ""
-  heatIndexError: number | ""
-  breakdown: {
-    condition: WeatherCondition
-    count: number
-    percentage: number
-    models: string[]
-  }[]
-}
-
-const calculateMultiModelConsensus = (
-  predictions: SingleModelPrediction[]
-): ModelConsensusResult => {
-  const valid = predictions.filter((p) => p.condition)
-  const total = valid.length
-
-  if (total === 0) {
-    return {
-      conditionMain: "Berawan",
-      probMain: "80",
-      conditionSub: "",
-      probSub: "",
-      temperature: "",
-      temperatureError: 2,
-      humidity: "",
-      humidityError: 5,
-      heatIndex: "",
-      heatIndexError: 2,
-      breakdown: [],
-    }
-  }
-
-  // 1. Frekuensi Kondisi Cuaca Tiap Model
-  const freqMap: Record<string, { count: number; models: string[] }> = {}
-  for (const pred of valid) {
-    if (!freqMap[pred.condition]) {
-      freqMap[pred.condition] = { count: 0, models: [] }
-    }
-    freqMap[pred.condition].count += 1
-    freqMap[pred.condition].models.push(pred.modelName)
-  }
-
-  const sortedVotes = Object.entries(freqMap)
-    .map(([condition, data]) => ({
-      condition: condition as WeatherCondition,
-      count: data.count,
-      percentage: Math.round((data.count / total) * 100),
-      models: data.models,
-    }))
-    .sort((a, b) => b.count - a.count)
-
-  const mainVote = sortedVotes[0]
-  const conditionMain = mainVote.condition
-  const probMain = mainVote.percentage.toString()
-
-  let conditionSub: WeatherCondition | "" = ""
-  let probSub = ""
-
-  if (sortedVotes.length > 1 && sortedVotes[1].count > 0) {
-    conditionSub = sortedVotes[1].condition
-    probSub = sortedVotes[1].percentage.toString()
-  }
-
-  // 2. Mean Suhu & Margin Error Dinamis (Robust Multi-Model Spread via Standard Deviation)
-  const temps = valid
-    .map((p) => p.temperature)
-    .filter((t): t is number => typeof t === "number" && !isNaN(t))
-
-  let avgTemp: number | "" = ""
-  let tempError: number | "" = 2
-
-  if (temps.length > 0) {
-    const mean = temps.reduce((a, b) => a + b, 0) / temps.length
-    avgTemp = Math.round(mean)
-    const variance = temps.reduce((sum, t) => sum + Math.pow(t - mean, 2), 0) / temps.length
-    const stdDev = Math.sqrt(variance)
-    tempError = Math.max(1, Math.min(5, Math.round(stdDev || 2)))
-  }
-
-  // 3. Mean Kelembapan & Margin Error Dinamis (Physical Clamping 0-100% & Diurnal Saturation)
-  const hums = valid
-    .map((p) => p.humidity)
-    .filter((h): h is number => typeof h === "number" && !isNaN(h))
-
-  let avgHum: number | "" = ""
-  let humError: number | "" = 5
-
-  if (hums.length > 0) {
-    const mean = hums.reduce((a, b) => a + b, 0) / hums.length
-    avgHum = Math.min(100, Math.max(0, Math.round(mean)))
-    const variance = hums.reduce((sum, h) => sum + Math.pow(h - mean, 2), 0) / hums.length
-    const stdDev = Math.sqrt(variance)
-    let rawError = Math.round(stdDev || 3)
-
-    // Diurnal Saturation Consistency (AGENTS.md): saat mendekati jenuh (RH >= 90%), error menyempit ke <= 5%
-    if (avgHum >= 90) {
-      rawError = Math.min(rawError, 5)
-    }
-
-    // Absolute Physical Boundaries: rentang (RH ± err) mutlak tidak boleh menembus 0% atau 100%
-    const maxAllowedSpread = Math.min(100 - avgHum, avgHum)
-    const minPracticalFloor = Math.min(2, maxAllowedSpread)
-    humError = Math.max(minPracticalFloor, Math.min(10, rawError, maxAllowedSpread))
-  }
-
-  // 4. Indeks Panas & Error
-  let hi: number | "" = ""
-  let hiError: number | "" = 2
-
-  if (typeof avgTemp === "number" && typeof avgHum === "number") {
-    hi = calculateHeatIndexCelsius(avgTemp, avgHum)
-    hiError = Math.round((typeof tempError === "number" ? tempError : 2) * 1.2)
-  }
-
-  return {
-    conditionMain,
-    probMain,
-    conditionSub,
-    probSub,
-    temperature: avgTemp,
-    temperatureError: tempError,
-    humidity: avgHum,
-    humidityError: humError,
-    heatIndex: hi,
-    heatIndexError: hiError,
-    breakdown: sortedVotes,
-  }
-}
-
-// --- HELPER 1: PALET WARNA (FULL PASTEL BG + COLORED TEXT) ---
-
-const getRowStyles = (condition: string, time: string) => {
-  const hour = parseInt(time.split(":")[0]) || 0
-  const isNight = hour >= 18 || hour < 6
-
-  // Default: Abu-abu Netral
-  let styles = {
-    bg: "#F8FAFC",      // Slate 50
-    accent: "#64748B",  // Slate 500
-    text: "#334155",    // Slate 700
-  }
-
-  switch (condition) {
-    case "Cerah":
-    case "Cerah Berawan":
-      if (isNight) {
-        styles = { bg: "#EEF2FF", accent: "#6366F1", text: "#312E81" } // Malam: Indigo
-      } else {
-        styles = { bg: "#FFFBEB", accent: "#F59E0B", text: "#92400E" } // Siang: Amber
-      }
-      break;
-    case "Berawan":
-    case "Kabut":
-      styles = { bg: "#EFF6FF", accent: "#3B82F6", text: "#1E3A8A" } // Biru Laut
-      break;
-    case "Hujan Ringan":
-    case "Hujan Sedang":
-      styles = { bg: "#E0F2FE", accent: "#0284C7", text: "#0C4A6E" } // Biru Langit
-      break;
-    case "Hujan Lebat":
-    case "Badai Petir":
-    case "Angin Kencang":
-      styles = { bg: "#F3E8FF", accent: "#9333EA", text: "#581C87" } // Ungu
-      break;
-    default:
-      if (isNight) styles = { bg: "#FAF5FF", accent: "#A855F7", text: "#581C87" }
-      else styles = { bg: "#FEFCE8", accent: "#EAB308", text: "#713F12" }
-      break;
-  }
-  return styles
-}
-
-// --- HELPER: FORMAT CUACA & NILAI DENGAN ERROR ---
-const formatWeatherLine = (prob: string, condition: string) => {
-  const p = (prob || "").trim()
-  const c = (condition || "").trim()
-
-  if (!p && !c) return "-"
-  if (p && c) return `${p}% ${c}`
-  if (c) return c
-  return `${p}%`
-}
-
-const formatValueWithError = (
-  value: number | "",
-  error: number | "",
-  unit: string = ""
-) => {
-  if (value === "") return "-"
-  const err = error === "" ? "" : ` ±${error}`
-  return `${value}${unit}${err}`
-}
-
-// --- HELPER 2: ICON SELECTOR ---
-
-const getErikFlowersIcon = (condition: string, time: string, size: number = 72, color: string) => {
-  const hour = parseInt(time.split(":")[0]) || 0
-  const isNight = hour >= 18 || hour < 6
-  const props = { size, color }
-
-  switch (condition) {
-    case "Cerah": return isNight ? <WiNightClear {...props} /> : <WiDaySunny {...props} />
-    case "Cerah Berawan": return isNight ? <WiNightAltCloudy {...props} /> : <WiDayCloudy {...props} />
-    case "Berawan": return <WiCloudy {...props} />
-    case "Kabut": return <WiFog {...props} />
-    case "Hujan Ringan": return isNight ? <WiNightAltShowers {...props} /> : <WiDayShowers {...props} />
-    case "Hujan Sedang": return <WiRain {...props} />
-    case "Hujan Lebat": return <WiRainWind {...props} />
-    case "Badai Petir": return <WiThunderstorm {...props} />
-    case "Angin Kencang": return <WiStrongWind {...props} />
-    default: return <WiNa {...props} />
-  }
-};
-
-
-
-// --- KOMPONEN UTAMA ---
+export type { WeatherCondition, ForecastRow };
+export { GLOBAL_NWP_MODELS, KEBUMEN_LAT, KEBUMEN_LON };
 
 export default function ForecastForm() {
-  const { toast } = useToast()
+  const { toast } = useToast();
+  const { user, profile } = useAuth();
+  const { resolvedTheme } = useTheme();
+  const isDarkMode = resolvedTheme === "dark";
 
   const [rows, setRows] = React.useState<ForecastRow[]>(
     initialTimes.map((t) => ({
@@ -471,231 +48,81 @@ export default function ForecastForm() {
       heatIndex: "",
       heatIndexError: 2,
     }))
-  )
-  const [location, setLocation] = React.useState<string>("Kebumen")
+  );
+
+  const [location, setLocation] = React.useState<string>("Kebumen");
   const [selectedCoords, setSelectedCoords] = React.useState<{ lat: number; lon: number }>({
     lat: KEBUMEN_LAT,
     lon: KEBUMEN_LON,
-  })
-  const currentLocationName = location || "Kebumen"
+  });
+  const currentLocationName = location || "Kebumen";
 
-  // State untuk Dropdown Search Lokasi
-  const [isLocationOpen, setIsLocationOpen] = React.useState<boolean>(false)
-  const [searchLocationQuery, setSearchLocationQuery] = React.useState<string>("")
-  const [isSearchingLocation, setIsSearchingLocation] = React.useState<boolean>(false)
-  const [locationSuggestions, setLocationSuggestions] = React.useState<any[]>([])
-
-  const [forecastSource, setForecastSource] = React.useState<string>("Manual Analysis")
-  const [notes, setNotes] = React.useState<string>("")
-  const [selectedForecast, setSelectedForecast] = React.useState<Forecast | null>(null)
-  const [saving, setSaving] = React.useState(false)
-  const [activeTab, setActiveTab] = React.useState<string>("input")
-
-  const { user, profile } = useAuth()
-  const { resolvedTheme } = useTheme()
-  const isDarkMode = resolvedTheme === "dark"
+  const [forecastSource, setForecastSource] = React.useState<string>("Manual Analysis");
+  const [notes, setNotes] = React.useState<string>("");
+  const [selectedForecast, setSelectedForecast] = React.useState<Forecast | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<string>("input");
 
   const [consensusData, setConsensusData] = React.useState<{
-    location: string
-    forecastDate: string
-    modelsUsed: { id: string; name: string; country: string; category: string }[]
-    rows: EnsembleHourlyItem[]
-  } | null>(null)
+    location: string;
+    forecastDate: string;
+    modelsUsed: { id: string; name: string; country: string; category: string }[];
+    rows: EnsembleHourlyItem[];
+  } | null>(null);
 
-  const [loadingFetch, setLoadingFetch] = React.useState<boolean>(false)
-  const [isSharing, setIsSharing] = React.useState<boolean>(false)
+  const [loadingFetch, setLoadingFetch] = React.useState<boolean>(false);
+  const [isSharing, setIsSharing] = React.useState<boolean>(false);
+  const [copiedNarrative, setCopiedNarrative] = React.useState<boolean>(false);
 
-  const printRef = React.useRef<HTMLDivElement>(null)
-  const isEditingHistoryRef = React.useRef<boolean>(false)
+  const printRef = React.useRef<HTMLDivElement>(null);
+  const isEditingHistoryRef = React.useRef<boolean>(false);
 
-  // Handler CRUD: Edit / Muat Data Riwayat ke Form
-  const handleEditFromHistory = (forecast: Forecast) => {
-    isEditingHistoryRef.current = true
-    if (forecast.deviceName) setLocation(forecast.deviceName)
-    if (forecast.latitude && forecast.longitude) {
-      setSelectedCoords({ lat: forecast.latitude, lon: forecast.longitude })
-    }
-    if (forecast.forecastSource) setForecastSource(forecast.forecastSource)
-    if (forecast.notes !== undefined) setNotes(forecast.notes || "")
-    if (forecast.hourlyData && Array.isArray(forecast.hourlyData)) {
-      setRows(
-        forecast.hourlyData.map((h) => ({
-          time: h.time,
-          conditionMain: (h.conditionMain as WeatherCondition) || "",
-          probMain: h.probMain || "80",
-          conditionSub: (h.conditionSub as WeatherCondition) || "",
-          probSub: h.probSub || "",
-          temperature: h.temperature ?? "",
-          temperatureError: h.temperatureError ?? 2,
-          humidity: h.humidity ?? "",
-          humidityError: h.humidityError ?? 5,
-          heatIndex: h.heatIndex ?? "",
-          heatIndexError: h.heatIndexError ?? 2,
-        }))
-      )
-    }
-    setActiveTab("input")
-    toast({
-      title: "Prakiraan dimuat ke Editor",
-      description: `Data untuk ${forecast.deviceName} (${forecast.forecastDate}) berhasil dimuat ke form input.`,
-    })
-  }
-
-  // Handler CRUD: Buat Baru (Reset Form)
-  const handleCreateNew = () => {
-    setRows(
-      initialTimes.map((t) => ({
-        time: t,
-        conditionMain: "",
-        probMain: "80",
-        conditionSub: "",
-        probSub: "",
-        temperature: "",
-        temperatureError: 2,
-        humidity: "",
-        humidityError: 5,
-        heatIndex: "",
-        heatIndexError: 2,
-      }))
-    )
-    setNotes("")
-    setLocation("Kebumen")
-    setSelectedCoords({ lat: KEBUMEN_LAT, lon: KEBUMEN_LON })
-    setActiveTab("input")
-    toast({
-      title: "Form Baru",
-      description: "Form input prakiraan telah direset untuk pembuatan data baru.",
-    })
-  }
-
-  // Target Tanggal Prakiraan: 'today' | 'tomorrow' | 'dayAfter' | 'custom'
-  const [targetDateMode, setTargetDateMode] = React.useState<"today" | "tomorrow" | "dayAfter" | "custom">("tomorrow")
-  const [customTargetDate, setCustomTargetDate] = React.useState<string>("")
+  // Target Tanggal Prakiraan
+  const [targetDateMode, setTargetDateMode] = React.useState<"today" | "tomorrow" | "dayAfter" | "custom">("tomorrow");
+  const [customTargetDate, setCustomTargetDate] = React.useState<string>("");
 
   const selectedDateObj = React.useMemo(() => {
-    const d = new Date()
+    const d = new Date();
     if (targetDateMode === "today") {
-      return d
+      return d;
     } else if (targetDateMode === "tomorrow") {
-      d.setDate(d.getDate() + 1)
-      return d
+      d.setDate(d.getDate() + 1);
+      return d;
     } else if (targetDateMode === "dayAfter") {
-      d.setDate(d.getDate() + 2)
-      return d
+      d.setDate(d.getDate() + 2);
+      return d;
     } else if (targetDateMode === "custom" && customTargetDate) {
-      const parts = customTargetDate.split("-").map(Number)
+      const parts = customTargetDate.split("-").map(Number);
       if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-        return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0)
+        return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
       }
-      const parsed = new Date(customTargetDate)
-      return isNaN(parsed.getTime()) ? d : parsed
+      const parsed = new Date(customTargetDate);
+      return isNaN(parsed.getTime()) ? d : parsed;
     }
-    d.setDate(d.getDate() + 1)
-    return d
-  }, [targetDateMode, customTargetDate])
+    d.setDate(d.getDate() + 1);
+    return d;
+  }, [targetDateMode, customTargetDate]);
 
   const targetDateIsoStr = React.useMemo(() => {
     if (targetDateMode === "custom" && customTargetDate) {
-      return customTargetDate
+      return customTargetDate;
     }
-    return selectedDateObj.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" })
-  }, [selectedDateObj, targetDateMode, customTargetDate])
+    return selectedDateObj.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  }, [selectedDateObj, targetDateMode, customTargetDate]);
 
   const forecastDisplayDateStr = React.useMemo(() => {
     return selectedDateObj.toLocaleDateString("id-ID", {
       weekday: "long",
       day: "numeric",
       month: "long",
-      year: "numeric"
-    })
-  }, [selectedDateObj])
+      year: "numeric",
+    });
+  }, [selectedDateObj]);
 
-  const tomorrowStr = forecastDisplayDateStr
-
-  // Generator Ringkasan Prospek Cuaca
-  const autoNarrative = React.useMemo(() => {
-    const loc = currentLocationName.trim() || "Kebumen"
-
-    // Extract temperatures
-    const temps = rows
-      .map(r => r.temperature)
-      .filter((t): t is number => typeof t === "number" && !isNaN(t))
-    const minTemp = temps.length > 0 ? Math.min(...temps) : 22
-    const maxTemp = temps.length > 0 ? Math.max(...temps) : 30
-
-    // Extract humidities
-    const hums = rows
-      .map(r => r.humidity)
-      .filter((h): h is number => typeof h === "number" && !isNaN(h))
-    const minHum = hums.length > 0 ? Math.min(...hums) : 60
-    const maxHum = hums.length > 0 ? Math.max(...hums) : 88
-
-    // Count weather conditions
-    const conditions = rows.map(r => r.conditionMain).filter(Boolean)
-    const freq: Record<string, number> = {}
-    for (const c of conditions) {
-      freq[c] = (freq[c] || 0) + 1
-    }
-
-    const sortedConds = Object.entries(freq).sort((a, b) => b[1] - a[1])
-    const dominantCond = sortedConds.length > 0 ? sortedConds[0][0] : "Cerah Berawan"
-
-    // Check for rain or thunder events
-    const adverseEvents: string[] = []
-    const adverseTimes: string[] = []
-
-    rows.forEach((r) => {
-      const isMainAdverse =
-        r.conditionMain &&
-        (r.conditionMain.includes("Hujan") ||
-          r.conditionMain.includes("Petir") ||
-          r.conditionMain.includes("Angin"))
-      const isSubAdverse =
-        r.conditionSub &&
-        (r.conditionSub.includes("Hujan") ||
-          r.conditionSub.includes("Petir") ||
-          r.conditionSub.includes("Angin"))
-
-      if (isMainAdverse || isSubAdverse) {
-        if (r.time) adverseTimes.push(r.time)
-        if (isMainAdverse && r.conditionMain) adverseEvents.push(r.conditionMain)
-        if (isSubAdverse && r.conditionSub) adverseEvents.push(r.conditionSub)
-      }
-    })
-
-    let rainNote = "nihil indikasi cuaca ekstrem atau potensi hujan signifikan"
-    if (adverseEvents.length > 0) {
-      const rainTimes = Array.from(new Set(adverseTimes)).filter(Boolean).join(", ")
-      const rainTypes = Array.from(new Set(adverseEvents)).filter(Boolean).join("/")
-      rainNote = `waspadai potensi ${rainTypes.toLowerCase()} di sekitar jam ${rainTimes} WIB`
-    }
-
-    const cleanLocTag = loc.replace(/\s+/g, "")
-    return `Prospek Cuaca ${loc} ${forecastDisplayDateStr}, cuaca diprediksi dominan ${dominantCond} dengan suhu kisaran ${minTemp}-${maxTemp}°C dan kelembapan ${minHum}-${maxHum}%, ${rainNote}. #WeatherOutlook #${cleanLocTag}`
-  }, [currentLocationName, forecastDisplayDateStr, rows])
-
-  const [copiedNarrative, setCopiedNarrative] = React.useState<boolean>(false)
-
-  const handleCopyNarrative = () => {
-    navigator.clipboard.writeText(autoNarrative)
-    setCopiedNarrative(true)
-    setTimeout(() => setCopiedNarrative(false), 2000)
-    toast({
-      title: "✓ Teks Tersalin",
-      description: "Ringkasan prospek cuaca berhasil disalin ke clipboard.",
-    })
-  }
-
-  const handleApplyNarrativeToNotes = () => {
-    setNotes(autoNarrative)
-    toast({
-      title: "✓ Disalin ke Catatan",
-      description: "Ringkasan cuaca berhasil dimasukkan ke Catatan Prakirawan.",
-    })
-  }
+  const tomorrowStr = forecastDisplayDateStr;
 
   const currentTimeStr = React.useMemo(() => {
-    const now = new Date()
+    const now = new Date();
     const formatted = now.toLocaleString("id-ID", {
       year: "numeric",
       month: "2-digit",
@@ -703,14 +130,89 @@ export default function ForecastForm() {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
-      hour12: false
-    })
-    return `${formatted} WIB`
-  }, [rows]) // Re-compute setiap kali rows berubah untuk update dinamis
+      hour12: false,
+    });
+    return `${formatted} WIB`;
+  }, [rows]);
+
+  // Generator Ringkasan Prospek Cuaca
+  const autoNarrative = React.useMemo(() => {
+    const loc = currentLocationName.trim() || "Kebumen";
+    const temps = rows
+      .map((r) => r.temperature)
+      .filter((t): t is number => typeof t === "number" && !isNaN(t));
+    const minTemp = temps.length > 0 ? Math.min(...temps) : 22;
+    const maxTemp = temps.length > 0 ? Math.max(...temps) : 30;
+
+    const hums = rows
+      .map((r) => r.humidity)
+      .filter((h): h is number => typeof h === "number" && !isNaN(h));
+    const minHum = hums.length > 0 ? Math.min(...hums) : 60;
+    const maxHum = hums.length > 0 ? Math.max(...hums) : 88;
+
+    const conditions = rows.map((r) => r.conditionMain).filter(Boolean);
+    const freq: Record<string, number> = {};
+    for (const c of conditions) {
+      freq[c] = (freq[c] || 0) + 1;
+    }
+
+    const sortedConds = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+    const dominantCond = sortedConds.length > 0 ? sortedConds[0][0] : "Cerah Berawan";
+
+    const adverseEvents: string[] = [];
+    const adverseTimes: string[] = [];
+
+    rows.forEach((r) => {
+      const isMainAdverse =
+        r.conditionMain &&
+        (r.conditionMain.includes("Hujan") ||
+          r.conditionMain.includes("Petir") ||
+          r.conditionMain.includes("Angin"));
+      const isSubAdverse =
+        r.conditionSub &&
+        (r.conditionSub.includes("Hujan") ||
+          r.conditionSub.includes("Petir") ||
+          r.conditionSub.includes("Angin"));
+
+      if (isMainAdverse || isSubAdverse) {
+        if (r.time) adverseTimes.push(r.time);
+        if (isMainAdverse && r.conditionMain) adverseEvents.push(r.conditionMain);
+        if (isSubAdverse && r.conditionSub) adverseEvents.push(r.conditionSub);
+      }
+    });
+
+    let rainNote = "nihil indikasi cuaca ekstrem atau potensi hujan signifikan";
+    if (adverseEvents.length > 0) {
+      const rainTimes = Array.from(new Set(adverseTimes)).filter(Boolean).join(", ");
+      const rainTypes = Array.from(new Set(adverseEvents)).filter(Boolean).join("/");
+      rainNote = `waspadai potensi ${rainTypes.toLowerCase()} di sekitar jam ${rainTimes} WIB`;
+    }
+
+    const cleanLocTag = loc.replace(/\s+/g, "");
+    return `Prospek Cuaca ${loc} ${forecastDisplayDateStr}, cuaca diprediksi dominan ${dominantCond} dengan suhu kisaran ${minTemp}-${maxTemp}°C dan kelembapan ${minHum}-${maxHum}%, ${rainNote}. #WeatherOutlook #${cleanLocTag}`;
+  }, [currentLocationName, forecastDisplayDateStr, rows]);
+
+  const handleCopyNarrative = () => {
+    navigator.clipboard.writeText(autoNarrative);
+    setCopiedNarrative(true);
+    setTimeout(() => setCopiedNarrative(false), 2000);
+    toast({
+      title: "✓ Teks Tersalin",
+      description: "Ringkasan prospek cuaca berhasil disalin ke clipboard.",
+    });
+  };
+
+  const handleApplyNarrativeToNotes = () => {
+    setNotes(autoNarrative);
+    toast({
+      title: "✓ Disalin ke Catatan",
+      description: "Ringkasan cuaca berhasil dimasukkan ke Catatan Prakirawan.",
+    });
+  };
 
   const updateRow = (index: number, patch: Partial<ForecastRow>) => {
-    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)))
-  }
+    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  };
 
   const addRow = () => {
     setRows((prev) => [
@@ -728,91 +230,313 @@ export default function ForecastForm() {
         heatIndex: "",
         heatIndexError: 12,
       },
-    ])
-  }
-
-  const updateTemperature = (index: number, value: string) => {
-    const nextTemp = toNumberOrEmpty(value)
-    setRows((prev) =>
-      prev.map((r, i) => {
-        if (i !== index) return r
-        const hi =
-          nextTemp !== "" && r.humidity !== ""
-            ? calculateHeatIndexCelsius(nextTemp, r.humidity)
-            : ""
-        return { ...r, temperature: nextTemp, heatIndex: hi }
-      })
-    )
-  }
-
-  const updateHumidity = (index: number, value: string) => {
-    let nextHum = toNumberOrEmpty(value)
-    if (typeof nextHum === "number") {
-      nextHum = Math.min(100, Math.max(0, nextHum))
-    }
-    setRows((prev) =>
-      prev.map((r, i) => {
-        if (i !== index) return r
-        const hi =
-          r.temperature !== "" && nextHum !== ""
-            ? calculateHeatIndexCelsius(r.temperature, nextHum)
-            : ""
-        
-        let adjustedHumError = r.humidityError
-        if (typeof nextHum === "number" && typeof adjustedHumError === "number") {
-          // Diurnal saturation consistency (AGENTS.md): RH >= 90% error contracts to <= 5%
-          if (nextHum >= 90 && adjustedHumError > 5) {
-            adjustedHumError = 5
-          }
-          // Absolute physical boundaries: ensure (RH ± error) remains strictly within [0%, 100%]
-          const maxPossibleSpread = Math.min(100 - nextHum, nextHum)
-          const minFloor = Math.min(2, maxPossibleSpread)
-          adjustedHumError = Math.max(minFloor, Math.min(adjustedHumError, maxPossibleSpread))
-        }
-
-        return { ...r, humidity: nextHum, humidityError: adjustedHumError, heatIndex: hi }
-      })
-    )
-  }
-
-  const updateHeatIndex = (index: number) => {
-    setRows((prev) =>
-      prev.map((r, i) => {
-        if (i !== index) return r
-        const hi =
-          r.temperature !== "" && r.humidity !== ""
-            ? calculateHeatIndexCelsius(r.temperature, r.humidity)
-            : ""
-        return { ...r, heatIndex: hi }
-      })
-    )
-  }
+    ]);
+  };
 
   const removeRow = (index: number) => {
-    setRows((prev) => prev.filter((_, i) => i !== index))
-  }
+    setRows((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Direct Open-Meteo Fallback
+  const fetchDirectOpenMeteoFallback = async (
+    lat: number,
+    lon: number,
+    locName: string,
+    targetDateStr: string
+  ) => {
+    const coreModelIds = "ecmwf_ifs,gfs_seamless,icon_seamless,jma_seamless,cma_grapes_global";
+    const params = new URLSearchParams({
+      latitude: lat.toString(),
+      longitude: lon.toString(),
+      hourly: "temperature_2m,relative_humidity_2m,weather_code,precipitation_probability,precipitation",
+      models: coreModelIds,
+      timezone: "Asia/Bangkok",
+      start_date: targetDateStr,
+      end_date: targetDateStr,
+    });
+
+    const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Open-Meteo Direct API status ${res.status}`);
+
+    const fcJson = await res.json();
+    if (!fcJson?.hourly?.time) throw new Error("Format respons Open-Meteo tidak valid.");
+
+    const times: string[] = fcJson.hourly.time || [];
+    const TARGET_HOURS = ["07:00", "10:00", "13:00", "16:00", "19:00"];
+    const usedModels = GLOBAL_NWP_MODELS.filter((m) =>
+      ["ecmwf_ifs", "gfs_seamless", "icon_seamless", "jma_seamless", "cma_grapes_global"].includes(m.id)
+    );
+
+    const findIndexFor = (targetTime: string): number => {
+      const targetPrefix = `${targetDateStr}T${targetTime}`;
+      const exactIdx = times.findIndex((t) => t === targetPrefix || t.startsWith(targetPrefix));
+      if (exactIdx !== -1) return exactIdx;
+
+      const targetDateTime = new Date(`${targetDateStr}T${targetTime}:00`);
+      let bestIdx = -1;
+      let bestDiff = Infinity;
+
+      for (let i = 0; i < times.length; i++) {
+        const forecastDateTime = new Date(times[i]);
+        const forecastDate = times[i].split("T")[0];
+        const diff = Math.abs(forecastDateTime.getTime() - targetDateTime.getTime());
+        if (diff < bestDiff && forecastDate === targetDateStr) {
+          bestDiff = diff;
+          bestIdx = i;
+        }
+      }
+      return bestIdx;
+    };
+
+    const outRows = TARGET_HOURS.map((targetTime) => {
+      const idx = findIndexFor(targetTime);
+      if (idx === -1) {
+        return {
+          time: targetTime,
+          conditionMain: "Berawan" as WeatherCondition,
+          probMain: "80",
+          conditionSub: "" as WeatherCondition | "",
+          probSub: "",
+          temperature: "" as number | "",
+          temperatureError: 2,
+          humidity: "" as number | "",
+          humidityError: 5,
+          heatIndex: "" as number | "",
+          heatIndexError: 2,
+          modelPredictions: [],
+          votingBreakdown: [],
+        };
+      }
+
+      const modelPredictions: SingleModelPrediction[] = usedModels
+        .map((m) => {
+          const rawTemp = fcJson.hourly[`temperature_2m_${m.id}`]?.[idx] ?? fcJson.hourly.temperature_2m?.[idx];
+          const rawHum = fcJson.hourly[`relative_humidity_2m_${m.id}`]?.[idx] ?? fcJson.hourly.relative_humidity_2m?.[idx];
+          const rawCode = fcJson.hourly[`weather_code_${m.id}`]?.[idx] ?? fcJson.hourly.weather_code?.[idx];
+          const rawPrecip = fcJson.hourly[`precipitation_${m.id}`]?.[idx] ?? fcJson.hourly.precipitation?.[idx] ?? 0;
+          const rawRainProb = fcJson.hourly[`precipitation_probability_${m.id}`]?.[idx] ?? null;
+
+          const temp = typeof rawTemp === "number" && !isNaN(rawTemp) ? rawTemp : null;
+          const hum = typeof rawHum === "number" && !isNaN(rawHum) ? rawHum : null;
+          const code = typeof rawCode === "number" && !isNaN(rawCode) ? rawCode : null;
+          const precip = typeof rawPrecip === "number" && !isNaN(rawPrecip) ? rawPrecip : 0;
+          const rainProb = typeof rawRainProb === "number" && !isNaN(rawRainProb) ? rawRainProb : null;
+          const condition = code !== null ? translateModelToCondition(code, precip, rainProb) : null;
+
+          return {
+            modelId: m.id,
+            modelName: `${m.name} (${m.country})`,
+            condition: condition as WeatherCondition,
+            temperature: temp,
+            humidity: hum,
+            precipitation: precip,
+            rainProb,
+          };
+        })
+        .filter((p) => p.condition !== null && p.temperature !== null);
+
+      const consensus = calculateMultiModelConsensus(modelPredictions);
+
+      return {
+        time: targetTime,
+        conditionMain: consensus.conditionMain,
+        probMain: consensus.probMain,
+        conditionSub: consensus.conditionSub,
+        probSub: consensus.probSub,
+        temperature: consensus.temperature,
+        temperatureError: consensus.temperatureError,
+        humidity: consensus.humidity,
+        humidityError: consensus.humidityError,
+        heatIndex: consensus.heatIndex,
+        heatIndexError: consensus.heatIndexError,
+        modelPredictions,
+        votingBreakdown: consensus.breakdown,
+      };
+    });
+
+    return {
+      success: true,
+      location: locName,
+      forecastDate: targetDateStr,
+      modelsUsed: usedModels,
+      rows: outRows,
+      isFallback: true,
+    };
+  };
+
+  const fetchForecast = async (
+    isManual = false,
+    customLat?: number,
+    customLon?: number,
+    customLocName?: string
+  ) => {
+    let lat = customLat ?? selectedCoords.lat;
+    let lon = customLon ?? selectedCoords.lon;
+    let locationName = customLocName || currentLocationName;
+
+    setLoadingFetch(true);
+
+    try {
+      if (customLat === undefined && customLon === undefined && locationName) {
+        try {
+          const geoRes = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=id&format=json`
+          );
+          const geoJson = await geoRes.json();
+          if (geoJson.results && geoJson.results.length > 0) {
+            const place = geoJson.results[0];
+            lat = place.latitude;
+            lon = place.longitude;
+            locationName = place.name || locationName;
+            setSelectedCoords({ lat, lon });
+          }
+        } catch (geoErr) {
+          console.error("Geocoding error:", geoErr);
+        }
+      }
+
+      if (isManual) {
+        toast({
+          title: "Menghubungi Server Model...",
+          description: `Mengambil konsensus model global untuk ${locationName} (${forecastDisplayDateStr})...`,
+        });
+      }
+
+      const edgeUrl = `/api/weather/consensus?lat=${lat}&lon=${lon}&location=${encodeURIComponent(locationName)}&date=${targetDateIsoStr}`;
+      let data: any = null;
+      let isFallback = false;
+
+      try {
+        const response = await fetch(edgeUrl);
+        if (!response.ok) {
+          const errJson = await response.json().catch(() => ({}));
+          throw new Error(errJson.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+        data = await response.json();
+        if (!data?.rows || !Array.isArray(data.rows)) {
+          throw new Error("Format respon konsensus API tidak valid.");
+        }
+      } catch (apiErr: any) {
+        console.warn("API internal fallback:", apiErr?.message);
+        data = await fetchDirectOpenMeteoFallback(lat, lon, locationName, targetDateIsoStr);
+        isFallback = true;
+      }
+
+      setRows((prev) =>
+        prev.map((r, i) => {
+          const f = data.rows.find((row: any) => row.time === r.time) || data.rows[i] || {};
+          return {
+            ...r,
+            time: f.time ?? r.time,
+            conditionMain: f.conditionMain ? (f.conditionMain as WeatherCondition) : r.conditionMain,
+            probMain: f.probMain ?? r.probMain,
+            conditionSub: f.conditionSub !== undefined ? (f.conditionSub as WeatherCondition | "") : r.conditionSub,
+            probSub: f.probSub !== undefined ? f.probSub : r.probSub,
+            temperature: f.temperature !== undefined && f.temperature !== "" ? (f.temperature as number) : r.temperature,
+            temperatureError: f.temperatureError !== undefined && f.temperatureError !== "" ? (f.temperatureError as number) : r.temperatureError,
+            humidity: f.humidity !== undefined && f.humidity !== "" ? (f.humidity as number) : r.humidity,
+            humidityError: f.humidityError !== undefined && f.humidityError !== "" ? (f.humidityError as number) : r.humidityError,
+            heatIndex: f.heatIndex !== undefined && f.heatIndex !== "" ? (f.heatIndex as number) : r.heatIndex,
+            heatIndexError: f.heatIndexError !== undefined && f.heatIndexError !== "" ? (f.heatIndexError as number) : r.heatIndexError,
+          } as ForecastRow;
+        })
+      );
+      setForecastSource(isFallback ? "Multi-Model Consensus (Direct)" : "Multi-Model Consensus");
+
+      setConsensusData({
+        location: data.location || locationName,
+        forecastDate: data.forecastDate || forecastDisplayDateStr,
+        modelsUsed: data.modelsUsed || (GLOBAL_NWP_MODELS as any),
+        rows: data.rows,
+      });
+
+      if (isManual || isFallback) {
+        toast({
+          title: isFallback ? "✓ Konsensus Dimuat (Koneksi Langsung)" : "✓ Konsensus Multi-Model Selesai",
+          description: `Probabilitas dan parameter cuaca untuk ${forecastDisplayDateStr} berhasil dihitung (${data.modelsUsed?.length || 10} model global).`,
+        });
+      }
+    } catch (err) {
+      console.error("fetchForecast error:", err);
+      const errorMsg = err instanceof Error ? err.message : "Terjadi kesalahan";
+      toast({
+        title: "Gagal memuat konsensus cuaca",
+        description: `${errorMsg}. Silakan tekan tombol 'Ambil Otomatis' untuk mencoba kembali.`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingFetch(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (isEditingHistoryRef.current) {
+      isEditingHistoryRef.current = false;
+      return;
+    }
+    fetchForecast(false, selectedCoords.lat, selectedCoords.lon, location);
+  }, [targetDateIsoStr]);
+
+  const handleUseCurrentGPS = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      toast({
+        title: "GPS Tidak Didukung",
+        description: "Browser Anda tidak mendukung Geolocation API.",
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({
+      title: "Mencari Koordinat GPS...",
+      description: "Meminta izin lokasi akurat dari perangkat...",
+    });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        setSelectedCoords({ lat, lon });
+        const gpsLabel = `Lokasi Saya (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`;
+        setLocation(gpsLabel);
+        toast({
+          title: "✓ Koordinat GPS Ditemukan",
+          description: `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}. Mengambil konsensus model cuaca...`,
+        });
+        fetchForecast(true, lat, lon, gpsLabel);
+      },
+      (err) => {
+        console.error("GPS error:", err);
+        toast({
+          title: "Akses GPS Ditolak",
+          description: err.message || "Gagal mendapatkan lokasi dari sensor GPS perangkat.",
+          variant: "destructive",
+        });
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
 
   const onSaveForecast = async () => {
     if (!currentLocationName || currentLocationName.trim() === "") {
-      toast({ title: "Error", description: "Pilih lokasi/kota terlebih dahulu.", variant: "destructive" })
-      return
+      toast({ title: "Error", description: "Pilih lokasi/kota terlebih dahulu.", variant: "destructive" });
+      return;
     }
 
-    setSaving(true)
+    setSaving(true);
     try {
       const forecastData: Omit<Forecast, "id" | "createdAt" | "version"> = {
         deviceId: "custom",
         deviceName: currentLocationName,
         latitude: selectedCoords.lat,
         longitude: selectedCoords.lon,
-        forecastDate: targetDateIsoStr, // Automatically uses selected target date (today, tomorrow, or custom)
+        forecastDate: targetDateIsoStr,
         forecasterId: user?.uid || "anonymous",
         forecasterName: profile?.displayName || user?.email || "Unknown Forecaster",
         forecastSource: forecastSource,
         engineVersion: APP_CONFIG.version,
         notes: notes,
         status: "published",
-        hourlyData: rows.map(r => ({
+        hourlyData: rows.map((r) => ({
           time: r.time,
           conditionMain: r.conditionMain,
           probMain: r.probMain,
@@ -823,31 +547,28 @@ export default function ForecastForm() {
           humidity: r.humidity,
           humidityError: r.humidityError,
           heatIndex: r.heatIndex,
-          heatIndexError: r.heatIndexError
-        }))
-      }
+          heatIndexError: r.heatIndexError,
+        })),
+      };
 
-      await saveForecast(forecastData)
-      toast({ title: "Berhasil", description: `Prakiraan cuaca untuk ${forecastDisplayDateStr} berhasil disimpan ke database.` })
+      await saveForecast(forecastData);
+      toast({
+        title: "Berhasil",
+        description: `Prakiraan cuaca untuk ${forecastDisplayDateStr} berhasil disimpan ke database.`,
+      });
     } catch (error) {
-      console.error("Failed to save forecast", error)
-      toast({ title: "Gagal", description: "Gagal menyimpan prakiraan cuaca.", variant: "destructive" })
+      console.error("Failed to save forecast", error);
+      toast({ title: "Gagal", description: "Gagal menyimpan prakiraan cuaca.", variant: "destructive" });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
-
-  const onSaveDebug = () => {
-    console.log("Data:", rows)
-    toast({ title: "Debug", description: "Cek console." })
-  }
+  };
 
   const onSaveAsImage = async () => {
     if (!printRef.current) return;
-
     try {
-      toast({ title: "Memproses Gambar...", description: "Mohon tunggu..." })
-      await new Promise(resolve => setTimeout(resolve, 200));
+      toast({ title: "Memproses Gambar...", description: "Mohon tunggu..." });
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       const canvas = await html2canvas(printRef.current, {
         scale: 4,
@@ -855,7 +576,7 @@ export default function ForecastForm() {
         logging: false,
         useCORS: true,
         width: 800,
-        windowWidth: 1200
+        windowWidth: 1200,
       });
 
       const image = canvas.toDataURL("image/png");
@@ -867,14 +588,12 @@ export default function ForecastForm() {
       link.click();
 
       toast({ title: "Berhasil!", description: "Gambar tersimpan." });
-
     } catch (error) {
       console.error("Error generating image:", error);
       toast({ title: "Gagal", description: "Terjadi kesalahan.", variant: "destructive" });
     }
   };
 
-  // Helper untuk merender infografis kartu outlook ke blob PNG
   const getInfographicBlob = async (): Promise<{ blob: Blob; fileName: string; canvas: HTMLCanvasElement } | null> => {
     if (!printRef.current) return null;
     const canvas = await html2canvas(printRef.current, {
@@ -900,7 +619,6 @@ export default function ForecastForm() {
     });
   };
 
-  // Handler berbagi ke media sosial (Mobile Web Share API + Desktop Clipboard & Web Intent Fallback)
   const handleShareSocial = async (target: "native" | "whatsapp" | "twitter" | "clipboard" = "native") => {
     if (!printRef.current) return;
     setIsSharing(true);
@@ -921,13 +639,10 @@ export default function ForecastForm() {
       const { blob, fileName, canvas } = result;
       const file = new File([blob], fileName, { type: "image/png" });
 
-      // 1. Target: WhatsApp Web
       if (target === "whatsapp") {
         try {
           if (navigator.clipboard && window.ClipboardItem) {
-            await navigator.clipboard.write([
-              new ClipboardItem({ "image/png": blob }),
-            ]);
+            await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
             toast({
               title: "Gambar Tersalin ke Clipboard!",
               description: "Membuka WhatsApp... Tekan Ctrl + V di kolom chat untuk menempelkan gambar.",
@@ -941,13 +656,10 @@ export default function ForecastForm() {
         return;
       }
 
-      // 2. Target: Twitter / X
       if (target === "twitter") {
         try {
           if (navigator.clipboard && window.ClipboardItem) {
-            await navigator.clipboard.write([
-              new ClipboardItem({ "image/png": blob }),
-            ]);
+            await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
             toast({
               title: "Gambar Tersalin ke Clipboard!",
               description: "Membuka X (Twitter)... Tekan Ctrl + V untuk melampirkan gambar.",
@@ -961,12 +673,9 @@ export default function ForecastForm() {
         return;
       }
 
-      // 3. Target: Clipboard Saja
       if (target === "clipboard") {
         if (navigator.clipboard && window.ClipboardItem) {
-          await navigator.clipboard.write([
-            new ClipboardItem({ "image/png": blob }),
-          ]);
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
           toast({
             title: "✓ Gambar Tersalin ke Clipboard!",
             description: "Gambar infografis siap ditempel (Ctrl + V) di WhatsApp, Telegram, atau Medsos.",
@@ -984,7 +693,7 @@ export default function ForecastForm() {
         return;
       }
 
-      // 4. Target: Native Share (Ponsel Android / iOS)
+      // Native Share
       if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
@@ -1007,13 +716,10 @@ export default function ForecastForm() {
           }
         }
       } else {
-        // Fallback untuk Desktop PC saat klik opsi utama
         let clipboardOk = false;
         try {
           if (navigator.clipboard && window.ClipboardItem) {
-            await navigator.clipboard.write([
-              new ClipboardItem({ "image/png": blob }),
-            ]);
+            await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
             clipboardOk = true;
           }
         } catch {
@@ -1044,479 +750,64 @@ export default function ForecastForm() {
     }
   };
 
-  // --- FALLBACK LANGSUNG DARI BROWSER (JIKA SERVER API GAGAL/TERBLOKIR DI DEPLOY SERVERLESS) ---
-  const fetchDirectOpenMeteoFallback = async (
-    lat: number,
-    lon: number,
-    locName: string,
-    targetDateStr: string
-  ) => {
-    console.log(`[Fallback] Memulai fetch langsung dari browser ke Open-Meteo untuk ${locName} (${targetDateStr})...`)
-    const coreModelIds = "ecmwf_ifs,gfs_seamless,icon_seamless,jma_seamless,cma_grapes_global"
-    const params = new URLSearchParams({
-      latitude: lat.toString(),
-      longitude: lon.toString(),
-      hourly: "temperature_2m,relative_humidity_2m,weather_code,precipitation_probability,precipitation",
-      models: coreModelIds,
-      timezone: "Asia/Bangkok",
-      start_date: targetDateStr,
-      end_date: targetDateStr,
-    })
-
-    const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`
-    const res = await fetch(url)
-    if (!res.ok) {
-      throw new Error(`Open-Meteo Direct API status ${res.status}`)
+  const handleEditFromHistory = (forecast: Forecast) => {
+    isEditingHistoryRef.current = true;
+    if (forecast.deviceName) setLocation(forecast.deviceName);
+    if (forecast.latitude && forecast.longitude) {
+      setSelectedCoords({ lat: forecast.latitude, lon: forecast.longitude });
     }
-
-    const fcJson = await res.json()
-    if (!fcJson?.hourly?.time) {
-      throw new Error("Format respons Open-Meteo tidak valid.")
+    if (forecast.forecastSource) setForecastSource(forecast.forecastSource);
+    if (forecast.notes !== undefined) setNotes(forecast.notes || "");
+    if (forecast.hourlyData && Array.isArray(forecast.hourlyData)) {
+      setRows(
+        forecast.hourlyData.map((h) => ({
+          time: h.time,
+          conditionMain: (h.conditionMain as WeatherCondition) || "",
+          probMain: h.probMain || "80",
+          conditionSub: (h.conditionSub as WeatherCondition) || "",
+          probSub: h.probSub || "",
+          temperature: h.temperature ?? "",
+          temperatureError: h.temperatureError ?? 2,
+          humidity: h.humidity ?? "",
+          humidityError: h.humidityError ?? 5,
+          heatIndex: h.heatIndex ?? "",
+          heatIndexError: h.heatIndexError ?? 2,
+        }))
+      );
     }
-
-    const times: string[] = fcJson.hourly.time || []
-    const TARGET_HOURS = ["07:00", "10:00", "13:00", "16:00", "19:00"]
-    const usedModels = GLOBAL_NWP_MODELS.filter((m) =>
-      ["ecmwf_ifs", "gfs_seamless", "icon_seamless", "jma_seamless", "cma_grapes_global"].includes(m.id)
-    )
-
-    const findIndexFor = (targetTime: string): number => {
-      const targetPrefix = `${targetDateStr}T${targetTime}`
-      const exactIdx = times.findIndex((t) => t === targetPrefix || t.startsWith(targetPrefix))
-      if (exactIdx !== -1) return exactIdx
-
-      const targetDateTime = new Date(`${targetDateStr}T${targetTime}:00`)
-      let bestIdx = -1
-      let bestDiff = Infinity
-
-      for (let i = 0; i < times.length; i++) {
-        const forecastDateTime = new Date(times[i])
-        const forecastDate = times[i].split("T")[0]
-        const diff = Math.abs(forecastDateTime.getTime() - targetDateTime.getTime())
-
-        if (diff < bestDiff && forecastDate === targetDateStr) {
-          bestDiff = diff
-          bestIdx = i
-        }
-      }
-      return bestIdx
-    }
-
-    const rows = TARGET_HOURS.map((targetTime) => {
-      const idx = findIndexFor(targetTime)
-      if (idx === -1) {
-        return {
-          time: targetTime,
-          conditionMain: "Berawan" as WeatherCondition,
-          probMain: "80",
-          conditionSub: "" as WeatherCondition | "",
-          probSub: "",
-          temperature: "" as number | "",
-          temperatureError: 2,
-          humidity: "" as number | "",
-          humidityError: 5,
-          heatIndex: "" as number | "",
-          heatIndexError: 2,
-          modelPredictions: [],
-          votingBreakdown: [],
-        }
-      }
-
-      const modelPredictions: SingleModelPrediction[] = usedModels.map((m) => {
-        const rawTemp = fcJson.hourly[`temperature_2m_${m.id}`]?.[idx] ?? fcJson.hourly.temperature_2m?.[idx]
-        const rawHum = fcJson.hourly[`relative_humidity_2m_${m.id}`]?.[idx] ?? fcJson.hourly.relative_humidity_2m?.[idx]
-        const rawCode = fcJson.hourly[`weather_code_${m.id}`]?.[idx] ?? fcJson.hourly.weather_code?.[idx]
-        const rawPrecip = fcJson.hourly[`precipitation_${m.id}`]?.[idx] ?? fcJson.hourly.precipitation?.[idx] ?? 0
-        const rawRainProb = fcJson.hourly[`precipitation_probability_${m.id}`]?.[idx] ?? null
-
-        const temp = typeof rawTemp === "number" && !isNaN(rawTemp) ? rawTemp : null
-        const hum = typeof rawHum === "number" && !isNaN(rawHum) ? rawHum : null
-        const code = typeof rawCode === "number" && !isNaN(rawCode) ? rawCode : null
-        const precip = typeof rawPrecip === "number" && !isNaN(rawPrecip) ? rawPrecip : 0
-        const rainProb = typeof rawRainProb === "number" && !isNaN(rawRainProb) ? rawRainProb : null
-        const condition = code !== null ? translateModelToCondition(code, precip, rainProb) : null
-
-        return {
-          modelId: m.id,
-          modelName: `${m.name} (${m.country})`,
-          condition: condition as WeatherCondition,
-          temperature: temp,
-          humidity: hum,
-          precipitation: precip,
-          rainProb,
-        }
-      }).filter((p) => p.condition !== null && p.temperature !== null)
-
-      const consensus = calculateMultiModelConsensus(modelPredictions)
-
-      return {
-        time: targetTime,
-        conditionMain: consensus.conditionMain,
-        probMain: consensus.probMain,
-        conditionSub: consensus.conditionSub,
-        probSub: consensus.probSub,
-        temperature: consensus.temperature,
-        temperatureError: consensus.temperatureError,
-        humidity: consensus.humidity,
-        humidityError: consensus.humidityError,
-        heatIndex: consensus.heatIndex,
-        heatIndexError: consensus.heatIndexError,
-        modelPredictions,
-        votingBreakdown: consensus.breakdown,
-      }
-    })
-
-    return {
-      success: true,
-      location: locName,
-      forecastDate: targetDateStr,
-      modelsUsed: usedModels,
-      rows,
-      isFallback: true,
-    }
-  }
-
-  // Debounce search untuk Dropdown Pencarian Lokasi & Kota
-  React.useEffect(() => {
-    const q = searchLocationQuery.trim()
-    if (q.length < 2) {
-      setLocationSuggestions([])
-      setIsSearchingLocation(false)
-      return
-    }
-
-    const timer = setTimeout(async () => {
-      setIsSearchingLocation(true)
-      try {
-        let results: any[] = []
-        // Coba endpoint internal geocode cache
-        try {
-          const res = await fetch(`/api/reanalysis/geocode?name=${encodeURIComponent(q)}`)
-          if (res.ok) {
-            const data = await res.json()
-            results = data.results || []
-          }
-        } catch {
-          // fallback
-        }
-
-        // Jika belum ada hasil, panggil langsung Open-Meteo Geocoding
-        if (results.length === 0) {
-          const directRes = await fetch(
-            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=10&language=id&format=json`
-          )
-          if (directRes.ok) {
-            const directData = await directRes.json()
-            results = directData.results || []
-          }
-        }
-
-        setLocationSuggestions(results)
-      } catch (err) {
-        console.error("Geocoding search error:", err)
-      } finally {
-        setIsSearchingLocation(false)
-      }
-    }, 300)
-
-    return () => clearTimeout(timer)
-  }, [searchLocationQuery])
-
-  // Handler memilih lokasi dari dropdown
-  const handleSelectLocation = (loc: { name: string; region?: string; lat: number; lon: number }) => {
-    setLocation(loc.name)
-    setSelectedCoords({ lat: loc.lat, lon: loc.lon })
-    setIsLocationOpen(false)
-    setSearchLocationQuery("")
-    setLocationSuggestions([])
-
+    setActiveTab("input");
     toast({
-      title: `✓ Lokasi Dipilih: ${loc.name}`,
-      description: `Koordinat: ${loc.lat.toFixed(4)}°, ${loc.lon.toFixed(4)}°. Mengambil konsensus model global...`,
-    })
+      title: "Prakiraan dimuat ke Editor",
+      description: `Data untuk ${forecast.deviceName} (${forecast.forecastDate}) berhasil dimuat ke form input.`,
+    });
+  };
 
-    fetchForecast(true, loc.lat, loc.lon, loc.name)
-  }
+  const handleCreateNew = () => {
+    setRows(
+      initialTimes.map((t) => ({
+        time: t,
+        conditionMain: "",
+        probMain: "80",
+        conditionSub: "",
+        probSub: "",
+        temperature: "",
+        temperatureError: 2,
+        humidity: "",
+        humidityError: 5,
+        heatIndex: "",
+        heatIndexError: 2,
+      }))
+    );
+    setNotes("");
+    setLocation("Kebumen");
+    setSelectedCoords({ lat: KEBUMEN_LAT, lon: KEBUMEN_LON });
+    setActiveTab("input");
+    toast({
+      title: "Form Baru",
+      description: "Form input prakiraan telah direset untuk pembuatan data baru.",
+    });
+  };
 
-  // Handler memilih custom input teks jika tidak ada di hasil dropdown
-  const handleSelectCustomTypedLocation = (customName: string) => {
-    const trimmed = customName.trim()
-    if (!trimmed) return
-    setIsLocationOpen(false)
-    setSearchLocationQuery("")
-    setLocationSuggestions([])
-    setLocation(trimmed)
-    fetchForecast(true, undefined, undefined, trimmed)
-  }
-
-  // Handler gunakan GPS saat ini
-  const handleUseCurrentGPS = () => {
-    if (typeof navigator !== "undefined" && navigator.geolocation) {
-      toast({ title: "Mendeteksi GPS...", description: "Mengambil koordinat GPS perangkat Anda..." })
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const lat = pos.coords.latitude
-          const lon = pos.coords.longitude
-          let locName = `Lokasi GPS (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`
-          try {
-            const res = await fetch(
-              `https://geocoding-api.open-meteo.com/v1/search?name=${lat.toFixed(2)},${lon.toFixed(2)}&count=1&language=id`
-            )
-            const data = await res.json()
-            if (data?.results?.[0]?.name) {
-              locName = data.results[0].name
-            }
-          } catch {
-            // fallback
-          }
-          handleSelectLocation({ name: locName, region: "Koordinat GPS Saya", lat, lon })
-        },
-        (err) => {
-          toast({ title: "GPS Gagal", description: err.message || "Akses GPS tidak diizinkan atau dinonaktifkan.", variant: "destructive" })
-        }
-      )
-    }
-  }
-
-  // --- FETCH FORECAST VIA EDGE ROUTE HANDLER DENGAN DIRECT FALLBACK ---
-  const fetchForecast = async (
-    isManual = false,
-    overrideLat?: number,
-    overrideLon?: number,
-    overrideLocName?: string
-  ) => {
-    const locNameToUse = (overrideLocName || currentLocationName).trim()
-    if (!locNameToUse) {
-      if (isManual) {
-        toast({ title: "Lokasi kosong", description: "Pilih atau cari nama lokasi terlebih dahulu.", variant: "destructive" })
-      }
-      return
-    }
-
-    setLoadingFetch(true)
-
-    try {
-      let lat = overrideLat !== undefined ? overrideLat : selectedCoords.lat
-      let lon = overrideLon !== undefined ? overrideLon : selectedCoords.lon
-      let locationName = locNameToUse
-
-      // 1) Geocoding fallback jika koordinat belum spesifik dan bukan Kebumen default
-      if (
-        overrideLat === undefined &&
-        lat === KEBUMEN_LAT &&
-        lon === KEBUMEN_LON &&
-        locNameToUse.toLowerCase() !== "kebumen"
-      ) {
-        try {
-          const geoRes = await fetch(
-            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locNameToUse)}&count=1&language=id`
-          )
-          const geoJson = await geoRes.json()
-
-          if (geoJson?.results && geoJson.results.length > 0) {
-            const place = geoJson.results[0]
-            lat = place.latitude
-            lon = place.longitude
-            locationName = place.name || locNameToUse
-            setSelectedCoords({ lat, lon })
-            console.log(`✓ Lokasi ditemukan via geocoding: ${place.name}, ${place.admin1 || place.country}`)
-          } else {
-            console.warn(`✗ Lokasi "${locNameToUse}" tidak ditemukan di geocoder. Menggunakan koordinat aktif saat ini.`)
-          }
-        } catch (geoErr) {
-          console.error("Geocoding error:", geoErr)
-        }
-      }
-
-      if (isManual) {
-        toast({
-          title: "Menghubungi Server Model...",
-          description: `Mengambil konsensus model global untuk ${locationName} (${forecastDisplayDateStr})...`
-        })
-      }
-
-      // 2) Panggil Route Handler terpusat dengan tanggal target spesifik
-      const edgeUrl = `/api/weather/consensus?lat=${lat}&lon=${lon}&location=${encodeURIComponent(locationName)}&date=${targetDateIsoStr}`
-      console.log("Fetching consensus from API:", edgeUrl)
-
-      let data: any = null
-      let isFallback = false
-
-      try {
-        const response = await fetch(edgeUrl)
-        if (!response.ok) {
-          const errJson = await response.json().catch(() => ({}))
-          throw new Error(errJson.error || `HTTP ${response.status}: ${response.statusText}`)
-        }
-        data = await response.json()
-        if (!data?.rows || !Array.isArray(data.rows)) {
-          throw new Error("Format respon konsensus API tidak valid.")
-        }
-      } catch (apiErr: any) {
-        console.warn("⚠️ API internal gagal di environment deploy/serverless. Mengaktifkan fallback langsung browser ke Open-Meteo:", apiErr?.message)
-        data = await fetchDirectOpenMeteoFallback(lat, lon, locationName, targetDateIsoStr)
-        isFallback = true
-      }
-
-      console.log(`✓ Data Konsensus Diterima untuk ${data.location} (${data.forecastDate}):`, data)
-
-      // 3) Update rows form dengan data konsensus yang sudah matang (cocokkan jam)
-      setRows((prev) =>
-        prev.map((r, i) => {
-          const f = data.rows.find((row: any) => row.time === r.time) || data.rows[i] || {}
-          return {
-            ...r,
-            time: f.time ?? r.time,
-            conditionMain: f.conditionMain ? (f.conditionMain as WeatherCondition) : r.conditionMain,
-            probMain: f.probMain ?? r.probMain,
-            conditionSub: f.conditionSub !== undefined ? (f.conditionSub as WeatherCondition | "") : r.conditionSub,
-            probSub: f.probSub !== undefined ? f.probSub : r.probSub,
-            temperature: f.temperature !== undefined && f.temperature !== "" ? (f.temperature as number) : r.temperature,
-            temperatureError: f.temperatureError !== undefined && f.temperatureError !== "" ? (f.temperatureError as number) : r.temperatureError,
-            humidity: f.humidity !== undefined && f.humidity !== "" ? (f.humidity as number) : r.humidity,
-            humidityError: f.humidityError !== undefined && f.humidityError !== "" ? (f.humidityError as number) : r.humidityError,
-            heatIndex: f.heatIndex !== undefined && f.heatIndex !== "" ? (f.heatIndex as number) : r.heatIndex,
-            heatIndexError: f.heatIndexError !== undefined && f.heatIndexError !== "" ? (f.heatIndexError as number) : r.heatIndexError,
-          } as ForecastRow
-        })
-      )
-      setForecastSource(isFallback ? "Multi-Model Consensus (Direct)" : "Multi-Model Consensus")
-
-      setConsensusData({
-        location: data.location || locationName,
-        forecastDate: data.forecastDate || forecastDisplayDateStr,
-        modelsUsed: data.modelsUsed || (GLOBAL_NWP_MODELS as any),
-        rows: data.rows,
-      })
-
-      if (isManual || isFallback) {
-        toast({
-          title: isFallback ? "✓ Konsensus Dimuat (Koneksi Langsung)" : "✓ Konsensus Multi-Model Selesai",
-          description: `Probabilitas dan parameter cuaca untuk ${forecastDisplayDateStr} berhasil dihitung (${data.modelsUsed?.length || 10} model global).`
-        })
-      }
-
-    } catch (err) {
-      console.error("❌ fetchForecast error:", err)
-      const errorMsg = err instanceof Error ? err.message : "Terjadi kesalahan"
-      toast({
-        title: "Gagal memuat konsensus cuaca",
-        description: `${errorMsg}. Silakan tekan tombol 'Ambil Otomatis' untuk mencoba kembali.`,
-        variant: "destructive"
-      })
-    } finally {
-      setLoadingFetch(false)
-    }
-  }
-
-  // Auto-fetch forecast consensus whenever target date changes
-  React.useEffect(() => {
-    if (isEditingHistoryRef.current) {
-      isEditingHistoryRef.current = false
-      return
-    }
-    fetchForecast(false, selectedCoords.lat, selectedCoords.lon, location)
-  }, [targetDateIsoStr])
-
-  // Helper render dropdown untuk probability dengan kelipatan 10 + custom
-  const ProbabilitySelectItems = ({ currentVal }: { currentVal?: string }) => {
-    const STANDARD_PROBS = ["0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"]
-    const hasCustom = currentVal && currentVal !== "" && currentVal !== "__empty__" && !STANDARD_PROBS.includes(currentVal)
-
-    return (
-      <>
-        <SelectItem value="__empty__">-</SelectItem>
-        {STANDARD_PROBS.map((p) => (
-          <SelectItem key={p} value={p}>
-            {p}%
-          </SelectItem>
-        ))}
-        {hasCustom && (
-          <SelectItem value={currentVal}>
-            {currentVal}%
-          </SelectItem>
-        )}
-      </>
-    )
-  }
-
-  // Helper render dropdown untuk weather dengan ikon
-  const WeatherSelectItems = () => (
-    <>
-      <SelectItem value="Cerah">
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 20 }}>
-            {getLucideIconForCondition("Cerah", 18)}
-          </span>
-          <span>Cerah</span>
-        </div>
-      </SelectItem>
-      <SelectItem value="Cerah Berawan">
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 20 }}>
-            {getLucideIconForCondition("Cerah Berawan", 18)}
-          </span>
-          <span>Cerah Berawan</span>
-        </div>
-      </SelectItem>
-      <SelectItem value="Berawan">
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 20 }}>
-            {getLucideIconForCondition("Berawan", 18)}
-          </span>
-          <span>Berawan</span>
-        </div>
-      </SelectItem>
-      <SelectItem value="Hujan Ringan">
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 20 }}>
-            {getLucideIconForCondition("Hujan Ringan", 18)}
-          </span>
-          <span>Hujan Ringan</span>
-        </div>
-      </SelectItem>
-      <SelectItem value="Hujan Sedang">
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 20 }}>
-            {getLucideIconForCondition("Hujan Sedang", 18)}
-          </span>
-          <span>Hujan Sedang</span>
-        </div>
-      </SelectItem>
-      <SelectItem value="Hujan Lebat">
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 20 }}>
-            {getLucideIconForCondition("Hujan Lebat", 18)}
-          </span>
-          <span>Hujan Lebat</span>
-        </div>
-      </SelectItem>
-      <SelectItem value="Badai Petir">
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 20 }}>
-            {getLucideIconForCondition("Badai Petir", 18)}
-          </span>
-          <span>Badai Petir</span>
-        </div>
-      </SelectItem>
-      <SelectItem value="Kabut">
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 20 }}>
-            {getLucideIconForCondition("Kabut", 18)}
-          </span>
-          <span>Kabut</span>
-        </div>
-      </SelectItem>
-      <SelectItem value="Angin Kencang">
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 20 }}>
-            {getLucideIconForCondition("Angin Kencang", 18)}
-          </span>
-          <span>Angin Kencang</span>
-        </div>
-      </SelectItem>
-    </>
-  )
   return (
     <div className="space-y-4 max-w-[1200px] mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
@@ -1533,370 +824,48 @@ export default function ForecastForm() {
         </TabsList>
 
         <TabsContent value="input">
-          <div className="flex flex-col lg:flex-row gap-6">
-            <div className="space-y-4 flex-1">
-              <div>
-                <h2 className="text-xl font-bold">Input Prakiraan Cuaca</h2>
-                <p className="text-muted-foreground">Isi data di bawah untuk menghasilkan tabel outlook grafis.</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border">
-                {/* DROPDOWN SEARCH LOCATION & KOTA */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-semibold flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4 text-rose-500" />
-                      Lokasi / Kota
-                    </label>
-                    <span className="text-[10px] font-mono text-muted-foreground bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                      {selectedCoords.lat.toFixed(2)}°, {selectedCoords.lon.toFixed(2)}°
-                    </span>
-                  </div>
-
-                  <Popover open={isLocationOpen} onOpenChange={setIsLocationOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={isLocationOpen}
-                        className="w-full justify-between font-normal text-left h-10 px-3 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80"
-                      >
-                        <div className="flex items-center gap-2 truncate">
-                          <MapPin className="w-4 h-4 text-rose-500 shrink-0" />
-                          <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">
-                            {location || "Pilih atau cari kota..."}
-                          </span>
-                        </div>
-                        <ChevronsUpDown className="w-4 h-4 shrink-0 opacity-50 ml-1" />
-                      </Button>
-                    </PopoverTrigger>
-
-                    <PopoverContent className="w-[320px] sm:w-[380px] p-2.5 z-50 shadow-xl" align="start">
-                      {/* Search Input Box */}
-                      <div className="relative mb-2">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                        <Input
-                          type="text"
-                          placeholder="Cari kota, kabupaten, kecamatan... (e.g. Bandung, Surabaya)"
-                          value={searchLocationQuery}
-                          onChange={(e) => setSearchLocationQuery(e.target.value)}
-                          className="pl-8 pr-8 text-xs h-9 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-                          autoFocus
-                        />
-                        {searchLocationQuery && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSearchLocationQuery("")
-                              setLocationSuggestions([])
-                            }}
-                            className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* GPS Quick Action */}
-                      <div className="mb-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={handleUseCurrentGPS}
-                          className="h-7 px-2 text-[11px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 w-full justify-start font-medium"
-                        >
-                          <LocateFixed className="w-3.5 h-3.5 mr-1.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                          Gunakan Lokasi GPS Saya Saat Ini
-                        </Button>
-                      </div>
-
-                      {/* Loading state */}
-                      {isSearchingLocation && (
-                        <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
-                          Mencari wilayah di Indonesia &amp; dunia...
-                        </div>
-                      )}
-
-                      {/* Geocoding Search Results */}
-                      {!isSearchingLocation && locationSuggestions.length > 0 && (
-                        <div className="space-y-1">
-                          <div className="text-[10px] font-semibold text-slate-400 px-2 py-1 uppercase tracking-wider">
-                            Hasil Pencarian ({locationSuggestions.length})
-                          </div>
-                          <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
-                            {locationSuggestions.map((place, idx) => (
-                              <button
-                                key={`${place.id || idx}-${place.latitude}`}
-                                type="button"
-                                onClick={() =>
-                                  handleSelectLocation({
-                                    name: place.name,
-                                    region: [place.admin2, place.admin1, place.country].filter(Boolean).join(", "),
-                                    lat: place.latitude,
-                                    lon: place.longitude,
-                                  })
-                                }
-                                className="w-full text-left px-2.5 py-1.5 rounded hover:bg-blue-50 dark:hover:bg-slate-800 flex items-center justify-between group transition text-xs"
-                              >
-                                <div className="truncate pr-2">
-                                  <div className="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate">
-                                    {place.name}
-                                  </div>
-                                  <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                                    {[place.admin2, place.admin1, place.country].filter(Boolean).join(", ")}
-                                  </div>
-                                </div>
-                                <div className="text-[10px] font-mono text-slate-400 shrink-0 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded">
-                                  {place.latitude.toFixed(2)}°, {place.longitude.toFixed(2)}°
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Empty Search Result Fallback */}
-                      {!isSearchingLocation && searchLocationQuery.trim().length >= 2 && locationSuggestions.length === 0 && (
-                        <div className="text-center py-4 text-xs text-muted-foreground">
-                          Lokasi &quot;{searchLocationQuery}&quot; tidak ditemukan.
-                          <div className="mt-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs"
-                              onClick={() => handleSelectCustomTypedLocation(searchLocationQuery)}
-                            >
-                              Gunakan &quot;{searchLocationQuery}&quot;
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Preset List (Default when not searching) */}
-                      {(!searchLocationQuery || searchLocationQuery.trim().length < 2) && (
-                        <div>
-                          <div className="text-[10px] font-semibold text-slate-400 px-2 py-1 uppercase tracking-wider flex items-center justify-between">
-                            <span>Kota &amp; Stasiun Populer</span>
-                            <span className="text-[9px] text-blue-500">1-Klik Pilih</span>
-                          </div>
-                          <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
-                            {INDONESIA_POPULAR_LOCATIONS.map((preset) => {
-                              const isSelected = location.toLowerCase() === preset.name.toLowerCase()
-                              return (
-                                <button
-                                  key={preset.name}
-                                  type="button"
-                                  onClick={() => handleSelectLocation(preset)}
-                                  className={cn(
-                                    "w-full text-left px-2.5 py-1.5 rounded flex items-center justify-between text-xs transition",
-                                    isSelected
-                                      ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-medium"
-                                      : "hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200"
-                                  )}
-                                >
-                                  <div className="truncate pr-2">
-                                    <div className="font-semibold">{preset.name}</div>
-                                    <div className="text-[10px] text-slate-400">{preset.region}</div>
-                                  </div>
-                                  <div className="text-[10px] font-mono text-slate-400 shrink-0">
-                                    {preset.lat.toFixed(2)}°, {preset.lon.toFixed(2)}°
-                                  </div>
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-sm font-semibold">Sumber Prakiraan</label>
-                  <Select value={forecastSource} onValueChange={setForecastSource}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih Sumber" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Multi-Model Consensus">Multi-Model + Google WeatherNext Consensus</SelectItem>
-                      <SelectItem value="Google WeatherNext 2">Google WeatherNext 2 (DeepMind AI)</SelectItem>
-                      <SelectItem value="ECMWF AIFS">ECMWF AIFS (AI Model)</SelectItem>
-                      <SelectItem value="ECMWF">ECMWF IFS (Eropa)</SelectItem>
-                      <SelectItem value="GFS">NOAA GFS (AS)</SelectItem>
-                      <SelectItem value="ICON">DWD ICON (Jerman)</SelectItem>
-                      <SelectItem value="Manual Analysis">Manual Analysis</SelectItem>
-                      <SelectItem value="Open-Meteo">Open-Meteo (Single Model)</SelectItem>
-                      <SelectItem value="Hybrid">Hybrid / Ensemble</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* TARGET TANGGAL PRAKIRAAN (HARI INI / BESOK / LUSA / KUSTOM) */}
-                <div className="space-y-1.5 lg:col-span-2">
-                  <div className="flex flex-wrap justify-between items-center gap-1.5">
-                    <label className="text-sm font-semibold flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
-                      <Calendar className="w-4 h-4 text-blue-600" /> Target Tanggal Prakiraan
-                    </label>
-                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800">
-                      {forecastDisplayDateStr}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={targetDateMode === "today" ? "default" : "outline"}
-                      onClick={() => setTargetDateMode("today")}
-                      className={cn("h-8 text-xs font-medium", targetDateMode === "today" ? "bg-blue-600 text-white" : "")}
-                    >
-                      Hari Ini
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={targetDateMode === "tomorrow" ? "default" : "outline"}
-                      onClick={() => setTargetDateMode("tomorrow")}
-                      className={cn("h-8 text-xs font-medium", targetDateMode === "tomorrow" ? "bg-blue-600 text-white" : "")}
-                    >
-                      Besok
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={targetDateMode === "dayAfter" ? "default" : "outline"}
-                      onClick={() => setTargetDateMode("dayAfter")}
-                      className={cn("h-8 text-xs font-medium", targetDateMode === "dayAfter" ? "bg-blue-600 text-white" : "")}
-                    >
-                      Lusa
-                    </Button>
-                    <div className="flex items-center gap-1 flex-1 min-w-[140px]">
-                      <Input
-                        type="date"
-                        value={customTargetDate || targetDateIsoStr}
-                        onChange={(e) => {
-                          setCustomTargetDate(e.target.value)
-                          setTargetDateMode("custom")
-                        }}
-                        className={cn("h-8 text-xs font-mono", targetDateMode === "custom" ? "border-blue-500 ring-1 ring-blue-500" : "")}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-1 lg:col-span-4">
-                  <label className="text-sm font-semibold">Catatan / Diskusi Prakirawan</label>
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Tuliskan analisis cuaca di sini..."
-                    className="h-10 resize-none"
-                  />
-                </div>
-
-                {/* RINGKASAN PROSPEK CUACA OTOMATIS */}
-                <div className="space-y-1.5 lg:col-span-4 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <div className="flex flex-wrap justify-between items-center gap-2">
-                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                      Ringkasan Prospek Cuaca
-                    </label>
-                    <div className="flex items-center gap-1.5">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={handleApplyNarrativeToNotes}
-                        className="h-7 px-2 text-[11px] text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-700/50"
-                      >
-                        <MessageSquare className="w-3 h-3 mr-1" /> Gunakan di Catatan
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={handleCopyNarrative}
-                        className="h-7 px-2.5 text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm"
-                      >
-                        {copiedNarrative ? <Check className="w-3 h-3 mr-1 text-emerald-300" /> : <Copy className="w-3 h-3 mr-1" />}
-                        {copiedNarrative ? "Tersalin!" : "Salin Teks"}
-                      </Button>
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 p-2.5 rounded border border-slate-200 dark:border-slate-800 font-sans leading-relaxed select-all">
-                    {autoNarrative}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 md:max-w-[210px]">
-              <Button variant="default" size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700 w-full">
-                <Plus className="w-4 h-4 mr-1" /> Tambah Jam
-              </Button>
-              <Button variant="default" size="sm" onClick={() => fetchForecast(true)} className="bg-indigo-600 hover:bg-indigo-700 w-full" disabled={loadingFetch}>
-                <DatabaseZap className="w-4 h-4 mr-1" /> {loadingFetch ? "Mengambil..." : "Ambil Otomatis"}
-              </Button>
-              <Button variant="outline" size="sm" onClick={onSaveAsImage} className="border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 w-full">
-                <Download className="w-4 h-4 mr-1 text-slate-600 dark:text-slate-400" /> Unduh Gambar (PNG)
-              </Button>
-
-              {/* TOMBOL BAGIKAN KE MEDSOS & NATIVE SHARE */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    disabled={isSharing}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white w-full shadow-sm flex items-center justify-between"
-                  >
-                    <span className="flex items-center">
-                      <Share2 className="w-4 h-4 mr-1.5" />
-                      {isSharing ? "Menyiapkan..." : "Bagikan Medsos"}
-                    </span>
-                    <ChevronDown className="w-3.5 h-3.5 opacity-80" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-60 shadow-lg border border-slate-200 dark:border-slate-800">
-                  <DropdownMenuItem onClick={() => handleShareSocial("native")} className="cursor-pointer py-2">
-                    <Share2 className="w-4 h-4 mr-2 text-emerald-600" />
-                    <div>
-                      <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">Bagikan Cepat (HP / Medsos)</div>
-                      <div className="text-[10px] text-muted-foreground">Kirim ke Status WA, IG Stories, dll.</div>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleShareSocial("clipboard")} className="cursor-pointer py-2">
-                    <Copy className="w-4 h-4 mr-2 text-blue-600" />
-                    <div>
-                      <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">Salin Gambar (Clipboard)</div>
-                      <div className="text-[10px] text-muted-foreground">Siap tempel (Ctrl + V) di mana saja</div>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleShareSocial("whatsapp")} className="cursor-pointer py-2">
-                    <Send className="w-4 h-4 mr-2 text-green-600" />
-                    <div>
-                      <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">Kirim via WhatsApp Web</div>
-                      <div className="text-[10px] text-muted-foreground">Buka chat WA + auto-copy gambar</div>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleShareSocial("twitter")} className="cursor-pointer py-2">
-                    <ExternalLink className="w-4 h-4 mr-2 text-sky-500" />
-                    <div>
-                      <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">Posting ke X (Twitter)</div>
-                      <div className="text-[10px] text-muted-foreground">Buka tweet draft + auto-copy gambar</div>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <Button onClick={onSaveForecast} disabled={saving} className="w-full mt-3 bg-indigo-600 hover:bg-indigo-700">
-                <Save className="w-4 h-4 mr-1" /> {saving ? "Menyimpan..." : "Simpan Prakiraan"}
-              </Button>
-            </div>
-          </div>
+          <ForecastHeaderForm
+            location={location}
+            selectedCoords={selectedCoords}
+            forecastSource={forecastSource}
+            targetDateMode={targetDateMode}
+            customTargetDate={customTargetDate}
+            targetDateIsoStr={targetDateIsoStr}
+            forecastDisplayDateStr={forecastDisplayDateStr}
+            notes={notes}
+            autoNarrative={autoNarrative}
+            copiedNarrative={copiedNarrative}
+            loadingFetch={loadingFetch}
+            saving={saving}
+            isSharing={isSharing}
+            onLocationSelect={(loc) => {
+              setLocation(loc.name);
+              setSelectedCoords({ lat: loc.lat, lon: loc.lon });
+              toast({
+                title: `✓ Lokasi Dipilih: ${loc.name}`,
+                description: `Koordinat: ${loc.lat.toFixed(4)}°, ${loc.lon.toFixed(4)}°. Mengambil konsensus model global...`,
+              });
+              fetchForecast(true, loc.lat, loc.lon, loc.name);
+            }}
+            onCustomTypedLocation={(customName) => {
+              const trimmed = customName.trim();
+              if (!trimmed) return;
+              setLocation(trimmed);
+              fetchForecast(true, undefined, undefined, trimmed);
+            }}
+            onUseCurrentGPS={handleUseCurrentGPS}
+            onForecastSourceChange={setForecastSource}
+            onTargetDateModeChange={setTargetDateMode}
+            onCustomTargetDateChange={setCustomTargetDate}
+            onNotesChange={setNotes}
+            onApplyNarrativeToNotes={handleApplyNarrativeToNotes}
+            onCopyNarrative={handleCopyNarrative}
+            onAddRow={addRow}
+            onFetchConsensus={() => fetchForecast(true)}
+            onSaveAsImage={onSaveAsImage}
+            onShareSocial={handleShareSocial}
+            onSaveForecast={onSaveForecast}
+          />
         </TabsContent>
 
         <TabsContent value="history">
@@ -1914,244 +883,15 @@ export default function ForecastForm() {
         onEdit={handleEditFromHistory}
       />
 
-      {/* --- FORM INPUT TABEL --- */}
-      <div className="rounded-md border overflow-x-auto">
-        <Table className="min-w-[850px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[70px] text-center">Jam</TableHead>
-              <TableHead className="w-[160px]">Kondisi Utama</TableHead>
-              <TableHead className="w-[90px] text-center">Prob %</TableHead>
-              <TableHead className="w-[160px]">Kondisi Tambahan</TableHead>
-              <TableHead className="w-[90px] text-center">Prob %</TableHead>
-              <TableHead className="w-[140px]">Suhu (°C)</TableHead>
-              <TableHead className="w-[140px]">Kelembapan (%)</TableHead>
-              <TableHead className="w-[140px]">Indeks Panas (°C)</TableHead>
-              <TableHead className="w-[50px] text-center">Hapus</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row, idx) => (
-              <TableRow key={idx}>
-                {/* JAM */}
-                <TableCell className="text-center">
-                  <Input
-                    value={row.time}
-                    onChange={(e) => updateRow(idx, { time: e.target.value })}
-                    className="h-8 text-center font-semibold"
-                  />
-                </TableCell>
+      {/* FORM INPUT TABEL */}
+      <ForecastHourlyTable
+        rows={rows}
+        updateRow={updateRow}
+        deleteRow={removeRow}
+        setRows={setRows}
+      />
 
-                {/* KONDISI UTAMA */}
-                <TableCell>
-                  <Select
-                    value={row.conditionMain || "__empty__"}
-                    onValueChange={(value) =>
-                      updateRow(idx, {
-                        conditionMain: value === "__empty__" ? "" : (value as WeatherCondition),
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8">
-                      <SelectValue placeholder="Pilih" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__empty__">
-                        <div className="flex items-center gap-2">
-                          <span className="min-w-[20px]" />
-                          <span>-</span>
-                        </div>
-                      </SelectItem>
-                      {weatherOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          <div className="flex items-center gap-3">
-                            <span style={{ width: 22, display: "inline-flex", justifyContent: "center", alignItems: "center" }}>
-                              <opt.Icon size={18} color={opt.color} />
-                            </span>
-                            <span className="text-sm">{opt.label}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-
-                {/* PROB UTAMA */}
-                <TableCell>
-                  <Select
-                    value={row.probMain || "__empty__"}
-                    onValueChange={(value) => updateRow(idx, { probMain: value === "__empty__" ? "" : value })}
-                  >
-                    <SelectTrigger className="h-8 text-center font-medium">
-                      <SelectValue placeholder="-" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <ProbabilitySelectItems currentVal={row.probMain} />
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-
-                {/* KONDISI TAMBAHAN */}
-                <TableCell>
-                  <Select
-                    value={row.conditionSub || "__empty__"}
-                    onValueChange={(value) =>
-                      updateRow(idx, {
-                        conditionSub: value === "__empty__" ? "" : (value as WeatherCondition),
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8">
-                      <SelectValue placeholder="Pilih" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__empty__">
-                        <div className="flex items-center gap-2">
-                          <span className="min-w-[20px]" />
-                          <span>-</span>
-                        </div>
-                      </SelectItem>
-                      {weatherOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          <div className="flex items-center gap-3">
-                            <span style={{ width: 22, display: "inline-flex", justifyContent: "center", alignItems: "center" }}>
-                              <opt.Icon size={18} color={opt.color} />
-                            </span>
-                            <span className="text-sm">{opt.label}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-
-                {/* PROB TAMBAHAN */}
-                <TableCell>
-                  <Select
-                    value={row.probSub || "__empty__"}
-                    onValueChange={(value) => updateRow(idx, { probSub: value === "__empty__" ? "" : value })}
-                  >
-                    <SelectTrigger className="h-8 text-center font-medium">
-                      <SelectValue placeholder="-" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <ProbabilitySelectItems currentVal={row.probSub} />
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-
-                {/* SUHU + ERROR */}
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex gap-1 items-center">
-                      <span className="text-xs text-muted-foreground min-w-fit">Nilai:</span>
-                      <Input
-                        type="number"
-                        value={row.temperature}
-                        onChange={(e) => updateTemperature(idx, e.target.value)}
-                        className="h-7 text-sm flex-1"
-                        placeholder="—"
-                      />
-                    </div>
-                    <div className="flex gap-1 items-center">
-                      <span className="text-xs text-muted-foreground min-w-fit">Error:</span>
-                      <Input
-                        type="number"
-                        value={row.temperatureError}
-                        onChange={(e) =>
-                          updateRow(idx, { temperatureError: toNumberOrEmpty(e.target.value) })
-                        }
-                        className="h-7 text-sm flex-1"
-                        placeholder="—"
-                      />
-                    </div>
-                  </div>
-                </TableCell>
-
-                {/* KELEMBAPAN + ERROR */}
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex gap-1 items-center">
-                      <span className="text-xs text-muted-foreground min-w-fit">Nilai:</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={row.humidity}
-                        onChange={(e) => updateHumidity(idx, e.target.value)}
-                        className="h-7 text-sm flex-1"
-                        placeholder="—"
-                      />
-                    </div>
-                    <div className="flex gap-1 items-center">
-                      <span className="text-xs text-muted-foreground min-w-fit">Error:</span>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={20}
-                        value={row.humidityError}
-                        onChange={(e) => {
-                          const val = toNumberOrEmpty(e.target.value)
-                          let safeVal = val
-                          if (typeof val === "number" && typeof row.humidity === "number") {
-                            const maxSpread = Math.min(100 - row.humidity, row.humidity)
-                            safeVal = Math.min(val, Math.max(2, maxSpread))
-                          }
-                          updateRow(idx, { humidityError: safeVal })
-                        }}
-                        className="h-7 text-sm flex-1"
-                        placeholder="—"
-                      />
-                    </div>
-                  </div>
-                </TableCell>
-
-                {/* INDEKS PANAS + ERROR */}
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex gap-1 items-center">
-                      <span className="text-xs text-muted-foreground min-w-fit">Nilai:</span>
-                      <Input
-                        type="number"
-                        value={getHeatIndexDisplay(row)}
-                        readOnly
-                        className="h-7 text-sm flex-1 bg-muted"
-                        placeholder="—"
-                      />
-                    </div>
-                    <div className="flex gap-1 items-center">
-                      <span className="text-xs text-muted-foreground min-w-fit">Error:</span>
-                      <Input
-                        type="number"
-                        value={row.heatIndexError}
-                        onChange={(e) =>
-                          updateRow(idx, { heatIndexError: toNumberOrEmpty(e.target.value) })
-                        }
-                        className="h-7 text-sm flex-1"
-                        placeholder="—"
-                      />
-                    </div>
-                  </div>
-                </TableCell>
-
-                {/* HAPUS */}
-                <TableCell className="text-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeRow(idx)}
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* --- VISUALISASI PROBABILITAS ENSEMBLE MULTI-MODEL --- */}
+      {/* VISUALISASI PROBABILITAS ENSEMBLE MULTI-MODEL */}
       {activeTab === "input" && (
         <div className="mt-5">
           <EnsembleProbabilityChart
@@ -2166,283 +906,14 @@ export default function ForecastForm() {
         </div>
       )}
 
-      {/* --- HIDDEN AREA (OUTPUT IMAGE) --- */}
-      <div style={{ position: "fixed", left: "-9999px", top: 0, zIndex: -10 }}>
-        <div ref={printRef} className="print-container" style={{ width: "800px", margin: "0 auto" }}>
-          <style>{`
-            @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap');
-            
-            .print-container { 
-              font-family: 'Poppins', sans-serif; 
-              color: #0F172A; 
-              padding: 20px; 
-              box-sizing: border-box;
-              background-color: white; 
-              background: linear-gradient(160deg, #FFFFFF 0%, #F1F5F9 100%);
-            }
-            
-            /* HEADER */
-            .header-container { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-            .header-title { font-size: 32px; font-weight: 800; color: #1E3A8A; line-height: 1.1; letter-spacing: -0.5px; }
-            .header-subtitle { font-size: 20px; font-weight: 600; color: #EA580C; margin-top: 4px; }
-            .sub-label { font-size: 14px; color: #64748B; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 2px; }
-            
-            /* ROW DESIGN */
-            .weather-row {
-              display: flex;
-              border-radius: 12px;
-              margin-bottom: 10px;
-              overflow: hidden;
-              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-              position: relative;
-              border-left-width: 8px; 
-              border-left-style: solid;
-              height: 132px; 
-            }
-            
-            /* 1. JAM */ 
-            .col-time-h {
-              width: 14%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-weight: 800;
-              font-size: 26px;
-              padding: 0;
-              border-right: 1px solid rgba(0,0,0,0.05);
-              color: #334155;
-            }
-
-            /* 2. ICON */ 
-            .col-icon {
-              width: 18%; 
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              padding: 0;
-            }
-
-            /* 3. DESKRIPSI */ 
-            .col-desc {
-              width: 43%; 
-              padding: 0 20px;
-              display: flex;
-              flex-direction: column;
-              justify-content: center;
-            }
-            .desc-main { font-size: 28px; font-weight: 800; line-height: 1.1; margin-bottom: 0px; }
-            .desc-sub { font-size: 18px; opacity: 0.85; font-weight: 500; margin-top: 2px; }
-
-            /* 4. METRIK (FIXED ALIGNMENT) */ 
-            .col-metrics {
-              width: 25%;
-              padding: 0 18px;
-              display: flex;
-              flex-direction: column;
-              justify-content: center;
-              align-items: flex-start;
-              gap: 8px;
-              border-left: 1px solid rgba(0,0,0,0.05);
-            }
-
-            .metric-item {
-              display: flex;
-              align-items: center;
-              gap: 10px;
-              font-size: 18px;
-              font-weight: 700;
-              color: #334155;
-              width: 100%;
-              line-height: 1;
-            }
-
-            .metric-icon-wrap {
-              width: 42px;
-              min-width: 42px;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              flex: 0 0 42px;
-            }
-
-            .metric-value {
-              display: inline-flex;
-              align-items: center;
-              white-space: nowrap;
-            }
-          `}</style>
-
-          {/* Title Section */}
-          <div className="header-container">
-            <div>
-              <div className="sub-label">Meteo Sense Outlook</div>
-              <div className="header-title">{currentLocationName || "Nama Kota"}</div>
-              <div className="header-subtitle">{tomorrowStr}</div>
-            </div>
-            {/* Logo */}
-            <div style={{ width: "80px", height: "80px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <img src="/img/logo.webp" alt="Logo" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
-            </div>
-          </div>
-
-          {/* Column Headers */}
-          <div style={{ display: "flex", padding: "0 10px 8px 10px", fontWeight: "bold", color: "#1E3A8A", textTransform: "uppercase", fontSize: "14px", letterSpacing: "0.5px" }}>
-            <div style={{ width: "14%", textAlign: "center" }}>WIB</div>
-            <div style={{ width: "61%", paddingLeft: "15px" }}>Kemungkinan Cuaca</div>
-            <div style={{ width: "25%", paddingLeft: "24px" }}>Parameter</div>
-          </div>
-
-          {/* Rows */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
-            {rows.map((row, i) => {
-              const styles = getRowStyles(row.conditionMain || row.conditionSub || "", row.time)
-              const mainLine = formatWeatherLine(row.probMain, row.conditionMain)
-              const subLine = formatWeatherLine(row.probSub, row.conditionSub)
-
-              const heatIndexDisplay =
-                row.heatIndex !== ""
-                  ? row.heatIndex
-                  : row.temperature !== "" && row.humidity !== ""
-                    ? calculateHeatIndexCelsius(row.temperature, row.humidity)
-                    : ""
-
-              const heatIndexValue =
-                heatIndexDisplay === ""
-                  ? "-"
-                  : formatValueWithError(heatIndexDisplay, row.heatIndexError, "°C")
-
-              return (
-                <div
-                  key={i}
-                  className="weather-row"
-                  style={{
-                    backgroundColor: styles.bg,
-                    borderLeftColor: styles.accent,
-                  }}
-                >
-                  <div className="col-time-h" style={{ color: styles.text }}>
-                    {row.time}
-                  </div>
-
-                  <div className="col-icon">
-                    {getErikFlowersIcon(row.conditionMain || row.conditionSub || "", row.time, 78, styles.accent)}
-                  </div>
-
-                  <div className="col-desc" style={{ color: styles.text }}>
-                    <div className="desc-main">{mainLine}</div>
-                    {row.probSub && row.conditionSub && row.conditionSub !== row.conditionMain && (
-                      <div className="desc-sub">{subLine}</div>
-                    )}
-                  </div>
-
-                  <div className="col-metrics" style={{ color: styles.text }}>
-                    <div className="metric-item">
-                      <span className="metric-icon-wrap">
-                        <Thermometer size={30} color="#EF4444" />
-                      </span>
-                      <span className="metric-value">
-                        {formatValueWithError(row.temperature, row.temperatureError, "°C")}
-                      </span>
-                    </div>
-
-                    <div className="metric-item">
-                      <span className="metric-icon-wrap">
-                        <Droplets size={30} color="#3B82F6" />
-                      </span>
-                      <span className="metric-value">
-                        {formatValueWithError(row.humidity, row.humidityError, "%")}
-                      </span>
-                    </div>
-
-                    <div className="metric-item">
-                      <span className="metric-icon-wrap">
-                        <ThermometerSun size={30} color="#F97316" />
-                      </span>
-                      <span className="metric-value">{heatIndexValue}</span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          <div className="footer">
-            <div style={{ display: "flex", gap: "20px" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <Thermometer size={18} color="#EF4444" /> Suhu
-              </span>
-              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <Droplets size={18} color="#3B82F6" /> Kelembapan Relatif
-              </span>
-              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <ThermometerSun size={18} color="#F97316" /> Indeks Panas
-              </span>
-              <span style={{ fontStyle: "italic" }}>Prediksi Ini Bersifat Eksperimental</span>
-            </div>
-            <div>
-              <span style={{ opacity: 0.7 }}>Powered by</span> <strong style={{ color: "#1E3A8A" }}>{APP_CONFIG.name} {APP_CONFIG.version}</strong>
-            </div>
-            <div>
-              <span style={{ opacity: 0.7 }}>Waktu Kirim:</span> <strong style={{ color: "#1E3A8A" }}>{currentTimeStr}</strong>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* HIDDEN AREA (OUTPUT IMAGE) */}
+      <ForecastPrintableCard
+        printRef={printRef}
+        currentLocationName={currentLocationName}
+        tomorrowStr={tomorrowStr}
+        currentTimeStr={currentTimeStr}
+        rows={rows}
+      />
     </div>
-  )
+  );
 }
-
-// --- HELPER FUNCTIONS ---
-
-const toNumberOrEmpty = (value: string): number | "" => {
-  if (value.trim() === "") return ""
-  const n = Number(value)
-  return Number.isFinite(n) ? n : ""
-}
-
-// NOAA heat index (Celsius output) with Physical Validity Safeguards
-const calculateHeatIndexCelsius = (tempC: number, rh: number): number => {
-  // Heat Index hanya terdefinisi dan valid secara fisis pada kondisi hangat (T >= 26.7°C / 80°F, RH >= 40%)
-  if (tempC < 26.7 || rh < 40) {
-    return Math.round(tempC)
-  }
-
-  const tF = (tempC * 9) / 5 + 32
-  const hiF =
-    -42.379 +
-    2.04901523 * tF +
-    10.14333127 * rh -
-    0.22475541 * tF * rh -
-    0.00683783 * tF * tF -
-    0.05481717 * rh * rh +
-    0.00122874 * tF * tF * rh +
-    0.00085282 * tF * rh * rh -
-    0.00000199 * tF * tF * rh * rh
-
-  const hiC = ((hiF - 32) * 5) / 9
-  // Suhu terasa (apparent temperature) dalam kondisi lembap tidak boleh lebih rendah dari suhu bola kering
-  return Math.round(Math.max(tempC, hiC))
-}
-
-const getHeatIndexDisplay = (row: ForecastRow) => {
-  if (row.heatIndex !== "") {
-    return row.heatIndex
-  }
-  if (row.temperature !== "" && row.humidity !== "") {
-    return calculateHeatIndexCelsius(row.temperature, row.humidity)
-  }
-  return ""
-}
-
-// Add weather options with icons and colors
-const weatherOptions: { value: WeatherCondition; label: string; Icon: any; color: string }[] = [
-  { value: "Cerah", label: "Cerah", Icon: Sun, color: "#F97316" },
-  { value: "Cerah Berawan", label: "Cerah Berawan", Icon: CloudSun, color: "#FB923C" },
-  { value: "Berawan", label: "Berawan", Icon: Cloud, color: "#64748B" },
-  { value: "Kabut", label: "Kabut", Icon: CloudFog, color: "#94A3B8" },
-  { value: "Hujan Ringan", label: "Hujan Ringan", Icon: CloudDrizzle, color: "#60A5FA" },
-  { value: "Hujan Sedang", label: "Hujan Sedang", Icon: CloudRain, color: "#3B82F6" },
-  { value: "Hujan Lebat", label: "Hujan Lebat", Icon: CloudRain, color: "#6366F1" },
-  { value: "Badai Petir", label: "Badai Petir", Icon: CloudLightning, color: "#7C3AED" },
-  { value: "Angin Kencang", label: "Angin Kencang", Icon: Wind, color: "#06B6D4" },
-]

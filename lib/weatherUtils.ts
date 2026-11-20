@@ -639,3 +639,99 @@ export function aggregateDailyUTC(rows: SensorDate[]): WeatherRecord[] {
   }
   return result.sort((a, b) => a.date.localeCompare(b.date));
 }
+
+// --- BAROMETRIC PRESSURE & MSLP CONVERSION (WMO STANDARD) ---
+
+/**
+ * Standard atmospheric constants according to WMO No. 8 and ICAO Standard Atmosphere:
+ * L: Standard temperature lapse rate (0.0065 K/m)
+ * g: Standard gravitational acceleration (9.80665 m/s^2)
+ * M: Molar mass of dry air (0.0289644 kg/mol)
+ * R: Universal gas constant (8.31432 J/(mol*K))
+ * Exponent: (g * M) / (R * L) ≈ 5.25588
+ */
+const LAPSE_RATE_K_PER_M = 0.0065;
+const BAROMETRIC_EXPONENT = 5.25588;
+const STANDARD_TEMP_C = 15.0;
+
+/**
+ * Converts local station surface pressure (QFE) to Mean Sea Level Pressure (QNH/MSLP).
+ * Eliminates elevation bias when comparing local AWS barometer with ERA5 sea-level pressure.
+ *
+ * @param stationPressureHpa Absolute station surface barometric pressure in hPa
+ * @param elevationMeters Station elevation above mean sea level in meters (z >= 0)
+ * @param temperatureCelsius Optional ambient air temperature at station level in °C (default: 15°C)
+ * @returns Mean Sea Level Pressure (MSLP) in hPa rounded to 2 decimal places
+ */
+export function convertStationPressureToMSLP(
+  stationPressureHpa: number,
+  elevationMeters: number,
+  temperatureCelsius?: number
+): number {
+  if (!Number.isFinite(stationPressureHpa) || stationPressureHpa <= 0) {
+    return 0;
+  }
+
+  // At sea level (or zero elevation), MSLP equals station pressure
+  if (!Number.isFinite(elevationMeters) || elevationMeters === 0) {
+    return Number(stationPressureHpa.toFixed(2));
+  }
+
+  // Clamp ambient temperature to physically realistic meteorological bounds (-80°C to +60°C)
+  const tempC = Number.isFinite(temperatureCelsius)
+    ? Math.max(-80, Math.min(60, temperatureCelsius!))
+    : STANDARD_TEMP_C;
+
+  // Mean layer temperature between station elevation and sea level in Kelvin
+  // T_mean = T_station + 273.15 + (L * h / 2)
+  const tKelvin = tempC + 273.15;
+  const tMean = tKelvin + (LAPSE_RATE_K_PER_M * elevationMeters) / 2;
+
+  if (tMean <= 0) {
+    return Number(stationPressureHpa.toFixed(2));
+  }
+
+  // MSLP = P_stn * (1 + (L * h) / tMean)^5.25588
+  const factor = 1 + (LAPSE_RATE_K_PER_M * elevationMeters) / tMean;
+  const mslp = stationPressureHpa * Math.pow(factor, BAROMETRIC_EXPONENT);
+
+  return Number(mslp.toFixed(2));
+}
+
+/**
+ * Converts Mean Sea Level Pressure (MSLP) back to expected local station surface pressure (QFE).
+ *
+ * @param mslpHpa Mean Sea Level Pressure in hPa
+ * @param elevationMeters Station elevation in meters above sea level
+ * @param temperatureCelsius Optional ambient air temperature in °C
+ * @returns Expected station surface barometric pressure in hPa rounded to 2 decimal places
+ */
+export function convertMSLPToStationPressure(
+  mslpHpa: number,
+  elevationMeters: number,
+  temperatureCelsius?: number
+): number {
+  if (!Number.isFinite(mslpHpa) || mslpHpa <= 0) {
+    return 0;
+  }
+
+  if (!Number.isFinite(elevationMeters) || elevationMeters === 0) {
+    return Number(mslpHpa.toFixed(2));
+  }
+
+  const tempC = Number.isFinite(temperatureCelsius)
+    ? Math.max(-80, Math.min(60, temperatureCelsius!))
+    : STANDARD_TEMP_C;
+
+  const tKelvin = tempC + 273.15;
+  const tMean = tKelvin + (LAPSE_RATE_K_PER_M * elevationMeters) / 2;
+
+  if (tMean <= 0) {
+    return Number(mslpHpa.toFixed(2));
+  }
+
+  const factor = 1 + (LAPSE_RATE_K_PER_M * elevationMeters) / tMean;
+  const stnPressure = mslpHpa * Math.pow(factor, -BAROMETRIC_EXPONENT);
+
+  return Number(stnPressure.toFixed(2));
+}

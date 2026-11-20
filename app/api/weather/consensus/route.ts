@@ -1,22 +1,9 @@
 // app/api/weather/consensus/route.ts
-import { NextResponse } from "next/server"
+import { NextResponse } from "next/server";
+import { GLOBAL_NWP_MODELS } from "@/lib/forecast/nwpConsensusEngine";
 
-export const dynamic = "force-dynamic"
-export const revalidate = 300 // Cache 5 menit di level server / CDN
-
-// --- GLOBAL NWP & AI ENSEMBLE MODELS ---
-export const GLOBAL_NWP_MODELS = [
-  { id: "ecmwf_ifs", name: "ECMWF IFS HRES 9km", country: "Eropa", category: "Physics NWP" },
-  { id: "ecmwf_aifs025_single", name: "ECMWF AIFS 0.25°", country: "Eropa (AI)", category: "AI Model" },
-  { id: "ukmo_global_deterministic_10km", name: "UKMO Global 10km", country: "Inggris", category: "Physics NWP" },
-  { id: "meteofrance_arpege_world025", name: "Météo-France ARPEGE", country: "Prancis", category: "Physics NWP" },
-  { id: "icon_seamless", name: "DWD ICON", country: "Jerman", category: "Physics NWP" },
-  { id: "gfs_seamless", name: "NOAA GFS 0.11°", country: "Amerika Serikat", category: "Physics NWP" },
-  { id: "ncep_aigfs025", name: "NOAA AIGFS 0.25°", country: "Amerika Serikat (AI)", category: "AI Model" },
-  { id: "jma_seamless", name: "JMA GSM", country: "Jepang", category: "Physics NWP" },
-  { id: "gem_seamless", name: "CMC GEM GDPS", country: "Kanada", category: "Physics NWP" },
-  { id: "cma_grapes_global", name: "CMA Grapes 0.125°", country: "China", category: "Physics NWP" },
-] as const
+export const dynamic = "force-dynamic";
+export const revalidate = 300; // Cache 5 menit di level server / CDN
 
 export type WeatherCondition =
   | "Cerah"

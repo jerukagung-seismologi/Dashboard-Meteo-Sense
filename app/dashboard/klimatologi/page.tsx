@@ -49,7 +49,6 @@ import {
   setStoredActiveSensorId,
   resolveActiveSensorId,
 } from "@/lib/activeSensorStorage";
-import ReactECharts from "echarts-for-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -65,61 +64,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// ─── Climatology Station Components ────────────────────────────────────────
-import { PresetSelector } from "@/components/climatology/PresetSelector";
-import { ClimateExtremesCards } from "@/components/climatology/ClimateExtremesCards";
+// ─── Climatology Overview & Calculation Helpers ─────────────────────────────
 import { computeClimateExtremes } from "@/lib/climatology/climateExtremes";
-import { TemperatureCharts } from "@/components/climatology/TemperatureCharts";
-import { RainfallCharts } from "@/components/climatology/RainfallCharts";
-import { HumidityCharts } from "@/components/climatology/HumidityCharts";
-import { PressureCharts } from "@/components/climatology/PressureCharts";
-import { TempDewComparisonCharts } from "@/components/climatology/TempDewComparisonCharts";
-import { Era5ClimatologyCharts } from "@/components/climatology/Era5ClimatologyCharts";
 import { ClimateRepresentativenessOverview } from "@/components/climatology/ClimateRepresentativenessOverview";
 
-// ─── WMO 1991–2020 Standard Climatology & ETCCDI / SPI Components ─────────
-import { WalterLiethClimograph } from "@/components/climatology/WalterLiethClimograph";
-import { ClimateClassificationCard } from "@/components/climatology/ClimateClassificationCard";
-import { SpiDroughtSection } from "@/components/climatology/SpiDroughtSection";
-import { EtccdiExtremesSection } from "@/components/climatology/EtccdiExtremesSection";
-import { ZomDynamicsSection } from "@/components/climatology/ZomDynamicsSection";
-import { ChcEarlyEstimatesViewer } from "@/components/climatology/ChcEarlyEstimatesViewer";
-
-// ─── ERA5 Reanalysis Components ────────────────────────────────────────────
-import { CurrentConditions } from "@/components/reanalysis/CurrentConditions";
-import { TimeSeriesCharts } from "@/components/reanalysis/TimeSeriesCharts";
-import { HovmollerDiagram } from "@/components/reanalysis/HovmollerDiagram";
-import { DistributionAnalysis } from "@/components/reanalysis/DistributionAnalysis";
-import { DiurnalCycle } from "@/components/reanalysis/DiurnalCycle";
-import { WeeklyAnalysis } from "@/components/reanalysis/WeeklyAnalysis";
-import { MonthlyAnalysis } from "@/components/reanalysis/MonthlyAnalysis";
-import { AnnualAnalysis } from "@/components/reanalysis/AnnualAnalysis";
-import { WindRose } from "@/components/reanalysis/WindRose";
-import { ForecastDiagnostics } from "@/components/reanalysis/ForecastDiagnostics";
-
-// ─── Agrometeorologi Components ────────────────────────────────────────────
-import { MonsoonAgrometSection } from "@/components/agromet/MonsoonAgrometSection";
-import { EnsembleAgrometSection } from "@/components/agromet/EnsembleAgrometSection";
-import { WaterBalanceDualChart } from "@/components/agromet/WaterBalanceDualChart";
-
-// ─── Dynamic Leaflet imports (SSR-safe) ───────────────────────────────────
-import "leaflet/dist/leaflet.css";
-const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import("react-leaflet").then((m) => m.TileLayer), { ssr: false });
-const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), { ssr: false });
-const Popup = dynamic(() => import("react-leaflet").then((m) => m.Popup), { ssr: false });
-
-// Setup Leaflet default icons (client-side only)
-if (typeof window !== "undefined") {
-  import("leaflet").then((L) => {
-    delete (L.Icon.Default.prototype as any)._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-      iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-      shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-    });
-  });
-}
+// ─── Modular Climatology Sub-Tabs ───────────────────────────────────────────
+import { ClimateProfileTab } from "@/components/klimatologi/tabs/ClimateProfileTab";
+import { AgrometTab } from "@/components/klimatologi/tabs/AgrometTab";
+import { StandardClimatologyTab } from "@/components/klimatologi/tabs/StandardClimatologyTab";
+import { ExtremesSpiTab } from "@/components/klimatologi/tabs/ExtremesSpiTab";
+import { ZomDynamicsTab } from "@/components/klimatologi/tabs/ZomDynamicsTab";
+import { Era5ReanalysisTab } from "@/components/klimatologi/tabs/Era5ReanalysisTab";
+import { ChcEstimatesTab } from "@/components/klimatologi/tabs/ChcEstimatesTab";
 
 // ─── Types & Presets ─────────────────────────────────────────────────────────
 interface DeviceOption {
@@ -1140,952 +1096,139 @@ function KlimatologiInner() {
           </TabsTrigger>
         </TabsList>
 
-        {/* ════════════════════════════════════════════════════════════════════
-            TAB: PROFIL IKLIM WMO (1991–2020) & KLASIFIKASI BIOKLIMATIK
-            ════════════════════════════════════════════════════════════════════ */}
+        {/* ─── TAB: PROFIL IKLIM WMO (1991–2020) & KLASIFIKASI BIOKLIMATIK ─── */}
         <TabsContent value="profil-iklim" className="mt-6 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border border-blue-00 dark:border-blue-900/50">
-            <div>
-              <h2 className="text-base font-bold text-blue-950 dark:text-blue-100 flex items-center gap-2">
-                <CloudSun className="h-5 w-5 text-blue-500" />
-                Profil Normal Klimatologis WMO 1991–2020 &amp; Taksonomi Iklim Tropis
-              </h2>
-              <p className="text-xs text-blue-800 dark:text-blue-300 mt-0.5">
-                Diagram Iklim Walter-Lieth resmi WMO ($P=2T$) · Klasifikasi Oldeman Pangan · Mohr/Schmidt-Ferguson Kehutanan · Taksonomi Global Köppen-Geiger untuk <strong>{activeLocation.name}</strong>
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefreshKlim}
-              disabled={isWmoNormalsLoading}
-              className="h-8 px-3 text-xs border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 shrink-0"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isWmoNormalsLoading ? "animate-spin" : ""}`} /> Perbarui Normal
-            </Button>
-          </div>
-
-          {isWmoNormalsLoading && !wmoNormalsData ? (
-            <div className="flex flex-col items-center justify-center h-64 space-y-3 bg-white dark:bg-slate-900 rounded-xl">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              <p className="text-xs text-slate-500 font-medium">Mengambil 30-tahun arsip WMO 1991–2020 dan menghitung bioklimatologi untuk {activeLocation.name}...</p>
-            </div>
-          ) : (
-            <>
-              {/* Walter-Lieth Climograph */}
-              <WalterLiethClimograph
-                normals={wmoNormalsData?.normals || null}
-                stationName={activeLocation.name}
-                isDarkMode={isDarkMode}
-              />
-
-              {/* Climate Classification Cards (Oldeman, Schmidt-Ferguson, Köppen) */}
-              <ClimateClassificationCard
-                classification={wmoNormalsData?.classification || null}
-                isDarkMode={isDarkMode}
-              />
-            </>
-          )}
+          <ClimateProfileTab
+            activeLocation={activeLocation}
+            handleRefreshKlim={handleRefreshKlim}
+            isWmoNormalsLoading={isWmoNormalsLoading}
+            wmoNormalsData={wmoNormalsData}
+            isDarkMode={isDarkMode}
+          />
         </TabsContent>
 
-        {/* ════════════════════════════════════════════════════════════════════
-            TAB 1: AGROKLIMATOLOGI & NERACA AIR LAHAN
-            ════════════════════════════════════════════════════════════════════ */}
+{/* ─── TAB 1: AGROKLIMATOLOGI & NERACA AIR LAHAN ─── */}
         <TabsContent value="agromet" className="mt-6 space-y-8">
-          {/* Tab Sub-header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 rounded-xl border border-emerald-200 dark:border-emerald-900/50">
-            <div>
-              <h2 className="text-base font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
-                <Sprout className="h-5 w-5 text-emerald-500" />
-                Analisis Agroklimatologi, Neraca Air Lahan & Proyeksi Ekosistem
-              </h2>
-              <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
-                Ketercukupan air lahan (P vs ET0) · Profil perakaran tanah · Prediksi ensemble ECMWF IFS &amp; Google WeatherNext 2 AI (64 Skenario) untuk <strong>{activeLocation.name}</strong>
-              </p>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleRefreshAgromet} disabled={isAgrometLoading} className="h-8 px-3 text-xs border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 shrink-0">
-              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isAgrometLoading ? "animate-spin" : ""}`} /> Perbarui
-            </Button>
-          </div>
-
-          {isAgrometLoading && !agrometData ? (
-            <div className="flex flex-col items-center justify-center h-64 space-y-3">
-              <RefreshCw className="h-8 w-8 animate-spin text-emerald-500" />
-              <p className="text-xs text-slate-500">Mengambil data agrometeorologi & ensemble untuk {activeLocation.name}...</p>
-            </div>
-          ) : agrometError ? (
-            <div className="p-4 bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 rounded-2xl border border-red-200 dark:border-red-900 text-sm">
-              Gagal memuat data agrometeorologi. Silakan periksa koneksi atau klik tombol perbarui.
-            </div>
-          ) : (
-            <>
-              {/* 1a. Neraca Air Lahan & Profil Tanah (Agroclimate Core) */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1 space-y-6">
-                  {/* Profil Lapisan Tanah */}
-                  <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-                    <CardHeader className="pb-3 border-b dark:border-slate-800">
-                      <CardTitle className="text-base font-bold flex items-center gap-2">
-                        <Sprout className="h-5 w-5 text-emerald-500" /> Profil Lapisan Tanah Bertingkat
-                      </CardTitle>
-                      <CardDescription className="text-xs text-slate-500">Monitoring kelembapan & suhu perakaran tanah</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-4 space-y-5">
-                      <div className="space-y-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border dark:border-slate-800">
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Lapisan Permukaan (0–1 cm)</span>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-slate-500 flex items-center gap-1"><Droplets className="h-3.5 w-3.5 text-blue-500" /> Kelembapan</span>
-                            <span className="font-bold text-slate-900 dark:text-slate-100">{soilMoistureSurface.toFixed(1)}%</span>
-                          </div>
-                          <Progress value={soilMoistureSurface} className="h-2 bg-slate-200 dark:bg-slate-700 [&>div]:bg-blue-500" />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-slate-500 flex items-center gap-1"><Thermometer className="h-3.5 w-3.5 text-red-500" /> Suhu Tanah</span>
-                            <span className="font-bold text-slate-900 dark:text-slate-100">{soilTempSurface.toFixed(1)}°C</span>
-                          </div>
-                          <Progress value={Math.min(Math.max((soilTempSurface / 50) * 100, 0), 100)} className="h-2 bg-slate-200 dark:bg-slate-700 [&>div]:bg-red-500" />
-                        </div>
-                      </div>
-                      <div className="space-y-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border dark:border-slate-800">
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Zona Perakaran Aktif (9–27 cm)</span>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-slate-500 flex items-center gap-1"><Droplets className="h-3.5 w-3.5 text-emerald-500" /> Kelembapan Akar</span>
-                            <span className="font-bold text-emerald-600 dark:text-emerald-400">{soilMoistureRoot.toFixed(1)}%</span>
-                          </div>
-                          <Progress value={soilMoistureRoot} className="h-2 bg-slate-200 dark:bg-slate-700 [&>div]:bg-emerald-500" />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-slate-500 flex items-center gap-1"><Thermometer className="h-3.5 w-3.5 text-orange-500" /> Suhu Zona Akar</span>
-                            <span className="font-bold text-orange-600 dark:text-orange-400">{soilTempRoot.toFixed(1)}°C</span>
-                          </div>
-                          <Progress value={Math.min(Math.max((soilTempRoot / 50) * 100, 0), 100)} className="h-2 bg-slate-200 dark:bg-slate-700 [&>div]:bg-orange-500" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Deteksi Risiko Iklim Mikro */}
-                  <Card className="border-none shadow-sm dark:bg-slate-900 bg-white">
-                    <CardHeader className="pb-3 border-b dark:border-slate-800">
-                      <CardTitle className="text-base font-bold flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-amber-500" /> Deteksi Risiko Iklim Mikro
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 space-y-2.5">
-                      {[
-                        { label: "Stres Panas (Heat Stress)", active: isHeatStress, activeLabel: "⚠️ Tinggi", inactiveLabel: "Aman" },
-                        { label: "Risiko Kekeringan Perakaran", active: isDroughtRisk, activeLabel: "⚠️ Kering", inactiveLabel: "Kecukupan Baik" },
-                        { label: "Risiko Jamur & Penyakit Daun", active: isDiseaseRisk, activeLabel: "⚠️ Waspada Spora", inactiveLabel: "Rendah" },
-                        { label: "Stres Transpirasi (VPD)", active: isVpdStress, activeLabel: "⚠️ Stomata Tertutup", inactiveLabel: "Optimal" },
-                      ].map(({ label, active, activeLabel, inactiveLabel }) => (
-                        <div key={label} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{label}</span>
-                          <Badge variant="outline" className={`text-[10px] font-bold ${active ? "bg-red-100 text-red-700 border-red-300" : "bg-emerald-100 text-emerald-700 border-emerald-300"}`}>
-                            {active ? activeLabel : inactiveLabel}
-                          </Badge>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Water Balance & Charts (Right Column) */}
-                <div className="lg:col-span-2 space-y-6">
-                  <WaterBalanceDualChart hourly={agroHourlyData} daily={agroDailyData} isDarkMode={isDarkMode} />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card className="border-none shadow-sm dark:bg-slate-900 bg-white flex flex-col">
-                      <CardHeader className="pb-2 border-b dark:border-slate-800">
-                        <CardTitle className="text-sm font-bold flex items-center gap-1.5">
-                          <Droplets className="h-4 w-4 text-purple-500" /> Dinamika Kelembapan Tanah (24 Jam)
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-3 flex-grow h-[260px]">
-                        <ReactECharts option={soilMoistureOption} style={{ height: "100%", width: "100%" }} notMerge={true} lazyUpdate={true} />
-                      </CardContent>
-                    </Card>
-                    <Card className="border-none shadow-sm dark:bg-slate-900 bg-white flex flex-col">
-                      <CardHeader className="pb-2 border-b dark:border-slate-800">
-                        <CardTitle className="text-sm font-bold flex items-center gap-1.5">
-                          <Sun className="h-4 w-4 text-yellow-500" /> Fluks Radiasi Surya Aktif (24 Jam)
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-3 flex-grow h-[260px]">
-                        <ReactECharts option={solarOption} style={{ height: "100%", width: "100%" }} notMerge={true} lazyUpdate={true} />
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              </div>
-
-              {/* 1b. 10-Variabel Parameter Cuaca Mikro */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="p-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                    <Activity className="h-4 w-4" />
-                  </span>
-                  <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-slate-100">
-                    Parameter Cuaca Mikro & Dinamika Lahan ({activeLocation.name})
-                  </h3>
-                  <span className="text-xs text-slate-400 ml-auto">Pembaruan: Real-Time</span>
-                </div>
-
-                <div className="grid grid-cols-1 min-[380px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
-                  {/* Suhu Udara */}
-                  <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
-                    <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-semibold text-slate-500">Suhu Udara (2m)</span>
-                        <div className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-500"><ThermometerSun className="h-4 w-4" /></div>
-                      </div>
-                      <div>
-                        <span className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono">{temp}°C</span>
-                        <div className="text-[10px] text-slate-400 mt-0.5">Min: {tempMin}° | Max: {tempMax}°</div>
-                      </div>
-                      <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">Terasa: {apparentTemp}°C</Badge>
-                    </CardContent>
-                  </Card>
-
-                  {/* Titik Embun */}
-                  <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
-                    <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-semibold text-slate-500">Titik Embun (Td)</span>
-                        <div className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-500"><Droplets className="h-4 w-4" /></div>
-                      </div>
-                      <div>
-                        <span className="text-2xl font-black text-teal-600 dark:text-teal-400 font-mono">{dewPoint.toFixed(1)}°C</span>
-                        <div className="text-[10px] text-slate-400 mt-0.5">Depresi T-Td: {dewPointDepression}°C</div>
-                      </div>
-                      <Badge variant="outline" className={`text-[9px] w-fit font-bold ${dewPointCondition.className}`}>
-                        {dewPointCondition.label}
-                      </Badge>
-                    </CardContent>
-                  </Card>
-
-                  {/* Tekanan Barometrik */}
-                  <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
-                    <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-semibold text-slate-500">Tekanan Barometrik</span>
-                        <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-500"><Gauge className="h-4 w-4" /></div>
-                      </div>
-                      <div>
-                        <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono">{surfacePressure.toFixed(0)} <span className="text-xs font-normal">hPa</span></span>
-                        <div className="text-[10px] text-slate-400 mt-0.5">Tingkat Permukaan Lahan</div>
-                      </div>
-                      <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">{surfacePressure < 1008 ? "Sistem Rendah" : "Stabil Normal"}</Badge>
-                    </CardContent>
-                  </Card>
-
-                  {/* Kelembapan Relatif */}
-                  <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
-                    <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-semibold text-slate-500">Kelembapan Udara</span>
-                        <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-500"><Waves className="h-4 w-4" /></div>
-                      </div>
-                      <div>
-                        <span className="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono">{rh}%</span>
-                        <div className="text-[10px] text-slate-400 mt-0.5">Kondisi Kanopi Lahan</div>
-                      </div>
-                      <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">{rh > 85 ? "Sangat Lembap" : rh < 50 ? "Kering" : "Optimal"}</Badge>
-                    </CardContent>
-                  </Card>
-
-                  {/* VPD */}
-                  <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
-                    <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-semibold text-slate-500">Defisit Uap (VPD)</span>
-                        <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-500"><Sprout className="h-4 w-4" /></div>
-                      </div>
-                      <div>
-                        <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">{vpd} <span className="text-xs font-normal">kPa</span></span>
-                        <div className="text-[10px] text-slate-400 mt-0.5">Transpirasi Stomata</div>
-                      </div>
-                      <Badge variant="outline" className={`text-[9px] w-fit font-bold ${vpd >= 0.8 && vpd <= 1.5 ? "bg-emerald-100 text-emerald-800 border-emerald-300" : vpd > 1.5 ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-blue-100 text-blue-800 border-blue-300"}`}>
-                        {vpd >= 0.8 && vpd <= 1.5 ? "Transpirasi Ideal" : vpd > 1.5 ? "Stres Transpirasi" : "Transpirasi Rendah"}
-                      </Badge>
-                    </CardContent>
-                  </Card>
-
-                  {/* Curah Hujan */}
-                  <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
-                    <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-semibold text-slate-500">Curah Hujan Hari Ini</span>
-                        <div className="p-1.5 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 text-cyan-500"><CloudRain className="h-4 w-4" /></div>
-                      </div>
-                      <div>
-                        <span className="text-2xl font-black text-cyan-600 dark:text-cyan-400 font-mono">{rainToday} <span className="text-xs font-normal">mm</span></span>
-                        <div className="text-[10px] text-slate-400 mt-0.5">Akumulasi 7 Hari: {rain7d.toFixed(1)} mm</div>
-                      </div>
-                      <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">{rainToday > 20 ? "Hujan Lebat" : rainToday > 5 ? "Hujan Sedang" : "Nihil / Ringan"}</Badge>
-                    </CardContent>
-                  </Card>
-
-                  {/* ET0 */}
-                  <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
-                    <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-semibold text-slate-500">Evapotranspirasi (ET0)</span>
-                        <div className="p-1.5 rounded-lg bg-orange-50 dark:bg-orange-950/60 text-orange-500"><Sun className="h-4 w-4" /></div>
-                      </div>
-                      <div>
-                        <span className="text-2xl font-black text-orange-600 dark:text-orange-400 font-mono">{et0Today.toFixed(1)} <span className="text-xs font-normal">mm</span></span>
-                        <div className="text-[10px] text-slate-400 mt-0.5">FAO Penman-Monteith</div>
-                      </div>
-                      <Badge variant="outline" className={`text-[9px] w-fit font-bold ${waterDeficit >= 0 ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-rose-100 text-rose-800 border-rose-300"}`}>
-                        {waterDeficit >= 0 ? `Surplus +${waterDeficit.toFixed(1)}mm` : `Defisit ${waterDeficit.toFixed(1)}mm`}
-                      </Badge>
-                    </CardContent>
-                  </Card>
-
-                  {/* Radiasi Surya */}
-                  <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
-                    <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-semibold text-slate-500">Radiasi Surya</span>
-                        <div className="p-1.5 rounded-lg bg-yellow-50 dark:bg-yellow-950/60 text-yellow-600"><Sun className="h-4 w-4" /></div>
-                      </div>
-                      <div>
-                        <span className="text-2xl font-black text-yellow-600 dark:text-yellow-400 font-mono">{solarCurrent} <span className="text-xs font-normal">W/m²</span></span>
-                        <div className="text-[10px] text-slate-400 mt-0.5">Total Harian: {solarDaily} MJ/m²</div>
-                      </div>
-                      <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">Fotosintesis Aktif</Badge>
-                    </CardContent>
-                  </Card>
-
-                  {/* Angin */}
-                  <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
-                    <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-semibold text-slate-500">Angin (10m)</span>
-                        <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><Wind className="h-4 w-4" /></div>
-                      </div>
-                      <div>
-                        <span className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono">{windSpeed} <span className="text-xs font-normal">m/s</span></span>
-                        <div className="text-[10px] text-slate-400 mt-0.5">Arah: {windDir}° ({getCardinalDirection(windDir)})</div>
-                      </div>
-                      <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">{Number(windSpeed) > 5 ? "Angin Kencang" : "Angin Tenang"}</Badge>
-                    </CardContent>
-                  </Card>
-
-                  {/* Tutupan Awan & UV */}
-                  <Card className="border-none shadow-sm hover:shadow-md transition dark:bg-slate-900 bg-white">
-                    <CardContent className="p-4 flex flex-col justify-between h-full space-y-2">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-semibold text-slate-500">Tutupan Awan & UV</span>
-                        <div className="p-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600"><Cloud className="h-4 w-4" /></div>
-                      </div>
-                      <div>
-                        <span className="text-2xl font-black text-sky-600 dark:text-sky-400 font-mono">{cloudCover}%</span>
-                        <div className="text-[10px] text-slate-400 mt-0.5">Indeks UV Maks: {uvIndex}</div>
-                      </div>
-                      <Badge variant="outline" className="text-[9px] w-fit font-normal text-slate-500">{cloudCover > 75 ? "Mendung Tebal" : cloudCover > 30 ? "Sebagian Berawan" : "Cerah Terbuka"}</Badge>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-
-              {/* 1c. Prediksi Ensemble Multi-Model & Google WeatherNext 2 AI (ECMWF, GFS, ICON, AI 64-Member) */}
-              <EnsembleAgrometSection lat={activeCoords.lat} lon={activeCoords.lng} isDarkMode={isDarkMode} />
-
-              {/* 1d. Dinamika Monsun & Kalender Tanam BMKG */}
-              <MonsoonAgrometSection isDarkMode={isDarkMode} />
-
-              {/* 1e. Peta Lahan & Distribusi Agregasi Waktu */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="border-none shadow-sm dark:bg-slate-900 bg-white lg:col-span-1 flex flex-col h-full overflow-hidden">
-                  <CardHeader className="pb-2 border-b dark:border-slate-800">
-                    <CardTitle className="text-base font-bold flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-emerald-500" /> Koordinat Analisis Wilayah
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0 flex-grow h-[380px] relative z-0">
-                    <MapContainer
-                      key={`${activeCoords.lat}-${activeCoords.lng}`}
-                      center={[activeCoords.lat, activeCoords.lng]}
-                      zoom={12}
-                      style={{ height: "100%", width: "100%", zIndex: 0 }}
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      <Marker position={[activeCoords.lat, activeCoords.lng]}>
-                        <Popup>
-                          <strong>{activeLocation.name}</strong><br />
-                          Lat: {activeCoords.lat.toFixed(4)}, Lon: {activeCoords.lng.toFixed(4)}
-                        </Popup>
-                      </Marker>
-                    </MapContainer>
-                  </CardContent>
-                </Card>
-
-                <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Prakiraan Per Jam 24 Jam */}
-                  <Card className="border-none shadow-sm dark:bg-slate-900 bg-white flex flex-col">
-                    <CardHeader className="pb-2 border-b dark:border-slate-800">
-                      <CardTitle className="text-sm font-bold flex items-center gap-1.5"><Activity className="h-4 w-4 text-teal-500" /> Prakiraan Per Jam (24 Jam)</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0 flex-grow h-[340px] overflow-y-auto">
-                      <table className="w-full text-xs text-left">
-                        <thead className="text-[11px] text-slate-500 bg-slate-50 dark:bg-slate-800/80 sticky top-0">
-                          <tr>
-                            <th className="px-3 py-2.5">Jam</th>
-                            <th className="px-3 py-2.5">Suhu / Td</th>
-                            <th className="px-3 py-2.5">Hujan</th>
-                            <th className="px-3 py-2.5">Kel. Akar</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {agroHourlyData.time?.slice(0, 24).map((timeStr: string, idx: number) => (
-                            <tr key={idx} className="border-b last:border-0 border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                              <td className="px-3 py-2 font-medium">{timeStr.substring(11, 16)}</td>
-                              <td className="px-3 py-2 font-mono">{agroHourlyData.temperature_2m[idx]}° <span className="text-teal-600 text-[10px]">({agroHourlyData.dew_point_2m?.[idx] ?? "-"}°)</span></td>
-                              <td className="px-3 py-2 text-cyan-600 font-semibold">{agroHourlyData.precipitation[idx]} mm</td>
-                              <td className="px-3 py-2 text-emerald-600 font-semibold">{(agroHourlyData.soil_moisture_9_to_27cm[idx] * 100).toFixed(1)}%</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </CardContent>
-                  </Card>
-
-                  {/* Ringkasan Harian 7 Hari */}
-                  <Card className="border-none shadow-sm dark:bg-slate-900 bg-white flex flex-col">
-                    <CardHeader className="pb-2 border-b dark:border-slate-800">
-                      <CardTitle className="text-sm font-bold flex items-center gap-1.5"><Calendar className="h-4 w-4 text-emerald-500" /> Ringkasan Harian (7 Hari)</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0 flex-grow h-[340px] overflow-y-auto">
-                      <table className="w-full text-xs text-left">
-                        <thead className="text-[11px] text-slate-500 bg-slate-50 dark:bg-slate-800/80 sticky top-0">
-                          <tr>
-                            <th className="px-3 py-2.5">Tanggal</th>
-                            <th className="px-3 py-2.5">Min / Max</th>
-                            <th className="px-3 py-2.5">Hujan</th>
-                            <th className="px-3 py-2.5">ET0</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {agroDailyData.time?.slice(0, 7).map((timeStr: string, idx: number) => (
-                            <tr key={idx} className="border-b last:border-0 border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                              <td className="px-3 py-2 font-medium">{timeStr.substring(5, 10)}</td>
-                              <td className="px-3 py-2 font-mono">{agroDailyData.temperature_2m_min[idx]}° – {agroDailyData.temperature_2m_max[idx]}°</td>
-                              <td className="px-3 py-2 text-cyan-600 font-semibold">{agroDailyData.precipitation_sum[idx]} mm</td>
-                              <td className="px-3 py-2 text-orange-600 font-semibold">{agroDailyData.et0_fao_evapotranspiration_sum?.[idx]?.toFixed(1) ?? "-"} mm</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </>
-          )}
+          <AgrometTab
+            activeLocation={activeLocation}
+            activeCoords={activeCoords}
+            isAgrometLoading={isAgrometLoading}
+            agrometData={agrometData}
+            agrometError={agrometError}
+            handleRefreshAgromet={handleRefreshAgromet}
+            isDarkMode={isDarkMode}
+            soilMoistureSurface={soilMoistureSurface}
+            soilTempSurface={soilTempSurface}
+            soilMoistureRoot={soilMoistureRoot}
+            soilTempRoot={soilTempRoot}
+            isHeatStress={isHeatStress}
+            isDroughtRisk={isDroughtRisk}
+            isDiseaseRisk={isDiseaseRisk}
+            isVpdStress={isVpdStress}
+            agroHourlyData={agroHourlyData}
+            agroDailyData={agroDailyData}
+            soilMoistureOption={soilMoistureOption}
+            solarOption={solarOption}
+            temp={temp}
+            tempMin={tempMin}
+            tempMax={tempMax}
+            apparentTemp={apparentTemp}
+            dewPoint={dewPoint}
+            dewPointDepression={dewPointDepression}
+            dewPointCondition={dewPointCondition}
+            surfacePressure={surfacePressure}
+            rh={rh}
+            vpd={vpd}
+            rainToday={rainToday}
+            rain7d={rain7d}
+            et0Today={et0Today}
+            waterDeficit={waterDeficit}
+            solarCurrent={solarCurrent}
+            solarDaily={solarDaily}
+            windSpeed={windSpeed}
+            windDir={windDir}
+            getCardinalDirection={getCardinalDirection}
+            cloudCover={cloudCover}
+            uvIndex={uvIndex}
+          />
         </TabsContent>
 
-        {/* ════════════════════════════════════════════════════════════════════
-            TAB 2: STATISTIK & KLIMATOLOGI (DIFERENSIASI REGION VS STATION)
-            ════════════════════════════════════════════════════════════════════ */}
+{/* ─── TAB 2: OBSERVASI SENSOR VS NORMAL KLIMATOLOGI ─── */}
         <TabsContent value="klimatologi" className="mt-6 space-y-6">
-          {locationMode === "region" ? (
-            /* ──────────────────────────────────────────────────────────────────
-               CABANG 1: MODE PENCARIAN BEBAS WILAYAH (REGIONAL GRID CLIMATOLOGY)
-               Basis Data: Grid Reanalisis ECMWF ERA5-Land (~9 km) & WMO 1991–2020
-               ────────────────────────────────────────────────────────────────── */
-            <div className="space-y-6">
-              {/* Regional Header Banner */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gradient-to-r from-indigo-50 via-slate-50 to-blue-50 dark:from-indigo-950/40 dark:via-slate-900 dark:to-blue-950/40 rounded-xl border border-indigo-200 dark:border-indigo-900/60">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className="bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-300 text-[10px] font-bold">
-                      <Globe className="h-3 w-3 mr-1 text-indigo-500" /> Analisis Spasial Regional
-                    </Badge>
-                    <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700 text-[10px]">
-                      ECMWF ERA5-Land (~9 km)
-                    </Badge>
-                    <Badge variant="outline" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 text-[10px]">
-                      WMO Standard Normal 1991–2020
-                    </Badge>
-                  </div>
-                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-indigo-500" />
-                    Klimatologi Grid &amp; Distribusi Statistik: {activeLocation.name}
-                  </h2>
-                  <p className="text-xs text-slate-600 dark:text-slate-300">
-                    Sintesis multidekade komprehensif tanpa memerlukan sensor fisik in-situ: Siklus 12-bulan, fluktuasi diurnal 24-jam, distribusi persentil statistik WMO (Boxplot, ECDF, Fan Chart), dan rentang ekstremitas iklim regional.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRefreshKlim}
-                    disabled={isEra5BaselineLoading}
-                    className="h-8 text-xs border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isEra5BaselineLoading ? "animate-spin" : ""}`} /> Perbarui Data Grid
-                  </Button>
-                  {devices.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setLocationMode("station")}
-                      className="h-8 text-xs border-teal-300 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/50"
-                    >
-                      <Radio className="h-3.5 w-3.5 mr-1.5 text-teal-500" /> Ke Stasiun Sensor IoT
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* High-Resolution Regional ERA5 & WMO Climatology Charts */}
-              <Era5ClimatologyCharts
-                era5Data={era5BaselineData}
-                isLoading={isEra5BaselineLoading}
-                stationPoints={[]}
-                stationName={activeLocation.name}
-                coordinates={activeCoords}
-                isDarkMode={isDarkMode}
-                selectedYear={selectedYear}
-              />
-            </div>
-          ) : (
-            /* ──────────────────────────────────────────────────────────────────
-               CABANG 2: MODE STASIUN SENSOR IOT (IN-SITU TELEMETRY VS NORMAL)
-               Basis Data: Telemetri Perangkat Sensor MeteoSense vs WMO / ERA5
-               ────────────────────────────────────────────────────────────────── */
-            <div className="space-y-6">
-              {/* Station Header Banner */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/30 rounded-xl border border-teal-200 dark:border-teal-900/50">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <Badge variant="outline" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 text-[10px] font-bold">
-                      <Radio className="h-3 w-3 mr-1 text-emerald-500" /> Stasiun Telemetri In-Situ
-                    </Badge>
-                    <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700 text-[10px]">
-                      Sensor ID: {currentDevice?.value ?? "-"}
-                    </Badge>
-                  </div>
-                  <h2 className="text-base font-bold text-teal-950 dark:text-teal-100 flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-teal-600" />
-                    Observasi Sensor Fisik vs Normal WMO 1991–2020 &amp; Sifat Hujan BMKG
-                  </h2>
-                  <p className="text-xs text-teal-800 dark:text-teal-300 mt-0.5">
-                    Evaluasi data pengamatan sensor fisik <strong>{activeLocation.name}</strong> terhadap acuan normal 30-tahun WMO &amp; Sifat Hujan BMKG (AN &gt;115%, N 85–115%, BN &lt;85%).
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setLocationMode("region")}
-                    className="h-8 text-xs border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50"
-                  >
-                    <Globe className="h-3.5 w-3.5 mr-1 text-indigo-500" /> Jelajahi Wilayah Lain
-                  </Button>
-                </div>
-              </div>
-
-              {/* Preset & Filter Controls */}
-              <Card className="bg-slate-50 dark:bg-slate-900/50 border-none shadow-sm">
-                <CardContent className="p-4 flex flex-wrap items-center gap-4">
-                  <PresetSelector
-                    preset={preset}
-                    setPreset={setPreset}
-                    selectedMonth={selectedMonth}
-                    setSelectedMonth={setSelectedMonth}
-                    selectedYear={selectedYear}
-                    setSelectedYear={setSelectedYear}
-                    selectedDasarian={selectedDasarian}
-                    setSelectedDasarian={setSelectedDasarian}
-                    isLoading={isKlimLoading}
-                    onRefresh={handleRefreshKlim}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Persistent Station vs WMO Normal Comparative KPI Bar */}
-              {klimData?.stats && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 dark:border-emerald-900/40 text-xs">
-                  <div className="space-y-0.5">
-                    <span className="text-slate-500 text-[11px] font-semibold flex items-center gap-1">
-                      <Thermometer className="h-3.5 w-3.5 text-red-500" /> Rerata Suhu Observasi
-                    </span>
-                    <div className="text-base font-black text-slate-900 dark:text-slate-100 font-mono">
-                      {klimData.stats.temperature.mean.toFixed(1)}°C
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                      Normal WMO: <strong className="text-slate-700 dark:text-slate-300">{periodNormals?.temperature.mean?.toFixed(1) ?? "-"}°C</strong>
-                      {periodNormals?.temperature.mean && (
-                        <span className={`ml-1 font-bold ${klimData.stats.temperature.mean - periodNormals.temperature.mean > 0 ? "text-rose-500" : "text-sky-500"}`}>
-                          ({klimData.stats.temperature.mean - periodNormals.temperature.mean > 0 ? "+" : ""}
-                          {(klimData.stats.temperature.mean - periodNormals.temperature.mean).toFixed(1)}°)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-slate-500 text-[11px] font-semibold flex items-center gap-1">
-                      <CloudRain className="h-3.5 w-3.5 text-cyan-500" /> Akumulasi Curah Hujan
-                    </span>
-                    <div className="text-base font-black text-slate-900 dark:text-slate-100 font-mono">
-                      {klimData.stats.rainfall.total.toFixed(1)} mm
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                      Normal WMO: <strong className="text-slate-700 dark:text-slate-300">{periodNormals?.rainfall.normal?.toFixed(1) ?? "-"} mm</strong>
-                      {periodNormals?.rainfall.normal && periodNormals.rainfall.normal > 0 && (
-                        <span className="ml-1 font-bold text-cyan-600 dark:text-cyan-400">
-                          ({((klimData.stats.rainfall.total / periodNormals.rainfall.normal) * 100).toFixed(0)}%)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-slate-500 text-[11px] font-semibold flex items-center gap-1">
-                      <Waves className="h-3.5 w-3.5 text-blue-500" /> Rerata Kelembaban
-                    </span>
-                    <div className="text-base font-black text-slate-900 dark:text-slate-100 font-mono">
-                      {klimData.stats.humidity.mean.toFixed(1)}%
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                      Normal ERA5: <strong className="text-slate-700 dark:text-slate-300">{periodNormals?.humidity.mean?.toFixed(1) ?? "-"}%</strong>
-                    </div>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-slate-500 text-[11px] font-semibold flex items-center gap-1">
-                      <Gauge className="h-3.5 w-3.5 text-indigo-500" /> Rerata Tekanan Barometrik
-                    </span>
-                    <div className="text-base font-black text-slate-900 dark:text-slate-100 font-mono">
-                      {klimData.stats.pressure.mean.toFixed(1)} hPa
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                      Normal ERA5: <strong className="text-slate-700 dark:text-slate-300">{periodNormals?.pressure.mean?.toFixed(1) ?? "-"} hPa</strong>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Station Data Rendering */}
-              {isKlimLoading ? (
-                renderKlimLoading()
-              ) : klimError ? (
-                <Card className="border-red-200 bg-red-50/50 dark:bg-red-950/20">
-                  <CardContent className="p-6 text-center">
-                    <p className="text-red-600 dark:text-red-400 font-semibold">{klimError.message || "Gagal memuat data iklim stasiun."}</p>
-                  </CardContent>
-                </Card>
-              ) : !klimData || !klimData.points || klimData.points.length === 0 ? (
-                <div className="space-y-4 p-8 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-center">
-                  <Activity className="h-10 w-10 text-slate-400 mx-auto" />
-                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                    Tidak Ada Rekaman Telemetri Sensor untuk Periode Ini
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                    Stasiun <strong>{activeLocation.name}</strong> tidak mengirimkan data log telemetri pada rentang waktu yang dipilih ({preset}). Silakan pilih bulan/dasarian/tahun lain atau ubah ke <strong>Mode Pencarian Wilayah</strong> untuk menganalisis data reanalisis grid.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {/* Climate Extremes KPI Cards */}
-                  <ClimateExtremesCards extremes={climateExtremes} stats={klimData.stats} />
-
-                  {/* Detailed Parameter Analytics Tabs */}
-                  <Tabs defaultValue="temperature" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto p-1 bg-slate-100 dark:bg-slate-900 border rounded-lg">
-                      <TabsTrigger value="temperature" className="py-2.5">Suhu Udara</TabsTrigger>
-                      <TabsTrigger value="comparison" className="py-2.5">Titik Embun</TabsTrigger>
-                      <TabsTrigger value="humidity" className="py-2.5">Kelembaban Relatif</TabsTrigger>
-                      <TabsTrigger value="rainfall" className="py-2.5">Curah Hujan</TabsTrigger>
-                      <TabsTrigger value="pressure" className="py-2.5">Tekanan Udara</TabsTrigger>
-                      <TabsTrigger value="era5_normal" className="py-2.5 font-medium flex items-center justify-center gap-1.5">
-                        <span>Normal ERA5</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold">Iklim</span>
-                      </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="temperature" className="mt-6">
-                      <TemperatureCharts points={klimData.points} preset={preset} isDarkMode={isDarkMode} stdDev={klimData.stats.temperature.stdDev} observedMean={klimData.stats.temperature.mean} era5NormalTemp={periodNormals?.temperature.mean} monthlyNormals={periodNormals?.temperature.monthly} />
-                    </TabsContent>
-                    <TabsContent value="rainfall" className="mt-6">
-                      <RainfallCharts points={klimData.points} preset={preset} isDarkMode={isDarkMode} totalRainfall={klimData.stats.rainfall.total} era5NormalRain={periodNormals?.rainfall.normal} monthlyNormals={periodNormals?.rainfall.monthly} />
-                    </TabsContent>
-                    <TabsContent value="humidity" className="mt-6">
-                      <HumidityCharts points={klimData.points} preset={preset} isDarkMode={isDarkMode} stdDev={klimData.stats.humidity.stdDev} observedMean={klimData.stats.humidity.mean} era5NormalHum={periodNormals?.humidity.mean} monthlyNormals={periodNormals?.humidity.monthly} />
-                    </TabsContent>
-                    <TabsContent value="pressure" className="mt-6">
-                      <PressureCharts points={klimData.points} preset={preset} isDarkMode={isDarkMode} stdDev={klimData.stats.pressure.stdDev} observedMean={klimData.stats.pressure.mean} era5NormalPress={periodNormals?.pressure.mean} monthlyNormals={periodNormals?.pressure.monthly} />
-                    </TabsContent>
-                    <TabsContent value="comparison" className="mt-6">
-                      <TempDewComparisonCharts points={klimData.points} preset={preset} isDarkMode={isDarkMode} />
-                    </TabsContent>
-                    <TabsContent value="era5_normal" className="mt-6">
-                      <Era5ClimatologyCharts era5Data={era5BaselineData} isLoading={isEra5BaselineLoading} stationPoints={klimData.points} stationName={activeLocation.name} coordinates={activeCoords} isDarkMode={isDarkMode} selectedYear={selectedYear} />
-                    </TabsContent>
-                  </Tabs>
-                </>
-              )}
-            </div>
-          )}
+          <StandardClimatologyTab
+            locationMode={locationMode}
+            setLocationMode={setLocationMode}
+            activeLocation={activeLocation}
+            activeCoords={activeCoords}
+            isEra5BaselineLoading={isEra5BaselineLoading}
+            era5BaselineData={era5BaselineData}
+            handleRefreshKlim={handleRefreshKlim}
+            devices={devices}
+            currentDevice={currentDevice}
+            preset={preset}
+            setPreset={setPreset}
+            selectedMonth={selectedMonth}
+            setSelectedMonth={setSelectedMonth}
+            selectedYear={selectedYear}
+            setSelectedYear={setSelectedYear}
+            selectedDasarian={selectedDasarian}
+            setSelectedDasarian={setSelectedDasarian}
+            isKlimLoading={isKlimLoading}
+            klimData={klimData}
+            klimError={klimError}
+            periodNormals={periodNormals}
+            climateExtremes={climateExtremes}
+            isDarkMode={isDarkMode}
+            renderKlimLoading={renderKlimLoading}
+          />
         </TabsContent>
 
-        {/* ════════════════════════════════════════════════════════════════════
-            TAB: IKLIM EKSTREM ETCCDI & MONITORING KEKERINGAN SPI
-            ════════════════════════════════════════════════════════════════════ */}
+{/* ─── TAB: DETEKSI INDEKS IKLIM EKSTREM ETCCDI & MONITORING KEKERINGAN SPI ─── */}
         <TabsContent value="ekstrem-spi" className="mt-6 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gradient-to-r from-red-50 to-amber-50 dark:from-red-950/30 dark:to-amber-950/30 rounded-xl border border-red-200 dark:border-red-900/50">
-            <div>
-              <h2 className="text-base font-bold text-red-950 dark:text-red-100 flex items-center gap-2">
-                <ShieldAlert className="h-5 w-5 text-red-500" />
-                Deteksi Indeks Iklim Ekstrem ETCCDI &amp; Monitoring Kekeringan SPI
-              </h2>
-              <p className="text-xs text-red-800 dark:text-red-300 mt-0.5">
-                Kaidah WMO CCl/CLIVAR (RX1day, RX5day, SDII, R95p, CDD, SU35, DTR) · Standar WMO-No. 1090 SPI-1, SPI-3, SPI-6, SPI-12 untuk <strong>{activeLocation.name}</strong>
-              </p>
-            </div>
-          </div>
-
-          {/* ETCCDI Core Extremes */}
-          {locationMode === "station" ? (
-            <EtccdiExtremesSection
-              points={klimData?.points || []}
-              stationName={activeLocation.name}
-              isDarkMode={isDarkMode}
-            />
-          ) : (
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <ShieldAlert className="h-5 w-5 text-amber-500 shrink-0" />
-                <div className="text-xs text-slate-600 dark:text-slate-300">
-                  <strong className="text-slate-900 dark:text-slate-100">Indeks Ekstremitas In-Situ (ETCCDI):</strong> Beroperasi menggunakan rekaman telemetri harian stasiun sensor fisik. Untuk wilayah regional <strong>{activeLocation.name}</strong>, evaluasi bahaya kekeringan &amp; kebasahan iklim didasarkan pada Indeks Presipitasi Terstandarisasi (SPI WMO) di bawah.
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* SPI Drought Monitoring */}
-          <SpiDroughtSection
-            spiData={wmoNormalsData?.spi || null}
-            currentPeriodNormals={wmoNormalsData?.currentPeriodNormals || null}
+          <ExtremesSpiTab
+            locationMode={locationMode}
+            klimData={klimData}
+            activeLocation={activeLocation}
             isDarkMode={isDarkMode}
+            wmoNormalsData={wmoNormalsData}
           />
         </TabsContent>
 
-        {/* ════════════════════════════════════════════════════════════════════
-            TAB: DINAMIKA 36 DASARIAN & ZONA MUSIM BMKG (ZOM)
-            ════════════════════════════════════════════════════════════════════ */}
+{/* ─── TAB: DINAMIKA 36 DASARIAN & PREDIKSI ONSET MUSIM BMKG (ZONA MUSIM) ─── */}
         <TabsContent value="zom-musim" className="mt-6 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/30 rounded-xl border border-teal-200 dark:border-teal-900/50">
-            <div>
-              <h2 className="text-base font-bold text-teal-950 dark:text-teal-100 flex items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-teal-500" />
-                Dinamika 36 Dasarian &amp; Prediksi Onset Musim BMKG (Zona Musim)
-              </h2>
-              <p className="text-xs text-teal-800 dark:text-teal-300 mt-0.5">
-                Kaidah Resmi BMKG: Awal Musim Hujan (AMH ≥50 mm × 3 dasarian) &amp; Awal Musim Kemarau (AMK &lt;50 mm × 3 dasarian) untuk <strong>{activeLocation.name}</strong>
-              </p>
-            </div>
-          </div>
-
-          <ZomDynamicsSection
-            dasarians={wmoNormalsData?.normals?.dasarians || null}
-            seasonalDynamics={wmoNormalsData?.seasonalDynamics || null}
+          <ZomDynamicsTab
+            activeLocation={activeLocation}
+            wmoNormalsData={wmoNormalsData}
             isDarkMode={isDarkMode}
           />
         </TabsContent>
 
-        {/* ════════════════════════════════════════════════════════════════════
-            TAB: REANALISIS ERA5 (Integrated Full-Width Atmospheric Reanalysis)
-            ════════════════════════════════════════════════════════════════════ */}
+{/* ─── TAB 3: REANALISIS ERA5 (ECMWF GLOBAL REANALYSIS) ─── */}
         <TabsContent value="era5" className="mt-6 space-y-6">
-          {/* ERA5 Top Control & Period Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-slate-100/90 dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800">
-            <div className="space-y-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/20 flex items-center gap-1">
-                  <Sparkles className="h-3 w-3" /> Reanalisis Global ECMWF ERA5 (1940–sekarang)
-                </span>
-                <span className="text-[11px] text-slate-500">Resolusi Grid 0.25° (~25–31 km)</span>
-              </div>
-              <h2 className="text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                <Compass className="h-4 w-4 text-purple-500" /> Profil Reanalisis Atmosfer: {activeLocation.name}
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Deret waktu multi-level, diagram kontur Hovmöller, siklus diurnal, analisis mawar angin, dan energi konvektif atmosfer (CAPE).
-              </p>
-            </div>
-
-            {/* Rentang Waktu Controls */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex border rounded-lg p-0.5 bg-white dark:bg-slate-950 dark:border-slate-800 text-xs">
-                {[
-                  ["1y", "1 Tahun"],
-                  ["6m", "6 Bulan"],
-                  ["3m", "3 Bulan"],
-                  ["30d", "30 Hari"],
-                  ["custom", "Kustom"],
-                ].map(([val, lbl]) => (
-                  <button
-                    key={val}
-                    onClick={() => setTimePreset(val)}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition duration-150 ${
-                      timePreset === val
-                        ? "bg-purple-600 text-white shadow-xs"
-                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                    }`}
-                  >
-                    {lbl}
-                  </button>
-                ))}
-              </div>
-
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => mutateEra5()}
-                disabled={isEra5Loading}
-                className="h-8 text-xs border-slate-200 dark:border-slate-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40"
-              >
-                <RefreshCw className={`h-3 w-3 mr-1 ${isEra5Loading ? "animate-spin" : ""}`} />
-                Perbarui
-              </Button>
-            </div>
-          </div>
-
-          {/* Custom Date Pickers if timePreset === 'custom' */}
-          {timePreset === "custom" && (
-            <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-              <CardContent className="p-4 flex flex-wrap items-center gap-4 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-500">Mulai:</span>
-                  <Input
-                    type="date"
-                    max={maxEndDate}
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="h-8 text-xs w-36 bg-slate-50 dark:bg-slate-950"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-500">Selesai:</span>
-                  <Input
-                    type="date"
-                    max={maxEndDate}
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="h-8 text-xs w-36 bg-slate-50 dark:bg-slate-950"
-                  />
-                </div>
-                {!dateRangeValidation.isValid && (
-                  <span className="text-red-500 text-xs flex items-center gap-1">
-                    <AlertTriangle className="h-3.5 w-3.5" /> {dateRangeValidation.message}
-                  </span>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* ERA5 Content */}
-          {isEra5Loading ? (
-            renderEra5Loading()
-          ) : era5Error ? (
-            <Card className="border-red-200 bg-red-50/50 dark:bg-red-950/20 shadow-sm border-none">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-red-600 dark:text-red-400 font-bold flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5" /> Gagal Memproses Reanalisis ERA5
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3">
-                <p className="text-xs text-red-600 dark:text-red-400 font-medium">{era5Error.message || "Kesalahan koneksi atau format respon."}</p>
-                <Button onClick={() => mutateEra5()} variant="outline" size="sm" className="mt-2 text-xs border-red-200 hover:bg-red-100 text-red-700">Ulangi Request</Button>
-              </CardContent>
-            </Card>
-          ) : !era5Data ? (
-            <div className="flex flex-col items-center justify-center p-16 bg-white dark:bg-slate-900 border rounded-xl shadow-sm text-center">
-              <Compass className="h-14 w-14 text-indigo-400 dark:text-indigo-600 mb-4 animate-spin-slow" />
-              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Memuat Data Reanalisis...</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mt-2">Menghubungi Open-Meteo Archive untuk koordinat {activeLocation.name}...</p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Location Info Metadata Banner */}
-              <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl flex flex-wrap justify-between items-center gap-4 text-xs font-semibold border dark:border-slate-800">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <MapPin className="h-4 w-4 text-purple-500" />
-                  <span className="text-slate-900 dark:text-slate-100 font-bold">{activeLocation.name}</span>
-                  <span className="text-slate-400 font-normal">|</span>
-                  <span className="text-slate-700 dark:text-slate-300 font-mono">{era5Data.latitude.toFixed(4)}°N, {era5Data.longitude.toFixed(4)}°E</span>
-                  <span className="text-slate-400 font-normal">|</span>
-                  <span className="text-slate-700 dark:text-slate-300">Ketinggian: <strong>{era5Data.elevation} m dpl</strong></span>
-                  <span className="text-slate-400 font-normal">|</span>
-                  <span className="text-slate-700 dark:text-slate-300">Zona Waktu: {era5Data.timezone}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-500 font-normal">
-                  <Calendar className="h-4 w-4 text-purple-500" />
-                  <span>Periode Analisis: </span>
-                  <strong className="text-slate-800 dark:text-slate-200 font-bold">{era5Data.startDate} s.d. {era5Data.endDate}</strong>
-                </div>
-              </div>
-
-              {/* Current Conditions Summary */}
-              <CurrentConditions current={era5Data.current} />
-
-              {/* Full Width ERA5 Analysis Tabs */}
-              <Tabs defaultValue="time-series" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 h-auto p-1 bg-slate-100 dark:bg-slate-950 border dark:border-slate-800 rounded-xl text-xs gap-1">
-                  <TabsTrigger value="time-series" className="py-2.5 font-bold">Deret Waktu</TabsTrigger>
-                  <TabsTrigger value="hovmoller" className="py-2.5 font-bold">Diagram Hovmöller</TabsTrigger>
-                  <TabsTrigger value="diurnal" className="py-2.5 font-bold">Siklus Distribusi</TabsTrigger>
-                  <TabsTrigger value="climatology" className="py-2.5 font-bold">Tren Klimatologi</TabsTrigger>
-                  <TabsTrigger value="wind-diagnostics" className="py-2.5 font-bold">Mawar Angin &amp; Diagnostik</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="time-series" className="mt-6 space-y-6">
-                  <TimeSeriesCharts times={era5Data.hourly.times} temperature={era5Data.hourly.temperature} humidity={era5Data.hourly.humidity} pressure={era5Data.hourly.pressure} rain={era5Data.hourly.rain} windSpeed={era5Data.hourly.windSpeed} windGust={era5Data.hourly.windGust} radiation={era5Data.hourly.radiation} isDarkMode={isDarkMode} />
-                </TabsContent>
-
-                <TabsContent value="hovmoller" className="mt-6">
-                  <HovmollerDiagram days={era5Data.hovmoller.days} hours={era5Data.hovmoller.hours} temperature={era5Data.hovmoller.temperature} humidity={era5Data.hovmoller.humidity} pressure={era5Data.hovmoller.pressure} rain={era5Data.hovmoller.rain} isDarkMode={isDarkMode} />
-                </TabsContent>
-
-                <TabsContent value="diurnal" className="mt-6 space-y-6">
-                  <DiurnalCycle data={era5Data.diurnal} isDarkMode={isDarkMode} />
-                  <DistributionAnalysis temperature={era5Data.hourly.temperature} humidity={era5Data.hourly.humidity} pressure={era5Data.hourly.pressure} windSpeed={era5Data.hourly.windSpeed} rain={era5Data.hourly.rain} stats={era5Data.stats} isDarkMode={isDarkMode} />
-                </TabsContent>
-
-                <TabsContent value="climatology" className="mt-6 space-y-6">
-                  <WeeklyAnalysis days={era5Data.weekly.days} temperature={era5Data.weekly.temperature} humidity={era5Data.weekly.humidity} pressure={era5Data.weekly.pressure} windSpeed={era5Data.weekly.windSpeed} isDarkMode={isDarkMode} />
-                  <MonthlyAnalysis months={era5Data.monthly.months} temperature={era5Data.monthly.temperature} humidity={era5Data.monthly.humidity} pressure={era5Data.monthly.pressure} rain={era5Data.monthly.rain} isDarkMode={isDarkMode} />
-                  <AnnualAnalysis days={era5Data.annual.days} temperatureMean={era5Data.annual.temperatureMean} humidityMean={era5Data.annual.humidityMean} pressureMean={era5Data.annual.pressureMean} rainAccumulated={era5Data.annual.rainAccumulated} isDarkMode={isDarkMode} />
-                </TabsContent>
-
-                <TabsContent value="wind-diagnostics" className="mt-6 space-y-6">
-                  <WindRose data={era5Data.windRose} isDarkMode={isDarkMode} windSpeedStats={era5Data.stats.windSpeed} />
-                  <ForecastDiagnostics scatter={era5Data.scatter} radiation={era5Data.radiation} cape={era5Data.cape} diagnostics={era5Data.diagnostics} isDarkMode={isDarkMode} />
-                </TabsContent>
-              </Tabs>
-            </div>
-          )}
+          <Era5ReanalysisTab
+            activeLocation={activeLocation}
+            timePreset={timePreset}
+            setTimePreset={setTimePreset}
+            mutateEra5={mutateEra5}
+            isEra5Loading={isEra5Loading}
+            customStartDate={customStartDate}
+            setCustomStartDate={setCustomStartDate}
+            customEndDate={customEndDate}
+            setCustomEndDate={setCustomEndDate}
+            maxEndDate={maxEndDate}
+            dateRangeValidation={dateRangeValidation}
+            era5Data={era5Data}
+            era5Error={era5Error}
+            isDarkMode={isDarkMode}
+            renderEra5Loading={renderEra5Loading}
+          />
         </TabsContent>
 
-        {/* ════════════════════════════════════════════════════════════════════
-            TAB: CHC EARLY ESTIMATES (UC SANTA BARBARA) — ASIA TENGGARA
-            ════════════════════════════════════════════════════════════════════ */}
+{/* ─── TAB: CHC EARLY ESTIMATES (UC SANTA BARBARA) — ASIA TENGGARA ─── */}
         <TabsContent value="chc-estimates" className="mt-6 space-y-6">
-          <ChcEarlyEstimatesViewer />
+          <ChcEstimatesTab />
         </TabsContent>
-
-      </Tabs>
+            </Tabs>
     </div>
   );
 }

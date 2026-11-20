@@ -1,21 +1,43 @@
 // lib/bias-correction/types.ts
+export type { QCFlag, MeteorologicalVariable, EvaluationMetrics } from "@/lib/types/meteorology";
+import type { QCFlag, MeteorologicalVariable, EvaluationMetrics } from "@/lib/types/meteorology";
 
-/**
- * Quality Control Flag based on WMO and international meteorological standards.
- */
-export type QCFlag = "GOOD" | "SUSPECT" | "INVALID" | "MISSING" | "NOT_SIGNIFICANT" | "IMPUTED";
+// Re-export advanced verification & quality test types
+export type {
+  ContingencyTable2x2,
+  CategoricalMetrics,
+  BMKGRainfallClass,
+  BMKGThresholdConfig,
+} from "./statistics/categoricalMetrics";
+export type {
+  HydrologicalMetricsResult,
+  HydrologicalPerformanceRating,
+} from "./statistics/hydrologicalMetrics";
+export type {
+  RAPSResult,
+  DoubleMassCurveResult,
+  SpearmanTrendResult,
+  SampleAdequacyResult,
+} from "./statistics/homogeneityTests";
+export type {
+  CRPSResult,
+  BrierScoreResult,
+  ReliabilityBin,
+  ReliabilityDiagramData,
+} from "./statistics/probabilisticMetrics";
 
-/**
- * Standard meteorological variables supported by the AWS–ERA5 validation system.
- */
-export type MeteorologicalVariable =
-  | "air_temperature"
-  | "relative_humidity"
-  | "dew_point_temperature"
-  | "surface_pressure"
-  | "wind_speed"
-  | "wind_direction"
-  | "precipitation";
+import type {
+  CategoricalMetrics,
+} from "./statistics/categoricalMetrics";
+import type {
+  HydrologicalMetricsResult,
+} from "./statistics/hydrologicalMetrics";
+import type {
+  RAPSResult,
+  DoubleMassCurveResult,
+  SpearmanTrendResult,
+  SampleAdequacyResult,
+} from "./statistics/homogeneityTests";
 
 /**
  * Layer 1: Raw AWS Station Observation (Immutable, Ground Reference)
@@ -225,22 +247,6 @@ export interface ProvenanceMetadata {
 }
 
 /**
- * Verification & Statistical Evaluation Metrics
- */
-export interface EvaluationMetrics {
-  sampleCount: number;
-  meanBias: number;
-  mae: number;
-  rmse: number;
-  stdResidual: number;
-  pearsonR: number;
-  rSquared: number;
-  p10: number;
-  p50: number;
-  p90: number;
-}
-
-/**
  * Before vs After Comparative Metrics with Validation Performance Checks
  */
 export interface ComparativeValidationResult {
@@ -253,6 +259,24 @@ export interface ComparativeValidationResult {
   isDegraded: boolean; // True if corrected validation error is worse than raw error
   degradationWarning?: string;
   provenance: ProvenanceMetadata;
+  /** Hydrological metrics (NSE, RSR, KGE, NRMSE) before vs after */
+  hydrological?: {
+    raw: HydrologicalMetricsResult;
+    corrected: HydrologicalMetricsResult;
+  };
+  /** Categorical precipitation metrics (Hits, FA, Miss, CN, POD, FAR, FOH, CSI, HSS) */
+  categorical?: {
+    threshold: number;
+    raw: CategoricalMetrics;
+    corrected: CategoricalMetrics;
+  };
+  /** Homogeneity, consistency, trend, and sample adequacy tests */
+  homogeneity?: {
+    raps: RAPSResult;
+    doubleMass?: DoubleMassCurveResult;
+    spearmanTrend: SpearmanTrendResult;
+    sampleAdequacy: SampleAdequacyResult;
+  };
 }
 
 /**
